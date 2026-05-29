@@ -8,7 +8,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// registerRoutes is async only by signature; it wires up routes synchronously.
-await registerRoutes(app);
+registerRoutes(app);
 
 export default app;

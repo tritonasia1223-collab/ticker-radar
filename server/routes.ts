@@ -10,7 +10,7 @@ import { z } from "zod";
 // process instead (see script/collect.ts). DEPLOY_TARGET=vercel disables them.
 const COLLECTION_DISABLED = process.env.DEPLOY_TARGET === "vercel";
 
-export async function registerRoutes(app: Express) {
+export function registerRoutes(app: Express) {
   // ---- Accounts ----
   app.get("/api/accounts", async (_req, res) => {
     res.json(await storage.listAccounts());
