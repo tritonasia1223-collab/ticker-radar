@@ -1,12 +1,16 @@
 import type { Express } from "express";
-import type { Server } from "http";
 import { storage } from "./storage";
 import { collectAll } from "./apify";
 import { seedDummy } from "./seed";
 import { insertAccountSchema } from "@shared/schema";
 import { z } from "zod";
 
-export async function registerRoutes(httpServer: Server, app: Express) {
+// Writes that hit Apify (and run for a long time) must not run on Vercel's
+// serverless functions — they'd time out. Collection runs from a local/worker
+// process instead (see script/collect.ts). DEPLOY_TARGET=vercel disables them.
+const COLLECTION_DISABLED = process.env.DEPLOY_TARGET === "vercel";
+
+export async function registerRoutes(app: Express) {
   // ---- Accounts ----
   app.get("/api/accounts", async (_req, res) => {
     res.json(await storage.listAccounts());
@@ -61,6 +65,12 @@ export async function registerRoutes(httpServer: Server, app: Express) {
 
   // ---- Collection ----
   app.post("/api/collect", async (_req, res) => {
+    if (COLLECTION_DISABLED) {
+      return res.status(501).json({
+        ok: false,
+        error: "수집은 이 배포에서 비활성화되어 있습니다. 로컬에서 `npm run collect`로 실행하세요.",
+      });
+    }
     const r = await collectAll();
     res.json(r);
   });
@@ -115,9 +125,10 @@ export async function registerRoutes(httpServer: Server, app: Express) {
 
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {
+    if (COLLECTION_DISABLED) {
+      return res.status(501).json({ ok: false, error: "시드는 이 배포에서 비활성화되어 있습니다." });
+    }
     const r = await seedDummy();
     res.json(r);
   });
-
-  return httpServer;
 }

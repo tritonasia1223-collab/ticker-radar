@@ -1,39 +1,39 @@
-import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, serial, bigint, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // --- Tracked X (Twitter) accounts ---
-export const accounts = sqliteTable("accounts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const accounts = pgTable("accounts", {
+  id: serial("id").primaryKey(),
   handle: text("handle").notNull().unique(), // without @, lowercase
   displayName: text("display_name"),
   note: text("note"),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  active: boolean("active").notNull().default(true),
   // Cursor for incremental collection: highest tweet id (as string) we've stored.
   lastTweetId: text("last_tweet_id"),
-  lastSyncedAt: integer("last_synced_at"), // unix ms
-  createdAt: integer("created_at").notNull(),
+  lastSyncedAt: bigint("last_synced_at", { mode: "number" }), // unix ms
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
 // --- Collected tweets (deduped on tweetId) ---
-export const tweets = sqliteTable(
+export const tweets = pgTable(
   "tweets",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     tweetId: text("tweet_id").notNull().unique(), // X status id — dedup key
     accountId: integer("account_id").notNull(),
     handle: text("handle").notNull(),
     text: text("text").notNull(),
     url: text("url"),
     lang: text("lang"),
-    isReply: integer("is_reply", { mode: "boolean" }).notNull().default(false),
-    isRetweet: integer("is_retweet", { mode: "boolean" }).notNull().default(false),
+    isReply: boolean("is_reply").notNull().default(false),
+    isRetweet: boolean("is_retweet").notNull().default(false),
     likeCount: integer("like_count").notNull().default(0),
     retweetCount: integer("retweet_count").notNull().default(0),
     replyCount: integer("reply_count").notNull().default(0),
     viewCount: integer("view_count").notNull().default(0),
-    tweetedAt: integer("tweeted_at").notNull(), // unix ms of the tweet
-    collectedAt: integer("collected_at").notNull(), // unix ms when we stored it
+    tweetedAt: bigint("tweeted_at", { mode: "number" }).notNull(), // unix ms of the tweet
+    collectedAt: bigint("collected_at", { mode: "number" }).notNull(), // unix ms when we stored it
   },
   (t) => ({
     byAccount: index("idx_tweets_account").on(t.accountId),
@@ -42,7 +42,7 @@ export const tweets = sqliteTable(
 );
 
 // --- Known ticker metadata (for company-name / alias matching) ---
-export const tickers = sqliteTable("tickers", {
+export const tickers = pgTable("tickers", {
   symbol: text("symbol").primaryKey(), // uppercase, e.g. AAPL
   companyName: text("company_name"),
   // JSON array of lowercase aliases / company-name variants used for secondary matching
@@ -51,17 +51,17 @@ export const tickers = sqliteTable("tickers", {
 });
 
 // --- Extracted ticker mentions (one row per ticker per tweet) ---
-export const mentions = sqliteTable(
+export const mentions = pgTable(
   "mentions",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     tweetId: text("tweet_id").notNull(), // FK -> tweets.tweetId
     symbol: text("symbol").notNull(), // uppercase ticker
     accountId: integer("account_id").notNull(),
     handle: text("handle").notNull(),
     // 'cashtag' ($AAPL) or 'name' (company name / alias match)
     source: text("source").notNull().default("cashtag"),
-    tweetedAt: integer("tweeted_at").notNull(), // unix ms (denormalized for fast surge queries)
+    tweetedAt: bigint("tweeted_at", { mode: "number" }).notNull(), // unix ms (denormalized for fast surge queries)
   },
   (t) => ({
     bySymbol: index("idx_mentions_symbol").on(t.symbol),
@@ -72,10 +72,10 @@ export const mentions = sqliteTable(
 );
 
 // --- Sync run logs (retry / empty-result / error tracking) ---
-export const syncLogs = sqliteTable("sync_logs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  startedAt: integer("started_at").notNull(),
-  finishedAt: integer("finished_at"),
+export const syncLogs = pgTable("sync_logs", {
+  id: serial("id").primaryKey(),
+  startedAt: bigint("started_at", { mode: "number" }).notNull(),
+  finishedAt: bigint("finished_at", { mode: "number" }),
   status: text("status").notNull(), // running | success | partial | failed
   handlesRequested: integer("handles_requested").notNull().default(0),
   tweetsFetched: integer("tweets_fetched").notNull().default(0),
@@ -88,7 +88,7 @@ export const syncLogs = sqliteTable("sync_logs", {
 });
 
 // --- Simple key/value settings (apify token, actor id, thresholds) ---
-export const settings = sqliteTable("settings", {
+export const settings = pgTable("settings", {
   key: text("key").primaryKey(),
   value: text("value"),
 });
@@ -121,8 +121,8 @@ export type SyncLog = typeof syncLogs.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 
 // keep template auth table so existing template code compiles
-export const users = sqliteTable("users", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
 });

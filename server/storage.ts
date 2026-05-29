@@ -5,51 +5,18 @@ import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
 } from "@shared/schema";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
-import { eq, desc, sql, and, gte, inArray } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { eq, desc, sql } from "drizzle-orm";
 
-const sqlite = new Database("data.db");
-sqlite.pragma("journal_mode = WAL");
-
-export const db = drizzle(sqlite);
-
-// Ensure tables exist (lightweight migration on boot)
-function migrate() {
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS accounts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, handle TEXT NOT NULL UNIQUE, display_name TEXT, note TEXT,
-      active INTEGER NOT NULL DEFAULT 1, last_tweet_id TEXT, last_synced_at INTEGER, created_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS tweets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, tweet_id TEXT NOT NULL UNIQUE, account_id INTEGER NOT NULL,
-      handle TEXT NOT NULL, text TEXT NOT NULL, url TEXT, lang TEXT,
-      is_reply INTEGER NOT NULL DEFAULT 0, is_retweet INTEGER NOT NULL DEFAULT 0,
-      like_count INTEGER NOT NULL DEFAULT 0, retweet_count INTEGER NOT NULL DEFAULT 0,
-      reply_count INTEGER NOT NULL DEFAULT 0, view_count INTEGER NOT NULL DEFAULT 0,
-      tweeted_at INTEGER NOT NULL, collected_at INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_tweets_account ON tweets(account_id);
-    CREATE INDEX IF NOT EXISTS idx_tweets_tweeted_at ON tweets(tweeted_at);
-    CREATE TABLE IF NOT EXISTS tickers (symbol TEXT PRIMARY KEY, company_name TEXT, aliases TEXT NOT NULL DEFAULT '[]', exchange TEXT);
-    CREATE TABLE IF NOT EXISTS mentions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, tweet_id TEXT NOT NULL, symbol TEXT NOT NULL,
-      account_id INTEGER NOT NULL, handle TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'cashtag', tweeted_at INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_mentions_symbol ON mentions(symbol);
-    CREATE INDEX IF NOT EXISTS idx_mentions_tweeted_at ON mentions(tweeted_at);
-    CREATE UNIQUE INDEX IF NOT EXISTS uniq_mention ON mentions(tweet_id, symbol, source);
-    CREATE TABLE IF NOT EXISTS sync_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER,
-      status TEXT NOT NULL, handles_requested INTEGER NOT NULL DEFAULT 0, tweets_fetched INTEGER NOT NULL DEFAULT 0,
-      tweets_new INTEGER NOT NULL DEFAULT 0, mentions_new INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 1,
-      run_id TEXT, dataset_id TEXT, error TEXT
-    );
-    CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
-  `);
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
 }
-migrate();
+
+// `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
+const client = postgres(connectionString, { prepare: false });
+export const db = drizzle(client);
 
 export interface SurgeRow {
   symbol: string;
@@ -106,40 +73,46 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: number) { return db.select().from(users).where(eq(users.id, id)).get(); }
-  async getUserByUsername(username: string) { return db.select().from(users).where(eq(users.username, username)).get(); }
-  async createUser(u: InsertUser) { return db.insert(users).values(u).returning().get(); }
+  async getUser(id: number) {
+    return (await db.select().from(users).where(eq(users.id, id)).limit(1))[0];
+  }
+  async getUserByUsername(username: string) {
+    return (await db.select().from(users).where(eq(users.username, username)).limit(1))[0];
+  }
+  async createUser(u: InsertUser) {
+    return (await db.insert(users).values(u).returning())[0];
+  }
 
-  async listAccounts() { return db.select().from(accounts).orderBy(desc(accounts.createdAt)).all(); }
+  async listAccounts() { return db.select().from(accounts).orderBy(desc(accounts.createdAt)); }
   async createAccount(a: InsertAccount) {
-    return db.insert(accounts).values({
+    return (await db.insert(accounts).values({
       handle: a.handle, displayName: a.displayName ?? null, note: a.note ?? null,
       active: a.active ?? true, createdAt: Date.now(),
-    }).returning().get();
+    }).returning())[0];
   }
   async updateAccount(id: number, patch: Partial<Account>) {
-    return db.update(accounts).set(patch).where(eq(accounts.id, id)).returning().get();
+    return (await db.update(accounts).set(patch).where(eq(accounts.id, id)).returning())[0];
   }
-  async deleteAccount(id: number) { db.delete(accounts).where(eq(accounts.id, id)).run(); }
+  async deleteAccount(id: number) { await db.delete(accounts).where(eq(accounts.id, id)); }
   async getAccountByHandle(handle: string) {
-    return db.select().from(accounts).where(eq(accounts.handle, handle.toLowerCase())).get();
+    return (await db.select().from(accounts).where(eq(accounts.handle, handle.toLowerCase())).limit(1))[0];
   }
   async setAccountCursor(id: number, lastTweetId: string | null, lastSyncedAt: number) {
-    db.update(accounts).set({ lastTweetId: lastTweetId ?? undefined, lastSyncedAt }).where(eq(accounts.id, id)).run();
+    await db.update(accounts).set({ lastTweetId: lastTweetId ?? undefined, lastSyncedAt }).where(eq(accounts.id, id));
   }
 
   async insertTweetIfNew(t: InsertTweet) {
-    const r = db.insert(tweets).values(t).onConflictDoNothing({ target: tweets.tweetId }).run();
-    return r.changes > 0;
+    const r = await db.insert(tweets).values(t).onConflictDoNothing({ target: tweets.tweetId }).returning();
+    return r.length > 0;
   }
   async recentTweets(limit: number) {
-    return db.select().from(tweets).orderBy(desc(tweets.tweetedAt)).limit(limit).all();
+    return db.select().from(tweets).orderBy(desc(tweets.tweetedAt)).limit(limit);
   }
   async tweetsForSymbol(symbol: string, limit: number) {
-    const rows = db.select({ t: tweets }).from(mentions)
+    const rows = await db.select({ t: tweets }).from(mentions)
       .innerJoin(tweets, eq(mentions.tweetId, tweets.tweetId))
       .where(eq(mentions.symbol, symbol.toUpperCase()))
-      .orderBy(desc(tweets.tweetedAt)).limit(limit).all();
+      .orderBy(desc(tweets.tweetedAt)).limit(limit);
     // de-dup tweets (a tweet may have cashtag+name mention)
     const seen = new Set<string>();
     const out: Tweet[] = [];
@@ -147,18 +120,18 @@ export class DatabaseStorage implements IStorage {
     return out;
   }
 
-  async listTickers() { return db.select().from(tickers).all(); }
+  async listTickers() { return db.select().from(tickers); }
   async upsertTicker(t: Ticker) {
-    db.insert(tickers).values(t).onConflictDoUpdate({
+    await db.insert(tickers).values(t).onConflictDoUpdate({
       target: tickers.symbol,
       set: { companyName: t.companyName, aliases: t.aliases, exchange: t.exchange },
-    }).run();
+    });
   }
 
   async insertMentionIfNew(m: InsertMention) {
-    const r = db.insert(mentions).values(m)
-      .onConflictDoNothing({ target: [mentions.tweetId, mentions.symbol, mentions.source] }).run();
-    return r.changes > 0;
+    const r = await db.insert(mentions).values(m)
+      .onConflictDoNothing({ target: [mentions.tweetId, mentions.symbol, mentions.source] }).returning();
+    return r.length > 0;
   }
 
   // Surge detection: compare a recent window vs the immediately preceding window of equal length.
@@ -168,19 +141,20 @@ export class DatabaseStorage implements IStorage {
     const recentStart = now - winMs;
     const priorStart = now - 2 * winMs;
 
-    const rows = sqlite.prepare(`
+    // Aliases are double-quoted to preserve camelCase (Postgres lowercases bare identifiers).
+    const rows = (await db.execute(sql`
       SELECT m.symbol AS symbol,
-             COUNT(*) AS totalMentions,
-             COUNT(DISTINCT m.account_id) AS distinctAccounts,
-             SUM(CASE WHEN m.tweeted_at >= ? THEN 1 ELSE 0 END) AS recentMentions,
-             COUNT(DISTINCT CASE WHEN m.tweeted_at >= ? THEN m.account_id END) AS recentAccounts,
-             SUM(CASE WHEN m.tweeted_at >= ? AND m.tweeted_at < ? THEN 1 ELSE 0 END) AS priorMentions,
-             MIN(m.tweeted_at) AS firstSeen,
-             MAX(m.tweeted_at) AS lastSeen,
-             GROUP_CONCAT(DISTINCT m.handle) AS handles
+             COUNT(*) AS "totalMentions",
+             COUNT(DISTINCT m.account_id) AS "distinctAccounts",
+             SUM(CASE WHEN m.tweeted_at >= ${recentStart} THEN 1 ELSE 0 END) AS "recentMentions",
+             COUNT(DISTINCT CASE WHEN m.tweeted_at >= ${recentStart} THEN m.account_id END) AS "recentAccounts",
+             SUM(CASE WHEN m.tweeted_at >= ${priorStart} AND m.tweeted_at < ${recentStart} THEN 1 ELSE 0 END) AS "priorMentions",
+             MIN(m.tweeted_at) AS "firstSeen",
+             MAX(m.tweeted_at) AS "lastSeen",
+             string_agg(DISTINCT m.handle, ',') AS handles
       FROM mentions m
       GROUP BY m.symbol
-    `).all(recentStart, recentStart, priorStart, recentStart) as any[];
+    `)) as unknown as any[];
 
     const out: SurgeRow[] = rows.map((r) => {
       const recent = Number(r.recentMentions) || 0;
@@ -217,39 +191,48 @@ export class DatabaseStorage implements IStorage {
 
   async symbolTimeline(symbol: string, days: number) {
     const start = Date.now() - days * 86400 * 1000;
-    const rows = sqlite.prepare(`
-      SELECT date(m.tweeted_at/1000,'unixepoch') AS day, COUNT(*) AS count
-      FROM mentions m WHERE m.symbol = ? AND m.tweeted_at >= ?
+    const rows = (await db.execute(sql`
+      SELECT to_char(to_timestamp(m.tweeted_at / 1000), 'YYYY-MM-DD') AS day, COUNT(*) AS count
+      FROM mentions m WHERE m.symbol = ${symbol.toUpperCase()} AND m.tweeted_at >= ${start}
       GROUP BY day ORDER BY day
-    `).all(symbol.toUpperCase(), start) as any[];
+    `)) as unknown as any[];
     return rows.map((r) => ({ day: r.day, count: Number(r.count) }));
   }
 
   async createSyncLog(startedAt: number, handlesRequested: number) {
-    const r = db.insert(syncLogs).values({ startedAt, status: "running", handlesRequested }).returning().get();
+    const r = (await db.insert(syncLogs).values({ startedAt, status: "running", handlesRequested }).returning())[0];
     return r.id;
   }
   async updateSyncLog(id: number, patch: Partial<SyncLog>) {
-    db.update(syncLogs).set(patch).where(eq(syncLogs.id, id)).run();
+    await db.update(syncLogs).set(patch).where(eq(syncLogs.id, id));
   }
   async recentSyncLogs(limit: number) {
-    return db.select().from(syncLogs).orderBy(desc(syncLogs.startedAt)).limit(limit).all();
+    return db.select().from(syncLogs).orderBy(desc(syncLogs.startedAt)).limit(limit);
   }
 
   async getSetting(key: string) {
-    const r = db.select().from(settings).where(eq(settings.key, key)).get();
+    const r = (await db.select().from(settings).where(eq(settings.key, key)).limit(1))[0];
     return r?.value ?? undefined;
   }
   async setSetting(key: string, value: string) {
-    db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } }).run();
+    await db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
   }
 
   async counts() {
-    const a = sqlite.prepare(`SELECT COUNT(*) c FROM accounts`).get() as any;
-    const t = sqlite.prepare(`SELECT COUNT(*) c FROM tweets`).get() as any;
-    const m = sqlite.prepare(`SELECT COUNT(*) c FROM mentions`).get() as any;
-    const s = sqlite.prepare(`SELECT COUNT(DISTINCT symbol) c FROM mentions`).get() as any;
-    return { accounts: a.c, tweets: t.c, mentions: m.c, symbols: s.c };
+    const r = (await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*) FROM accounts) AS accounts,
+        (SELECT COUNT(*) FROM tweets) AS tweets,
+        (SELECT COUNT(*) FROM mentions) AS mentions,
+        (SELECT COUNT(DISTINCT symbol) FROM mentions) AS symbols
+    `)) as unknown as any[];
+    const row = r[0] ?? {};
+    return {
+      accounts: Number(row.accounts) || 0,
+      tweets: Number(row.tweets) || 0,
+      mentions: Number(row.mentions) || 0,
+      symbols: Number(row.symbols) || 0,
+    };
   }
 }
 

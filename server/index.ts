@@ -62,7 +62,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await registerRoutes(httpServer, app);
+  await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -92,14 +92,14 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  // `reusePort` is a Linux-only socket option; it throws ENOTSUP on Windows/macOS.
+  // Enable it only where supported so local dev works cross-platform.
+  const listenOpts: { port: number; host: string; reusePort?: boolean } = {
+    port,
+    host: "0.0.0.0",
+  };
+  if (process.platform === "linux") listenOpts.reusePort = true;
+  httpServer.listen(listenOpts, () => {
+    log(`serving on port ${port}`);
+  });
 })();

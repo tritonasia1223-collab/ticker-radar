@@ -24,8 +24,8 @@
 
 ## 기술 스택
 
-Express + Vite + React + Tailwind CSS + shadcn/ui + Drizzle ORM + SQLite(better-sqlite3)
-데이터는 프로젝트 루트의 `data.db`(SQLite)에 저장되며 서버를 재시작해도 유지됩니다.
+Express + Vite + React + Tailwind CSS + shadcn/ui + Drizzle ORM + PostgreSQL(Supabase)
+데이터는 Supabase(Postgres)에 저장됩니다. 연결 문자열은 `.env`의 `DATABASE_URL`로 설정합니다.
 
 ---
 

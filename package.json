@@ -7,6 +7,7 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
+    "collect": "tsx script/collect.ts",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },
@@ -42,7 +43,6 @@
     "@radix-ui/react-tooltip": "^1.2.0",
     "@supabase/supabase-js": "^2.49.4",
     "@tanstack/react-query": "^5.60.5",
-    "better-sqlite3": "^11.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -60,6 +60,7 @@
     "next-themes": "^0.4.6",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "postgres": "^3.4.9",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -79,7 +80,6 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.18",
-    "@types/better-sqlite3": "^7.6.12",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.0",
     "@types/node": "20.19.27",
