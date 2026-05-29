@@ -1,4 +1,4 @@
-import type { Ticker } from "@shared/schema";
+import type { Ticker } from "../shared/schema";
 
 // Common English words that appear as $XXX or all-caps and would be false positives.
 const STOPWORDS = new Set([

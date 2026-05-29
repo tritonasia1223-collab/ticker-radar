@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { collectAll } from "./apify";
 import { seedDummy } from "./seed";
-import { insertAccountSchema } from "@shared/schema";
+import { insertAccountSchema } from "../shared/schema";
 import { z } from "zod";
 
 // Writes that hit Apify (and run for a long time) must not run on Vercel's

@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import { buildNameMatcher, extractMentions } from "./extract";
-import type { Account } from "@shared/schema";
+import type { Account } from "../shared/schema";
 
 const APIFY_BASE = "https://api.apify.com/v2";
 const DEFAULT_ACTOR = "apidojo~tweet-scraper"; // apidojo/tweet-scraper, ~ form for REST path

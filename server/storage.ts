@@ -1,10 +1,10 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
-} from "@shared/schema";
+} from "../shared/schema";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
-} from "@shared/schema";
+} from "../shared/schema";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq, desc, sql } from "drizzle-orm";
