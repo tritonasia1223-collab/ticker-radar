@@ -129,3 +129,85 @@ export const users = pgTable("users", {
 export const insertUserSchema = createInsertSchema(users).pick({ username: true, password: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// ============================================================================
+// Congress / Politician trading (STOCK Act periodic transaction reports)
+// 공유 `tickers` 사전을 그대로 쓰고, 정치인 도메인은 별도 테이블로 추가한다.
+// 내부자거래도 동일 패턴(insiders + insider_trades)으로 나중에 붙일 수 있다.
+// ============================================================================
+
+// --- Members of Congress (the "actor") ---
+export const politicians = pgTable(
+  "politicians",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull().unique(), // stable key, e.g. "tuberville"
+    name: text("name").notNull(),
+    party: text("party"), // D | R | I
+    chamber: text("chamber").notNull(), // senate | house
+    state: text("state"),
+    bioguideId: text("bioguide_id"), // official Bioguide id (joins to committee sources)
+    createdAt: bigint("created_at", { mode: "number" }).notNull(), // unix ms
+  },
+  (t) => ({ byChamber: index("idx_pol_chamber").on(t.chamber) })
+);
+
+// --- Committees (chamber-specific) ---
+export const committees = pgTable("committees", {
+  id: text("id").primaryKey(), // e.g. "senate-armed"
+  ko: text("ko").notNull(), // 한글명
+  name: text("name").notNull(), // English name
+  chamber: text("chamber").notNull(), // senate | house
+});
+
+// --- Politician ↔ Committee (many-to-many) ---
+export const politicianCommittees = pgTable(
+  "politician_committees",
+  {
+    politicianId: integer("politician_id").notNull(),
+    committeeId: text("committee_id").notNull(),
+  },
+  (t) => ({
+    uniq: uniqueIndex("uniq_pol_cmt").on(t.politicianId, t.committeeId),
+    byCommittee: index("idx_polcmt_cmt").on(t.committeeId),
+  })
+);
+
+// --- Disclosed trades (one row per PTR transaction line) ---
+export const politicalTrades = pgTable(
+  "political_trades",
+  {
+    id: serial("id").primaryKey(),
+    politicianId: integer("politician_id").notNull(),
+    symbol: text("symbol").notNull(), // uppercase ticker (FK -> tickers.symbol)
+    company: text("company"),
+    side: text("side").notNull(), // buy | sell | exchange
+    // STOCK Act discloses amount RANGES, not exact values.
+    amountLow: bigint("amount_low", { mode: "number" }),
+    amountHigh: bigint("amount_high", { mode: "number" }),
+    txnDate: bigint("txn_date", { mode: "number" }).notNull(), // unix ms — transaction date
+    filedDate: bigint("filed_date", { mode: "number" }), // unix ms — disclosure date
+    source: text("source").notNull().default("fmp"), // fmp | house | senate
+    // hybrid verification status (see reconcile pipeline)
+    verification: text("verification").notNull().default("pending_official"), // confirmed | discrepancy | pending_official | official_only
+    externalId: text("external_id"), // source-side dedup key
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (t) => ({
+    bySymbol: index("idx_ptrade_symbol").on(t.symbol),
+    byPolitician: index("idx_ptrade_pol").on(t.politicianId),
+    byTxnDate: index("idx_ptrade_txn").on(t.txnDate),
+    uniqExternal: uniqueIndex("uniq_ptrade_ext").on(t.externalId),
+  })
+);
+
+export const insertPoliticianSchema = createInsertSchema(politicians).omit({ id: true });
+export type InsertPolitician = z.infer<typeof insertPoliticianSchema>;
+export type Politician = typeof politicians.$inferSelect;
+
+export type Committee = typeof committees.$inferSelect;
+export type PoliticianCommittee = typeof politicianCommittees.$inferSelect;
+
+export const insertPoliticalTradeSchema = createInsertSchema(politicalTrades).omit({ id: true });
+export type InsertPoliticalTrade = z.infer<typeof insertPoliticalTradeSchema>;
+export type PoliticalTrade = typeof politicalTrades.$inferSelect;

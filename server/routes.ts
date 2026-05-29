@@ -123,6 +123,16 @@ export function registerRoutes(app: Express) {
     res.json({ ok: true });
   });
 
+  // ---- Congress / politician trading ----
+  app.get("/api/congress/politicians", async (_req, res) => res.json(await storage.listPoliticians()));
+  app.get("/api/congress/committees", async (_req, res) => res.json(await storage.listCommittees()));
+  app.get("/api/congress/trades", async (req, res) => {
+    const from = req.query.from ? Number(req.query.from) : undefined;
+    const to = req.query.to ? Number(req.query.to) : undefined;
+    const committee = req.query.committee ? String(req.query.committee) : undefined;
+    res.json(await storage.politicalTrades({ fromMs: from, toMs: to, committeeId: committee }));
+  });
+
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {
     if (COLLECTION_DISABLED) {

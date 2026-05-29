@@ -1,13 +1,15 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
+  politicians, committees, politicianCommittees, politicalTrades,
 } from "../shared/schema";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
+  Politician, InsertPolitician, Committee, InsertPoliticalTrade,
 } from "../shared/schema";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -30,6 +32,33 @@ export interface SurgeRow {
   firstSeen: number;
   lastSeen: number;
   accounts: string[];
+}
+
+// Politician with its committee ids attached (for the congress UI)
+export interface PoliticianWithCommittees extends Politician {
+  committees: string[];
+}
+
+// A single disclosed trade joined with its politician — the congress page
+// aggregates these client-side (ranking / per-quarter / committee grouping),
+// mirroring the prototype's logic.
+export interface PoliticalTradeRow {
+  id: number;
+  politicianId: number;
+  slug: string;
+  name: string;
+  party: string | null;
+  chamber: string;
+  state: string | null;
+  symbol: string;
+  company: string | null;
+  side: string; // buy | sell | exchange
+  amountLow: number | null;
+  amountHigh: number | null;
+  txnDate: number; // unix ms
+  filedDate: number | null;
+  verification: string;
+  source: string;
 }
 
 export interface IStorage {
@@ -70,6 +99,17 @@ export interface IStorage {
 
   // stats
   counts(): Promise<{ accounts: number; tweets: number; mentions: number; symbols: number }>;
+
+  // --- Congress / politician trading ---
+  listPoliticians(): Promise<PoliticianWithCommittees[]>;
+  listCommittees(): Promise<Committee[]>;
+  politicalTrades(opts: { fromMs?: number; toMs?: number; committeeId?: string }): Promise<PoliticalTradeRow[]>;
+  // ingestion (seed / collect)
+  upsertPolitician(p: InsertPolitician): Promise<number>;
+  upsertCommittee(c: Committee): Promise<void>;
+  linkPoliticianCommittee(politicianId: number, committeeId: string): Promise<void>;
+  insertPoliticalTradeIfNew(t: InsertPoliticalTrade): Promise<boolean>;
+  clearPoliticianData(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -233,6 +273,88 @@ export class DatabaseStorage implements IStorage {
       mentions: Number(row.mentions) || 0,
       symbols: Number(row.symbols) || 0,
     };
+  }
+
+  // --- Congress / politician trading ---
+  async listPoliticians(): Promise<PoliticianWithCommittees[]> {
+    const pols = await db.select().from(politicians).orderBy(politicians.name);
+    const links = await db.select().from(politicianCommittees);
+    const byPol = new Map<number, string[]>();
+    for (const l of links) {
+      if (!byPol.has(l.politicianId)) byPol.set(l.politicianId, []);
+      byPol.get(l.politicianId)!.push(l.committeeId);
+    }
+    return pols.map((p) => ({ ...p, committees: byPol.get(p.id) ?? [] }));
+  }
+
+  async listCommittees() { return db.select().from(committees); }
+
+  async politicalTrades(opts: { fromMs?: number; toMs?: number; committeeId?: string }): Promise<PoliticalTradeRow[]> {
+    const conds: any[] = [];
+    if (opts.fromMs != null) conds.push(gte(politicalTrades.txnDate, opts.fromMs));
+    if (opts.toMs != null) conds.push(lte(politicalTrades.txnDate, opts.toMs));
+    if (opts.committeeId) {
+      const links = await db.select().from(politicianCommittees)
+        .where(eq(politicianCommittees.committeeId, opts.committeeId));
+      const ids = links.map((l) => l.politicianId);
+      if (ids.length === 0) return [];
+      conds.push(inArray(politicalTrades.politicianId, ids));
+    }
+    const rows = await db
+      .select({
+        id: politicalTrades.id,
+        politicianId: politicalTrades.politicianId,
+        slug: politicians.slug,
+        name: politicians.name,
+        party: politicians.party,
+        chamber: politicians.chamber,
+        state: politicians.state,
+        symbol: politicalTrades.symbol,
+        company: politicalTrades.company,
+        side: politicalTrades.side,
+        amountLow: politicalTrades.amountLow,
+        amountHigh: politicalTrades.amountHigh,
+        txnDate: politicalTrades.txnDate,
+        filedDate: politicalTrades.filedDate,
+        verification: politicalTrades.verification,
+        source: politicalTrades.source,
+      })
+      .from(politicalTrades)
+      .innerJoin(politicians, eq(politicalTrades.politicianId, politicians.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(politicalTrades.txnDate));
+    return rows as PoliticalTradeRow[];
+  }
+
+  async upsertPolitician(p: InsertPolitician): Promise<number> {
+    const r = await db.insert(politicians).values(p)
+      .onConflictDoUpdate({
+        target: politicians.slug,
+        set: { name: p.name, party: p.party, chamber: p.chamber, state: p.state, bioguideId: p.bioguideId },
+      })
+      .returning();
+    return r[0].id;
+  }
+
+  async upsertCommittee(c: Committee) {
+    await db.insert(committees).values(c)
+      .onConflictDoUpdate({ target: committees.id, set: { ko: c.ko, name: c.name, chamber: c.chamber } });
+  }
+
+  async linkPoliticianCommittee(politicianId: number, committeeId: string) {
+    await db.insert(politicianCommittees).values({ politicianId, committeeId }).onConflictDoNothing();
+  }
+
+  async insertPoliticalTradeIfNew(t: InsertPoliticalTrade): Promise<boolean> {
+    const r = await db.insert(politicalTrades).values(t)
+      .onConflictDoNothing({ target: politicalTrades.externalId }).returning();
+    return r.length > 0;
+  }
+
+  async clearPoliticianData() {
+    await db.delete(politicalTrades);
+    await db.delete(politicianCommittees);
+    await db.delete(politicians);
   }
 }
 
