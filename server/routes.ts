@@ -132,6 +132,7 @@ export function registerRoutes(app: Express) {
     const committee = req.query.committee ? String(req.query.committee) : undefined;
     res.json(await storage.politicalTrades({ fromMs: from, toMs: to, committeeId: committee }));
   });
+  app.get("/api/congress/sectors", async (_req, res) => res.json(await storage.listTickerSectors()));
 
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {

@@ -1,11 +1,11 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
-  politicians, committees, politicianCommittees, politicalTrades,
+  politicians, committees, politicianCommittees, politicalTrades, tickerSectors,
 } from "../shared/schema.js";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
-  Politician, InsertPolitician, Committee, InsertPoliticalTrade,
+  Politician, InsertPolitician, Committee, InsertPoliticalTrade, TickerSector,
 } from "../shared/schema.js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -128,6 +128,10 @@ export interface IStorage {
   insertPoliticalTradeIfNew(t: InsertPoliticalTrade): Promise<boolean>;
   clearPoliticianData(): Promise<void>;
   clearCommitteesAndLinks(): Promise<void>;
+  // ticker sector/industry
+  setTickerSector(symbol: string, sector: string | null): Promise<void>;
+  listTickerSectors(): Promise<TickerSector[]>;
+  distinctTradedSymbols(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -378,6 +382,16 @@ export class DatabaseStorage implements IStorage {
   async clearCommitteesAndLinks() {
     await db.delete(politicianCommittees);
     await db.delete(committees);
+  }
+
+  async setTickerSector(symbol: string, sector: string | null) {
+    await db.insert(tickerSectors).values({ symbol, sector })
+      .onConflictDoUpdate({ target: tickerSectors.symbol, set: { sector } });
+  }
+  async listTickerSectors() { return db.select().from(tickerSectors); }
+  async distinctTradedSymbols() {
+    const r = await db.selectDistinct({ symbol: politicalTrades.symbol }).from(politicalTrades);
+    return r.map((x) => x.symbol);
   }
 }
 

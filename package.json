@@ -12,6 +12,7 @@
     "collect:congress": "tsx script/collect-apify.ts",
     "collect:congress:fmp": "tsx script/collect-congress.ts",
     "enrich:congress": "tsx script/enrich-congress.ts",
+    "enrich:tickers": "tsx script/enrich-tickers.ts",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },

@@ -48,6 +48,28 @@ export const SECTOR: Record<string, string> = {
   ADM: "농업", DE: "농업/기계", DIS: "기타",
 };
 
+// Finnhub finnhubIndustry(영문) → 한글 섹터. 키워드 포함 매칭, 미매핑 시 영문 그대로.
+export function koSector(ind?: string | null): string {
+  if (!ind) return "";
+  const s = ind.toLowerCase();
+  const pairs: [string, string][] = [
+    ["semiconduct", "반도체"], ["bank", "은행"], ["insurance", "보험"], ["financial", "금융"],
+    ["software", "소프트웨어"], ["technology", "기술"], ["energy", "에너지"], ["oil", "에너지"], ["gas", "에너지"],
+    ["pharmaceutical", "제약"], ["biotech", "바이오"], ["health", "헬스케어"], ["medical", "의료"],
+    ["aerospace", "방산"], ["defense", "방산"], ["communication", "통신"], ["telecom", "통신"], ["media", "미디어"],
+    ["retail", "소매"], ["consumer", "소비재"], ["food", "식품"], ["beverage", "음료"], ["apparel", "의류"],
+    ["machinery", "기계"], ["industrial", "산업재"], ["manufactur", "제조"], ["real estate", "부동산"], ["reit", "부동산"],
+    ["utilit", "유틸리티"], ["auto", "자동차"], ["airline", "항공"], ["aviation", "항공"], ["chemical", "화학"],
+    ["metal", "금속"], ["mining", "광업"], ["transport", "운송"], ["logistic", "물류"], ["construction", "건설"],
+    ["hotel", "호텔·레저"], ["leisure", "레저"], ["restaurant", "외식"], ["tobacco", "담배"], ["agricultur", "농업"],
+    ["electrical", "전기장비"], ["packaging", "포장"], ["life science", "생명과학"], ["trading", "상사"],
+    ["professional", "전문서비스"], ["building", "건설"], ["distribut", "유통"], ["paper", "제지"],
+    ["textile", "섬유"], ["containers", "포장"], ["equipment", "장비"], ["specialty", "전문소매"],
+  ];
+  for (const [k, v] of pairs) if (s.includes(k)) return v;
+  return ind; // 미매핑 → 영문 산업명 그대로 표시
+}
+
 const PALETTE: Record<string, string> = {
   LMT: "#ac8e68", RTX: "#b08d57", NOC: "#8a7048", GD: "#9c8254",
   NVDA: "#30d158", AAPL: "#0a84ff", MSFT: "#34c759", GOOGL: "#bf5af2", META: "#5e5ce6",

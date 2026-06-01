@@ -53,6 +53,10 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS idx_ptrade_pol ON political_trades (politician_id)`,
   `CREATE INDEX IF NOT EXISTS idx_ptrade_txn ON political_trades (txn_date)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS uniq_ptrade_ext ON political_trades (external_id)`,
+  `CREATE TABLE IF NOT EXISTS ticker_sectors (
+     symbol TEXT PRIMARY KEY,
+     sector TEXT
+   )`,
 ];
 
 async function main() {

@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Politician, Committee, Trade, TickerAgg, SortMetric,
   aggregate, rankList, tradersOf, quarterSeries, sortedQuarters, quarterOf,
-  SECTOR, tickerColor, partyColor, fmtMoney, fmtQ, cmtLabel,
+  SECTOR, koSector, tickerColor, partyColor, fmtMoney, fmtQ, cmtLabel,
 } from "@/lib/congress";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,7 @@ interface Ctx {
   polBySlug: Map<string, Politician>;
   cmtById: Map<string, Committee>;
   quarters: string[];
+  sectorOf: (sym: string) => string;
   openMember: (slug: string) => void;
   openTicker: (sym: string) => void;
 }
@@ -162,7 +163,7 @@ function RankRow({ s, idx, maxVol, quarters, selected, onClick, ctx, showTradeCo
       <div className="text-xs text-muted-foreground text-center tabular-nums">{idx + 1}</div>
       <div className="flex items-center gap-1.5 font-bold text-sm">
         <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(s.symbol) }} />
-        {s.symbol}<span className="text-[10px] font-normal text-muted-foreground">{SECTOR[s.symbol] ?? ""}</span>
+        {s.symbol}<span className="text-[10px] font-normal text-muted-foreground">{ctx.sectorOf(s.symbol)}</span>
       </div>
       <StackedBar s={s} maxVol={maxVol} />
       <div className="text-right text-[12.5px] font-bold tabular-nums" style={{ color: s.net >= 0 ? BUY : SELL }}>{s.net >= 0 ? "+" : "−"}{fmtMoney(Math.abs(s.net))}</div>
@@ -188,7 +189,7 @@ function TickerDetail({ agg, quarters, ctx }: { agg: TickerAgg; quarters: string
       <div className="flex items-center gap-2 mb-1">
         <span className="h-3.5 w-3.5 rounded" style={{ background: tickerColor(agg.symbol) }} />
         <span className="text-2xl font-bold">{agg.symbol}</span>
-        <span className="text-xs text-muted-foreground">{SECTOR[agg.symbol] ?? ""}{agg.company ? ` · ${agg.company}` : ""}</span>
+        <span className="text-xs text-muted-foreground">{ctx.sectorOf(agg.symbol)}{agg.company ? ` · ${agg.company}` : ""}</span>
       </div>
       <div className="flex gap-5 my-3 flex-wrap">
         <Kpi label="총 매수" value={fmtMoney(agg.buy)} color={BUY} />
@@ -224,7 +225,7 @@ function CommitteeCards({ committees, trades, ctx, onPick }: {
               <span>의원 <b className="text-foreground">{memSlugs.size}</b></span>
               <span>거래 <b className="text-foreground">{ts.length}</b></span>
             </div>
-            {top && <div className="text-[11.5px] text-muted-foreground mt-2">최다 거래: <b style={{ color: tickerColor(top.symbol) }}>{top.symbol}</b> ({SECTOR[top.symbol] ?? ""})</div>}
+            {top && <div className="text-[11.5px] text-muted-foreground mt-2">최다 거래: <b style={{ color: tickerColor(top.symbol) }}>{top.symbol}</b> ({ctx.sectorOf(top.symbol)})</div>}
           </Card>
         );
       })}
@@ -314,7 +315,7 @@ function MemberDetail({ slug, trades, quarters, periodLabel, ctx, onBack }: {
         {[...ts].sort((a, b) => b.txnDate - a.txnDate).map((t) => (
           <div key={t.id} className="grid items-center gap-2.5 py-2 border-b border-border/50 last:border-0 text-[13px]" style={{ gridTemplateColumns: "96px 1fr 64px 140px" }}>
             <span className="text-muted-foreground tabular-nums">{new Date(t.txnDate).toISOString().slice(0, 10)}</span>
-            <span className="font-bold cursor-pointer" style={{ color: tickerColor(t.symbol) }} onClick={() => ctx.openTicker(t.symbol)}>{t.symbol} <span className="text-muted-foreground font-normal text-xs">{SECTOR[t.symbol] ?? ""}</span></span>
+            <span className="font-bold cursor-pointer" style={{ color: tickerColor(t.symbol) }} onClick={() => ctx.openTicker(t.symbol)}>{t.symbol} <span className="text-muted-foreground font-normal text-xs">{ctx.sectorOf(t.symbol)}</span></span>
             <span><span className="text-[10.5px] px-2 py-0.5 rounded font-bold" style={{ background: t.side === "sell" ? "rgba(248,81,73,.15)" : "rgba(63,185,80,.15)", color: t.side === "sell" ? SELL : BUY }}>{t.side === "sell" ? "매도" : "매수"}</span></span>
             <span className="text-right text-muted-foreground tabular-nums">{fmtMoney(t.amountLow ?? 0)}–{fmtMoney(t.amountHigh ?? 0)}</span>
           </div>
@@ -332,6 +333,7 @@ export default function Congress() {
     queryKey: ["/api/congress/trades"],
     queryFn: async () => (await apiRequest("GET", "/api/congress/trades")).json(),
   });
+  const { data: sectors } = useQuery<{ symbol: string; sector: string | null }[]>({ queryKey: ["/api/congress/sectors"] });
 
   const [view, setView] = useState<"tickers" | "committees" | "member">("tickers");
   const [selTicker, setSelTicker] = useState<string | null>(null);
@@ -350,6 +352,8 @@ export default function Congress() {
 
   const polBySlug = useMemo(() => new Map(pols.map((p) => [p.slug, p])), [pols]);
   const cmtById = useMemo(() => new Map(cmts.map((c) => [c.id, c])), [cmts]);
+  const sectorBySymbol = useMemo(() => new Map((sectors ?? []).map((s) => [s.symbol, s.sector])), [sectors]);
+  const sectorOf = (sym: string) => koSector(sectorBySymbol.get(sym)) || SECTOR[sym] || "";
   const allQuarters = useMemo(() => sortedQuarters(trades), [trades]);
 
   // active quarters from period selection
@@ -372,7 +376,7 @@ export default function Congress() {
     setReturnToMember(view === "member" ? selMember : null);
     setSelTicker(sym); setView("tickers");
   };
-  const ctx: Ctx = { polBySlug, cmtById, quarters: AQ, openMember, openTicker };
+  const ctx: Ctx = { polBySlug, cmtById, quarters: AQ, sectorOf, openMember, openTicker };
 
   if (lp || lt) return <div className="p-6 max-w-7xl mx-auto"><Skeleton className="h-8 w-48 mb-4" /><Skeleton className="h-64 w-full" /></div>;
 

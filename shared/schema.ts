@@ -211,3 +211,10 @@ export type PoliticianCommittee = typeof politicianCommittees.$inferSelect;
 export const insertPoliticalTradeSchema = createInsertSchema(politicalTrades).omit({ id: true });
 export type InsertPoliticalTrade = z.infer<typeof insertPoliticalTradeSchema>;
 export type PoliticalTrade = typeof politicalTrades.$inferSelect;
+
+// --- Ticker → sector/industry (별도 테이블: 공유 tickers 스키마 비침습) ---
+export const tickerSectors = pgTable("ticker_sectors", {
+  symbol: text("symbol").primaryKey(), // uppercase
+  sector: text("sector"), // 원천 산업/섹터 문자열(영문). 표시 라벨은 클라이언트에서 한글 매핑
+});
+export type TickerSector = typeof tickerSectors.$inferSelect;
