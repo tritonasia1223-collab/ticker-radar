@@ -3,7 +3,7 @@
 // and runs from a local/worker process instead (see script/collect.ts).
 import express, { type Request, type Response } from "express";
 // Static import so Vercel's bundler traces server/* into the function.
-import { registerRoutes } from "../server/routes";
+import { registerRoutes } from "../server/routes.js";
 
 let app: express.Express | null = null;
 function buildApp(): express.Express {
