@@ -280,10 +280,11 @@ export class DatabaseStorage implements IStorage {
       o.trend = axis.map((d) => mm?.get(d) ?? 0);
     }
 
-    // require breadth: surfaced symbols must be mentioned by >= minAccounts distinct accounts in recent window
+    // require breadth: surfaced symbols must be mentioned by >= minAccounts distinct accounts in recent window.
+    // ranking is simply by mention count (most-talked-about first); accounts breaks ties.
     return out
       .filter((o) => o.recentAccounts >= minAccounts && o.recentMentions > 0)
-      .sort((a, b) => b.surgeScore - a.surgeScore);
+      .sort((a, b) => b.recentMentions - a.recentMentions || b.recentAccounts - a.recentAccounts);
   }
 
   async symbolTimeline(symbol: string, days: number) {
