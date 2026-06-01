@@ -68,12 +68,13 @@ function Th({ label, tip, className = "" }: { label: string; tip: string; classN
 export default function Discover() {
   const [windowHours, setWindowHours] = useState("24");
   const [minAccounts, setMinAccounts] = useState("1");
+  const [market, setMarket] = useState("us");
   const [selected, setSelected] = useState<SurgeRow | null>(null);
 
   const { data: stats } = useQuery<Stats>({ queryKey: ["/api/stats"] });
   const { data: surge, isLoading } = useQuery<SurgeRow[]>({
-    queryKey: ["/api/surge", windowHours, minAccounts],
-    queryFn: async () => (await apiRequest("GET", `/api/surge?windowHours=${windowHours}&minAccounts=${minAccounts}`)).json(),
+    queryKey: ["/api/surge", windowHours, minAccounts, market],
+    queryFn: async () => (await apiRequest("GET", `/api/surge?windowHours=${windowHours}&minAccounts=${minAccounts}&market=${market}`)).json(),
   });
   const { data: logs } = useQuery<SyncLog[]>({ queryKey: ["/api/sync-logs"], queryFn: async () => (await apiRequest("GET", "/api/sync-logs?limit=1")).json() });
   const rows = Array.isArray(surge) ? surge : [];
@@ -97,6 +98,14 @@ export default function Discover() {
       </div>
 
       <div className="flex items-center gap-3 mb-4">
+        <div className="flex rounded-md border border-input overflow-hidden text-sm shrink-0" data-testid="toggle-market">
+          {[["us", "미장"], ["kr", "국장"]].map(([val, label]) => (
+            <button
+              key={val} type="button" onClick={() => setMarket(val)}
+              className={`px-3 py-1.5 transition-colors ${market === val ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >{label}</button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">기간</span>
           <Select value={windowHours} onValueChange={setWindowHours}>
@@ -138,11 +147,11 @@ export default function Discover() {
           <TooltipProvider delayDuration={150}>
           {/* header */}
           <div className="flex items-center gap-6 px-4 py-2.5 border-b text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            <Th className="w-6 justify-center" label="#" tip="언급수가 많은 순으로 정렬됩니다 (가장 많이 언급된 종목이 1위)." />
+            <Th className="w-6 justify-center" label="#" tip="'명'(서로 다른 계정 수)이 많은 순으로 정렬됩니다 — 한 계정이 도배해도 1명이라, 진짜 여러 명이 주목한 종목이 위로 옵니다." />
             <div className="flex-1 min-w-0">종목</div>
-            <Th className="w-14 justify-end" label="언급수" tip="선택한 기간 동안 이 종목이 언급된 횟수입니다." />
+            <Th className="w-12 justify-end" label="명" tip="중복 배제 — 이 종목을 언급한 서로 다른 계정 수입니다. 한 계정이 여러 번 올려도 1명. 순위 기준이에요." />
+            <Th className="w-14 justify-end" label="언급" tip="중복 포함 — 총 게시물 수입니다. 같은 계정의 여러 글도 모두 셉니다." />
             <Th className="w-16 justify-end" label="증가율" tip="직전 같은 기간 대비 언급 증가율입니다. 예: +450% = 약 4.5배 증가." />
-            <Th className="w-12 justify-end hidden lg:flex" label="계정수" tip="이 종목을 언급한 서로 다른 추적 계정 수입니다. 많을수록 여러 명이 동시에 주목한다는 신호예요." />
             <Th className="w-20 justify-end hidden md:flex" label="추이" tip="최근 14일간 일별 언급 횟수의 추이입니다." />
           </div>
           {/* rows */}
@@ -163,9 +172,9 @@ export default function Discover() {
                   </div>
                   <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{row.symbol}</span>
                 </div>
-                <div className="w-14 text-right tabular-nums text-sm">{row.recentMentions.toLocaleString()}</div>
+                <div className="w-12 text-right tabular-nums text-sm font-medium">{row.recentAccounts}</div>
+                <div className="w-14 text-right tabular-nums text-sm text-muted-foreground">{row.recentMentions.toLocaleString()}</div>
                 <div className="w-16 text-right"><ChangePct pct={row.changePercent} /></div>
-                <div className="w-12 text-right tabular-nums text-sm text-muted-foreground hidden lg:block">{row.recentAccounts}</div>
                 <div className="w-20 hidden md:block"><Sparkline data={row.trend} /></div>
               </div>
             );

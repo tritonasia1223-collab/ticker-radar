@@ -45,7 +45,8 @@ export function registerRoutes(app: Express) {
   app.get("/api/surge", async (req, res) => {
     const windowHours = Number(req.query.windowHours ?? 24);
     const minAccounts = Number(req.query.minAccounts ?? 2);
-    res.json(await storage.surge(windowHours, minAccounts));
+    const market = req.query.market === "kr" ? "kr" : "us";
+    res.json(await storage.surge(windowHours, minAccounts, market));
   });
 
   app.get("/api/symbols/:symbol/timeline", async (req, res) => {

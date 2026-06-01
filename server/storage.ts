@@ -137,7 +137,7 @@ export interface IStorage {
 
   // mentions
   insertMentionIfNew(m: InsertMention): Promise<boolean>;
-  surge(windowHours: number, minAccounts: number): Promise<SurgeRow[]>;
+  surge(windowHours: number, minAccounts: number, market?: string): Promise<SurgeRow[]>;
   symbolTimeline(symbol: string, days: number): Promise<{ day: string; count: number }[]>;
 
   // sync logs
@@ -231,7 +231,7 @@ export class DatabaseStorage implements IStorage {
   async listTickers() { return db.select().from(tickers); }
   // companyNameKo is optional and intentionally NOT in the conflict-update set, so the
   // Korean names seeded by script/seed-korean-names.ts survive a re-upsert from the API/seed.
-  async upsertTicker(t: Omit<Ticker, "companyNameKo"> & { companyNameKo?: string | null }) {
+  async upsertTicker(t: Omit<Ticker, "companyNameKo" | "market"> & { companyNameKo?: string | null; market?: string }) {
     await db.insert(tickers).values(t).onConflictDoUpdate({
       target: tickers.symbol,
       set: { companyName: t.companyName, aliases: t.aliases, exchange: t.exchange },
@@ -245,7 +245,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Surge detection: compare a recent window vs the immediately preceding window of equal length.
-  async surge(windowHours: number, minAccounts: number): Promise<SurgeRow[]> {
+  async surge(windowHours: number, minAccounts: number, market = "us"): Promise<SurgeRow[]> {
     const now = Date.now();
     const winMs = windowHours * 3600 * 1000;
     const recentStart = now - winMs;
@@ -291,14 +291,18 @@ export class DatabaseStorage implements IStorage {
       };
     });
 
-    // attach company names
+    // attach company names + market
     const tk = await this.listTickers();
     const nameMap = new Map(tk.map((t) => [t.symbol, t.companyName]));
     const koMap = new Map(tk.map((t) => [t.symbol, t.companyNameKo]));
+    const marketMap = new Map(tk.map((t) => [t.symbol, t.market]));
     for (const o of out) {
       o.companyName = nameMap.get(o.symbol) ?? null;
       o.companyNameKo = koMap.get(o.symbol) ?? null;
     }
+    // keep only the requested market: 'kr' = KR-coded tickers; 'us' = everything else
+    // (US tickers + bare cashtags not in the table).
+    const inMarket = (sym: string) => (market === "kr" ? marketMap.get(sym) === "kr" : marketMap.get(sym) !== "kr");
 
     // attach a 14-day daily mention trend per symbol (one query) for the sparkline
     const TREND_DAYS = 14;
@@ -323,11 +327,11 @@ export class DatabaseStorage implements IStorage {
       o.trend = axis.map((d) => mm?.get(d) ?? 0);
     }
 
-    // require breadth: surfaced symbols must be mentioned by >= minAccounts distinct accounts in recent window.
-    // ranking is simply by mention count (most-talked-about first); accounts breaks ties.
+    // rank by distinct accounts first (de-spammed: one account can't inflate a symbol by
+    // posting repeatedly), then by raw mention count as a tiebreak.
     return out
-      .filter((o) => o.recentAccounts >= minAccounts && o.recentMentions > 0)
-      .sort((a, b) => b.recentMentions - a.recentMentions || b.recentAccounts - a.recentAccounts);
+      .filter((o) => o.recentAccounts >= minAccounts && o.recentMentions > 0 && inMarket(o.symbol))
+      .sort((a, b) => b.recentAccounts - a.recentAccounts || b.recentMentions - a.recentMentions);
   }
 
   async symbolTimeline(symbol: string, days: number) {
