@@ -1,14 +1,34 @@
 # 배포 상태 및 문제 진단
 
-> 최종 업데이트: 2026-05-29
+> 최종 업데이트: 2026-06-01
 > 작업: Ticker Radar 를 Vercel + Supabase(Postgres) 로 배포
 
 ---
 
-## 1. 한 줄 요약
+## 0. ✅ 해결됨 (2026-06-01)
+
+API 500(`FUNCTION_INVOCATION_FAILED`)의 **근본 원인 2가지를 로컬에서 Vercel 함수 환경을 재현해 확정**하고 수정 완료. 커밋 `ad42d7d`.
+
+**원인 ① (주범) — 함수 번들에 server/·shared/ 미포함**
+`@vercel/node` 가 `.ts` 진입점만 트랜스파일하고 거기서 import 하는 `server/*.ts` 를 함수 패키지에 동봉하지 못해 런타임에 `Cannot find module '/var/task/server/routes'`.
+→ **해결:** 빌드 단계에서 esbuild 로 진입점을 자기완결 단일 CJS(`api/index.js`)로 사전 번들 → Vercel 트레이싱 자체를 우회.
+
+**원인 ② (숨은 지뢰) — storage.ts top-level throw/connect**
+`server/storage.ts` 가 import 즉시 `DATABASE_URL` 체크 후 `postgres()` 연결을 열어, env 미주입 시 함수가 import 단계에서 사망.
+→ **해결:** `db` 를 Proxy 기반 lazy init 으로 변경 → 첫 쿼리 시점에만 연결. DATABASE_URL 없이도 import 성공 검증 완료.
+
+**변경 파일:** `api/_handler.ts`(구 index.ts), `api/package.json`(type:commonjs), `script/build-vercel.mjs`, `vercel.json`, `server/storage.ts`
+
+**로컬 검증:** 번들 함수가 `/api/nonexistent`→404(라우팅 정상), `/api/settings`→실제 DB 쿼리 실행(연결만 가짜라 실패) 확인. `tsc --noEmit` 0 에러. `npm ci --dry-run` 통과.
+
+**남은 작업:** Vercel 대시보드에서 `DATABASE_URL` 환경변수가 Production + Preview 양쪽 scope 에 들어있는지 확인 후 재배포. (코드 측 문제는 모두 해결됨)
+
+---
+
+## 1. 한 줄 요약 (이전 기록)
 
 DB 마이그레이션과 로컬 동작은 **완료·검증됨**. Vercel 배포에서 프론트엔드(정적 화면)는 뜨지만,
-**API 서버리스 함수가 `FUNCTION_INVOCATION_FAILED`(500)** 로 죽는 문제가 **미해결**.
+**API 서버리스 함수가 `FUNCTION_INVOCATION_FAILED`(500)** 로 죽는 문제 → **위 0번에서 해결됨.**
 
 ---
 
