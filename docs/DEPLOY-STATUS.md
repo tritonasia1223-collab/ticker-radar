@@ -2,127 +2,109 @@
 
 > 최종 업데이트: 2026-06-01
 > 작업: Ticker Radar 를 Vercel + Supabase(Postgres) 로 배포
+> 상태: **✅ 완전 해결 — 프론트 + API + DB 전부 정상 동작**
 
 ---
 
-## 0. ✅ 해결됨 (2026-06-01)
+## 0. 최종 결론
 
-API 500(`FUNCTION_INVOCATION_FAILED`)의 **근본 원인 2가지를 로컬에서 Vercel 함수 환경을 재현해 확정**하고 수정 완료. 커밋 `ad42d7d`.
+`https://ticker-radar-five.vercel.app` 에서 프론트엔드, `/api/*` 서버리스 함수, Supabase
+DB 연결까지 **모두 정상**. 계정 추가/삭제(쓰기)·종목 발견(읽기) 실제 동작 확인.
 
-**원인 ① (주범) — 함수 번들에 server/·shared/ 미포함**
-`@vercel/node` 가 `.ts` 진입점만 트랜스파일하고 거기서 import 하는 `server/*.ts` 를 함수 패키지에 동봉하지 못해 런타임에 `Cannot find module '/var/task/server/routes'`.
-→ **해결:** 빌드 단계에서 esbuild 로 진입점을 자기완결 단일 CJS(`api/index.js`)로 사전 번들 → Vercel 트레이싱 자체를 우회.
-
-**원인 ② (숨은 지뢰) — storage.ts top-level throw/connect**
-`server/storage.ts` 가 import 즉시 `DATABASE_URL` 체크 후 `postgres()` 연결을 열어, env 미주입 시 함수가 import 단계에서 사망.
-→ **해결:** `db` 를 Proxy 기반 lazy init 으로 변경 → 첫 쿼리 시점에만 연결. DATABASE_URL 없이도 import 성공 검증 완료.
-
-**변경 파일:** `api/_handler.ts`(구 index.ts), `api/package.json`(type:commonjs), `script/build-vercel.mjs`, `vercel.json`, `server/storage.ts`
-
-**로컬 검증:** 번들 함수가 `/api/nonexistent`→404(라우팅 정상), `/api/settings`→실제 DB 쿼리 실행(연결만 가짜라 실패) 확인. `tsc --noEmit` 0 에러. `npm ci --dry-run` 통과.
-
-**남은 작업:** Vercel 대시보드에서 `DATABASE_URL` 환경변수가 Production + Preview 양쪽 scope 에 들어있는지 확인 후 재배포. (코드 측 문제는 모두 해결됨)
+핵심 교훈: **문제는 처음부터 "코드 로직"이 아니라 "Vercel 서버리스 함수가 우리 코드를
+어떻게 빌드/로드하느냐"였다.** 에러가 한 겹씩 벗겨지며 3단계로 드러났고, 모두 해결됨.
 
 ---
 
-## 1. 한 줄 요약 (이전 기록)
+## 1. 실제 해결 과정 (에러 3겹)
 
-DB 마이그레이션과 로컬 동작은 **완료·검증됨**. Vercel 배포에서 프론트엔드(정적 화면)는 뜨지만,
-**API 서버리스 함수가 `FUNCTION_INVOCATION_FAILED`(500)** 로 죽는 문제 → **위 0번에서 해결됨.**
+> ⚠️ 아래는 이 문서의 **이전 버전이 제안했던 "esbuild 사전 번들" 접근을 폐기**하고
+> 도달한 최종 해법이다. esbuild 번들은 Vercel 의 함수 "탐지"를 깨뜨려 오히려 막혔다.
 
----
-
-## 2. 완료된 것 (검증됨)
-
-| 항목 | 상태 | 증거 / 비고 |
-|---|---|---|
-| DB 마이그레이션 (SQLite → Postgres) | ✅ | `shared/schema.ts` pgTable, `server/storage.ts` postgres-js + async |
-| raw SQL 번역 (surge/timeline) | ✅ | `string_agg`, `to_timestamp` 로 변환, 로컬에서 결과 정상 |
-| Supabase 연결 | ✅ | PostgreSQL 17.6, **Session Pooler** 호스트로 연결 성공 |
-| 테이블 생성 (7개) | ✅ | accounts, tweets, tickers, mentions, sync_logs, settings, users |
-| 시드 데이터 | ✅ | accounts:5, tweets:16, mentions:16 (NVDA surge=40) |
-| 로컬 API 검증 | ✅ | `/api/stats`, `/api/surge`, `/api/accounts` 전부 HTTP 200 |
-| 수집 워커 분리 | ✅ | `script/collect.ts`, `npm run collect` |
-| 배포 코드 | ✅ | `api/index.ts`, `vercel.json`, 프론트 `API_BASE=""` |
-| GitHub 푸시 | ✅ | master 반영 |
-| 레포 public 전환 | ✅ | Hobby 플랜의 private 협업 배포 차단 해제 |
-| Vercel 프론트엔드 | ✅ | 루트 페이지 HTTP 200 (UI 레이아웃 표시됨) |
-| Vercel 환경변수 | ✅ | `DATABASE_URL`(pooler), `DEPLOY_TARGET=vercel` 설정됨 |
-
----
-
-## 3. 미해결 문제
-
-### 증상
-- `https://ticker-radar-five.vercel.app/` → **200 (프론트 정상)**
-- `https://ticker-radar-five.vercel.app/api/*` → **500 `FUNCTION_INVOCATION_FAILED`**
-- 결과: 모든 데이터 화면(종목 발견/피드/계정)이 비거나 에러
-
-### 밝혀낸 근본 원인
-진단용 JSON 핸들러를 임시로 심어 실제 런타임 에러를 1회 포착:
+### ① 빌드 실패 — `functions` 패턴이 매칭 안 됨
 ```
-Cannot find module '/var/task/server/routes'
-imported from /var/task/api/index.js
+The pattern "api/index.js" defined in `functions` doesn't match any Serverless Functions
 ```
-→ **Vercel 이 `api/index.ts` 를 함수로 번들할 때, 그 함수가 import 하는
-`server/` 와 `shared/` 디렉터리를 함수 패키지에 포함시키지 못함.**
-로컬에서는 전체 디렉터리가 있으니 동작하지만, Vercel 함수는 자기 범위만
-들고 가서 cross-directory import 가 깨진다. 즉 **코드 로직이 아니라
-Vercel 의 함수 번들링(파일 트레이싱) 범위 문제.**
+- 원인: 빌드에서 esbuild 로 `api/index.js` 를 생성했지만 그 파일은 **`.gitignore` 처리**되어
+  소스에 없었고, 핸들러 `api/_handler.ts` 는 **밑줄 접두사라 Vercel 이 함수로 무시**.
+  → Vercel 이 인식하는 함수가 0개인데 설정은 없는 파일을 가리킴.
+- **해결 (커밋 `5849404`)**: esbuild 사전 번들을 **걷어내고 Vercel 네이티브 방식으로**.
+  - `api/_handler.ts` → `api/index.ts` (밑줄 제거 → 자동 함수 탐지)
+  - `vercel.json`: `buildCommand: "vite build"`, `functions` 블록 제거
+  - `script/build-vercel.mjs`·`.gitignore`의 `api/index.js` 정리
+
+### ② 런타임 크래시 — ESM/CJS 형식 충돌
+```
+SyntaxError: Cannot use import statement outside a module  (/var/task/api/index.js)
+```
+- 원인: `api/package.json` 이 `type: commonjs`(구 esbuild CJS 잔재)인데, 루트는
+  `type: module` 이고 `@vercel/node` 출력은 ESM → Node 가 ESM 을 CJS 로 로드하려다 즉사.
+- **해결 (커밋 `ec45189`)**: `api/package.json` → `{ "type": "module" }`.
+
+### ③ 런타임 크래시 — ESM 확장자 누락
+```
+ERR_MODULE_NOT_FOUND: Cannot find module '/var/task/server/routes'
+```
+- 원인: 네이티브 ESM 런타임은 상대경로 import 에 **확장자 필수**. 코드의
+  `import ... from "../server/routes"` (확장자 없음)를 Node 가 못 찾음.
+- **해결 (커밋 `0e1f377`)**: `api/`·`server/`·`shared/` 의 모든 상대 import 에 `.js` 추가.
+  (`moduleResolution: bundler` 라 tsc 통과, `tsx`/esbuild 는 `.js`→`.ts` 로 해석 → dev/build 무탈)
+
+### (선행 수정) storage 즉시 연결 제거
+- `server/storage.ts` 가 import 즉시 `DATABASE_URL` 체크 + `postgres()` 연결을 열어
+  env 미주입 시 import 단계에서 사망 → **Proxy 기반 lazy init** 으로 변경(첫 쿼리 때만 연결).
 
 ---
 
-## 4. 시도한 해결책과 결과
+## 2. 어떻게 검증했나 (추측 push 금지)
 
-| # | 시도 | 결과 |
+초반엔 push→재배포 대기를 반복(5회)하며 히스토리만 어지럽혔다. 이후로는
+**로컬에서 Vercel 런타임을 재현**해 고치기 전/후를 확인하고 1회만 push 하는 방식으로 전환:
+
+```bash
+# @vercel/node 처럼 api+server+shared 를 번들 없이 ESM 으로 transpile 후 Node 로 로드
+npx esbuild $(find api server shared -name '*.ts') --outdir=.fnsim \
+  --format=esm --platform=node --target=node20
+node --input-type=module -e "import('./.fnsim/api/index.js')"
+```
+이게 `ERR_MODULE_NOT_FOUND` 를 그대로 재현했고, `.js` 추가 후 `LOADED OK` 로 통과하는 걸
+확인한 뒤 push 했다. `tsc --noEmit` + `vite build` 도 매번 통과 확인.
+
+---
+
+## 3. 완료된 것 (검증됨)
+
+| 항목 | 상태 | 비고 |
 |---|---|---|
-| 1 | `registerRoutes` async → 동기 변환 | 효과 없음 (원인 아니었음) |
-| 2 | `@shared/*` alias → 상대경로(`../shared`) | 부분적 개선, 방향은 맞음 |
-| 3 | api 핸들러에 동적 import + JSON 진단 | **진짜 원인 메시지 포착** (위 3번) |
-| 4 | `vercel.json` `includeFiles: server/**` | 추측성, 미해결 |
-| 5 | `includeFiles` 제거 | 추측성, 미해결 |
-
-> ⚠️ 진행 방식 반성: 위 시도들을 push→재배포 대기 반복으로 빠르게 5회 푸시 →
-> 히스토리가 어지러워짐. 이후로는 **로컬에서 완전히 검증 후 1회만 푸시**하는 방식으로 전환.
-
-### 막판에 시도하다 중단한 접근 (미완성, 파일은 삭제함)
-- esbuild 로 함수를 단일 파일로 **사전 번들**(`server/*`, `shared/*` 인라인)해서
-  Vercel 의 디렉터리 트레이싱 자체를 우회하는 방법.
-- 관련 임시 파일(`api/_bundle.js`, `script/build-api.mjs`, `script/test-bundle.mjs`)은
-  미완성이라 커밋하지 않고 삭제함.
+| DB 마이그레이션 (SQLite → Postgres) | ✅ | `shared/schema.ts` pgTable, postgres-js |
+| Supabase 연결 | ✅ | **Session Pooler** + `postgres(url, { prepare:false })` |
+| Vercel 함수 빌드/로드 | ✅ | 네이티브 `@vercel/node`, ESM, `.js` 확장자 |
+| `/api/*` 런타임 | ✅ | 계정 CRUD·surge·stats 실제 200 |
+| Vercel 환경변수 | ✅ | `DATABASE_URL`(pooler) Production+Preview, `DEPLOY_TARGET=vercel` |
+| 수집 워커 분리 | ✅ | `npm run collect` (Vercel 함수에선 비활성) |
+| 수집: 날짜창 + 증분 | ✅ | 검색모드 `from:h since:날짜 -filter:replies` (커밋 `a01c8db`) |
 
 ---
 
-## 5. 남은 과제 (단 하나)
+## 4. 현재 배포 구성 (참고)
 
-**"Vercel 함수가 `server/` + `shared/` 코드를 포함하도록 만들기."** 이것만 해결하면 배포 완료.
-
-### 후보 해법
-1. **esbuild 사전 번들** (유력) — 함수 진입점을 빌드 단계에서 한 파일로 인라인 번들.
-   모든 로컬 import 가 inline 되어 Vercel 의 파일 트레이싱이 불필요해짐.
-   `vercel.json` 의 `buildCommand` 에 번들 스텝 추가. → 로컬에서 번들+테스트 후 1회 푸시.
-2. **함수 자족 구조 재설계** — `api/` 안에 필요한 코드를 두거나, 트레이싱이 잘 되는
-   정적 import 구조로 단순화.
-3. **Vercel 빌드 로그 직접 확인** — 대시보드 Deployments → 최신 배포 → Functions/Build
-   로그를 보고 번들에 무엇이 빠졌는지 1차 확인 후 정확히 대응.
+- `vercel.json`: `buildCommand: "vite build"`, `outputDirectory: "dist/public"`,
+  `framework: null`, rewrite `"/api/(.*)" → "/api"`. (`functions` 블록 없음 — Hobby 기본 10s)
+- `api/index.ts`: Express 앱을 만들어 단일 함수로 서빙 (`export default handler`).
+- `api/package.json`: `{ "type": "module" }`.
+- 환경변수(Vercel Production): `DATABASE_URL`(pooler), `DEPLOY_TARGET=vercel`.
+- 수집은 **로컬에서만** (`npm run collect`) — Apify 는 서버리스 10s 안에 못 끝내므로
+  함수에선 `DEPLOY_TARGET=vercel` 로 막고, 같은 Supabase 에 로컬이 써넣는 구조.
 
 ---
 
-## 6. 현재 코드 상태 (참고)
+## 5. 알아둘 환경 메모
 
-- GitHub master = 로컬 HEAD (커밋 `72cc5a7`), 푸시 누락 없음.
-- `api/index.ts`: 정적 import + try/catch JSON 진단 핸들러 형태.
-- `vercel.json`: `buildCommand: vite build`, `outputDirectory: dist/public`,
-  함수 `api/index.ts` (maxDuration 10), `/api/(.*)` → `/api` rewrite.
-- 환경변수는 Vercel(Production)에 설정됨: `DATABASE_URL`(pooler), `DEPLOY_TARGET=vercel`.
-
----
-
-## 7. 알아둘 환경 메모
-
-- **Supabase Direct 연결(`db.<ref>.supabase.co:5432`)은 이 환경에서 DNS 미해석(ENOTFOUND)** →
-  반드시 **Session Pooler**(`aws-1-ap-south-1.pooler.supabase.com:5432`, 유저 `postgres.<ref>`) 사용.
-- 서버리스 런타임에서는 pooler + `postgres(url, { prepare:false })` 필요(이미 적용됨).
-- 로컬 dev: `reusePort` 는 Linux 전용이라 Windows 에선 비활성화하도록 처리됨.
-- `drizzle-kit push` 는 이 환경에서 SQLite 드라이버를 찾는 버그가 있어, 테이블은
-  동일 스키마의 직접 SQL(`CREATE TABLE IF NOT EXISTS`)로 생성함.
+- **Supabase Direct 연결(`db.<ref>.supabase.co:5432`)은 DNS 미해석(ENOTFOUND)/hang** →
+  반드시 **Session Pooler**(`aws-1-ap-south-1.pooler.supabase.com:5432`, 유저 `postgres.<ref>`).
+- 서버리스 런타임에서는 pooler + `prepare:false` 필수(적용됨).
+- 로컬 dev: `reusePort` 는 Linux 전용 → Windows 에선 비활성화 처리.
+- `drizzle-kit push` 가 이 환경에서 SQLite 드라이버를 찾는 버그 → 테이블은 직접 SQL 로 생성.
+- **수집 actor(`apidojo/tweet-scraper`) 주의**: `start`/`end` 날짜 필터는 `twitterHandles`(프로필)
+  모드에서 **무시**되고 전체 타임라인을 긁는다. 날짜 필터는 **검색 모드**(`searchTerms:
+  ["from:핸들 since:날짜"]`)에서만 작동 → 그래서 수집을 검색 모드로 구현함.
