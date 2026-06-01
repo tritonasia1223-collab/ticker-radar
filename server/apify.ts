@@ -12,11 +12,19 @@ async function getActor(): Promise<string> {
   const a = await storage.getSetting("apify_actor");
   return (a && a.trim()) || DEFAULT_ACTOR;
 }
+// Safety cap per handle (search mode is already date-bounded). 0 = no count cap.
 async function getMaxPerHandle(): Promise<number> {
   const v = await storage.getSetting("max_tweets_per_handle");
-  const n = v ? parseInt(v, 10) : 30;
-  return Number.isFinite(n) && n > 0 ? n : 30;
+  const n = v ? parseInt(v, 10) : 100;
+  return Number.isFinite(n) && n >= 0 ? n : 100;
 }
+// Initial backlog window (days) for a newly added account's first collection. Default 7.
+async function getBacklogDays(): Promise<number> {
+  const v = await storage.getSetting("backlog_days");
+  const n = v ? parseInt(v, 10) : 7;
+  return Number.isFinite(n) && n > 0 ? n : 7;
+}
+const dayStr = (ms: number) => new Date(ms).toISOString().slice(0, 10); // "YYYY-MM-DD" (UTC)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -117,14 +125,20 @@ export async function collectAll(): Promise<CollectResult> {
 
   const actor = await getActor();
   const maxPerHandle = await getMaxPerHandle();
+  const backlogDays = await getBacklogDays();
   const tickers = await storage.listTickers();
   const matcher = buildNameMatcher(tickers);
 
-  const input = {
-    twitterHandles: active.map((a) => a.handle),
-    maxItems: maxPerHandle * active.length,
-    sort: "Latest",
-  };
+  // Search mode honors `since:` date filtering at the source (handle/profile mode ignores it).
+  // Per-account since = last sync day (incremental — repeat runs only pull new tweets) or a
+  // backlog window for a newly added account. `-filter:replies` drops reply chatter (no tickers).
+  const backlogStart = dayStr(Date.now() - backlogDays * 86400000);
+  const searchTerms = active.map((a) => {
+    const since = a.lastSyncedAt ? dayStr(a.lastSyncedAt) : backlogStart;
+    return `from:${a.handle} since:${since} -filter:replies`;
+  });
+  const input: any = { searchTerms, sort: "Latest" };
+  if (maxPerHandle > 0) input.maxItems = maxPerHandle * active.length; // safety cap (mainly first backlog)
 
   let runId: string | undefined, datasetId: string | undefined, attempts = 0;
   let items: any[] = [];
