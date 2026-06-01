@@ -4,10 +4,11 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Politician, Committee, Trade, TickerAgg, SortMetric,
   aggregate, rankList, tradersOf, quarterSeries, sortedQuarters, quarterOf,
-  SECTOR, koSector, tickerColor, partyColor, fmtMoney, fmtQ, cmtLabel,
+  SECTOR, koSector, koCompany, tickerColor, partyColor, fmtMoney, fmtQ, cmtLabel,
 } from "@/lib/congress";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -189,7 +190,7 @@ function TickerDetail({ agg, quarters, ctx }: { agg: TickerAgg; quarters: string
       <div className="flex items-center gap-2 mb-1">
         <span className="h-3.5 w-3.5 rounded" style={{ background: tickerColor(agg.symbol) }} />
         <span className="text-2xl font-bold">{agg.symbol}</span>
-        <span className="text-xs text-muted-foreground">{ctx.sectorOf(agg.symbol)}{agg.company ? ` · ${agg.company}` : ""}</span>
+        <span className="text-xs text-muted-foreground">{ctx.sectorOf(agg.symbol)}{agg.company ? ` · ${agg.company}` : ""}{koCompany(agg.symbol) ? ` (${koCompany(agg.symbol)})` : ""}</span>
       </div>
       <div className="flex gap-5 my-3 flex-wrap">
         <Kpi label="총 매수" value={fmtMoney(agg.buy)} color={BUY} />
@@ -207,23 +208,33 @@ function TickerDetail({ agg, quarters, ctx }: { agg: TickerAgg; quarters: string
 }
 
 // ---------- committee view ----------
-function CommitteeCards({ committees, trades, ctx, onPick }: {
-  committees: Committee[]; trades: Trade[]; ctx: Ctx; onPick: (id: string) => void;
+function CommitteeCards({ committees, trades, ctx, onPick, search }: {
+  committees: Committee[]; trades: Trade[]; ctx: Ctx; onPick: (id: string) => void; search: string;
 }) {
   const membersOf = (cid: string) => [...ctx.polBySlug.values()].filter((p) => p.committees.includes(cid));
+  const q = search.trim().toLowerCase();
+  // 거래 있는 위원회만 → 검색 필터 → 거래 건수(많은 순) · 의원 수(많은 순) 정렬
+  const list = committees
+    .map((c) => {
+      const memSlugs = new Set(membersOf(c.id).map((p) => p.slug));
+      const ts = trades.filter((t) => memSlugs.has(t.slug));
+      return { c, memCount: memSlugs.size, ts };
+    })
+    .filter((x) => x.ts.length > 0)
+    .filter((x) => !q || cmtLabel(x.c).toLowerCase().includes(q))
+    .sort((a, b) => b.ts.length - a.ts.length || b.memCount - a.memCount);
+
+  if (list.length === 0) return <div className="text-sm text-muted-foreground py-8 text-center">검색 결과가 없습니다</div>;
   return (
     <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
-      {committees.map((c) => {
-        const memSlugs = new Set(membersOf(c.id).map((p) => p.slug));
-        const ts = trades.filter((t) => memSlugs.has(t.slug));
-        if (!ts.length) return null;
+      {list.map(({ c, memCount, ts }) => {
         const top = rankList([...aggregate(ts).values()], "vol")[0];
         return (
           <Card key={c.id} className="p-4 cursor-pointer hover:border-primary transition-colors" onClick={() => onPick(c.id)}>
             <div className="font-semibold text-sm mb-2">{cmtLabel(c)}</div>
             <div className="flex gap-3.5 text-[11.5px] text-muted-foreground">
-              <span>의원 <b className="text-foreground">{memSlugs.size}</b></span>
               <span>거래 <b className="text-foreground">{ts.length}</b></span>
+              <span>의원 <b className="text-foreground">{memCount}</b></span>
             </div>
             {top && <div className="text-[11.5px] text-muted-foreground mt-2">최다 거래: <b style={{ color: tickerColor(top.symbol) }}>{top.symbol}</b> ({ctx.sectorOf(top.symbol)})</div>}
           </Card>
@@ -340,6 +351,8 @@ export default function Congress() {
   const [selCommittee, setSelCommittee] = useState<string | null>(null);
   const [selMember, setSelMember] = useState<string | null>(null);
   const [returnToMember, setReturnToMember] = useState<string | null>(null);
+  const [returnToCommittee, setReturnToCommittee] = useState<string | null>(null);
+  const [cmtSearch, setCmtSearch] = useState<string>("");
   const [sort, setSort] = useState<SortMetric>("vol");
   const [committeeFilter, setCommitteeFilter] = useState<string>("all");
   const [period, setPeriod] = useState<string>("all"); // all | q:<quarter> | custom
@@ -371,9 +384,11 @@ export default function Congress() {
 
   const periodTrades = useMemo(() => { const set = new Set(AQ); return trades.filter((t) => set.has(quarterOf(t.txnDate))); }, [trades, AQ]);
 
-  const openMember = (slug: string) => { setReturnToMember(null); setSelMember(slug); setView("member"); };
+  const openMember = (slug: string) => { setReturnToMember(null); setReturnToCommittee(null); setSelMember(slug); setView("member"); };
   const openTicker = (sym: string) => {
+    // 어디서 종목으로 들어왔는지 기억 → 종목 화면에 복귀 버튼 표시
     setReturnToMember(view === "member" ? selMember : null);
+    setReturnToCommittee(view === "committees" ? selCommittee : null);
     setSelTicker(sym); setView("tickers");
   };
   const ctx: Ctx = { polBySlug, cmtById, quarters: AQ, sectorOf, openMember, openTicker };
@@ -392,7 +407,7 @@ export default function Congress() {
       <header className="mb-5 flex items-center gap-3 flex-wrap">
         <h1 className="text-xl font-semibold flex items-center gap-2"><Landmark className="h-5 w-5 text-primary" /> 정치인 거래</h1>
         <div className="flex gap-1 ml-2">
-          <Button variant={view === "tickers" ? "secondary" : "ghost"} size="sm" onClick={() => { setView("tickers"); setReturnToMember(null); }}>📊 종목 랭킹</Button>
+          <Button variant={view === "tickers" ? "secondary" : "ghost"} size="sm" onClick={() => { setView("tickers"); setReturnToMember(null); setReturnToCommittee(null); }}>📊 종목 랭킹</Button>
           <Button variant={view === "committees" ? "secondary" : "ghost"} size="sm" onClick={() => { setView("committees"); setSelCommittee(null); }}>🏛️ 위원회별</Button>
         </div>
         <div className="ml-auto flex items-end gap-3 flex-wrap">
@@ -435,10 +450,15 @@ export default function Congress() {
         </div>
       </header>
 
-      {/* back bar (top-left) when navigated from member */}
+      {/* back bar (top-left) when navigated from member or committee */}
       {view === "tickers" && returnToMember && (
         <Button className="mb-4 font-bold shadow-lg" onClick={() => openMember(returnToMember)}>
           <ChevronLeft className="h-4 w-4 mr-1" />{polBySlug.get(returnToMember)?.name} 페이지로 돌아가기
+        </Button>
+      )}
+      {view === "tickers" && returnToCommittee && (
+        <Button className="mb-4 font-bold shadow-lg" onClick={() => { setView("committees"); setReturnToCommittee(null); }}>
+          <ChevronLeft className="h-4 w-4 mr-1" />{cmtById.get(returnToCommittee)?.ko ?? "위원회"}로 돌아가기
         </Button>
       )}
 
@@ -448,7 +468,7 @@ export default function Congress() {
             <h2 className="text-sm font-semibold mb-0.5">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· 집계기간 {periodLabel} · {committeeFilter === "all" ? `전체 ${tickerAggs.length}종목` : `${cmtLabel(cmtById.get(committeeFilter))} 소속`}</span></h2>
             <p className="text-[11.5px] text-muted-foreground mb-3">막대=매수(초록)/매도(빨강) 활동량, 스파크라인=분기별 순매수 추이. 행 클릭 시 거래 의원·추이 표시.</p>
             <RankHead />
-            {tickerAggs.map((s, i) => <RankRow key={s.symbol} s={s} idx={i} maxVol={maxVol} quarters={AQ} ctx={ctx} selected={s.symbol === selTicker} onClick={() => { setReturnToMember(null); setSelTicker(s.symbol); }} />)}
+            {tickerAggs.map((s, i) => <RankRow key={s.symbol} s={s} idx={i} maxVol={maxVol} quarters={AQ} ctx={ctx} selected={s.symbol === selTicker} onClick={() => { setReturnToMember(null); setReturnToCommittee(null); setSelTicker(s.symbol); }} />)}
           </Card>
           <Card className="p-5">
             {selAgg ? <TickerDetail agg={selAgg} quarters={AQ} ctx={ctx} /> : <div className="text-center text-sm text-muted-foreground py-20">← 종목을 선택하면 거래 의원·추이가 표시됩니다</div>}
@@ -459,7 +479,14 @@ export default function Congress() {
       {view === "committees" && (
         selCommittee && cmtById.get(selCommittee)
           ? <CommitteeDetail committee={cmtById.get(selCommittee)!} trades={periodTrades} quarters={AQ} periodLabel={periodLabel} ctx={ctx} onBack={() => setSelCommittee(null)} />
-          : <CommitteeCards committees={cmts} trades={periodTrades} ctx={ctx} onPick={setSelCommittee} />
+          : (
+            <div>
+              <div className="mb-4 max-w-sm">
+                <Input value={cmtSearch} onChange={(e) => setCmtSearch(e.target.value)} placeholder="위원회 검색 (예: 군사, Armed, 금융 …)" className="h-9" />
+              </div>
+              <CommitteeCards committees={cmts} trades={periodTrades} ctx={ctx} onPick={setSelCommittee} search={cmtSearch} />
+            </div>
+          )
       )}
 
       {view === "member" && selMember && (
