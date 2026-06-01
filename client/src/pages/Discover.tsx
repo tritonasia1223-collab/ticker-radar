@@ -117,8 +117,14 @@ export default function Discover() {
               <div className="text-sm font-mono text-muted-foreground w-6 text-center">{idx + 1}</div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold font-mono text-base">${row.symbol}</span>
-                  {row.companyName && <span className="text-sm text-muted-foreground truncate">{row.companyName}</span>}
+                  {row.companyNameKo ? (
+                    <>
+                      <span className="font-semibold text-base truncate">{row.companyNameKo}</span>
+                      <span className="font-mono text-sm text-muted-foreground shrink-0">${row.symbol}</span>
+                    </>
+                  ) : (
+                    <span className="font-semibold font-mono text-base shrink-0">${row.symbol}</span>
+                  )}
                   <SurgeBadge row={row} />
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -168,7 +174,8 @@ function SymbolDetail({ row, onClose }: { row: SurgeRow | null; onClose: () => v
         {row && (
           <>
             <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
+              <SheetTitle className="flex items-center gap-2 flex-wrap">
+                {row.companyNameKo && <span>{row.companyNameKo}</span>}
                 <span className="font-mono">${row.symbol}</span>
                 {row.companyName && <span className="text-sm font-normal text-muted-foreground">{row.companyName}</span>}
               </SheetTitle>

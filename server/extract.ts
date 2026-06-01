@@ -33,7 +33,10 @@ export function buildNameMatcher(tickers: Ticker[]): NameMatcher {
     try { aliases = JSON.parse(t.aliases || "[]"); } catch { aliases = []; }
     for (const raw of aliases) {
       const a = String(raw).trim().toLowerCase();
-      if (a.length >= 3) map.set(a, t.symbol); // require >=3 chars to avoid noise
+      // English aliases need >=3 chars to avoid noise; Korean (Hangul) carries more
+      // meaning per char, so 2 is enough (애플, 인텔, 메타…).
+      const minLen = /[가-힣]/.test(a) ? 2 : 3;
+      if (a.length >= minLen) map.set(a, t.symbol);
     }
   }
   const aliases = [...map.keys()].sort((a, b) => b.length - a.length);

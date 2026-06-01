@@ -1,17 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, MessageSquareText, Landmark, Settings as SettingsIcon, RefreshCw, Moon, Sun } from "lucide-react";
+import { Radar, Users, Landmark, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/ThemeProvider";
 
 const NAV = [
   { href: "/", label: "종목 발견", icon: Radar },
   { href: "/accounts", label: "추적 계정", icon: Users },
-  { href: "/feed", label: "트윗 피드", icon: MessageSquareText },
   { href: "/congress", label: "정치인 거래", icon: Landmark },
-  { href: "/settings", label: "설정", icon: SettingsIcon },
 ];
 
 function Logo() {
@@ -34,21 +29,7 @@ function Logo() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { toast } = useToast();
   const { theme, toggle } = useTheme();
-
-  const collect = useMutation({
-    mutationFn: async () => (await apiRequest("POST", "/api/collect")).json(),
-    onSuccess: (r: any) => {
-      if (r.ok) {
-        toast({ title: "수집 완료", description: `새 트윗 ${r.tweetsNew}건 · 새 언급 ${r.mentionsNew}건` });
-      } else {
-        toast({ title: "수집 실패", description: r.error ?? "알 수 없는 오류", variant: "destructive" });
-      }
-      queryClient.invalidateQueries();
-    },
-    onError: (e: any) => toast({ title: "수집 실패", description: String(e?.message || e), variant: "destructive" }),
-  });
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -70,11 +51,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-sidebar-border space-y-2">
-          <Button onClick={() => collect.mutate()} disabled={collect.isPending} className="w-full" data-testid="button-collect">
-            <RefreshCw className={`h-4 w-4 mr-2 ${collect.isPending ? "animate-spin" : ""}`} />
-            {collect.isPending ? "수집 중…" : "지금 수집"}
-          </Button>
+        <div className="p-3 border-t border-sidebar-border">
           <Button variant="outline" onClick={toggle} className="w-full" data-testid="button-theme">
             {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
             {theme === "dark" ? "라이트" : "다크"}

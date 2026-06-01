@@ -12,6 +12,7 @@ export interface Account {
 export interface SurgeRow {
   symbol: string;
   companyName: string | null;
+  companyNameKo: string | null;
   totalMentions: number;
   distinctAccounts: number;
   recentMentions: number;

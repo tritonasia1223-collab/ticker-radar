@@ -40,6 +40,7 @@ export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof 
 export interface SurgeRow {
   symbol: string;
   companyName: string | null;
+  companyNameKo: string | null;
   totalMentions: number;
   distinctAccounts: number;
   recentMentions: number;
@@ -183,7 +184,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async listTickers() { return db.select().from(tickers); }
-  async upsertTicker(t: Ticker) {
+  // companyNameKo is optional and intentionally NOT in the conflict-update set, so the
+  // Korean names seeded by script/seed-korean-names.ts survive a re-upsert from the API/seed.
+  async upsertTicker(t: Omit<Ticker, "companyNameKo"> & { companyNameKo?: string | null }) {
     await db.insert(tickers).values(t).onConflictDoUpdate({
       target: tickers.symbol,
       set: { companyName: t.companyName, aliases: t.aliases, exchange: t.exchange },
@@ -228,6 +231,7 @@ export class DatabaseStorage implements IStorage {
       return {
         symbol: r.symbol,
         companyName: null,
+        companyNameKo: null,
         totalMentions: Number(r.totalMentions),
         distinctAccounts: Number(r.distinctAccounts),
         recentMentions: recent,
@@ -243,7 +247,11 @@ export class DatabaseStorage implements IStorage {
     // attach company names
     const tk = await this.listTickers();
     const nameMap = new Map(tk.map((t) => [t.symbol, t.companyName]));
-    for (const o of out) o.companyName = nameMap.get(o.symbol) ?? null;
+    const koMap = new Map(tk.map((t) => [t.symbol, t.companyNameKo]));
+    for (const o of out) {
+      o.companyName = nameMap.get(o.symbol) ?? null;
+      o.companyNameKo = koMap.get(o.symbol) ?? null;
+    }
 
     // require breadth: surfaced symbols must be mentioned by >= minAccounts distinct accounts in recent window
     return out
