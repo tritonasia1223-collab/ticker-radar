@@ -8,6 +8,8 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "collect": "tsx script/collect.ts",
+    "seed:ko": "tsx script/seed-korean-names.ts",
+    "seed:tickers": "tsx script/seed-ticker-names.ts",
     "seed:congress": "tsx script/seed-congress.ts",
     "collect:congress": "tsx script/collect-apify.ts",
     "collect:congress:fmp": "tsx script/collect-congress.ts",

@@ -12,6 +12,7 @@ export interface Account {
 export interface SurgeRow {
   symbol: string;
   companyName: string | null;
+  companyNameKo: string | null;
   totalMentions: number;
   distinctAccounts: number;
   recentMentions: number;
@@ -21,6 +22,8 @@ export interface SurgeRow {
   firstSeen: number;
   lastSeen: number;
   accounts: string[];
+  changePercent: number;
+  trend: number[];
 }
 
 export interface Tweet {
@@ -68,6 +71,20 @@ export interface Settings {
   tokenSource: string;
   actor: string;
   maxTweetsPerHandle: number;
+}
+
+// Shorten an official company name for compact display:
+//   "Apple Inc. - Common Stock"                       -> "Apple"
+//   "Palantir Technologies Inc. Class A Common Stock"  -> "Palantir Technologies"
+//   "REVOLUTION MEDICINES INC"                         -> "Revolution Medicines"
+export function shortCompanyName(name: string | null): string | null {
+  if (!name) return null;
+  let s = name.split(" - ")[0]; // drop "- Common Stock"-style tails
+  if (s === s.toUpperCase()) s = s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()); // title-case SEC all-caps
+  s = s.replace(/\s*\b(Class\s+[A-Z]\b.*|Common\s+Stock|Ordinary\s+Shares?|American\s+Depositary.*|Common\s+Shares?|Depositary\s+Shares?)\s*$/i, "");
+  s = s.replace(/[,\.]?\s*\b(Incorporated|Inc|Corporation|Corp|Company|Co|Limited|Ltd|PLC|LLC|Holdings?)\b\.?\s*$/i, "");
+  s = s.replace(/[\s,\.]+$/, "").trim();
+  return s || name;
 }
 
 export function timeAgo(ms: number | null): string {

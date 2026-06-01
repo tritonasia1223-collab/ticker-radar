@@ -45,6 +45,7 @@ export const tweets = pgTable(
 export const tickers = pgTable("tickers", {
   symbol: text("symbol").primaryKey(), // uppercase, e.g. AAPL
   companyName: text("company_name"),
+  companyNameKo: text("company_name_ko"), // Korean display name (shown first in 종목 발견)
   // JSON array of lowercase aliases / company-name variants used for secondary matching
   aliases: text("aliases").notNull().default("[]"),
   exchange: text("exchange"),

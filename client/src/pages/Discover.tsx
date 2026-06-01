@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SurgeRow, Stats, SyncLog, Tweet, timeAgo } from "@/lib/api";
+import { SurgeRow, Stats, SyncLog, Tweet, timeAgo, shortCompanyName } from "@/lib/api";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Users2, Flame, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle } from "lucide-react";
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
+import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle } from "lucide-react";
+import { LineChart, Line, AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number | string }) {
   return (
@@ -25,14 +23,32 @@ function StatCard({ icon: Icon, label, value }: { icon: any; label: string; valu
   );
 }
 
-function SurgeBadge({ row }: { row: SurgeRow }) {
-  const lift = (row.recentMentions + 1) / (row.priorMentions + 1);
-  const hot = row.recentAccounts >= 3 || lift >= 3;
+// Compact name shown in the list: Korean first, else short English, else the ticker.
+function nameOf(row: SurgeRow): { primary: string; secondary: string | null } {
+  const en = shortCompanyName(row.companyName);
+  if (row.companyNameKo) return { primary: row.companyNameKo, secondary: en };
+  if (en) return { primary: en, secondary: null };
+  return { primary: `$${row.symbol}`, secondary: null };
+}
+
+function Sparkline({ data }: { data: number[] }) {
+  if (!data || !data.some((v) => v > 0)) return <div className="h-8 w-full" />;
+  const d = data.map((v, i) => ({ i, v }));
   return (
-    <Badge variant={hot ? "default" : "secondary"} className="gap-1">
-      <Flame className="h-3 w-3" />
-      {row.surgeScore.toFixed(0)}
-    </Badge>
+    <ResponsiveContainer width="100%" height={32}>
+      <AreaChart data={d} margin={{ top: 3, right: 0, left: 0, bottom: 0 }}>
+        <Area type="monotone" dataKey="v" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ChangePct({ pct }: { pct: number }) {
+  const up = pct >= 0;
+  return (
+    <span className={`tabular-nums text-sm ${up ? "text-emerald-500" : "text-rose-500"}`}>
+      {up ? "+" : ""}{pct}%
+    </span>
   );
 }
 
@@ -95,51 +111,52 @@ export default function Discover() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : rows.length === 0 ? (
         <Card className="p-12 text-center">
           <Radar className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
           <div className="font-medium">아직 급상승 종목이 없습니다</div>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-            추적 계정을 추가하고 수집을 실행하거나, 설정에서 더미 데이터를 넣어 동작을 확인해 보세요.
-            기간·최소 계정수 필터를 낮추면 더 많은 종목이 표시됩니다.
+            추적 계정을 추가하고 수집을 실행해 보세요. 기간·최소 계정수 필터를 낮추면 더 많은 종목이 표시됩니다.
           </p>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {rows.map((row, idx) => (
-            <Card
-              key={row.symbol}
-              className="p-4 flex items-center gap-4 cursor-pointer hover-elevate"
-              onClick={() => setSelected(row)}
-              data-testid={`row-symbol-${row.symbol}`}
-            >
-              <div className="text-sm font-mono text-muted-foreground w-6 text-center">{idx + 1}</div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold font-mono text-base">${row.symbol}</span>
-                  {row.companyName && <span className="text-sm text-muted-foreground truncate">{row.companyName}</span>}
-                  <SurgeBadge row={row} />
+        <Card className="overflow-hidden">
+          {/* header */}
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="w-7 text-center">#</div>
+            <div className="flex-1">종목</div>
+            <div className="w-16 text-right hidden sm:block">언급</div>
+            <div className="w-16 text-right">변동</div>
+            <div className="w-24 text-right hidden md:block">트렌드</div>
+            <div className="w-14 text-right hidden lg:block">계정</div>
+          </div>
+          {/* rows */}
+          {rows.map((row, idx) => {
+            const n = nameOf(row);
+            return (
+              <div
+                key={row.symbol}
+                className="flex items-center gap-3 px-4 py-2.5 border-b last:border-0 cursor-pointer hover-elevate"
+                onClick={() => setSelected(row)}
+                data-testid={`row-symbol-${row.symbol}`}
+              >
+                <div className="w-7 text-center text-sm font-mono text-muted-foreground tabular-nums">{idx + 1}</div>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm truncate leading-tight">{n.primary}</div>
+                    {n.secondary && <div className="text-[11px] text-muted-foreground truncate leading-tight">{n.secondary}</div>}
+                  </div>
+                  <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{row.symbol}</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {row.accounts.slice(0, 6).map((h) => (
-                    <span key={h} className="text-[11px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground font-mono">@{h}</span>
-                  ))}
-                  {row.accounts.length > 6 && <span className="text-[11px] text-muted-foreground">+{row.accounts.length - 6}</span>}
-                </div>
+                <div className="w-16 text-right tabular-nums text-sm hidden sm:block">{row.recentMentions.toLocaleString()}</div>
+                <div className="w-16 text-right"><ChangePct pct={row.changePercent} /></div>
+                <div className="w-24 hidden md:block"><Sparkline data={row.trend} /></div>
+                <div className="w-14 text-right tabular-nums text-sm text-muted-foreground hidden lg:block">{row.recentAccounts}</div>
               </div>
-              <div className="text-right shrink-0 hidden sm:block">
-                <div className="text-sm tabular-nums">
-                  <span className="font-semibold text-primary">{row.recentAccounts}</span>
-                  <span className="text-muted-foreground"> 계정 · {row.recentMentions}건</span>
-                </div>
-                <div className="text-[11px] text-muted-foreground tabular-nums">
-                  이전 {row.priorMentions}건 → 현재 {row.recentMentions}건
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+            );
+          })}
+        </Card>
       )}
 
       <SymbolDetail row={selected} onClose={() => setSelected(null)} />
@@ -161,6 +178,7 @@ function SymbolDetail({ row, onClose }: { row: SurgeRow | null; onClose: () => v
   });
   const tweetList = Array.isArray(tweets) ? tweets : [];
   const tl = Array.isArray(timeline) ? timeline : [];
+  const en = row ? shortCompanyName(row.companyName) : null;
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
@@ -168,9 +186,10 @@ function SymbolDetail({ row, onClose }: { row: SurgeRow | null; onClose: () => v
         {row && (
           <>
             <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
+              <SheetTitle className="flex items-center gap-2 flex-wrap">
+                {row.companyNameKo && <span>{row.companyNameKo}</span>}
                 <span className="font-mono">${row.symbol}</span>
-                {row.companyName && <span className="text-sm font-normal text-muted-foreground">{row.companyName}</span>}
+                {en && <span className="text-sm font-normal text-muted-foreground">{en}</span>}
               </SheetTitle>
             </SheetHeader>
 

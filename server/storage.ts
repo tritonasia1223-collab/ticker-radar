@@ -40,6 +40,7 @@ export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof 
 export interface SurgeRow {
   symbol: string;
   companyName: string | null;
+  companyNameKo: string | null;
   totalMentions: number;
   distinctAccounts: number;
   recentMentions: number;
@@ -49,6 +50,8 @@ export interface SurgeRow {
   firstSeen: number;
   lastSeen: number;
   accounts: string[];
+  changePercent: number; // recent vs prior window, as % (from lift)
+  trend: number[];       // daily mention counts over the last 14 days (sparkline)
 }
 
 // Politician with its committee ids attached (for the congress UI)
@@ -183,7 +186,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async listTickers() { return db.select().from(tickers); }
-  async upsertTicker(t: Ticker) {
+  // companyNameKo is optional and intentionally NOT in the conflict-update set, so the
+  // Korean names seeded by script/seed-korean-names.ts survive a re-upsert from the API/seed.
+  async upsertTicker(t: Omit<Ticker, "companyNameKo"> & { companyNameKo?: string | null }) {
     await db.insert(tickers).values(t).onConflictDoUpdate({
       target: tickers.symbol,
       set: { companyName: t.companyName, aliases: t.aliases, exchange: t.exchange },
@@ -228,6 +233,7 @@ export class DatabaseStorage implements IStorage {
       return {
         symbol: r.symbol,
         companyName: null,
+        companyNameKo: null,
         totalMentions: Number(r.totalMentions),
         distinctAccounts: Number(r.distinctAccounts),
         recentMentions: recent,
@@ -237,13 +243,42 @@ export class DatabaseStorage implements IStorage {
         firstSeen: Number(r.firstSeen),
         lastSeen: Number(r.lastSeen),
         accounts: (r.handles ? String(r.handles).split(",") : []),
+        changePercent: Math.round((lift - 1) * 100),
+        trend: [],
       };
     });
 
     // attach company names
     const tk = await this.listTickers();
     const nameMap = new Map(tk.map((t) => [t.symbol, t.companyName]));
-    for (const o of out) o.companyName = nameMap.get(o.symbol) ?? null;
+    const koMap = new Map(tk.map((t) => [t.symbol, t.companyNameKo]));
+    for (const o of out) {
+      o.companyName = nameMap.get(o.symbol) ?? null;
+      o.companyNameKo = koMap.get(o.symbol) ?? null;
+    }
+
+    // attach a 14-day daily mention trend per symbol (one query) for the sparkline
+    const TREND_DAYS = 14;
+    const trendStart = now - TREND_DAYS * 86400 * 1000;
+    const trendRows = (await db.execute(sql`
+      SELECT m.symbol AS symbol,
+             to_char(to_timestamp(m.tweeted_at / 1000), 'YYYY-MM-DD') AS day,
+             COUNT(*) AS c
+      FROM mentions m WHERE m.tweeted_at >= ${trendStart}
+      GROUP BY m.symbol, day
+    `)) as unknown as any[];
+    const trendMap = new Map<string, Map<string, number>>();
+    for (const r of trendRows) {
+      let mm = trendMap.get(r.symbol);
+      if (!mm) { mm = new Map(); trendMap.set(r.symbol, mm); }
+      mm.set(r.day, Number(r.c));
+    }
+    const axis: string[] = [];
+    for (let i = TREND_DAYS - 1; i >= 0; i--) axis.push(new Date(now - i * 86400 * 1000).toISOString().slice(0, 10));
+    for (const o of out) {
+      const mm = trendMap.get(o.symbol);
+      o.trend = axis.map((d) => mm?.get(d) ?? 0);
+    }
 
     // require breadth: surfaced symbols must be mentioned by >= minAccounts distinct accounts in recent window
     return out
