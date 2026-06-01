@@ -1,5 +1,5 @@
-import { storage } from "./storage";
-import { buildNameMatcher, extractMentions } from "./extract";
+import { storage } from "./storage.js";
+import { buildNameMatcher, extractMentions } from "./extract.js";
 
 const DUMMY_ACCOUNTS = [
   { handle: "alphahunter", displayName: "Alpha Hunter" },

@@ -1,24 +1,41 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
   politicians, committees, politicianCommittees, politicalTrades,
-} from "../shared/schema";
+} from "../shared/schema.js";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
   Politician, InsertPolitician, Committee, InsertPoliticalTrade,
-} from "../shared/schema";
+} from "../shared/schema.js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
+// Lazy initialization: do NOT connect at module load time.
+// On Vercel, importing this module must not throw or open a connection before
+// the handler runs (env vars and network are only guaranteed inside the request).
+let _db: ReturnType<typeof drizzle> | null = null;
+
+function getDb() {
+  if (_db) return _db;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
+  }
+  // `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
+  const client = postgres(connectionString, { prepare: false });
+  _db = drizzle(client);
+  return _db;
 }
 
-// `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
-const client = postgres(connectionString, { prepare: false });
-export const db = drizzle(client);
+// Proxy so existing `db.select()...` call sites work unchanged while staying lazy.
+export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_t, prop) {
+    const real = getDb() as any;
+    const v = real[prop];
+    return typeof v === "function" ? v.bind(real) : v;
+  },
+});
 
 export interface SurgeRow {
   symbol: string;
