@@ -40,3 +40,4 @@ jobs:
           npm run enrich:congress
           npm run collect:insider -- --days 14
           npm run enrich:tickers
+          npm run enrich:insider-roles

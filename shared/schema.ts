@@ -246,6 +246,7 @@ export const insiderTrades = pgTable(
     value: bigint("value", { mode: "number" }), // round(shares * price)
     txnDate: bigint("txn_date", { mode: "number" }).notNull(), // unix ms
     filedDate: bigint("filed_date", { mode: "number" }),
+    role: text("role"), // 직책 (SEC EDGAR Form 4 enrich): CEO/CFO/Director/10% Owner/Officer ...
     externalId: text("external_id"), // dedup
     createdAt: bigint("created_at", { mode: "number" }).notNull(),
   },

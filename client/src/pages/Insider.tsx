@@ -20,6 +20,7 @@ interface ITrade {
   id: number; insiderId: number; insiderName: string; insiderSlug: string;
   symbol: string; company: string | null; txnCode: string | null; side: string;
   shares: number | null; price: number | null; value: number | null; txnDate: number; filedDate: number | null;
+  role: string | null;
 }
 
 const SIDE_KO: Record<string, string> = { buy: "매수", sell: "매도", award: "보상", exercise: "옵션행사", tax: "세금", gift: "증여", conversion: "전환", other: "기타" };
@@ -42,11 +43,12 @@ type Metric = "buy" | "sell" | "net" | "trades" | "insiders";
 
 // 한 종목 상세에서 인사이더별로 묶기 (side 별 합산)
 function groupBySide(trades: ITrade[], side: "buy" | "sell") {
-  const m = new Map<string, { name: string; slug: string; value: number; shares: number; n: number }>();
+  const m = new Map<string, { name: string; slug: string; role: string | null; value: number; shares: number; n: number }>();
   for (const t of trades) {
     if (t.side !== side) continue;
-    const e = m.get(t.insiderSlug) || { name: t.insiderName, slug: t.insiderSlug, value: 0, shares: 0, n: 0 };
+    const e = m.get(t.insiderSlug) || { name: t.insiderName, slug: t.insiderSlug, role: null, value: 0, shares: 0, n: 0 };
     e.value += t.value || 0; e.shares += t.shares || 0; e.n++;
+    if (!e.role && t.role) e.role = t.role;
     m.set(t.insiderSlug, e);
   }
   return [...m.values()].sort((a, b) => b.value - a.value);
@@ -62,8 +64,9 @@ function InsiderBox({ side, trades, ctx }: { side: "buy" | "sell"; trades: ITrad
       <div className="text-xs font-bold mb-1.5" style={{ color }}>{side === "buy" ? "🟢 매수한 인사이더" : "🔴 매도한 인사이더"} ({rows.length})</div>
       {rows.length === 0 && <div className="text-xs text-muted-foreground">없음</div>}
       {rows.map((r) => (
-        <div key={r.slug} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0 cursor-pointer rounded hover:bg-muted/40 px-1" onClick={() => ctx.openInsider(r.slug, r.name)} title={`${r.name} 거래 보기`}>
-          <span className="font-semibold text-[13px] truncate">{r.name}</span>
+        <div key={r.slug} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0 cursor-pointer rounded hover:bg-muted/40 px-1" onClick={() => ctx.openInsider(r.slug, r.name)} title={`${r.name}${r.role ? ` · ${r.role}` : ""} 거래 보기`}>
+          <span className="font-semibold text-[13px] shrink-0">{r.name}</span>
+          {r.role && <span className="text-[10px] text-muted-foreground bg-background border rounded px-1.5 py-0.5 truncate max-w-[160px]">{r.role}</span>}
           <ChevronRight className="h-3 w-3 text-primary shrink-0" />
           <span className="ml-auto text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
           <span className="text-[12.5px] font-bold tabular-nums shrink-0" style={{ color }}>{side === "buy" ? "+" : "−"}{fmtMoney(r.value)}</span>
@@ -115,7 +118,9 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
     <div>
       <Button className="mb-4 font-bold shadow-lg" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1.5" />뒤로</Button>
       <Card className="p-5 mb-4">
-        <div className="text-xl font-bold flex items-center gap-2"><UserSearch className="h-5 w-5 text-primary" />{name}</div>
+        <div className="text-xl font-bold flex items-center gap-2 flex-wrap"><UserSearch className="h-5 w-5 text-primary" />{name}
+          {list.find((t) => t.role)?.role && <span className="text-[11px] font-medium text-muted-foreground bg-background border rounded px-2 py-0.5">{list.find((t) => t.role)?.role}</span>}
+        </div>
         <div className="flex gap-5 mt-3 flex-wrap">
           <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(buyV)}</div><div className="text-[11px] text-muted-foreground">매수</div></div>
           <div><div className="text-lg font-bold tabular-nums" style={{ color: SELL }}>{fmtMoney(sellV)}</div><div className="text-[11px] text-muted-foreground">매도</div></div>

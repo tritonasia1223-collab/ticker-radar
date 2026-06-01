@@ -110,6 +110,7 @@ export interface InsiderTradeRow {
   value: number | null;
   txnDate: number;
   filedDate: number | null;
+  role: string | null;
 }
 
 export interface IStorage {
@@ -175,6 +176,8 @@ export interface IStorage {
   insiderTradesForSymbol(symbol: string, opts: { fromMs?: number; toMs?: number; limit?: number }): Promise<InsiderTradeRow[]>;
   insiderTradesForInsider(slug: string, opts: { fromMs?: number; toMs?: number }): Promise<InsiderTradeRow[]>;
   distinctInsiderSymbols(): Promise<string[]>;
+  insiderPairsNeedingRole(): Promise<{ insiderId: number; symbol: string; name: string; externalId: string | null }[]>;
+  setInsiderRole(insiderId: number, symbol: string, role: string | null): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -524,7 +527,7 @@ export class DatabaseStorage implements IStorage {
       symbol: insiderTrades.symbol, company: tickers.companyName,
       txnCode: insiderTrades.txnCode, side: insiderTrades.side,
       shares: insiderTrades.shares, price: insiderTrades.price, value: insiderTrades.value,
-      txnDate: insiderTrades.txnDate, filedDate: insiderTrades.filedDate,
+      txnDate: insiderTrades.txnDate, filedDate: insiderTrades.filedDate, role: insiderTrades.role,
     }).from(insiderTrades)
       .innerJoin(insiders, eq(insiderTrades.insiderId, insiders.id))
       .leftJoin(tickers, eq(tickers.symbol, insiderTrades.symbol))
@@ -550,6 +553,19 @@ export class DatabaseStorage implements IStorage {
   async distinctInsiderSymbols() {
     const r = await db.selectDistinct({ symbol: insiderTrades.symbol }).from(insiderTrades);
     return r.map((x) => x.symbol);
+  }
+  // 직책 보강용 — role 없는 (insider, symbol) 쌍 + 샘플 external_id(accession 포함) + 이름
+  async insiderPairsNeedingRole(): Promise<{ insiderId: number; symbol: string; name: string; externalId: string | null }[]> {
+    const rows = (await db.execute(sql`
+      SELECT DISTINCT ON (it.insider_id, it.symbol)
+             it.insider_id AS "insiderId", it.symbol AS symbol, i.name AS name, it.external_id AS "externalId"
+      FROM insider_trades it JOIN insiders i ON i.id = it.insider_id
+      WHERE it.role IS NULL
+    `)) as unknown as any[];
+    return rows.map((r) => ({ insiderId: Number(r.insiderId), symbol: r.symbol, name: r.name, externalId: r.externalId }));
+  }
+  async setInsiderRole(insiderId: number, symbol: string, role: string | null) {
+    await db.update(insiderTrades).set({ role }).where(and(eq(insiderTrades.insiderId, insiderId), eq(insiderTrades.symbol, symbol)));
   }
 }
 

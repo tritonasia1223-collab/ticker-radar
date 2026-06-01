@@ -32,6 +32,7 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS idx_itrade_insider ON insider_trades (insider_id)`,
   `CREATE INDEX IF NOT EXISTS idx_itrade_txn ON insider_trades (txn_date)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS uniq_itrade_ext ON insider_trades (external_id)`,
+  `ALTER TABLE insider_trades ADD COLUMN IF NOT EXISTS role TEXT`,
 ];
 
 async function main() {

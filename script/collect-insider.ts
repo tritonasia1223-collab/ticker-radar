@@ -60,15 +60,15 @@ async function main() {
 
   if (fresh) await storage.clearInsiderData();
 
-  // 유니버스 = 우리 DB 종목 ∪ S&P500
-  const existing = await storage.listTickers();
-  const existingSet = new Set(existing.map((t) => t.symbol));
+  // 유니버스 = 정치인 거래 종목 ∪ S&P500  (SNS 매칭용 13k 사전은 제외 — 너무 큼)
+  const congress = await storage.distinctTradedSymbols();
+  const haveTicker = new Set((await storage.listTickers()).map((t) => t.symbol)); // 회사명 보유 여부
   const sp = await fetchSP500();
-  // S&P 종목 중 회사명 없는 것 채우기
-  for (const s of sp) if (!existingSet.has(s.symbol)) {
+  // S&P 종목 중 tickers 에 없는 것만 회사명 채우기 (기존 종목 덮어쓰지 않음)
+  for (const s of sp) if (!haveTicker.has(s.symbol)) {
     await storage.upsertTicker({ symbol: s.symbol, companyName: s.name || null, aliases: "[]", exchange: null });
   }
-  const universe = [...new Set([...existingSet, ...sp.map((s) => s.symbol)])].slice(0, max === Infinity ? undefined : max);
+  const universe = [...new Set([...congress, ...sp.map((s) => s.symbol)])].slice(0, max === Infinity ? undefined : max);
   console.log(`내부자거래 수집 — 유니버스 ${universe.length}종목 · 기간 ${from}~${to}${fresh ? " · fresh" : ""}`);
 
   const insiderCache = new Map<string, number>();
