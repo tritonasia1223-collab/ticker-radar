@@ -17,25 +17,36 @@ async function industryOf(symbol: string): Promise<string | null> {
   return (j && j.finnhubIndustry) || null;
 }
 
+// Finnhub 가 비울 때 자산명으로 분류 (ETF/펀드/채권은 '회사 산업'이 없음).
+function classifyAsset(name?: string | null): string | null {
+  const s = (name || "").toLowerCase();
+  if (!s) return null;
+  if (/treasury|t-bill|\bbill\b|\bnote\b|\bbond\b|\bcpn\b|coupon|debenture|\bcusip\b/.test(s)) return "채권";
+  if (/\betf\b|\bfund\b|trust|index|portfolio|spdr|ishares|vanguard|invesco|\blp\b|\bplc\b|tactical|preferred securities|\bbdc\b|\bdebt\b|credit fund|strategic credit/.test(s)) return "ETF·펀드";
+  return null;
+}
+
 async function main() {
   if (!KEY) { console.error("FINNHUB_API_KEY 가 .env 에 없습니다."); process.exit(1); }
   const all = await storage.distinctTradedSymbols();
-  const known = new Set((await storage.listTickerSectors()).map((t) => t.symbol));
-  const todo = all.filter((s) => !known.has(s));
-  console.log(`종목 ${all.length}개 중 ${todo.length}개 섹터 조회 (Finnhub, ~1.1s 간격)…`);
+  // 섹터가 채워진(non-null) 것만 '완료' 처리 → null 인 종목은 재시도(ETF/채권 분류 적용)
+  const done = new Set((await storage.listTickerSectors()).filter((t) => t.sector).map((t) => t.symbol));
+  const nameBySymbol = new Map((await storage.listTickers()).map((t) => [t.symbol, t.companyName]));
+  const todo = all.filter((s) => !done.has(s));
+  console.log(`종목 ${all.length}개 중 ${todo.length}개 섹터 조회 (Finnhub + ETF/채권 분류)…`);
 
-  let ok = 0, miss = 0;
+  let ok = 0, classified = 0, miss = 0;
   for (let i = 0; i < todo.length; i++) {
     const sym = todo[i];
-    try {
-      const ind = await industryOf(sym);
-      await storage.setTickerSector(sym, ind);
-      if (ind) ok++; else miss++;
-    } catch { miss++; await storage.setTickerSector(sym, null); }
+    let ind: string | null = null;
+    try { ind = await industryOf(sym); } catch { /* ignore */ }
+    if (ind) ok++;
+    else { ind = classifyAsset(nameBySymbol.get(sym)); if (ind) classified++; else miss++; }
+    await storage.setTickerSector(sym, ind);
     if ((i + 1) % 25 === 0) console.log(`  ${i + 1}/${todo.length} …`);
     await sleep(1100);
   }
-  console.log(`✅ 섹터 보강 완료 — 성공 ${ok} · 미상 ${miss} (총 ${todo.length})`);
+  console.log(`✅ 섹터 보강 완료 — Finnhub ${ok} · ETF/채권 분류 ${classified} · 미상 ${miss} (총 ${todo.length})`);
   process.exit(0);
 }
 
