@@ -174,6 +174,7 @@ export interface IStorage {
   insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]>;
   insiderTradesForSymbol(symbol: string, opts: { fromMs?: number; toMs?: number; limit?: number }): Promise<InsiderTradeRow[]>;
   insiderTradesForInsider(slug: string, opts: { fromMs?: number; toMs?: number }): Promise<InsiderTradeRow[]>;
+  distinctInsiderSymbols(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -545,6 +546,10 @@ export class DatabaseStorage implements IStorage {
     if (opts.fromMs != null) conds.push(gte(insiderTrades.txnDate, opts.fromMs));
     if (opts.toMs != null) conds.push(lte(insiderTrades.txnDate, opts.toMs));
     return this.joinedInsiderTrades(and(...conds));
+  }
+  async distinctInsiderSymbols() {
+    const r = await db.selectDistinct({ symbol: insiderTrades.symbol }).from(insiderTrades);
+    return r.map((x) => x.symbol);
   }
 }
 

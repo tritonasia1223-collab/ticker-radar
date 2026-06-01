@@ -28,7 +28,8 @@ function classifyAsset(name?: string | null): string | null {
 
 async function main() {
   if (!KEY) { console.error("FINNHUB_API_KEY 가 .env 에 없습니다."); process.exit(1); }
-  const all = await storage.distinctTradedSymbols();
+  // 정치인 + 내부자거래에서 실제로 거래된 종목 전부 (SNS 사전 전체는 제외 — 너무 큼)
+  const all = [...new Set([...(await storage.distinctTradedSymbols()), ...(await storage.distinctInsiderSymbols())])];
   // 섹터가 채워진(non-null) 것만 '완료' 처리 → null 인 종목은 재시도(ETF/채권 분류 적용)
   const done = new Set((await storage.listTickerSectors()).filter((t) => t.sector).map((t) => t.symbol));
   const nameBySymbol = new Map((await storage.listTickers()).map((t) => [t.symbol, t.companyName]));
