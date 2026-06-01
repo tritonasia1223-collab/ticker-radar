@@ -110,6 +110,7 @@ export interface IStorage {
   linkPoliticianCommittee(politicianId: number, committeeId: string): Promise<void>;
   insertPoliticalTradeIfNew(t: InsertPoliticalTrade): Promise<boolean>;
   clearPoliticianData(): Promise<void>;
+  clearCommitteesAndLinks(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -355,6 +356,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(politicalTrades);
     await db.delete(politicianCommittees);
     await db.delete(politicians);
+  }
+
+  async clearCommitteesAndLinks() {
+    await db.delete(politicianCommittees);
+    await db.delete(committees);
   }
 }
 
