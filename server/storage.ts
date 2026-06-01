@@ -152,7 +152,7 @@ export class DatabaseStorage implements IStorage {
   async createAccount(a: InsertAccount) {
     return (await db.insert(accounts).values({
       handle: a.handle, displayName: a.displayName ?? null, note: a.note ?? null,
-      active: a.active ?? true, createdAt: Date.now(),
+      platform: a.platform ?? "x", active: a.active ?? true, createdAt: Date.now(),
     }).returning())[0];
   }
   async updateAccount(id: number, patch: Partial<Account>) {

@@ -2,12 +2,13 @@ import { pgTable, text, integer, serial, bigint, boolean, index, uniqueIndex } f
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// --- Tracked X (Twitter) accounts ---
+// --- Tracked social accounts (X / Threads) ---
 export const accounts = pgTable("accounts", {
   id: serial("id").primaryKey(),
   handle: text("handle").notNull().unique(), // without @, lowercase
   displayName: text("display_name"),
   note: text("note"),
+  platform: text("platform").notNull().default("x"), // 'x' | 'threads' — which network this handle is on
   active: boolean("active").notNull().default(true),
   // Cursor for incremental collection: highest tweet id (as string) we've stored.
   lastTweetId: text("last_tweet_id"),
@@ -20,9 +21,10 @@ export const tweets = pgTable(
   "tweets",
   {
     id: serial("id").primaryKey(),
-    tweetId: text("tweet_id").notNull().unique(), // X status id — dedup key
+    tweetId: text("tweet_id").notNull().unique(), // post id — dedup key (X status id, or "th_<threadsPostId>")
     accountId: integer("account_id").notNull(),
     handle: text("handle").notNull(),
+    platform: text("platform").notNull().default("x"), // 'x' | 'threads' — source network
     text: text("text").notNull(),
     url: text("url"),
     lang: text("lang"),
@@ -96,7 +98,7 @@ export const settings = pgTable("settings", {
 
 // ---------- Insert schemas & types ----------
 export const insertAccountSchema = createInsertSchema(accounts)
-  .pick({ handle: true, displayName: true, note: true, active: true })
+  .pick({ handle: true, displayName: true, note: true, active: true, platform: true })
   .extend({
     handle: z
       .string()

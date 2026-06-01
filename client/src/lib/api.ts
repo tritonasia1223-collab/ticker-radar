@@ -3,6 +3,7 @@ export interface Account {
   handle: string;
   displayName: string | null;
   note: string | null;
+  platform: string; // 'x' | 'threads'
   active: boolean;
   lastTweetId: string | null;
   lastSyncedAt: number | null;

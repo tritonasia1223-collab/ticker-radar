@@ -29,7 +29,7 @@ const dayStr = (ms: number) => new Date(ms).toISOString().slice(0, 10); // "YYYY
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Run the Apify actor synchronously and return dataset items. Retries on transient failure.
-async function runActorWithRetry(
+export async function runActorWithRetry(
   token: string, actor: string, input: any, maxAttempts = 3,
 ): Promise<{ items: any[]; runId?: string; datasetId?: string; attempts: number }> {
   let lastErr: any;
@@ -110,7 +110,8 @@ export interface CollectResult {
 export async function collectAll(): Promise<CollectResult> {
   const startedAt = Date.now();
   const allAccounts = await storage.listAccounts();
-  const active = allAccounts.filter((a) => a.active);
+  // X collection only — Threads accounts are handled by server/threads.ts (collectThreads).
+  const active = allAccounts.filter((a) => a.active && a.platform !== "threads");
   const logId = await storage.createSyncLog(startedAt, active.length);
 
   const token = await getToken();
