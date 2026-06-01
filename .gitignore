@@ -14,3 +14,6 @@ data.db-journal
 
 *.log
 .DS_Store
+
+# Vercel function bundle (build output)
+api/index.js
