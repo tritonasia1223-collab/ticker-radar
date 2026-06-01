@@ -103,3 +103,36 @@ lift = (최근언급수 + 1) / (이전동일기간언급수 + 1)
 
 - `.env`와 `data.db`는 `.gitignore` 처리되어 git에 올라가지 않습니다. 토큰과 수집 데이터는 본인 PC에만 남습니다.
 - Apify actor 실행은 사용량(비용)이 발생합니다. 계정 수 × 계정당 최대 수집량(설정에서 조정)이 1회 수집 비용을 결정합니다.
+
+---
+
+## 정치인 거래 모듈 (Congress)
+
+미국 의원(상·하원)의 STOCK Act 공시 거래를 추적하는 모듈. 사이드바 **정치인 거래**(`/#/congress`).
+
+- **종목 랭킹** — 종목별 매수/매도 활동량·순매수·거래 의원수, 분기 추이 스파크라인. 행 클릭 시 거래 의원(상원→하원, 소속 위원회 태그)·추이 차트
+- **위원회별** — 위원회 선택 시 소속 의원의 종목 매매 랭킹·추이
+- **의원 개인 페이지** — 포트폴리오 변동 추이, 종목별 거래, 거래 내역
+
+### 데이터 파이프라인
+
+| 명령 | 설명 |
+|---|---|
+| `npm run db:push` 대신 `tsx script/db-push-congress.ts` | 정치인 테이블 생성(IF NOT EXISTS). drizzle.config 가 sqlite 라 별도 사용 |
+| `npm run seed:congress` | mock 시드(위원회 데모용 가짜 데이터) |
+| `npm run collect:congress -- --fresh` | **실데이터** — FMP 최신 공시 수집(무료 티어: 최신 ~25건/원) |
+| `npm run enrich:congress` | 정당·소속 위원회 채우기(unitedstates/congress-legislators 매칭) |
+
+권장 실행 순서(실데이터): `collect:congress -- --fresh` → `enrich:congress`
+
+### 환경변수 (.env)
+
+| 변수 | 설명 |
+|---|---|
+| `FMP_API_KEY` | Financial Modeling Prep — 의원 공시 수집 |
+
+### 한계
+
+- FMP 무료 티어는 페이지네이션 불가(page=0, limit≤25) → 최신 ~50건만. 누적하려면 주기적 `collect:congress` 또는 유료 플랜.
+- 정당·위원회는 FMP 미제공 → `enrich:congress` 로 보강(이름 매칭이라 동명이인은 드물게 어긋날 수 있음).
+- 공식 원본(하원 XML·상원 EFD) 대조 검증(verification)은 스키마에 자리만 있고 미구현(후속).
