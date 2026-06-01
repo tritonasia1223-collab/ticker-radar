@@ -134,6 +134,24 @@ export function registerRoutes(app: Express) {
   });
   app.get("/api/congress/sectors", async (_req, res) => res.json(await storage.listTickerSectors()));
 
+  // ---- Insider trading (Form 4) ----
+  app.get("/api/insider/ranking", async (req, res) => {
+    const from = req.query.from ? Number(req.query.from) : undefined;
+    const to = req.query.to ? Number(req.query.to) : undefined;
+    res.json(await storage.insiderRanking({ fromMs: from, toMs: to }));
+  });
+  app.get("/api/insider/ticker/:symbol", async (req, res) => {
+    const from = req.query.from ? Number(req.query.from) : undefined;
+    const to = req.query.to ? Number(req.query.to) : undefined;
+    res.json(await storage.insiderTradesForSymbol(req.params.symbol, { fromMs: from, toMs: to }));
+  });
+  app.get("/api/insider/insider/:slug", async (req, res) => {
+    const from = req.query.from ? Number(req.query.from) : undefined;
+    const to = req.query.to ? Number(req.query.to) : undefined;
+    res.json(await storage.insiderTradesForInsider(req.params.slug, { fromMs: from, toMs: to }));
+  });
+  app.get("/api/insider/sectors", async (_req, res) => res.json(await storage.listTickerSectors()));
+
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {
     if (COLLECTION_DISABLED) {

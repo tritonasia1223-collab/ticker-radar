@@ -1,11 +1,13 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
   politicians, committees, politicianCommittees, politicalTrades, tickerSectors,
+  insiders, insiderTrades,
 } from "../shared/schema.js";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
   Politician, InsertPolitician, Committee, InsertPoliticalTrade, TickerSector,
+  InsertInsider, InsertInsiderTrade,
 } from "../shared/schema.js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -81,6 +83,35 @@ export interface PoliticalTradeRow {
   source: string;
 }
 
+// 내부자거래 — 종목 랭킹(서버 집계)
+export interface InsiderRankRow {
+  symbol: string;
+  company: string | null;
+  sector: string | null;
+  buyValue: number;
+  sellValue: number;
+  netValue: number;
+  buyCount: number;
+  sellCount: number;
+  insiderCount: number;
+  tradeCount: number;
+}
+export interface InsiderTradeRow {
+  id: number;
+  insiderId: number;
+  insiderName: string;
+  insiderSlug: string;
+  symbol: string;
+  company: string | null;
+  txnCode: string | null;
+  side: string;
+  shares: number | null;
+  price: number | null;
+  value: number | null;
+  txnDate: number;
+  filedDate: number | null;
+}
+
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -135,6 +166,14 @@ export interface IStorage {
   setTickerSector(symbol: string, sector: string | null): Promise<void>;
   listTickerSectors(): Promise<TickerSector[]>;
   distinctTradedSymbols(): Promise<string[]>;
+
+  // --- Insider trading (Form 4) ---
+  upsertInsider(i: InsertInsider): Promise<number>;
+  insertInsiderTradeIfNew(t: InsertInsiderTrade): Promise<boolean>;
+  clearInsiderData(): Promise<void>;
+  insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]>;
+  insiderTradesForSymbol(symbol: string, opts: { fromMs?: number; toMs?: number; limit?: number }): Promise<InsiderTradeRow[]>;
+  insiderTradesForInsider(slug: string, opts: { fromMs?: number; toMs?: number }): Promise<InsiderTradeRow[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -428,6 +467,84 @@ export class DatabaseStorage implements IStorage {
   async distinctTradedSymbols() {
     const r = await db.selectDistinct({ symbol: politicalTrades.symbol }).from(politicalTrades);
     return r.map((x) => x.symbol);
+  }
+
+  // --- Insider trading (Form 4) ---
+  async upsertInsider(i: InsertInsider): Promise<number> {
+    const r = await db.insert(insiders).values(i)
+      .onConflictDoUpdate({ target: insiders.slug, set: { name: i.name } }).returning();
+    return r[0].id;
+  }
+  async insertInsiderTradeIfNew(t: InsertInsiderTrade): Promise<boolean> {
+    const r = await db.insert(insiderTrades).values(t)
+      .onConflictDoNothing({ target: insiderTrades.externalId }).returning();
+    return r.length > 0;
+  }
+  async clearInsiderData() {
+    await db.delete(insiderTrades);
+    await db.delete(insiders);
+  }
+
+  // 종목 랭킹 — 서버측 GROUP BY 집계 (볼륨 커서 클라 전량 전송 회피)
+  async insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]> {
+    const from = opts.fromMs ?? 0;
+    const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
+    const rows = (await db.execute(sql`
+      SELECT it.symbol AS symbol,
+             t.company_name AS company,
+             ts.sector AS sector,
+             SUM(CASE WHEN it.side='buy'  THEN COALESCE(it.value,0) ELSE 0 END) AS "buyValue",
+             SUM(CASE WHEN it.side='sell' THEN COALESCE(it.value,0) ELSE 0 END) AS "sellValue",
+             SUM(CASE WHEN it.side='buy'  THEN 1 ELSE 0 END) AS "buyCount",
+             SUM(CASE WHEN it.side='sell' THEN 1 ELSE 0 END) AS "sellCount",
+             COUNT(DISTINCT it.insider_id) AS "insiderCount",
+             COUNT(*) AS "tradeCount"
+      FROM insider_trades it
+      LEFT JOIN tickers t ON t.symbol = it.symbol
+      LEFT JOIN ticker_sectors ts ON ts.symbol = it.symbol
+      WHERE it.txn_date >= ${from} AND it.txn_date <= ${to}
+      GROUP BY it.symbol, t.company_name, ts.sector
+    `)) as unknown as any[];
+    return rows.map((r) => {
+      const buyValue = Number(r.buyValue) || 0, sellValue = Number(r.sellValue) || 0;
+      return {
+        symbol: r.symbol, company: r.company ?? null, sector: r.sector ?? null,
+        buyValue, sellValue, netValue: buyValue - sellValue,
+        buyCount: Number(r.buyCount) || 0, sellCount: Number(r.sellCount) || 0,
+        insiderCount: Number(r.insiderCount) || 0, tradeCount: Number(r.tradeCount) || 0,
+      };
+    });
+  }
+
+  private async joinedInsiderTrades(where: any, limit?: number): Promise<InsiderTradeRow[]> {
+    const q = db.select({
+      id: insiderTrades.id, insiderId: insiderTrades.insiderId,
+      insiderName: insiders.name, insiderSlug: insiders.slug,
+      symbol: insiderTrades.symbol, company: tickers.companyName,
+      txnCode: insiderTrades.txnCode, side: insiderTrades.side,
+      shares: insiderTrades.shares, price: insiderTrades.price, value: insiderTrades.value,
+      txnDate: insiderTrades.txnDate, filedDate: insiderTrades.filedDate,
+    }).from(insiderTrades)
+      .innerJoin(insiders, eq(insiderTrades.insiderId, insiders.id))
+      .leftJoin(tickers, eq(tickers.symbol, insiderTrades.symbol))
+      .where(where)
+      .orderBy(desc(insiderTrades.txnDate));
+    const rows = limit ? await q.limit(limit) : await q;
+    return rows as InsiderTradeRow[];
+  }
+  async insiderTradesForSymbol(symbol: string, opts: { fromMs?: number; toMs?: number; limit?: number }) {
+    const conds: any[] = [eq(insiderTrades.symbol, symbol.toUpperCase())];
+    if (opts.fromMs != null) conds.push(gte(insiderTrades.txnDate, opts.fromMs));
+    if (opts.toMs != null) conds.push(lte(insiderTrades.txnDate, opts.toMs));
+    return this.joinedInsiderTrades(and(...conds), opts.limit ?? 300);
+  }
+  async insiderTradesForInsider(slug: string, opts: { fromMs?: number; toMs?: number }) {
+    const ins = (await db.select().from(insiders).where(eq(insiders.slug, slug)).limit(1))[0];
+    if (!ins) return [];
+    const conds: any[] = [eq(insiderTrades.insiderId, ins.id)];
+    if (opts.fromMs != null) conds.push(gte(insiderTrades.txnDate, opts.fromMs));
+    if (opts.toMs != null) conds.push(lte(insiderTrades.txnDate, opts.toMs));
+    return this.joinedInsiderTrades(and(...conds));
   }
 }
 

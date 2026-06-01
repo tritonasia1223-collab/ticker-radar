@@ -1,4 +1,4 @@
-import { pgTable, text, integer, serial, bigint, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, bigint, boolean, real, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -221,3 +221,45 @@ export const tickerSectors = pgTable("ticker_sectors", {
   sector: text("sector"), // 원천 산업/섹터 문자열(영문). 표시 라벨은 클라이언트에서 한글 매핑
 });
 export type TickerSector = typeof tickerSectors.$inferSelect;
+
+// ============================================================================
+// Insider trading (SEC Form 4) — 정치인 도메인과 같은 패턴(actor → 거래).
+// 공유 tickers / ticker_sectors 재사용. 볼륨이 커서 랭킹은 서버측 집계.
+// ============================================================================
+export const insiders = pgTable("insiders", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(), // 이름 기반 안정 키
+  name: text("name").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const insiderTrades = pgTable(
+  "insider_trades",
+  {
+    id: serial("id").primaryKey(),
+    insiderId: integer("insider_id").notNull(),
+    symbol: text("symbol").notNull(),
+    txnCode: text("txn_code"), // Form4 코드: P/S/A/M/F/G/C/J ...
+    side: text("side").notNull(), // buy | sell | award | exercise | tax | gift | conversion | other
+    shares: bigint("shares", { mode: "number" }), // 거래 수량(절대값)
+    price: real("price"), // 거래 단가(USD), grant 등은 0
+    value: bigint("value", { mode: "number" }), // round(shares * price)
+    txnDate: bigint("txn_date", { mode: "number" }).notNull(), // unix ms
+    filedDate: bigint("filed_date", { mode: "number" }),
+    externalId: text("external_id"), // dedup
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (t) => ({
+    bySymbol: index("idx_itrade_symbol").on(t.symbol),
+    byInsider: index("idx_itrade_insider").on(t.insiderId),
+    byTxnDate: index("idx_itrade_txn").on(t.txnDate),
+    uniqExt: uniqueIndex("uniq_itrade_ext").on(t.externalId),
+  })
+);
+
+export const insertInsiderSchema = createInsertSchema(insiders).omit({ id: true });
+export type InsertInsider = z.infer<typeof insertInsiderSchema>;
+export type Insider = typeof insiders.$inferSelect;
+export const insertInsiderTradeSchema = createInsertSchema(insiderTrades).omit({ id: true });
+export type InsertInsiderTrade = z.infer<typeof insertInsiderTradeSchema>;
+export type InsiderTrade = typeof insiderTrades.$inferSelect;
