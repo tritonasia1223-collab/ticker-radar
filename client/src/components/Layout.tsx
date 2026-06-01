@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, MessageSquareText, Settings as SettingsIcon, RefreshCw, Moon, Sun } from "lucide-react";
+import { Radar, Users, MessageSquareText, Landmark, Settings as SettingsIcon, RefreshCw, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/", label: "종목 발견", icon: Radar },
   { href: "/accounts", label: "추적 계정", icon: Users },
   { href: "/feed", label: "트윗 피드", icon: MessageSquareText },
+  { href: "/congress", label: "정치인 거래", icon: Landmark },
   { href: "/settings", label: "설정", icon: SettingsIcon },
 ];
 

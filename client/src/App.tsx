@@ -9,6 +9,7 @@ import Layout from "@/components/Layout";
 import Discover from "@/pages/Discover";
 import Accounts from "@/pages/Accounts";
 import Feed from "@/pages/Feed";
+import Congress from "@/pages/Congress";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
@@ -18,6 +19,7 @@ function AppRouter() {
       <Route path="/" component={Discover} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/feed" component={Feed} />
+      <Route path="/congress" component={Congress} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
