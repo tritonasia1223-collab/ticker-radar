@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
 
@@ -49,6 +50,18 @@ function ChangePct({ pct }: { pct: number }) {
     <span className={`tabular-nums text-sm ${up ? "text-emerald-500" : "text-rose-500"}`}>
       {up ? "+" : ""}{pct}%
     </span>
+  );
+}
+
+// Header cell with a hover tooltip explaining the column.
+function Th({ label, tip, className = "" }: { label: string; tip: string; className?: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={`flex items-center cursor-help ${className}`}>{label}</div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[16rem] text-xs font-normal normal-case leading-snug">{tip}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -122,14 +135,15 @@ export default function Discover() {
         </Card>
       ) : (
         <Card className="overflow-hidden">
+          <TooltipProvider delayDuration={150}>
           {/* header */}
-          <div className="flex items-center gap-3 px-4 py-2.5 border-b text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            <div className="w-7 text-center">#</div>
-            <div className="flex-1">종목</div>
-            <div className="w-16 text-right hidden sm:block">언급</div>
-            <div className="w-16 text-right">변동</div>
-            <div className="w-24 text-right hidden md:block">트렌드</div>
-            <div className="w-14 text-right hidden lg:block">계정</div>
+          <div className="flex items-center gap-5 px-4 py-2.5 border-b text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <Th className="w-6 justify-center" label="#" tip="언급수가 많은 순으로 정렬됩니다 (가장 많이 언급된 종목이 1위)." />
+            <div className="w-60 shrink-0">종목</div>
+            <Th className="flex-1 justify-center hidden md:flex" label="추이" tip="최근 14일간 일별 언급 횟수의 추이입니다." />
+            <Th className="w-12 justify-end" label="언급수" tip="선택한 기간 동안 이 종목이 언급된 트윗 수입니다." />
+            <Th className="w-16 justify-end" label="증가율" tip="직전 같은 기간 대비 언급 증가율입니다. 예: +450% = 약 4.5배 증가." />
+            <Th className="w-10 justify-end hidden lg:flex" label="계정수" tip="이 종목을 언급한 서로 다른 추적 계정 수입니다. 많을수록 여러 명이 동시에 주목한다는 신호예요." />
           </div>
           {/* rows */}
           {rows.map((row, idx) => {
@@ -137,25 +151,26 @@ export default function Discover() {
             return (
               <div
                 key={row.symbol}
-                className="flex items-center gap-3 px-4 py-2.5 border-b last:border-0 cursor-pointer hover-elevate"
+                className="flex items-center gap-5 px-4 py-3 border-b last:border-0 cursor-pointer hover-elevate"
                 onClick={() => setSelected(row)}
                 data-testid={`row-symbol-${row.symbol}`}
               >
-                <div className="w-7 text-center text-sm font-mono text-muted-foreground tabular-nums">{idx + 1}</div>
-                <div className="flex-1 min-w-0 flex items-center gap-2">
+                <div className="w-6 text-center text-sm font-mono text-muted-foreground tabular-nums">{idx + 1}</div>
+                <div className="w-60 shrink-0 min-w-0 flex items-center gap-2">
                   <div className="min-w-0">
                     <div className="font-medium text-sm truncate leading-tight">{n.primary}</div>
                     {n.secondary && <div className="text-[11px] text-muted-foreground truncate leading-tight">{n.secondary}</div>}
                   </div>
                   <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{row.symbol}</span>
                 </div>
-                <div className="w-16 text-right tabular-nums text-sm hidden sm:block">{row.recentMentions.toLocaleString()}</div>
+                <div className="flex-1 hidden md:block px-2"><Sparkline data={row.trend} /></div>
+                <div className="w-12 text-right tabular-nums text-sm">{row.recentMentions.toLocaleString()}</div>
                 <div className="w-16 text-right"><ChangePct pct={row.changePercent} /></div>
-                <div className="w-24 hidden md:block"><Sparkline data={row.trend} /></div>
-                <div className="w-14 text-right tabular-nums text-sm text-muted-foreground hidden lg:block">{row.recentAccounts}</div>
+                <div className="w-10 text-right tabular-nums text-sm text-muted-foreground hidden lg:block">{row.recentAccounts}</div>
               </div>
             );
           })}
+          </TooltipProvider>
         </Card>
       )}
 
