@@ -1,0 +1,39 @@
+name: Congress data — collect + enrich
+
+# 정치인 거래(political_trades) 자동 누적.
+# - 액터는 거래일 기준 필터라, 늦은 신고(최대 45일)를 잡으려면 매번 '최근 ~60일 윈도우'를 다시 끈다.
+#   (insertPoliticalTradeIfNew 의 externalId dedup 으로 중복 삽입은 없음 — Apify 는 가져온 행 수만 과금)
+# - 의회 거래량 ~12건/일 → 60일 ≈ 700행 ≈ $1.8/회 → 주1회면 ~$7/월로 완전 커버.
+#
+# ⚠️ GitHub 의 schedule 트리거는 '기본 브랜치(main)' 에서만 실행됨.
+#    이 워크플로가 main 에 병합돼야 정기 실행이 시작된다. 그 전엔 'Run workflow'(수동)로 테스트.
+#
+# 필요한 레포 Secrets (Settings → Secrets and variables → Actions):
+#   DATABASE_URL , APIFY_TOKEN
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # 매주 월요일 09:00 UTC (= 18:00 KST). 더 자주 원하면 줄 추가/수정.
+  workflow_dispatch: {} # 수동 실행 버튼
+
+concurrency:
+  group: congress-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Collect (Apify johnvc, last 60 days) + enrich
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: |
+          npm run collect:congress -- --days 60
+          npm run enrich:congress
