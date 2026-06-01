@@ -50,6 +50,8 @@ export interface SurgeRow {
   firstSeen: number;
   lastSeen: number;
   accounts: string[];
+  changePercent: number; // recent vs prior window, as % (from lift)
+  trend: number[];       // daily mention counts over the last 14 days (sparkline)
 }
 
 // Politician with its committee ids attached (for the congress UI)
@@ -241,6 +243,8 @@ export class DatabaseStorage implements IStorage {
         firstSeen: Number(r.firstSeen),
         lastSeen: Number(r.lastSeen),
         accounts: (r.handles ? String(r.handles).split(",") : []),
+        changePercent: Math.round((lift - 1) * 100),
+        trend: [],
       };
     });
 
@@ -251,6 +255,29 @@ export class DatabaseStorage implements IStorage {
     for (const o of out) {
       o.companyName = nameMap.get(o.symbol) ?? null;
       o.companyNameKo = koMap.get(o.symbol) ?? null;
+    }
+
+    // attach a 14-day daily mention trend per symbol (one query) for the sparkline
+    const TREND_DAYS = 14;
+    const trendStart = now - TREND_DAYS * 86400 * 1000;
+    const trendRows = (await db.execute(sql`
+      SELECT m.symbol AS symbol,
+             to_char(to_timestamp(m.tweeted_at / 1000), 'YYYY-MM-DD') AS day,
+             COUNT(*) AS c
+      FROM mentions m WHERE m.tweeted_at >= ${trendStart}
+      GROUP BY m.symbol, day
+    `)) as unknown as any[];
+    const trendMap = new Map<string, Map<string, number>>();
+    for (const r of trendRows) {
+      let mm = trendMap.get(r.symbol);
+      if (!mm) { mm = new Map(); trendMap.set(r.symbol, mm); }
+      mm.set(r.day, Number(r.c));
+    }
+    const axis: string[] = [];
+    for (let i = TREND_DAYS - 1; i >= 0; i--) axis.push(new Date(now - i * 86400 * 1000).toISOString().slice(0, 10));
+    for (const o of out) {
+      const mm = trendMap.get(o.symbol);
+      o.trend = axis.map((d) => mm?.get(d) ?? 0);
     }
 
     // require breadth: surfaced symbols must be mentioned by >= minAccounts distinct accounts in recent window
