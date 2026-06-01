@@ -1,13 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node script/build-vercel.mjs",
+  "buildCommand": "vite build",
   "outputDirectory": "dist/public",
   "framework": null,
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" }
   ]
