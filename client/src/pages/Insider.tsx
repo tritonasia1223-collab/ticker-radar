@@ -25,7 +25,7 @@ interface ITrade {
   role: string | null;
   plan10b5: boolean | null; // true=10b5-1 정기플랜(노이즈) / false=재량적(시그널) / null=미확인
 }
-interface ClusterParticipant { slug: string; name: string; role: string | null; value: number; trades: number; qty: number; sharesAfter: number | null; pctOfHoldings: number | null }
+interface ClusterParticipant { slug: string; name: string; role: string | null; value: number; trades: number; qty: number; sharesAfter: number | null; pctOfHoldings: number | null; isNew: boolean }
 interface Cluster {
   symbol: string; company: string | null; sector: string | null;
   side: "buy" | "sell"; insiderCount: number; tradeCount: number; totalValue: number;
@@ -240,12 +240,13 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
 
 // ----- 클러스터 시그널 위젯 (메인) -----
 const mdDate = (ms: number) => { const d = new Date(ms); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
-// 보유 대비 비중을 방향까지 담은 한 단어로 번역: 신규 매수 / X% 추가 / 전량 매도 / X% 매도. (숫자 100%+ 의 모호함 제거)
-function pctSemantic(pct: number | null, side: string): { label: string; cls: string } {
+// 보유 대비 비중을 방향까지 담은 한 단어로 번역: 신규 매수(pre=0만) / X% 추가 / 전량 매도 / X% 매도.
+function pctSemantic(pct: number | null, side: string, isNew: boolean): { label: string; cls: string } {
+  if (side === "buy" && isNew) return { label: "신규 매수", cls: "text-amber-700 font-bold dark:text-amber-300" };
   if (pct == null) return { label: "—", cls: "text-muted-foreground/50" };
   const cls = pct > 0.5 ? "text-amber-700 font-bold dark:text-amber-300" : pct >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50";
   const label = side === "buy"
-    ? (pct >= 1 ? "신규 매수" : `${Math.round(pct * 100)}% 추가`)
+    ? `${Math.round(pct * 100)}% 추가` // pre>0 이면 보유 대비 추가매집(대량이면 337% 추가 등)
     : (pct >= 1 ? "전량 매도" : `${Math.round(pct * 100)}% 매도`);
   return { label, cls };
 }
@@ -292,7 +293,7 @@ function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (s
       </div>
       <div className="space-y-1">
         {c.participants.slice(0, 4).map((p) => {
-          const sem = pctSemantic(p.pctOfHoldings, c.side);
+          const sem = pctSemantic(p.pctOfHoldings, c.side, p.isNew);
           return (
             <div key={p.slug} className="flex items-center gap-1 text-[11px] px-0.5">
               <span className="truncate max-w-[64px] shrink-0">{p.name}</span>

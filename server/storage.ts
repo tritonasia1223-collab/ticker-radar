@@ -122,6 +122,7 @@ export interface InsiderTradeRow {
 export interface ClusterParticipant {
   slug: string; name: string; role: string | null; value: number; trades: number;
   qty: number; sharesAfter: number | null; pctOfHoldings: number | null; // 보유 대비 거래 비중(0~1+) — 절대액보다 핵심
+  isNew: boolean; // 매수 pre≤0 = 진짜 신규 포지션(보유 0에서 매수). pct≥1 대량추가(pre>0)와 구분.
 }
 export interface InsiderCluster {
   symbol: string; company: string | null; sector: string | null;
@@ -662,7 +663,11 @@ export class DatabaseStorage implements IStorage {
       if (byIns.size < minIns) continue;
       const r0 = bestTrades[0];
       const wFrom = Number(bestTrades[0].txnDate), wTo = Number(bestTrades[bestTrades.length - 1].txnDate);
-      const participants: ClusterParticipant[] = [...byIns.values()].map(({ _lastDate, ...p }) => ({ ...p, pctOfHoldings: holdingsPct(side, p.qty, p.sharesAfter) }));
+      const participants: ClusterParticipant[] = [...byIns.values()].map(({ _lastDate, ...p }) => ({
+        ...p,
+        pctOfHoldings: holdingsPct(side, p.qty, p.sharesAfter),
+        isNew: side === "buy" && p.sharesAfter != null && p.sharesAfter - p.qty <= 0, // pre≤0 = 신규
+      }));
       const totalValue = participants.reduce((s, p) => s + p.value, 0);
       const insiderCount = participants.length;
       // 점수 = 방향(매수≫매도) × Σ(티어 × 절대규모로그 × 보유대비배율) / √n.
