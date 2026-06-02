@@ -16,6 +16,7 @@ interface RankRow {
   symbol: string; company: string | null; sector: string | null;
   buyValue: number; sellValue: number; netValue: number;
   buyCount: number; sellCount: number; insiderCount: number; otherInsiderCount: number; tradeCount: number;
+  signalScore: number; signalSide: "buy" | "sell" | null;
 }
 interface ITrade {
   id: number; insiderId: number; insiderName: string; insiderSlug: string;
@@ -127,7 +128,7 @@ function StackedBar({ r, maxVol }: { r: RankRow; maxVol: number }) {
   );
 }
 
-type Metric = "buy" | "sell" | "net" | "trades" | "insiders";
+type Metric = "signal" | "buy" | "sell" | "net" | "trades" | "insiders";
 
 // 한 종목 상세에서 인사이더별로 묶기 (조건자로 부분집합 선택, 금액 내림차순)
 interface InsiderGroup { name: string; slug: string; role: string | null; value: number; shares: number; n: number }
@@ -426,7 +427,7 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
 // ============================= MAIN =============================
 export default function Insider() {
   const [period, setPeriod] = useState<string>("90"); // all | 7 | 30 | 90 (days)
-  const [metric, setMetric] = useState<Metric>("buy");
+  const [metric, setMetric] = useState<Metric>("signal");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"tickers" | "insider">("tickers");
   const [selSymbol, setSelSymbol] = useState<string | null>(null);
@@ -447,7 +448,7 @@ export default function Insider() {
     openTicker: (sym) => { setSelSymbol(sym); setView("tickers"); },
   };
 
-  const key = (r: RankRow) => metric === "buy" ? r.buyValue : metric === "sell" ? r.sellValue : metric === "net" ? r.netValue : metric === "trades" ? r.tradeCount : r.insiderCount;
+  const key = (r: RankRow) => metric === "signal" ? r.signalScore : metric === "buy" ? r.buyValue : metric === "sell" ? r.sellValue : metric === "net" ? r.netValue : metric === "trades" ? r.tradeCount : r.insiderCount;
   const q = search.trim().toLowerCase();
   const sorted = useMemo(() => {
     const filtered = q ? rows.filter((r) => r.symbol.toLowerCase().includes(q) || (r.company || "").toLowerCase().includes(q)) : rows;
@@ -474,6 +475,7 @@ export default function Insider() {
             <Select value={metric} onValueChange={(v) => setMetric(v as Metric)}>
               <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="signal">시그널(유의미도) 순</SelectItem>
                 <SelectItem value="buy">내부자 매수액 순</SelectItem>
                 <SelectItem value="sell">내부자 매도액 순</SelectItem>
                 <SelectItem value="net">순매수 순</SelectItem>
@@ -502,7 +504,7 @@ export default function Insider() {
               <h2 className="text-sm font-semibold">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· {period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</span></h2>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="종목/회사 검색" className="h-8 w-44 rounded-md border bg-background px-2.5 text-[13px]" />
             </div>
-            <p className="text-[11.5px] text-muted-foreground mb-3">막대=내부자 매수(초록)/매도(빨강) 금액. P=매수·S=매도 등 Form4 거래. 행 클릭 시 누가 거래했는지 표시.</p>
+            <p className="text-[11.5px] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
             <div className="grid items-center gap-2.5 px-2 py-1.5 text-[11px] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 110px 1fr 96px 52px" }}>
               <div className="text-center">#</div><div>종목</div><div>매수/매도</div><div className="text-right">순매수</div><div className="text-center">인사이더</div>
             </div>

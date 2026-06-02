@@ -98,6 +98,8 @@ export interface InsiderRankRow {
   insiderCount: number; // 매수·매도(P·S) 한 인사이더 수
   otherInsiderCount: number; // 보상·옵션행사·세금 등만 한 인사이더 수(신호 아님)
   tradeCount: number; // 매수·매도 거래 건수
+  signalScore: number; // 6레버 유의미도 점수(클러스터와 동일 엔진, 단독 포함). 하단 랭킹 정렬용.
+  signalSide: "buy" | "sell" | null; // 유의미도를 주도한 방향
 }
 export interface InsiderTradeRow {
   id: number;
@@ -580,14 +582,22 @@ export class DatabaseStorage implements IStorage {
       GROUP BY it.symbol, t.company_name, ts.sector
       HAVING SUM(CASE WHEN it.side IN ('buy','sell') THEN 1 ELSE 0 END) > 0
     `)) as unknown as any[];
+    // 유의미도 점수: 클러스터와 동일 엔진을 minInsiders=1(단독 포함)로 돌려 종목별 max 점수 산출.
+    // → 하단 랭킹이 절대달러가 아니라 6레버(티어·보유%·10b5제외·√n·thin·캡·post0) 점수로 줄세워짐.
+    const sigClusters = await this.insiderClusters({ fromMs: opts.fromMs, toMs: opts.toMs, minInsiders: 1, limit: 100000 });
+    const sig = new Map<string, { score: number; side: "buy" | "sell" }>();
+    for (const c of sigClusters) { const cur = sig.get(c.symbol); if (!cur || c.score > cur.score) sig.set(c.symbol, { score: c.score, side: c.side }); }
+
     return rows.map((r) => {
       const buyValue = Number(r.buyValue) || 0, sellValue = Number(r.sellValue) || 0;
+      const s = sig.get(r.symbol);
       return {
         symbol: r.symbol, company: r.company ?? null, sector: r.sector ?? null,
         buyValue, sellValue, netValue: buyValue - sellValue,
         buyCount: Number(r.buyCount) || 0, sellCount: Number(r.sellCount) || 0,
         insiderCount: Number(r.insiderCount) || 0, otherInsiderCount: Number(r.otherInsiderCount) || 0,
         tradeCount: Number(r.tradeCount) || 0,
+        signalScore: s?.score ?? 0, signalSide: s?.side ?? null,
       };
     });
   }
