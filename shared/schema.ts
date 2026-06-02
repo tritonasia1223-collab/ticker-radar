@@ -242,11 +242,13 @@ export const insiderTrades = pgTable(
     txnCode: text("txn_code"), // Form4 코드: P/S/A/M/F/G/C/J ...
     side: text("side").notNull(), // buy | sell | award | exercise | tax | gift | conversion | other
     shares: bigint("shares", { mode: "number" }), // 거래 수량(절대값)
+    sharesAfter: bigint("shares_after", { mode: "number" }), // 거래 직후 보유량(Form4 sharesOwnedFollowingTransaction = Finnhub share) — 보유대비% 계산용
     price: real("price"), // 거래 단가(USD), grant 등은 0
     value: bigint("value", { mode: "number" }), // round(shares * price)
     txnDate: bigint("txn_date", { mode: "number" }).notNull(), // unix ms
     filedDate: bigint("filed_date", { mode: "number" }),
     role: text("role"), // 직책 (SEC EDGAR Form 4 enrich): CEO/CFO/Director/10% Owner/Officer ...
+    plan10b5: boolean("plan10b5"), // Form4 <aff10b5One>: true=10b5-1 정기플랜(노이즈) / false=재량적 매도(시그널) / null=미확인
     externalId: text("external_id"), // dedup
     createdAt: bigint("created_at", { mode: "number" }).notNull(),
   },

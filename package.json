@@ -18,6 +18,8 @@
     "enrich:tickers": "tsx script/enrich-tickers.ts",
     "collect:insider": "tsx script/collect-insider.ts",
     "enrich:insider-roles": "tsx script/enrich-insider-roles.ts",
+    "enrich:10b5": "tsx script/enrich-10b5.ts",
+    "enrich:holdings": "tsx script/enrich-holdings.ts",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },

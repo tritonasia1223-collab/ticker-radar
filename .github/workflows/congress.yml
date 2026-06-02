@@ -41,3 +41,5 @@ jobs:
           npm run collect:insider -- --days 14
           npm run enrich:tickers
           npm run enrich:insider-roles
+          npm run enrich:10b5
+          npm run enrich:holdings
