@@ -265,12 +265,13 @@ function FlagInfo({ label, cls, tip }: { label: string; cls: string; tip: string
   );
 }
 
-function ClusterCard({ c, onPick }: { c: Cluster; onPick: (sym: string) => void }) {
+function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (sym: string) => void }) {
   const isBuy = c.side === "buy";
   const color = isBuy ? BUY : SELL;
   return (
     <div onClick={() => onPick(c.symbol)} className="shrink-0 w-[258px] rounded-lg border p-3 cursor-pointer hover:border-primary bg-background/50" style={{ borderLeft: `3px solid ${color}` }} data-testid={`cluster-${c.symbol}-${c.side}`}>
       <div className="flex items-center gap-1.5">
+        <span className={`text-[11px] font-bold tabular-nums shrink-0 rounded px-1 ${rank <= 3 ? "bg-primary/15 text-primary" : "text-muted-foreground/70"}`} title={`이 섹션 점수 ${rank}위`}>#{rank}</span>
         <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(c.symbol) }} />
         <span className="font-bold text-sm">{c.symbol}</span>
         <span className="text-[10px] text-muted-foreground truncate max-w-[64px]">{sectorLabel(c.sector)}</span>
@@ -316,7 +317,7 @@ function ClusterSection({ title, subtitle, accent, clusters, onPick }: { title: 
         <span className="text-[11.5px] text-muted-foreground">{subtitle}</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
-        {clusters.map((c) => <ClusterCard key={c.symbol + c.side} c={c} onPick={onPick} />)}
+        {clusters.map((c, i) => <ClusterCard key={c.symbol + c.side} c={c} rank={i + 1} onPick={onPick} />)}
       </div>
     </Card>
   );
@@ -333,7 +334,7 @@ function ClusterWidget({ from, to, onPick }: { from?: number; to?: number; onPic
   const sells = clusters.filter((c) => c.side === "sell");
   return (
     <div className="mb-5 space-y-3">
-      <div className="text-[11px] text-muted-foreground">🔥 클러스터 시그널 — 같은 ~30일 윈도우에 다수 인사이더가 같은 방향. 점수 = 티어(정보접근도) × <b>보유 대비 비중</b> × 절대규모(바닥필터). 10b5-1 플랜 매도 제외. 카드의 % = 보유 대비 거래 비중.</div>
+      <div className="text-[11px] text-muted-foreground">같은 ~30일 윈도우에 다수 인사이더가 같은 방향. 점수 = 티어(정보접근도) × <b>보유 대비 비중</b> × 절대규모(바닥필터). 10b5-1 플랜 매도 제외. 카드 #=섹션 점수 순위, %=보유 대비 거래 비중.</div>
       <ClusterSection title="🟢 매수 클러스터" subtitle="누가 베팅하나 — 기회 탐색" accent={BUY} clusters={buys} onPick={onPick} />
       <ClusterSection title="🔴 매도 클러스터" subtitle="누가 빠져나가나 — 리스크 경보" accent={SELL} clusters={sells} onPick={onPick} />
     </div>
@@ -491,17 +492,19 @@ export default function Insider() {
         <InsiderDetail slug={selInsider.slug} name={selInsider.name} from={from} to={to} ctx={ctx} onBack={() => setView("tickers")} />
       ) : (
         <>
+        {/* ── 상단 섹션: 클러스터(다수 합의) ── */}
+        <div className="mb-3">
+          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">🔥 클러스터 시그널 <span className="text-[13px] font-medium text-muted-foreground">여러 명이 뭉친 곳은? (합의 신호)</span></h2>
+        </div>
         <ClusterWidget from={from} to={to} onPick={(s) => setSelSymbol(s)} />
-        {/* 상단(클러스터=다수 합의) / 하단(전체 스캔=단독 포함) 시각적 구분 */}
-        <div className="flex items-center gap-3 my-5">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-[11px] text-muted-foreground">📋 전체 종목 스캔 — 단독 포함</span>
-          <div className="h-px flex-1 bg-border" />
+        {/* ── 하단 섹션: 종목 랭킹(전체 스캔) ── */}
+        <div className="border-t mt-6 pt-5 mb-3">
+          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">📋 종목 랭킹 <span className="text-[13px] font-medium text-muted-foreground">단독이든 뭉쳤든, 가장 큰/유의미한 거래는? (전체 스캔)</span></h2>
         </div>
         <div className="grid gap-5 items-start lg:grid-cols-[1.5fr_1fr]">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· {period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</span></h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</h2>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="종목/회사 검색" className="h-8 w-44 rounded-md border bg-background px-2.5 text-[13px]" />
             </div>
             <p className="text-[11.5px] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
