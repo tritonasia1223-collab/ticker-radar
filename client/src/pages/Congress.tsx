@@ -4,8 +4,9 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Politician, Committee, Trade, TickerAgg, SortMetric,
   aggregate, rankList, tradersOf, quarterSeries, sortedQuarters, quarterOf,
-  SECTOR, koSector, koCompany, tickerColor, partyColor, fmtMoney, fmtQ, cmtLabel,
+  SECTOR, partyColor, fmtQ, cmtLabel,
 } from "@/lib/congress";
+import { koSector, koCompany, tickerColor, fmtMoney } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
