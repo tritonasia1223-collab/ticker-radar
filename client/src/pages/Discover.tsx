@@ -61,7 +61,7 @@ function StatusBadge({ recent, prior, market }: { recent: number; prior: number;
   const s = surgeStatus(recent, prior);
   return (
     <span className={`text-sm whitespace-nowrap ${statusColorClass(s.tone, market)} ${s.dim ? "opacity-40" : ""}`}>
-      {s.label}
+      {s.emoji} {s.label}
     </span>
   );
 }
@@ -241,7 +241,7 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
             </SheetHeader>
 
             <div className="grid grid-cols-3 gap-2 my-4">
-              <Card className="p-3"><div className="text-xs text-muted-foreground">추세</div><div className={`text-lg font-semibold ${statusColorClass(surgeStatus(row.recentMentions, row.priorMentions).tone, market)}`}>{surgeStatus(row.recentMentions, row.priorMentions).label}</div></Card>
+              <Card className="p-3"><div className="text-xs text-muted-foreground">추세</div><div className={`text-lg font-semibold ${statusColorClass(surgeStatus(row.recentMentions, row.priorMentions).tone, market)}`}>{surgeStatus(row.recentMentions, row.priorMentions).emoji} {surgeStatus(row.recentMentions, row.priorMentions).label}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 계정수</div><div className="text-lg font-semibold tabular-nums">{row.recentAccounts}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 언급</div><div className="text-lg font-semibold tabular-nums">{row.recentMentions}</div></Card>
             </div>

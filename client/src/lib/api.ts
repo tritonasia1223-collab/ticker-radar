@@ -63,15 +63,15 @@ export function changeColorClass(pct: number, market: string): string {
 // 이전 0 → 신규, 2배 이상 → 급증, 증가/유지/감소. 언급이 적으면(dim) 신뢰도 낮음 표시.
 const LOW_SAMPLE = 3; // 최근 언급이 이 미만이면 흐리게(신뢰도 낮음)
 export type SurgeTone = "new" | "up" | "flat" | "down";
-export interface SurgeStatus { label: string; tone: SurgeTone; dim: boolean }
+export interface SurgeStatus { label: string; emoji: string; tone: SurgeTone; dim: boolean }
 export function surgeStatus(recent: number, prior: number): SurgeStatus {
   const dim = recent < LOW_SAMPLE;
-  if (recent === 0) return { label: "–", tone: "flat", dim: true };
-  if (prior === 0) return { label: "🆕 신규", tone: "new", dim };
-  if (recent >= prior * 2) return { label: "↑ 급증", tone: "up", dim };
-  if (recent > prior) return { label: "↑ 증가", tone: "up", dim };
-  if (recent === prior) return { label: "– 유지", tone: "flat", dim };
-  return { label: "↓ 감소", tone: "down", dim };
+  if (recent === 0) return { label: "–", emoji: "", tone: "flat", dim: true };
+  if (prior === 0) return { label: "신규", emoji: "🆕", tone: "new", dim };
+  if (recent >= prior * 2) return { label: "급증", emoji: "🔥", tone: "up", dim };
+  if (recent > prior) return { label: "증가", emoji: "📈", tone: "up", dim };
+  if (recent === prior) return { label: "유지", emoji: "➖", tone: "flat", dim };
+  return { label: "감소", emoji: "🔻", tone: "down", dim };
 }
 // 상태 색: 신규=앰버, 유지=회색, 증가·감소는 시장 관례(미장 초록/빨강, 국장 빨강/파랑).
 export function statusColorClass(tone: SurgeTone, market: string): string {

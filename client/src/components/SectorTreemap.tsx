@@ -24,24 +24,25 @@ function stockName(s: SectorStock): string {
   return s.nameKo || shortCompanyName(s.nameEn) || `$${s.symbol}`;
 }
 
-// Custom treemap tile: filled rect + label/△% when it's big enough to read.
+// Custom treemap tile: filled rect + sector name + emoji status (🔥급증 / 🆕신규 …) so the
+// surge is readable at a glance, not just from the tile color. Detail scales with tile size.
 function TreeCell(props: any) {
-  const { x, y, width, height, sector, changePercent, recentMentions, market } = props;
+  const { x, y, width, height, sector, changePercent, recentMentions, priorMentions, market } = props;
   if (width <= 0 || height <= 0 || sector == null) return null;
   const fill = tileColor(changePercent ?? 0, market);
-  const showText = width > 50 && height > 26;
+  const st = surgeStatus(recentMentions ?? 0, priorMentions ?? 0);
+  const showName = width > 50 && height > 24;
+  const showStatus = width > 58 && height > 44;
+  const showCount = width > 96;
   return (
     <g style={{ cursor: "pointer" }}>
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="hsl(var(--background))" strokeWidth={2} rx={3} />
-      {showText && (
-        <>
-          <text x={x + 7} y={y + 17} fontSize={12} fontWeight={600} fill="#fff">{sectorLabel(sector)}</text>
-          {height > 40 && (
-            <text x={x + 7} y={y + 32} fontSize={10} fill="rgba(255,255,255,0.85)">
-              {(changePercent ?? 0) >= 0 ? "+" : ""}{changePercent}% · {recentMentions}회
-            </text>
-          )}
-        </>
+      {showName && <text x={x + 7} y={y + 18} fontSize={12} fontWeight={700} fill="#fff">{sectorLabel(sector)}</text>}
+      {showStatus && (
+        <text x={x + 7} y={y + 37} fontSize={12} fontWeight={600} fill="#fff" opacity={st.dim ? 0.65 : 1}>
+          {st.emoji ? <tspan fontSize={15}>{st.emoji} </tspan> : null}
+          <tspan>{st.label}{showCount ? ` · ${recentMentions}회` : ""}</tspan>
+        </text>
       )}
     </g>
   );
@@ -128,7 +129,7 @@ export default function SectorTreemap({
                     <div className="text-[11px] text-muted-foreground tabular-nums">{s.recentAccounts}명 · {s.recentMentions}회</div>
                   </div>
                   {(() => { const st = surgeStatus(s.recentMentions, s.priorMentions); return (
-                    <span className={`text-xs shrink-0 whitespace-nowrap ${statusColorClass(st.tone, market)} ${st.dim ? "opacity-40" : ""}`}>{st.label}</span>
+                    <span className={`text-xs shrink-0 whitespace-nowrap ${statusColorClass(st.tone, market)} ${st.dim ? "opacity-40" : ""}`}>{st.emoji} {st.label}</span>
                   ); })()}
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                 </button>
