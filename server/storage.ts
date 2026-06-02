@@ -25,7 +25,10 @@ function getDb() {
     throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
   }
   // `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
-  const client = postgres(connectionString, { prepare: false });
+  // Keep the per-client pool small + release idle connections fast: the Supabase session
+  // pooler caps the whole project at ~15 clients, shared by Vercel functions + any local
+  // dev server/scripts. A large default pool (10) exhausts it and 500s everything.
+  const client = postgres(connectionString, { prepare: false, max: 3, idle_timeout: 20 });
   _db = drizzle(client);
   return _db;
 }
