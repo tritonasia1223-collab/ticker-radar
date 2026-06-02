@@ -108,9 +108,12 @@ export async function collectThreads(): Promise<CollectResult> {
 
   const byHandle = new Map<string, Account>();
   for (const a of active) byHandle.set(a.handle, a);
+  const nameByHandle = new Map<string, string>(); // handle -> fullName (Threads profile record)
 
   let tweetsNew = 0, mentionsNew = 0, fetched = 0;
   for (const raw of items) {
+    // profile records carry the display name (fullName); capture before normalize skips them
+    if (raw.fullName && raw.username) nameByHandle.set(String(raw.username).toLowerCase(), String(raw.fullName).trim());
     const n = normalize(raw);
     if (!n) continue;
     fetched++;
@@ -132,6 +135,11 @@ export async function collectThreads(): Promise<CollectResult> {
   }
 
   for (const a of active) await storage.setAccountCursor(a.id, a.lastTweetId, Date.now());
+  // backfill display name from the scraped fullName (only if not already set)
+  for (const [handle, name] of nameByHandle) {
+    const acct = byHandle.get(handle);
+    if (acct && name && !acct.displayName) await storage.updateAccount(acct.id, { displayName: name });
+  }
 
   const status = fetched === 0 ? "partial" : "success";
   await storage.updateSyncLog(logId, {

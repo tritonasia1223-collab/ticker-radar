@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, Trash2, AtSign } from "lucide-react";
 
-const PLATFORM_LABEL: Record<string, string> = { x: "X", threads: "Threads" };
+const PLATFORM: Record<string, { label: string; badge: string; border: string; dot: string }> = {
+  x: { label: "X (트위터)", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30", border: "border-l-sky-500", dot: "bg-sky-500" },
+  threads: { label: "Threads", badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30", border: "border-l-violet-500", dot: "bg-violet-500" },
+};
 
 export default function Accounts() {
   const { toast } = useToast();
@@ -78,7 +81,7 @@ export default function Accounts() {
           <textarea
             value={bulk}
             onChange={(e) => setBulk(e.target.value)}
-            placeholder={`여러 핸들 일괄 추가 (${PLATFORM_LABEL[platform]}) — 줄바꿈 또는 쉼표로 구분`}
+            placeholder={`여러 핸들 일괄 추가 (${PLATFORM[platform]?.label ?? platform}) — 줄바꿈 또는 쉼표로 구분`}
             className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 min-h-[64px] resize-y"
             data-testid="input-bulk"
           />
@@ -93,26 +96,44 @@ export default function Accounts() {
       {isLoading ? null : accounts.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">아직 추적 계정이 없습니다. 위에서 핸들을 추가하세요.</Card>
       ) : (
-        <div className="space-y-2">
-          {accounts.map((a) => (
-            <Card key={a.id} className="p-3 flex items-center gap-3" data-testid={`account-${a.handle}`}>
-              <Switch checked={a.active} onCheckedChange={(v) => toggle.mutate({ id: a.id, active: v })} data-testid={`switch-${a.handle}`} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px] shrink-0">{PLATFORM_LABEL[a.platform] ?? a.platform}</Badge>
-                  <span className="font-mono text-sm">@{a.handle}</span>
-                  {a.displayName && <span className="text-xs text-muted-foreground truncate">{a.displayName}</span>}
-                  {!a.active && <Badge variant="secondary" className="text-[10px]">비활성</Badge>}
+        <div className="grid md:grid-cols-2 gap-4">
+          {(["x", "threads"] as const).map((p) => {
+            const list = accounts.filter((a) => (p === "x" ? a.platform !== "threads" : a.platform === "threads"));
+            const meta = PLATFORM[p];
+            return (
+              <div key={p}>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                  <h2 className="text-sm font-semibold">{meta.label}</h2>
+                  <span className="text-xs text-muted-foreground">{list.length}</span>
                 </div>
-                <div className="text-[11px] text-muted-foreground">
-                  마지막 수집 {timeAgo(a.lastSyncedAt)} {a.lastTweetId ? `· 커서 …${a.lastTweetId.slice(-6)}` : a.lastSyncedAt ? "· 수집됨" : "· 미수집"}
-                </div>
+                {list.length === 0 ? (
+                  <Card className="p-6 text-center text-xs text-muted-foreground">계정 없음</Card>
+                ) : (
+                  <div className="space-y-2">
+                    {list.map((a) => (
+                      <Card key={a.id} className={`p-3 flex items-center gap-3 border-l-4 ${meta.border}`} data-testid={`account-${a.handle}`}>
+                        <Switch checked={a.active} onCheckedChange={(v) => toggle.mutate({ id: a.id, active: v })} data-testid={`switch-${a.handle}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium text-sm truncate">{a.displayName || `@${a.handle}`}</span>
+                            {a.displayName && <span className="font-mono text-[11px] text-muted-foreground truncate">@{a.handle}</span>}
+                            {!a.active && <Badge variant="secondary" className="text-[10px] shrink-0">비활성</Badge>}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            마지막 수집 {timeAgo(a.lastSyncedAt)} {a.lastTweetId ? `· 커서 …${a.lastTweetId.slice(-6)}` : a.lastSyncedAt ? "· 수집됨" : "· 미수집"}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => remove.mutate(a.id)} data-testid={`button-delete-${a.handle}`}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Button variant="ghost" size="icon" onClick={() => remove.mutate(a.id)} data-testid={`button-delete-${a.handle}`}>
-                <Trash2 className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

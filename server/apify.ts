@@ -156,6 +156,7 @@ export async function collectAll(): Promise<CollectResult> {
   const byHandle = new Map<string, Account>();
   for (const a of active) byHandle.set(a.handle, a);
   const newCursor = new Map<string, string>(); // handle -> max new tweet id
+  const nameByHandle = new Map<string, string>(); // handle -> author display name (from item.author.name)
 
   let tweetsNew = 0, mentionsNew = 0, fetched = 0;
   for (const raw of items) {
@@ -164,6 +165,7 @@ export async function collectAll(): Promise<CollectResult> {
     fetched++;
     const acct = byHandle.get(n.handle);
     if (!acct) continue; // tweet from a handle we don't track (e.g. quoted) — skip
+    if (raw.author?.name && !nameByHandle.has(n.handle)) nameByHandle.set(n.handle, String(raw.author.name).trim());
     // incremental: skip tweets we've already passed (<= stored cursor)
     if (acct.lastTweetId && !idGreater(n.tweetId, acct.lastTweetId)) {
       // still update potential cursor max below, but don't reprocess
@@ -201,6 +203,11 @@ export async function collectAll(): Promise<CollectResult> {
   }
   // accounts with no results still get a sync timestamp
   for (const a of active) if (!newCursor.has(a.handle)) await storage.setAccountCursor(a.id, a.lastTweetId, Date.now());
+  // backfill display name from the scraped author name (only if not already set)
+  for (const [handle, name] of nameByHandle) {
+    const acct = byHandle.get(handle);
+    if (acct && name && !acct.displayName) await storage.updateAccount(acct.id, { displayName: name });
+  }
 
   const status = fetched === 0 ? "partial" : "success";
   await storage.updateSyncLog(logId, {
