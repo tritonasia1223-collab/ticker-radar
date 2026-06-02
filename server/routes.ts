@@ -73,6 +73,11 @@ export function registerRoutes(app: Express) {
     res.json(await storage.tweetsForSymbol(req.params.symbol, limit));
   });
 
+  // "왜 뜨나" 뉴스 레포트 (Gemini 그라운딩, CLI로 미리 생성된 캐시)
+  app.get("/api/symbols/:symbol/report", async (req, res) => {
+    res.json(await storage.getReport(req.params.symbol));
+  });
+
   // ---- Tweets feed ----
   app.get("/api/tweets", async (req, res) => {
     res.json(await storage.recentTweets(Number(req.query.limit ?? 50)));

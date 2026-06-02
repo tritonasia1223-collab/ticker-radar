@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SurgeRow, SectorStock, Stats, SyncLog, Tweet, timeAgo, shortCompanyName, surgeStatus, statusColorClass } from "@/lib/api";
+import { SurgeRow, SectorStock, Stats, SyncLog, Tweet, Report, ReportSource, timeAgo, shortCompanyName, surgeStatus, statusColorClass } from "@/lib/api";
 import SectorTreemap from "@/components/SectorTreemap";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle } from "lucide-react";
+import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle, Sparkles } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number | string }) {
@@ -259,9 +259,16 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
     queryFn: async () => (await apiRequest("GET", `/api/symbols/${symbol}/tweets?limit=30`)).json(),
     enabled: !!symbol,
   });
+  const { data: report } = useQuery<Report | null>({
+    queryKey: ["/api/symbols", symbol, "report"],
+    queryFn: async () => (await apiRequest("GET", `/api/symbols/${symbol}/report`)).json(),
+    enabled: !!symbol,
+  });
   const tweetList = Array.isArray(tweets) ? tweets : [];
   const tl = Array.isArray(timeline) ? timeline : [];
   const en = row ? shortCompanyName(row.companyName) : null;
+  let sources: ReportSource[] = [];
+  try { sources = report ? JSON.parse(report.sources) : []; } catch { sources = []; }
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
@@ -281,6 +288,27 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 계정수</div><div className="text-lg font-semibold tabular-nums">{row.recentAccounts}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 언급</div><div className="text-lg font-semibold tabular-nums">{row.recentMentions}</div></Card>
             </div>
+
+            {report && (
+              <div className="mb-4">
+                <div className="text-sm font-medium mb-2 flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-primary" /> 왜 뜨나 — 최신 뉴스</div>
+                <Card className="p-3">
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{report.summary}</p>
+                  {sources.length > 0 && (
+                    <div className="mt-2.5 pt-2.5 border-t flex flex-wrap gap-1.5">
+                      {sources.slice(0, 6).map((s, i) => (
+                        <a key={i} href={s.url} target="_blank" rel="noreferrer"
+                          className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground hover:underline truncate max-w-[12rem]"
+                          data-testid={`report-source-${i}`}>
+                          {s.title || s.url}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-muted-foreground mt-2">{report.model} · {timeAgo(report.generatedAt)} 생성</div>
+                </Card>
+              </div>
+            )}
 
             <div className="mb-4">
               <div className="text-sm font-medium mb-2">최근 14일 언급 추이</div>

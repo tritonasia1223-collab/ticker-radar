@@ -119,6 +119,16 @@ export const interestSnapshots = pgTable(
   })
 );
 
+// --- 종목 "왜 뜨나" 뉴스 레포트 (Gemini + Google Search 그라운딩, 종목당 최신 1건) ---
+export const reports = pgTable("reports", {
+  symbol: text("symbol").primaryKey(),
+  summary: text("summary").notNull(),              // 한 줄 요약 + 🔺호재 / 🔻악재 (마크다운)
+  sources: text("sources").notNull().default("[]"), // JSON [{title, url}] — 그라운딩 출처
+  model: text("model"),
+  generatedAt: bigint("generated_at", { mode: "number" }).notNull(),
+});
+export type Report = typeof reports.$inferSelect;
+
 // ---------- Insert schemas & types ----------
 export const insertAccountSchema = createInsertSchema(accounts)
   .pick({ handle: true, displayName: true, note: true, active: true, platform: true })

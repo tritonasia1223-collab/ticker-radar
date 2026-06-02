@@ -56,7 +56,7 @@ Express + Vite + React + Tailwind CSS + shadcn/ui + Drizzle ORM + PostgreSQL(**S
 git clone <레포 주소>
 cd ticker-radar
 npm install
-cp .env.example .env   # DATABASE_URL, APIFY_TOKEN 등 채우기
+# .env 생성 후 채우기 (아래 '환경변수' 표 참고): DATABASE_URL, APIFY_TOKEN 등
 ```
 
 ### 2. 개발 서버
@@ -141,6 +141,7 @@ npm run build && npm start
 | `FINNHUB_API_KEY` |  | — | `enrich:tickers`(섹터 보강) |
 | `FMP_API_KEY` |  | — | 정치인 거래 수집 |
 | `KIS_APP_KEY` / `KIS_APP_SECRET` |  | — | 관심종목(KIS) 수집 |
+| `GEMINI_TOKEN` |  | — | "왜 뜨나" 뉴스 레포트 생성(`npm run reports`) |
 
 > `.env`는 `.gitignore` 처리. 토큰·키는 본인 PC에만 남습니다.
 

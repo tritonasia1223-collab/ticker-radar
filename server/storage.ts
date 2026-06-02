@@ -1,13 +1,13 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
   politicians, committees, politicianCommittees, politicalTrades, tickerSectors,
-  insiders, insiderTrades, interestSnapshots,
+  insiders, insiderTrades, interestSnapshots, reports,
 } from "../shared/schema.js";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
   Ticker, Mention, InsertMention, SyncLog,
   Politician, InsertPolitician, Committee, InsertPoliticalTrade, TickerSector,
-  InsertInsider, InsertInsiderTrade,
+  InsertInsider, InsertInsiderTrade, Report,
 } from "../shared/schema.js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -253,6 +253,7 @@ export interface IStorage {
   sectorMap(windowHours: number, market?: string): Promise<SectorMapRow[]>;
   interestToday(): Promise<{ date: string | null; rows: InterestRow[] }>;
   interestTrend(days: number): Promise<InterestTrend>;
+  getReport(symbol: string): Promise<Report | null>;
   symbolTimeline(symbol: string, days: number): Promise<{ day: string; count: number }[]>;
 
   // sync logs
@@ -589,6 +590,11 @@ export class DatabaseStorage implements IStorage {
     const series = top.map((t) => ({ symbol: t.symbol, name: t.name, points: dates.map((d) => t.perDate.get(d) ?? 0) }));
 
     return { dates, movers: { up, down }, series };
+  }
+
+  async getReport(symbol: string): Promise<Report | null> {
+    const r = await db.select().from(reports).where(eq(reports.symbol, symbol.toUpperCase())).limit(1);
+    return r[0] ?? null;
   }
 
   async symbolTimeline(symbol: string, days: number) {

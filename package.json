@@ -17,6 +17,7 @@
     "seed:us-sectors": "tsx script/seed-us-sectors.ts",
     "collect:interest": "tsx script/collect-interest.ts",
     "backfill:names": "tsx script/backfill-account-names.ts",
+    "reports": "tsx script/generate-reports.ts",
     "reextract": "tsx script/reextract-mentions.ts",
     "seed:congress": "tsx script/seed-congress.ts",
     "collect:congress": "tsx script/collect-apify.ts",

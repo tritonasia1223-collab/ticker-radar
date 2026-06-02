@@ -97,6 +97,16 @@ export interface InterestTrend {
   series: { symbol: string; name: string | null; points: number[] }[];
 }
 
+// "왜 뜨나" 뉴스 레포트 (Gemini 그라운딩)
+export interface ReportSource { title: string; url: string }
+export interface Report {
+  symbol: string;
+  summary: string;
+  sources: string; // JSON ReportSource[]
+  model: string | null;
+  generatedAt: number;
+}
+
 export interface Tweet {
   id: number;
   tweetId: string;
