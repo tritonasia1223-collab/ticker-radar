@@ -25,7 +25,9 @@ function getDb() {
     throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
   }
   // `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
-  const client = postgres(connectionString, { prepare: false });
+  // 세션 풀러 한도(pool_size 15)를 넘지 않게 연결 수를 작게 잡고, 유휴 연결은 빨리 닫는다
+  // (Vercel 서버리스/로컬 미리보기 재시작 시 연결 누수 방지).
+  const client = postgres(connectionString, { prepare: false, max: 3, idle_timeout: 20 });
   _db = drizzle(client);
   return _db;
 }
@@ -93,8 +95,9 @@ export interface InsiderRankRow {
   netValue: number;
   buyCount: number;
   sellCount: number;
-  insiderCount: number;
-  tradeCount: number;
+  insiderCount: number; // 매수·매도(P·S) 한 인사이더 수
+  otherInsiderCount: number; // 보상·옵션행사·세금 등만 한 인사이더 수(신호 아님)
+  tradeCount: number; // 매수·매도 거래 건수
 }
 export interface InsiderTradeRow {
   id: number;
@@ -111,6 +114,65 @@ export interface InsiderTradeRow {
   txnDate: number;
   filedDate: number | null;
   role: string | null;
+  plan10b5: boolean | null; // true=10b5-1 정기플랜(노이즈) / false=재량적(시그널) / null=미확인
+}
+// 클러스터 시그널 — 같은 윈도우에 여러 인사이더가 같은 방향
+export interface ClusterParticipant {
+  slug: string; name: string; role: string | null; value: number; trades: number;
+  qty: number; sharesAfter: number | null; pctOfHoldings: number | null; // 보유 대비 거래 비중(0~1+) — 절대액보다 핵심
+}
+export interface InsiderCluster {
+  symbol: string; company: string | null; sector: string | null;
+  side: "buy" | "sell"; insiderCount: number; tradeCount: number; totalValue: number;
+  windowFromMs: number; windowToMs: number; spanDays: number;
+  participants: ClusterParticipant[]; score: number;
+  thin: boolean;  // n=2 (합의 증거 약함, ×0.65 페널티)
+  gated: boolean; // post=0 ≥3명 (구조적 일괄청산 의심, ×0.5 게이트)
+}
+
+// 직책 → 시그널 티어 가중(정보 접근도). 클라이언트 classifyRole 의 우선순위와 동일.
+//   T1 CEO·회장/CFO=1.0 · 대주주=0.9 · T2 운영(COO/CTO/President)=0.7 · T3 기능=0.4 · T4 이사=0.25 · 미확인=0.3
+function roleSignalWeight(role: string | null): number {
+  if (!role) return 0.3;
+  const r = role;
+  const owner = /10\s*%/.test(r);
+  if (/see\s*remarks/i.test(r)) return Math.max(0.3, owner ? 0.9 : 0);
+  let w = 0.3;
+  if (/\bceo\b/i.test(r) || /chief executive/i.test(r) || /chair(man|person|woman)?\b/i.test(r) || /\bcfo\b/i.test(r) || /chief financial/i.test(r)) w = 1.0;
+  else if (/\bcoo\b/i.test(r) || /chief operating/i.test(r) || /\bcto\b/i.test(r) || /chief technology/i.test(r) || (/\bpresident\b/i.test(r) && !/vice[\s-]*president/i.test(r))) w = 0.7;
+  else if (/\bclo\b/i.test(r) || /chief legal/i.test(r) || /general counsel/i.test(r) || /\bcounsel\b/i.test(r) || /\bcao\b/i.test(r) || /\bpao\b/i.test(r) || /chief accounting/i.test(r) || /controller/i.test(r) || /\bchro\b/i.test(r) || /\bcmo\b/i.test(r) || /chief\s+[\w\s]+officer/i.test(r) || /\b(?:e|s)?vp\b/i.test(r) || /vice\s*president/i.test(r) || /\bofficer\b/i.test(r)) w = 0.4;
+  else if (/\bdirector\b/i.test(r)) w = 0.25;
+  return Math.max(w, owner ? 0.9 : 0); // 대주주는 최소 0.9 (창업자·VC·행동주의)
+}
+// 보유 대비 거래 비중 = qty / 거래직전 보유(pre). pre = 매수 ? after-qty : after+qty.
+function holdingsPct(side: string, qty: number, sharesAfter: number | null): number | null {
+  if (sharesAfter == null || qty <= 0) return null;
+  if (side === "buy") {
+    const pre = sharesAfter - qty;
+    if (pre < 0) return null;   // qty>post = 데이터 이상(외국발행사 post-holdings 깨짐) → 중립(강함 아님)
+    if (pre === 0) return 1.0;  // 순수 신규 포지션 = 강한 컨빅션
+    return qty / pre;
+  }
+  // 매도: pre = post + qty (항상 ≥ qty > 0). post=0 이면 전량청산(ratio=100%).
+  return qty / (sharesAfter + qty);
+}
+// 보유% → 배율: >50%=1.5 · 10~50%=1.0 · <10%=0.5 · 데이터없음=1.0(중립). "비정상 규모"의 진짜 의미.
+function holdingsMultiplier(pct: number | null): number {
+  if (pct == null) return 1.0;
+  return pct > 0.5 ? 1.5 : pct >= 0.1 ? 1.0 : 0.5;
+}
+const isTenPctOwner = (role: string | null) => role != null && /10\s*%/.test(role);
+// 참가자 1인의 시그널 기여 = 티어 가중 × 절대규모(로그=바닥필터) × 보유대비배율(진짜 가중).
+//   클래스 캡: 10% Owner의 거의-전량 매도(≥80%)는 PE 블록 청산 패턴(컨빅션 아님) → 배율 최대 1.0(×1.5 금지).
+//   매수·부분매도·저비중·비(非)10%Owner 는 캡 없음 — PE의 드문 진짜 베팅/추가매집은 안 죽임. 0이 아니라 '보통 매도' 수준으로 하향.
+function participantSignal(p: ClusterParticipant, side: string, massPost0: boolean): number {
+  let m = holdingsMultiplier(p.pctOfHoldings);
+  const capped = side === "sell" && isTenPctOwner(p.role) && p.pctOfHoldings != null && p.pctOfHoldings >= 0.80;
+  if (capped) m = Math.min(m, 1.0); // 클래스 캡: 10%Owner 거의-전량 매도(PE 블록청산)
+  // post=0 동시성 게이트: 같은 윈도우 post=0 ≥3명 = 구조적 이벤트(외국발행사 일괄 정정·전환 등) → 그 건들 ×0.5.
+  //   단독(1~2명) post=0 은 진짜 전량매도 경보라 유지. 캡 받은 건엔 중복 적용 안 함(상호배제).
+  else if (side === "sell" && massPost0 && p.sharesAfter === 0) m *= 0.5;
+  return roleSignalWeight(p.role) * (1 + Math.log10(1 + Math.abs(p.value) / 1e5)) * m;
 }
 
 export interface IStorage {
@@ -493,21 +555,30 @@ export class DatabaseStorage implements IStorage {
   async insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]> {
     const from = opts.fromMs ?? 0;
     const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
+    // med: 종목별 median 단가 → 비정상 단가(>$1M 또는 median 50배 초과)는 금액 0 처리(데이터 오류 가드)
     const rows = (await db.execute(sql`
+      WITH med AS (
+        SELECT symbol, percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS medp
+        FROM insider_trades WHERE price > 0 GROUP BY symbol
+      )
       SELECT it.symbol AS symbol,
              t.company_name AS company,
              ts.sector AS sector,
-             SUM(CASE WHEN it.side='buy'  THEN COALESCE(it.value,0) ELSE 0 END) AS "buyValue",
-             SUM(CASE WHEN it.side='sell' THEN COALESCE(it.value,0) ELSE 0 END) AS "sellValue",
+             SUM(CASE WHEN it.side='buy'  THEN (CASE WHEN it.price > 1000000 OR (m.medp IS NOT NULL AND it.price > 50*m.medp) THEN 0 ELSE COALESCE(it.value,0) END) ELSE 0 END) AS "buyValue",
+             SUM(CASE WHEN it.side='sell' THEN (CASE WHEN it.price > 1000000 OR (m.medp IS NOT NULL AND it.price > 50*m.medp) THEN 0 ELSE COALESCE(it.value,0) END) ELSE 0 END) AS "sellValue",
              SUM(CASE WHEN it.side='buy'  THEN 1 ELSE 0 END) AS "buyCount",
              SUM(CASE WHEN it.side='sell' THEN 1 ELSE 0 END) AS "sellCount",
-             COUNT(DISTINCT it.insider_id) AS "insiderCount",
-             COUNT(*) AS "tradeCount"
+             COUNT(DISTINCT CASE WHEN it.side IN ('buy','sell') THEN it.insider_id END) AS "insiderCount",
+             COUNT(DISTINCT it.insider_id)
+               - COUNT(DISTINCT CASE WHEN it.side IN ('buy','sell') THEN it.insider_id END) AS "otherInsiderCount",
+             SUM(CASE WHEN it.side IN ('buy','sell') THEN 1 ELSE 0 END) AS "tradeCount"
       FROM insider_trades it
       LEFT JOIN tickers t ON t.symbol = it.symbol
       LEFT JOIN ticker_sectors ts ON ts.symbol = it.symbol
+      LEFT JOIN med m ON m.symbol = it.symbol
       WHERE it.txn_date >= ${from} AND it.txn_date <= ${to}
       GROUP BY it.symbol, t.company_name, ts.sector
+      HAVING SUM(CASE WHEN it.side IN ('buy','sell') THEN 1 ELSE 0 END) > 0
     `)) as unknown as any[];
     return rows.map((r) => {
       const buyValue = Number(r.buyValue) || 0, sellValue = Number(r.sellValue) || 0;
@@ -515,9 +586,93 @@ export class DatabaseStorage implements IStorage {
         symbol: r.symbol, company: r.company ?? null, sector: r.sector ?? null,
         buyValue, sellValue, netValue: buyValue - sellValue,
         buyCount: Number(r.buyCount) || 0, sellCount: Number(r.sellCount) || 0,
-        insiderCount: Number(r.insiderCount) || 0, tradeCount: Number(r.tradeCount) || 0,
+        insiderCount: Number(r.insiderCount) || 0, otherInsiderCount: Number(r.otherInsiderCount) || 0,
+        tradeCount: Number(r.tradeCount) || 0,
       };
     });
+  }
+
+  // 클러스터 시그널 — 종목·방향별로 windowDays 안에서 가장 많은 서로 다른 인사이더가 모인 윈도우를 찾는다.
+  //   매수 ≫ 매도(노이즈 많음), 10b5-1 플랜 매도는 제외. 점수 = 인사이더수 × 방향가중, 동률이면 금액.
+  async insiderClusters(opts: { fromMs?: number; toMs?: number; windowDays?: number; minInsiders?: number; limit?: number }): Promise<InsiderCluster[]> {
+    const from = opts.fromMs ?? 0;
+    const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
+    const windowMs = (opts.windowDays ?? 30) * 86400000;
+    const minIns = opts.minInsiders ?? 2;
+    const limit = opts.limit ?? 40;
+    const rows = (await db.execute(sql`
+      SELECT it.insider_id AS "insiderId", i.name AS name, i.slug AS slug, it.role AS role,
+             it.symbol AS symbol, t.company_name AS company, ts.sector AS sector,
+             it.side AS side, COALESCE(it.value, 0) AS value, it.price AS price,
+             it.shares AS shares, it.shares_after AS "sharesAfter", it.txn_date AS "txnDate"
+      FROM insider_trades it
+      JOIN insiders i ON i.id = it.insider_id
+      LEFT JOIN tickers t ON t.symbol = it.symbol
+      LEFT JOIN ticker_sectors ts ON ts.symbol = it.symbol
+      WHERE it.side IN ('buy','sell') AND it.txn_date >= ${from} AND it.txn_date <= ${to}
+        AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)
+    `)) as unknown as any[];
+
+    // 종목별 median 단가 → 비정상 단가(>$1M 또는 median의 50배 초과, 예: CRWV $117인데 $700k~$11M)는 금액 0 처리
+    const pricesBySym = new Map<string, number[]>();
+    for (const r of rows) { const p = Number(r.price); if (p > 0) { const a = pricesBySym.get(r.symbol); if (a) a.push(p); else pricesBySym.set(r.symbol, [p]); } }
+    const medBySym = new Map<string, number>();
+    for (const [s, a] of pricesBySym) { a.sort((x, y) => x - y); medBySym.set(s, a[Math.floor(a.length / 2)]); }
+    const cleanValue = (r: any): number => {
+      const p = Number(r.price); const med = medBySym.get(r.symbol);
+      if (p > 1_000_000 || (med && p > 50 * med)) return 0;
+      return Number(r.value) || 0;
+    };
+
+    const groups = new Map<string, any[]>();
+    for (const r of rows) { const k = r.symbol + "|" + r.side; const g = groups.get(k); if (g) g.push(r); else groups.set(k, [r]); }
+
+    const clusters: InsiderCluster[] = [];
+    for (const [k, list] of groups) {
+      list.sort((a, b) => Number(a.txnDate) - Number(b.txnDate));
+      // 각 거래를 시작점으로 forward window 를 잡아 서로 다른 인사이더가 가장 많은 구간 선택
+      let bestTrades: any[] = []; let bestSize = 0;
+      for (let i = 0; i < list.length; i++) {
+        const t0 = Number(list[i].txnDate); const set = new Set<number>(); const win: any[] = [];
+        for (let j = i; j < list.length && Number(list[j].txnDate) - t0 <= windowMs; j++) { win.push(list[j]); set.add(Number(list[j].insiderId)); }
+        if (set.size > bestSize) { bestSize = set.size; bestTrades = win; }
+      }
+      if (bestSize < minIns) continue;
+      const side = k.endsWith("|buy") ? "buy" : "sell";
+      // 인사이더별 합산 + 거래직후 보유량(최신 거래 기준) 추적
+      const byIns = new Map<string, ClusterParticipant & { _lastDate: number }>();
+      for (const t of bestTrades) {
+        const e = byIns.get(t.slug) || { slug: t.slug, name: t.name, role: null, value: 0, trades: 0, qty: 0, sharesAfter: null, pctOfHoldings: null, _lastDate: -1 };
+        e.value += cleanValue(t); e.trades++; e.qty += Math.abs(Number(t.shares) || 0);
+        if (!e.role && t.role) e.role = t.role;
+        const td = Number(t.txnDate);
+        if (t.sharesAfter != null && td >= e._lastDate) { e.sharesAfter = Number(t.sharesAfter); e._lastDate = td; }
+        byIns.set(t.slug, e);
+      }
+      if (byIns.size < minIns) continue;
+      const r0 = bestTrades[0];
+      const wFrom = Number(bestTrades[0].txnDate), wTo = Number(bestTrades[bestTrades.length - 1].txnDate);
+      const participants: ClusterParticipant[] = [...byIns.values()].map(({ _lastDate, ...p }) => ({ ...p, pctOfHoldings: holdingsPct(side, p.qty, p.sharesAfter) }));
+      const totalValue = participants.reduce((s, p) => s + p.value, 0);
+      const insiderCount = participants.length;
+      // 점수 = 방향(매수≫매도) × Σ(티어 × 절대규모로그 × 보유대비배율) / √n.
+      //   /√n: breadth(인원수)는 플러스 요인이되 한계체감 — 29명이 5명의 6배가 아니라 ~2.4배. 규모처럼 한 항(인원)이 폭주 방지.
+      const dir = side === "buy" ? 2 : 1;
+      // 최소 인원 게이트: n=2는 '합의'의 통계적 증거가 약함(우연 vs 조율 구분 안 됨) → thin 페널티 ×0.65.
+      //   고티어 2인(CEO+CFO 등)은 per-capita가 높아 살아남고, 저티어·SPV 2인은 가라앉음. n≥3이 정상 클러스터 바닥.
+      const thin = insiderCount === 2;
+      const massPost0 = participants.filter((p) => p.sharesAfter === 0).length >= 3; // 다수 동시 전량청산 = 구조적 이벤트
+      const score = (dir * participants.reduce((s, p) => s + participantSignal(p, side, massPost0), 0) / Math.sqrt(insiderCount)) * (thin ? 0.65 : 1);
+      participants.sort((a, b) => participantSignal(b, side, massPost0) - participantSignal(a, side, massPost0)); // 리더가 카드 상단
+      clusters.push({
+        symbol: r0.symbol, company: r0.company ?? null, sector: r0.sector ?? null,
+        side, insiderCount, tradeCount: bestTrades.length, totalValue,
+        windowFromMs: wFrom, windowToMs: wTo, spanDays: Math.round((wTo - wFrom) / 86400000),
+        participants, score, thin, gated: massPost0,
+      });
+    }
+    clusters.sort((a, b) => b.score - a.score);
+    return clusters.slice(0, limit);
   }
 
   private async joinedInsiderTrades(where: any, limit?: number): Promise<InsiderTradeRow[]> {
@@ -526,8 +681,12 @@ export class DatabaseStorage implements IStorage {
       insiderName: insiders.name, insiderSlug: insiders.slug,
       symbol: insiderTrades.symbol, company: tickers.companyName,
       txnCode: insiderTrades.txnCode, side: insiderTrades.side,
-      shares: insiderTrades.shares, price: insiderTrades.price, value: insiderTrades.value,
+      shares: insiderTrades.shares,
+      // 비정상 단가(>$1M/주, 데이터 오류)는 미상 처리 — 인사이더/수량은 유지, 가격·금액만 숨김
+      price: sql<number | null>`CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.price} END`,
+      value: sql<number | null>`CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.value} END`,
       txnDate: insiderTrades.txnDate, filedDate: insiderTrades.filedDate, role: insiderTrades.role,
+      plan10b5: insiderTrades.plan10b5,
     }).from(insiderTrades)
       .innerJoin(insiders, eq(insiderTrades.insiderId, insiders.id))
       .leftJoin(tickers, eq(tickers.symbol, insiderTrades.symbol))
@@ -566,6 +725,41 @@ export class DatabaseStorage implements IStorage {
   }
   async setInsiderRole(insiderId: number, symbol: string, role: string | null) {
     await db.update(insiderTrades).set({ role }).where(and(eq(insiderTrades.insiderId, insiderId), eq(insiderTrades.symbol, symbol)));
+  }
+
+  // 보유량 백필 — external_id 매칭으로 shares_after 일괄 UPDATE (Finnhub share 재호출분)
+  async setSharesAfterByExternal(pairs: { eid: string; sa: number | null }[]) {
+    if (!pairs.length) return;
+    await db.execute(sql`
+      UPDATE insider_trades it SET shares_after = d.sa
+      FROM json_to_recordset(${JSON.stringify(pairs)}::json) AS d(eid text, sa bigint)
+      WHERE it.external_id = d.eid AND it.shares_after IS DISTINCT FROM d.sa
+    `);
+  }
+  // 보유% 미보강(shares_after NULL)인 매수·매도 종목 목록
+  async symbolsNeedingHoldings(): Promise<string[]> {
+    const r = (await db.execute(sql`
+      SELECT DISTINCT symbol FROM insider_trades WHERE side IN ('buy','sell') AND shares_after IS NULL
+    `)) as unknown as any[];
+    return r.map((x) => x.symbol);
+  }
+
+  // 10b5-1 보강용 — 매수·매도 중 plan10b5 미확인인 고유 accession 목록 (한 Form4=한 accession에 여러 거래라인이 묶임)
+  async psAccessionsNeedingPlan(): Promise<{ accession: string; symbol: string }[]> {
+    const rows = (await db.execute(sql`
+      SELECT DISTINCT split_part(it.external_id, ':', 2) AS accession, it.symbol AS symbol
+      FROM insider_trades it
+      WHERE it.side IN ('buy','sell') AND it.plan10b5 IS NULL
+        AND it.external_id LIKE 'fin:%' AND split_part(it.external_id, ':', 2) <> ''
+    `)) as unknown as any[];
+    return rows.map((r) => ({ accession: r.accession, symbol: r.symbol }));
+  }
+  // accession 의 모든 거래라인에 10b5-1 플래그 적용 (문서레벨 필드라 동일 accession 공유)
+  async setPlan10b5ByAccession(accession: string, plan: boolean | null) {
+    await db.execute(sql`
+      UPDATE insider_trades SET plan10b5 = ${plan}
+      WHERE external_id LIKE ${"fin:" + accession + ":%"}
+    `);
   }
 }
 
