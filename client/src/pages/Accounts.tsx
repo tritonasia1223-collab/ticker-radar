@@ -38,7 +38,7 @@ export default function Accounts() {
       }
       return { ok, fail };
     },
-    onSuccess: (r) => { queryClient.invalidateQueries(); setBulk(""); toast({ title: "일괄 추가 완료", description: `추가 ${r.ok}개 · 건너뜀 ${r.fail}개` }); },
+    onSuccess: (r) => { queryClient.invalidateQueries({ queryKey: ["/api/accounts"] }); queryClient.invalidateQueries({ queryKey: ["/api/stats"] }); setBulk(""); toast({ title: "일괄 추가 완료", description: `추가 ${r.ok}개 · 건너뜀 ${r.fail}개` }); },
   });
 
   const toggle = useMutation({
@@ -48,7 +48,7 @@ export default function Accounts() {
 
   const remove = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/accounts/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/accounts"] }); queryClient.invalidateQueries({ queryKey: ["/api/stats"] }); },
   });
 
   return (

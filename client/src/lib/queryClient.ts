@@ -48,7 +48,9 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnMount: false,   // 탭 재진입 시 캐시된 데이터 즉시 표시(재계산 X)
+      staleTime: Infinity,     // 갱신(브라우저 새로고침/뮤테이션) 전까지 fresh 취급
+      gcTime: Infinity,        // 세션 동안 캐시 유지 — 탭 오래 비워도 버리지 않음
       retry: false,
     },
     mutations: {
