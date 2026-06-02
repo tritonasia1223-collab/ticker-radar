@@ -92,6 +92,12 @@ export default function Discover() {
   const { data: logs } = useQuery<SyncLog[]>({ queryKey: ["/api/sync-logs"], queryFn: async () => (await apiRequest("GET", "/api/sync-logs?limit=1")).json() });
   const rows = Array.isArray(surge) ? surge : [];
   const lastLog = Array.isArray(logs) ? logs[0] : undefined;
+  // 신규 급부상: 직전 기간엔 없다가(prior 0) 이번에 새로 언급된 종목 — 발굴의 핵심.
+  // 1회짜리 노이즈는 제외(>=2), 여러 계정이 동시에 잡은 순으로.
+  const newcomers = rows
+    .filter((r) => r.priorMentions === 0 && r.recentMentions >= 2)
+    .sort((a, b) => b.recentAccounts - a.recentAccounts || b.recentMentions - a.recentMentions)
+    .slice(0, 12);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -154,6 +160,36 @@ export default function Discover() {
           priorMentions: s.priorMentions, changePercent: s.changePercent,
         })}
       />
+
+      {newcomers.length > 0 && (
+        <Card className="p-4 mb-4 border-amber-500/40">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-base leading-none">🆕</span>
+            <h2 className="text-sm font-medium">신규 급부상</h2>
+            <span className="text-xs text-muted-foreground">직전 기간엔 없다가 이번에 새로 언급된 종목 — 발굴 핵심</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {newcomers.map((r) => {
+              const n = nameOf(r);
+              return (
+                <button
+                  key={r.symbol}
+                  onClick={() => setSelected(r)}
+                  className="shrink-0 w-40 text-left p-3 rounded-md border border-amber-500/30 bg-amber-500/5 hover-elevate"
+                  data-testid={`newcomer-${r.symbol}`}
+                >
+                  <div className="font-medium text-sm truncate leading-tight">{n.primary}</div>
+                  <div className="text-[11px] text-muted-foreground truncate leading-tight">{n.secondary || r.symbol}</div>
+                  <div className="mt-1.5 text-xs tabular-nums">
+                    <span className="text-amber-600 dark:text-amber-500 font-semibold">{r.recentAccounts}명</span>
+                    <span className="text-muted-foreground"> · {r.recentMentions}회</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
