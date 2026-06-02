@@ -8,7 +8,8 @@ const NAV = [
   { href: "/accounts", label: "추적 계정", icon: Users },
   { href: "/congress", label: "정치인 거래", icon: Landmark },
   { href: "/insider", label: "내부자 거래", icon: UserSearch },
-  { href: "/interest", label: "관심종목", icon: Star },
+  // KIS 앱키 발급 후 이 줄 주석 해제하면 탭 활성화 (라우트·페이지·수집기 코드는 그대로 있음)
+  // { href: "/interest", label: "관심종목", icon: Star },
 ];
 
 function Logo() {
