@@ -189,10 +189,15 @@ interface Ctx { openInsider: (slug: string, name: string) => void; openTicker: (
 function InsiderRow({ r, color, sign, ctx }: { r: InsiderGroup; color: string; sign: "+" | "−"; ctx: Ctx }) {
   return (
     <div className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0 cursor-pointer rounded hover:bg-muted/40 px-1" onClick={() => ctx.openInsider(r.slug, r.name)} title={`${r.name}${r.role ? ` · ${r.role}` : ""} 거래 보기`}>
-      <span className="font-semibold text-[13px] shrink-0">{r.name}</span>
-      <RoleBadges role={r.role} />
-      <ChevronRight className="h-3 w-3 text-primary shrink-0" />
-      <span className="ml-auto text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
+      {/* 이름(말줄임+호버 전체) + 직책 티어 라벨을 이름 아래 스티커로 */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <span className="font-semibold text-[13px] truncate" title={r.name}>{r.name}</span>
+          <ChevronRight className="h-3 w-3 text-primary shrink-0" />
+        </div>
+        <RoleBadges role={r.role} className="mt-0.5" />
+      </div>
+      <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
       <span className="text-[12.5px] font-bold tabular-nums shrink-0" style={{ color }}>{sign}{fmtMoney(r.value)}</span>
     </div>
   );
@@ -255,10 +260,14 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
           {groups.map((g) => (
             <div key={g.slug} className="border-t border-border/50 pt-2">
               <div className="flex items-center gap-1.5 cursor-pointer rounded hover:bg-muted/40 px-1 py-0.5" onClick={() => ctx.openInsider(g.slug, g.name)} title={`${g.name} 거래 보기`}>
-                <span className="font-semibold text-[13px]">{g.name}</span>
-                <RoleBadges role={g.role} />
-                <ChevronRight className="h-3 w-3 text-primary shrink-0" />
-                <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">{g.list.length}건</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-[13px] truncate" title={g.name}>{g.name}</span>
+                    <ChevronRight className="h-3 w-3 text-primary shrink-0" />
+                  </div>
+                  <RoleBadges role={g.role} className="mt-0.5" />
+                </div>
+                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{g.list.length}건</span>
               </div>
               <div className="mt-1 ml-1">
                 {[...g.list].sort((a, b) => b.txnDate - a.txnDate).map((t) => (
