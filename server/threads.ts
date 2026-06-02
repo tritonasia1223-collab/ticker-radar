@@ -82,18 +82,24 @@ export async function collectThreads(): Promise<CollectResult> {
     else groups.set(since, [a]);
   }
 
+  // The Threads actor is slow; Apify's run-sync endpoint caps a run at 300s. Chunk each
+  // since-group into small batches of handles so no single run exceeds the limit.
+  const BATCH = 3;
   let runId: string | undefined, datasetId: string | undefined, attempts = 0;
   const items: any[] = [];
   try {
     for (const [since, accts] of groups) {
-      const r = await runActorWithRetry(token, actor, {
-        mode: "posts",
-        usernames: accts.map((a) => a.handle),
-        maxPosts,
-        postedAfter: since, // only posts on/after this date
-      });
-      items.push(...r.items);
-      runId = r.runId; datasetId = r.datasetId; attempts = Math.max(attempts, r.attempts);
+      for (let i = 0; i < accts.length; i += BATCH) {
+        const batch = accts.slice(i, i + BATCH);
+        const r = await runActorWithRetry(token, actor, {
+          mode: "posts",
+          usernames: batch.map((a) => a.handle),
+          maxPosts,
+          postedAfter: since, // only posts on/after this date
+        });
+        items.push(...r.items);
+        runId = r.runId; datasetId = r.datasetId; attempts = Math.max(attempts, r.attempts);
+      }
     }
   } catch (e: any) {
     await storage.updateSyncLog(logId, { status: "failed", finishedAt: Date.now(), error: String(e?.message || e), attempts: 3 });
