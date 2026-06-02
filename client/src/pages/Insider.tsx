@@ -51,8 +51,8 @@ type Tier = 1 | 2 | 3 | 4;
 const TIER_META: Record<Tier, { name: string; cls: string }> = {
   1: { name: "전사·재무", cls: "bg-rose-500/15 text-rose-700 border-rose-500/40 dark:bg-rose-500/20 dark:text-rose-200" },
   2: { name: "운영 임원", cls: "bg-amber-500/15 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200" },
-  3: { name: "기능 임원", cls: "bg-slate-500/15 text-slate-700 border-slate-400/50 dark:bg-slate-500/20 dark:text-slate-300" },
-  4: { name: "이사", cls: "bg-zinc-500/15 text-zinc-600 border-zinc-500/40 dark:bg-zinc-700/40 dark:text-zinc-400" },
+  3: { name: "기능 임원", cls: "bg-teal-500/15 text-teal-700 border-teal-500/40 dark:bg-teal-500/20 dark:text-teal-300" },
+  4: { name: "이사", cls: "bg-zinc-500/20 text-zinc-600 border-zinc-500/40 dark:bg-zinc-500/25 dark:text-zinc-300" },
 };
 const OWNER_CLS = "bg-violet-500/15 text-violet-700 border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200";
 const UNCONF_CLS = "border-dashed border-muted-foreground/50 text-muted-foreground bg-transparent";
@@ -106,9 +106,9 @@ function RoleBadges({ role, className = "" }: { role: string | null; className?:
 // 티어 색상 범례 (한 줄)
 function TierLegend() {
   const items = [
-    { label: "전사·재무", cls: TIER_META[1].cls }, { label: "운영", cls: TIER_META[2].cls },
-    { label: "기능", cls: TIER_META[3].cls }, { label: "이사", cls: TIER_META[4].cls },
-    { label: "대주주", cls: OWNER_CLS }, { label: "미확인", cls: UNCONF_CLS },
+    { label: "전사·재무", cls: TIER_META[1].cls }, { label: "대주주", cls: OWNER_CLS },
+    { label: "운영", cls: TIER_META[2].cls }, { label: "기능", cls: TIER_META[3].cls },
+    { label: "이사", cls: TIER_META[4].cls }, { label: "미확인", cls: UNCONF_CLS },
   ];
   return (
     <div className="flex flex-wrap items-center gap-1 mb-2.5">
@@ -119,12 +119,13 @@ function TierLegend() {
 }
 
 // 직책 티어 설명 — 헤더에 호버 버튼. 각 티어 예시 직책 + 왜 이렇게 나눴는지.
-const TIER_GUIDE: { label: string; cls: string; ex: string; why: string }[] = [
-  { label: "전사·재무", cls: TIER_META[1].cls, ex: "CEO · 회장(Chairman) · CFO", why: "전사 실적 + 단기 재무를 동시에 봄 — 정보 접근 최상" },
-  { label: "운영", cls: TIER_META[2].cls, ex: "COO · (운영)President · CTO · 핵심 사업부 사장", why: "사업 실태를 직접 관할. 테크·바이오는 CTO도 사실상 최상위급" },
-  { label: "기능", cls: TIER_META[3].cls, ex: "회계(CAO·PAO·Controller) · 법무(CLO·General Counsel) · CHRO · CMO", why: "전문 영역은 깊지만 전사 시야는 좁음" },
-  { label: "이사", cls: TIER_META[4].cls, ex: "Director (사내·사외 이사)", why: "이사회는 분기 미팅 수준 — 일상 실태 정보가 약해 노이즈가 가장 많음" },
-  { label: "대주주", cls: OWNER_CLS, ex: "10% Owner (창업자·VC·행동주의 펀드)", why: "직책과 독립적인 고시그널. 단, 거의-전량 매도는 PE 블록청산이라 점수 캡" },
+// 가중치 순서대로 — 대주주(0.9)는 운영·기능·이사보다 위(고시그널). 최하위 아님.
+const TIER_GUIDE: { label: string; w: string; cls: string; ex: string; why: string }[] = [
+  { label: "전사·재무", w: "×1.0", cls: TIER_META[1].cls, ex: "CEO · 회장(Chairman) · CFO", why: "전사 실적 + 단기 재무를 동시에 봄 — 정보 접근 최상" },
+  { label: "대주주", w: "×0.9", cls: OWNER_CLS, ex: "10% Owner (창업자·VC·행동주의 펀드)", why: "자기 돈·큰 지분이라 정보·확신 최상위급. 직책과 독립적. 단, 거의-전량 매도는 PE 블록청산이라 점수 캡" },
+  { label: "운영", w: "×0.7", cls: TIER_META[2].cls, ex: "COO · (운영)President · CTO · 핵심 사업부 사장", why: "사업 실태를 직접 관할. 테크·바이오는 CTO도 사실상 최상위급" },
+  { label: "기능", w: "×0.4", cls: TIER_META[3].cls, ex: "회계(CAO·PAO·Controller) · 법무(CLO·General Counsel) · CHRO · CMO", why: "전문 영역은 깊지만 전사 시야는 좁음" },
+  { label: "이사", w: "×0.25", cls: TIER_META[4].cls, ex: "Director (사내·사외 이사)", why: "이사회는 분기 미팅 수준 — 일상 실태 정보가 약해 노이즈가 가장 많음" },
 ];
 function TierGuide() {
   return (
@@ -140,7 +141,10 @@ function TierGuide() {
         <div className="space-y-0">
           {TIER_GUIDE.map((t) => (
             <div key={t.label} className="flex items-start gap-2 py-1.5 border-t">
-              <span className={`text-[10px] font-bold border rounded px-1.5 py-0.5 shrink-0 mt-0.5 ${t.cls}`}>{t.label}</span>
+              <div className="flex flex-col items-center shrink-0 mt-0.5 w-[58px]">
+                <span className={`text-[10px] font-bold border rounded px-1.5 py-0.5 w-full text-center ${t.cls}`}>{t.label}</span>
+                <span className="text-[9px] text-muted-foreground/70 tabular-nums mt-0.5">{t.w}</span>
+              </div>
               <div className="min-w-0">
                 <div className="text-[11.5px] font-medium leading-snug">{t.ex}</div>
                 <div className="text-[10.5px] text-muted-foreground leading-snug">{t.why}</div>
