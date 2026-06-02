@@ -238,8 +238,16 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
 }
 
 // ----- 클러스터 시그널 위젯 (메인) -----
-const pctLabel = (r: number) => (r >= 1 ? "100%+" : `${Math.round(r * 100)}%`);
-const pctCls = (r: number) => (r > 0.5 ? "bg-amber-500/15 text-amber-700 font-bold dark:bg-amber-500/20 dark:text-amber-200" : r >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50");
+const mdDate = (ms: number) => { const d = new Date(ms); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+// 보유 대비 비중을 방향까지 담은 한 단어로 번역: 신규 매수 / X% 추가 / 전량 매도 / X% 매도. (숫자 100%+ 의 모호함 제거)
+function pctSemantic(pct: number | null, side: string): { label: string; cls: string } {
+  if (pct == null) return { label: "—", cls: "text-muted-foreground/50" };
+  const cls = pct > 0.5 ? "text-amber-700 font-bold dark:text-amber-300" : pct >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50";
+  const label = side === "buy"
+    ? (pct >= 1 ? "신규 매수" : `${Math.round(pct * 100)}% 추가`)
+    : (pct >= 1 ? "전량 매도" : `${Math.round(pct * 100)}% 매도`);
+  return { label, cls };
+}
 
 // 영구 플래그(얇음/구조적?) — Popover로 의미 설명. portal 렌더라 좁은 카드에서 안 잘리고, 클릭·탭·키보드 모두 동작.
 function FlagInfo({ label, cls, tip }: { label: string; cls: string; tip: string }) {
@@ -260,7 +268,7 @@ function ClusterCard({ c, onPick }: { c: Cluster; onPick: (sym: string) => void 
   const isBuy = c.side === "buy";
   const color = isBuy ? BUY : SELL;
   return (
-    <div onClick={() => onPick(c.symbol)} className="shrink-0 w-[244px] rounded-lg border p-3 cursor-pointer hover:border-primary bg-background/50" style={{ borderLeft: `3px solid ${color}` }} data-testid={`cluster-${c.symbol}-${c.side}`}>
+    <div onClick={() => onPick(c.symbol)} className="shrink-0 w-[258px] rounded-lg border p-3 cursor-pointer hover:border-primary bg-background/50" style={{ borderLeft: `3px solid ${color}` }} data-testid={`cluster-${c.symbol}-${c.side}`}>
       <div className="flex items-center gap-1.5">
         <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(c.symbol) }} />
         <span className="font-bold text-sm">{c.symbol}</span>
@@ -269,19 +277,30 @@ function ClusterCard({ c, onPick }: { c: Cluster; onPick: (sym: string) => void 
         {c.gated && <FlagInfo label="구조적?" cls="bg-zinc-500/15 text-zinc-600 dark:bg-zinc-700/50 dark:text-zinc-400" tip="임원 다수가 동시에 보유 전량 매도 — 외국 발행사의 보고 아티팩트일 수 있어 점수를 낮췄습니다." />}
         <span className="ml-auto text-2xl font-bold tabular-nums shrink-0" style={{ color }}>{c.insiderCount}<span className="text-[11px] font-normal">명</span></span>
       </div>
-      <div className="text-[10px] text-muted-foreground mt-1">{c.spanDays}일 · {fmtMoney(c.totalValue)} · {ymd(c.windowFromMs)}~{ymd(c.windowToMs)}</div>
-      <div className="mt-2 space-y-1">
-        {c.participants.slice(0, 4).map((p) => (
-          <div key={p.slug} className="flex items-center gap-1 text-[11px]">
-            <span className="truncate max-w-[78px] shrink-0">{p.name}</span>
-            <RoleBadges role={p.role} />
-            <span className="ml-auto flex items-center gap-1 shrink-0">
-              {p.pctOfHoldings != null && <span className={`text-[9.5px] tabular-nums px-1 rounded ${pctCls(p.pctOfHoldings)}`} title="보유 대비 거래 비중">{pctLabel(p.pctOfHoldings)}</span>}
-              <span className="text-[10px] tabular-nums text-muted-foreground/80">{fmtMoney(p.value)}</span>
-            </span>
-          </div>
-        ))}
-        {c.participants.length > 4 && <div className="text-[10px] text-muted-foreground">+{c.participants.length - 4}명 더</div>}
+      {/* 메타: 한 줄을 라벨 단 칩으로 — 각 숫자가 '뭔지'를 달고 있음 */}
+      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
+        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
+      </div>
+      {/* 컬럼 헤더 */}
+      <div className="flex items-center text-[9px] text-muted-foreground/70 mt-2 mb-0.5 px-0.5">
+        <span className="flex-1">인사이더</span>
+        <span className="w-[58px] text-right">보유 대비</span>
+        <span className="w-[50px] text-right">금액</span>
+      </div>
+      <div className="space-y-1">
+        {c.participants.slice(0, 4).map((p) => {
+          const sem = pctSemantic(p.pctOfHoldings, c.side);
+          return (
+            <div key={p.slug} className="flex items-center gap-1 text-[11px] px-0.5">
+              <span className="truncate max-w-[64px] shrink-0">{p.name}</span>
+              <RoleBadges role={p.role} />
+              <span className={`ml-auto w-[58px] text-right text-[9.5px] tabular-nums shrink-0 ${sem.cls}`} title="거래 직전 보유 대비 거래 비중">{sem.label}</span>
+              <span className="w-[50px] text-right text-[10px] tabular-nums text-muted-foreground/80 shrink-0">{fmtMoney(p.value)}</span>
+            </div>
+          );
+        })}
+        {c.participants.length > 4 && <div className="text-[10px] text-muted-foreground px-0.5">+{c.participants.length - 4}명 더</div>}
       </div>
     </div>
   );
@@ -471,6 +490,12 @@ export default function Insider() {
       ) : (
         <>
         <ClusterWidget from={from} to={to} onPick={(s) => setSelSymbol(s)} />
+        {/* 상단(클러스터=다수 합의) / 하단(전체 스캔=단독 포함) 시각적 구분 */}
+        <div className="flex items-center gap-3 my-5">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[11px] text-muted-foreground">📋 전체 종목 스캔 — 단독 포함</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
         <div className="grid gap-5 items-start lg:grid-cols-[1.5fr_1fr]">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">

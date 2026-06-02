@@ -125,6 +125,7 @@ export const fmtQ = (q: string) => q.replace("Q", " Q");
 
 export function fmtMoney(v: number): string {
   const a = Math.abs(v);
+  if (a >= 1e9) return `$${(v / 1e9).toFixed(2).replace(/\.?0+$/, "")}B`;
   if (a >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (a >= 1e3) return `$${Math.round(v / 1e3)}K`;
   return `$${Math.round(v)}`;
