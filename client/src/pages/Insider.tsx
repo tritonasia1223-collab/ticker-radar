@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { UserSearch, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft, Info } from "lucide-react";
 
 const BUY = "#3fb950";
@@ -114,6 +115,41 @@ function TierLegend() {
       <span className="text-[10px] text-muted-foreground mr-0.5">직책 티어(시그널 순):</span>
       {items.map((i) => <span key={i.label} className={`text-[9.5px] font-bold border rounded px-1.5 py-0.5 ${i.cls}`}>{i.label}</span>)}
     </div>
+  );
+}
+
+// 직책 티어 설명 — 헤더에 호버 버튼. 각 티어 예시 직책 + 왜 이렇게 나눴는지.
+const TIER_GUIDE: { label: string; cls: string; ex: string; why: string }[] = [
+  { label: "전사·재무", cls: TIER_META[1].cls, ex: "CEO · 회장(Chairman) · CFO", why: "전사 실적 + 단기 재무를 동시에 봄 — 정보 접근 최상" },
+  { label: "운영", cls: TIER_META[2].cls, ex: "COO · (운영)President · CTO · 핵심 사업부 사장", why: "사업 실태를 직접 관할. 테크·바이오는 CTO도 사실상 최상위급" },
+  { label: "기능", cls: TIER_META[3].cls, ex: "회계(CAO·PAO·Controller) · 법무(CLO·General Counsel) · CHRO · CMO", why: "전문 영역은 깊지만 전사 시야는 좁음" },
+  { label: "이사", cls: TIER_META[4].cls, ex: "Director (사내·사외 이사)", why: "이사회는 분기 미팅 수준 — 일상 실태 정보가 약해 노이즈가 가장 많음" },
+  { label: "대주주", cls: OWNER_CLS, ex: "10% Owner (창업자·VC·행동주의 펀드)", why: "직책과 독립적인 고시그널. 단, 거의-전량 매도는 PE 블록청산이라 점수 캡" },
+];
+function TierGuide() {
+  return (
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <button type="button" className="h-9 inline-flex items-center gap-1 rounded-md border bg-background px-2.5 text-[12px] text-muted-foreground hover:text-foreground hover:border-primary cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-ring" aria-label="직책 티어 기준 설명">
+          직책 티어 <Info className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-[360px] p-3">
+        <div className="text-xs font-semibold mb-1">직책 티어 = 정보 접근도(시그널 가치)</div>
+        <p className="text-[11px] text-muted-foreground mb-2 leading-snug">같은 매수·매도라도 <b>누가</b> 했느냐로 정보가치가 다릅니다. 색은 직책 문자열이 아니라 그 사람이 회사 실태를 얼마나 아는지로 가중합니다. (복합 직책은 최상위 시그널이 대표)</p>
+        <div className="space-y-0">
+          {TIER_GUIDE.map((t) => (
+            <div key={t.label} className="flex items-start gap-2 py-1.5 border-t">
+              <span className={`text-[10px] font-bold border rounded px-1.5 py-0.5 shrink-0 mt-0.5 ${t.cls}`}>{t.label}</span>
+              <div className="min-w-0">
+                <div className="text-[11.5px] font-medium leading-snug">{t.ex}</div>
+                <div className="text-[10.5px] text-muted-foreground leading-snug">{t.why}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
@@ -467,6 +503,7 @@ export default function Insider() {
         <h1 className="text-xl font-semibold flex items-center gap-2"><UserSearch className="h-5 w-5 text-primary" /> 내부자 거래</h1>
         <span className="text-xs text-muted-foreground">SEC Form 4 · 추적 종목(우리 DB + S&P500)</span>
         <div className="ml-auto flex items-end gap-3 flex-wrap">
+          <TierGuide />
           <div><div className="text-[11px] text-muted-foreground mb-1">기간</div>
             <Select value={period} onValueChange={(v) => { setPeriod(v); setSelSymbol(null); }}>
               <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
