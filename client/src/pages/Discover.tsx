@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SurgeRow, Stats, SyncLog, Tweet, timeAgo, shortCompanyName } from "@/lib/api";
+import { SurgeRow, SectorStock, Stats, SyncLog, Tweet, timeAgo, shortCompanyName, changeColorClass } from "@/lib/api";
+import SectorTreemap from "@/components/SectorTreemap";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -24,6 +25,16 @@ function StatCard({ icon: Icon, label, value }: { icon: any; label: string; valu
   );
 }
 
+// Minimal shape the detail sheet needs — satisfied by both a SurgeRow and a mapped SectorStock.
+type DetailRow = {
+  symbol: string;
+  companyName: string | null;
+  companyNameKo: string | null;
+  recentAccounts: number;
+  recentMentions: number;
+  changePercent: number;
+};
+
 // Compact name shown in the list: Korean first, else short English, else the ticker.
 function nameOf(row: SurgeRow): { primary: string; secondary: string | null } {
   const en = shortCompanyName(row.companyName);
@@ -44,11 +55,10 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-function ChangePct({ pct }: { pct: number }) {
-  const up = pct >= 0;
+function ChangePct({ pct, market }: { pct: number; market: string }) {
   return (
-    <span className={`tabular-nums text-sm ${up ? "text-emerald-500" : "text-rose-500"}`}>
-      {up ? "+" : ""}{pct}%
+    <span className={`tabular-nums text-sm ${changeColorClass(pct, market)}`}>
+      {pct >= 0 ? "+" : ""}{pct}%
     </span>
   );
 }
@@ -69,7 +79,7 @@ export default function Discover() {
   const [windowHours, setWindowHours] = useState("24");
   const [minAccounts, setMinAccounts] = useState("1");
   const [market, setMarket] = useState("us");
-  const [selected, setSelected] = useState<SurgeRow | null>(null);
+  const [selected, setSelected] = useState<DetailRow | null>(null);
 
   const { data: stats } = useQuery<Stats>({ queryKey: ["/api/stats"] });
   const { data: surge, isLoading } = useQuery<SurgeRow[]>({
@@ -132,6 +142,15 @@ export default function Discover() {
         </div>
       </div>
 
+      <SectorTreemap
+        market={market}
+        windowHours={windowHours}
+        onPickStock={(s: SectorStock) => setSelected({
+          symbol: s.symbol, companyName: s.nameEn, companyNameKo: s.nameKo,
+          recentAccounts: s.recentAccounts, recentMentions: s.recentMentions, changePercent: s.changePercent,
+        })}
+      />
+
       {isLoading ? (
         <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : rows.length === 0 ? (
@@ -174,7 +193,7 @@ export default function Discover() {
                 </div>
                 <div className="w-12 text-right tabular-nums text-sm font-medium">{row.recentAccounts}</div>
                 <div className="w-14 text-right tabular-nums text-sm text-muted-foreground">{row.recentMentions.toLocaleString()}</div>
-                <div className="w-16 text-right"><ChangePct pct={row.changePercent} /></div>
+                <div className="w-16 text-right"><ChangePct pct={row.changePercent} market={market} /></div>
                 <div className="w-20 hidden md:block"><Sparkline data={row.trend} /></div>
               </div>
             );
@@ -183,12 +202,12 @@ export default function Discover() {
         </Card>
       )}
 
-      <SymbolDetail row={selected} onClose={() => setSelected(null)} />
+      <SymbolDetail row={selected} market={market} onClose={() => setSelected(null)} />
     </div>
   );
 }
 
-function SymbolDetail({ row, onClose }: { row: SurgeRow | null; onClose: () => void }) {
+function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market: string; onClose: () => void }) {
   const symbol = row?.symbol;
   const { data: timeline } = useQuery<{ day: string; count: number }[]>({
     queryKey: ["/api/symbols", symbol, "timeline"],
@@ -218,7 +237,7 @@ function SymbolDetail({ row, onClose }: { row: SurgeRow | null; onClose: () => v
             </SheetHeader>
 
             <div className="grid grid-cols-3 gap-2 my-4">
-              <Card className="p-3"><div className="text-xs text-muted-foreground">급상승 점수</div><div className="text-lg font-semibold tabular-nums">{row.surgeScore.toFixed(0)}</div></Card>
+              <Card className="p-3"><div className="text-xs text-muted-foreground">증가율</div><div className={`text-lg font-semibold tabular-nums ${changeColorClass(row.changePercent, market)}`}>{row.changePercent >= 0 ? "+" : ""}{row.changePercent}%</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 계정수</div><div className="text-lg font-semibold tabular-nums">{row.recentAccounts}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 언급</div><div className="text-lg font-semibold tabular-nums">{row.recentMentions}</div></Card>
             </div>

@@ -28,8 +28,15 @@ function classifyAsset(name?: string | null): string | null {
 
 async function main() {
   if (!KEY) { console.error("FINNHUB_API_KEY 가 .env 에 없습니다."); process.exit(1); }
-  // 정치인 + 내부자거래에서 실제로 거래된 종목 전부 (SNS 사전 전체는 제외 — 너무 큼)
-  const all = [...new Set([...(await storage.distinctTradedSymbols()), ...(await storage.distinctInsiderSymbols())])];
+  // 정치인 + 내부자거래 + SNS 언급 종목. SNS 언급 중 KR(6자리 코드)은 네이버 업종이
+  // 따로 채우므로 제외 — Finnhub 는 bare 6-digit 을 못 푼다.
+  const krSet = new Set((await storage.listTickers()).filter((t) => t.market === "kr").map((t) => t.symbol));
+  const mentionedUs = (await storage.distinctMentionedSymbols()).filter((s) => !krSet.has(s));
+  const all = [...new Set([
+    ...(await storage.distinctTradedSymbols()),
+    ...(await storage.distinctInsiderSymbols()),
+    ...mentionedUs,
+  ])];
   // 섹터가 채워진(non-null) 것만 '완료' 처리 → null 인 종목은 재시도(ETF/채권 분류 적용)
   const done = new Set((await storage.listTickerSectors()).filter((t) => t.sector).map((t) => t.symbol));
   const nameBySymbol = new Map((await storage.listTickers()).map((t) => [t.symbol, t.companyName]));

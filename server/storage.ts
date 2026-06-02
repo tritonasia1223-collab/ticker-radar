@@ -56,6 +56,85 @@ export interface SurgeRow {
   trend: number[];       // daily mention counts over the last 14 days (sparkline)
 }
 
+// One drill-down stock inside a sector tile.
+export interface SectorStock {
+  symbol: string;
+  nameKo: string | null;
+  nameEn: string | null;
+  recentMentions: number;
+  recentAccounts: number;
+  changePercent: number;
+}
+// One sector tile for the discovery treemap. size = recentMentions, color = changePercent.
+export interface SectorMapRow {
+  sector: string;          // KR: Korean 업종; US: English sector (Korean-mapped on client)
+  recentMentions: number;
+  recentAccounts: number;  // distinct accounts mentioning ANY stock in the sector
+  priorMentions: number;
+  changePercent: number;   // recent vs prior window
+  stocks: SectorStock[];   // members mentioned in window, sorted newly-rising first
+}
+
+// Collapse the messy raw industry strings (Nasdaq for US, Naver 업종 for KR) into clean,
+// merged Korean categories for the treemap — so "Computer Software: Prepackaged Software"
+// and "EDP Services" don't show up as separate tiles, and "기술" is split into "반도체" etc.
+const US_INDUSTRY_KO: Record<string, string> = {
+  "Semiconductors": "반도체",
+  "Computer Software: Programming Data Processing": "소프트웨어",
+  "Computer Software: Prepackaged Software": "소프트웨어",
+  "EDP Services": "IT서비스",
+  "Business Services": "IT서비스",
+  "Diversified Commercial Services": "IT서비스",
+  "Computer Manufacturing": "컴퓨터·하드웨어",
+  "Computer peripheral equipment": "컴퓨터·하드웨어",
+  "Office Equipment/Supplies/Services": "컴퓨터·하드웨어",
+  "Electronic Components": "전자부품",
+  "Industrial Machinery/Components": "산업기계",
+  "Construction/Ag Equipment/Trucks": "산업기계",
+  "Auto Manufacturing": "자동차",
+  "Shoe Manufacturing": "소비재",
+  "Recreational Games/Products/Toys": "소비재",
+  "Restaurants": "외식·소비",
+  "Catalog/Specialty Distribution": "유통·소매",
+  "Department/Specialty Retail Stores": "유통·소매",
+  "Other Consumer Services": "소비서비스",
+  "Services-Misc. Amusement & Recreation": "소비서비스",
+  "Finance: Consumer Services": "금융",
+  "Investment Bankers/Brokers/Service": "증권",
+  "Major Banks": "은행",
+  "Commercial Banks": "은행",
+  "Property-Casualty Insurers": "보험",
+  "Broadcasting": "미디어",
+  "Cable & Other Pay Television Services": "미디어",
+  "Radio And Television Broadcasting And Communications Equipment": "통신장비",
+  "Telecommunications Equipment": "통신장비",
+  "Military/Government/Technical": "우주항공·방산",
+  "Aerospace": "우주항공·방산",
+  "Biotechnology: Pharmaceutical Preparations": "바이오·제약",
+  "Biotechnology: Biological Products (No Diagnostic Substances)": "바이오·제약",
+  "Medical/Nursing Services": "헬스케어",
+  "Electrical Equipment": "전기장비",
+  "Engineering & Construction": "건설",
+  "Transportation Services": "운송",
+  "Mining & Quarrying of Nonmetallic Minerals (No Fuels)": "소재",
+  // coarse Nasdaq sector fallbacks (when industry was blank at seed time)
+  "Technology": "기술", "Finance": "금융", "Health Care": "헬스케어",
+  "Consumer Discretionary": "임의소비재", "Industrials": "산업재", "Energy": "에너지",
+};
+// Verbose Naver 업종 → short label (most 업종 are already short and pass through).
+const KR_UPJONG_KO: Record<string, string> = {
+  "반도체와반도체장비": "반도체", "전자장비와기기": "전자장비", "우주항공과국방": "우주항공·방산",
+  "양방향미디어와서비스": "인터넷·미디어", "다각화된통신서비스": "통신", "생명과학도구및서비스": "생명과학",
+  "건강관리기술": "헬스케어", "건강관리장비와용품": "의료기기", "전문소매": "소매",
+  "식품과기본식료품소매": "식품소매", "무역회사와판매업체": "무역·유통", "에너지장비및서비스": "에너지장비",
+  "복합기업": "지주·복합", "기계류": "기계", "건축자재": "건자재", "식품과음료": "식음료",
+};
+function normalizeSector(raw: string | null, market: string): string {
+  if (!raw) return "기타";
+  if (market === "kr") return KR_UPJONG_KO[raw] || raw;
+  return US_INDUSTRY_KO[raw] || raw;
+}
+
 // Politician with its committee ids attached (for the congress UI)
 export interface PoliticianWithCommittees extends Politician {
   committees: string[];
@@ -138,6 +217,7 @@ export interface IStorage {
   // mentions
   insertMentionIfNew(m: InsertMention): Promise<boolean>;
   surge(windowHours: number, minAccounts: number, market?: string): Promise<SurgeRow[]>;
+  sectorMap(windowHours: number, market?: string): Promise<SectorMapRow[]>;
   symbolTimeline(symbol: string, days: number): Promise<{ day: string; count: number }[]>;
 
   // sync logs
@@ -167,6 +247,7 @@ export interface IStorage {
   setTickerSector(symbol: string, sector: string | null): Promise<void>;
   listTickerSectors(): Promise<TickerSector[]>;
   distinctTradedSymbols(): Promise<string[]>;
+  distinctMentionedSymbols(): Promise<string[]>;
 
   // --- Insider trading (Form 4) ---
   upsertInsider(i: InsertInsider): Promise<number>;
@@ -334,6 +415,86 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.recentAccounts - a.recentAccounts || b.recentMentions - a.recentMentions);
   }
 
+  // Sector treemap for discovery: group window mentions by 업종/sector. Tiles sized by
+  // recentMentions, colored by changePercent (recent vs prior window). Each tile carries its
+  // member stocks (sorted newly-rising first) so the client can drill down without another call.
+  async sectorMap(windowHours: number, market = "us"): Promise<SectorMapRow[]> {
+    const now = Date.now();
+    const winMs = windowHours * 3600 * 1000;
+    const recentStart = now - winMs;
+    const priorStart = now - 2 * winMs;
+    // KR = tickers.market 'kr'; US = everything else (incl. bare cashtags absent from tickers).
+    const marketCond = market === "kr"
+      ? sql`t.market = 'kr'`
+      : sql`(t.market IS DISTINCT FROM 'kr')`;
+
+    // Per-symbol recent/prior counts within the prior+recent window, joined to sector + names.
+    const rows = (await db.execute(sql`
+      SELECT m.symbol AS symbol,
+             COALESCE(ts.sector, '기타') AS sector,
+             t.company_name AS "nameEn",
+             t.company_name_ko AS "nameKo",
+             SUM(CASE WHEN m.tweeted_at >= ${recentStart} THEN 1 ELSE 0 END) AS "recentMentions",
+             COUNT(DISTINCT CASE WHEN m.tweeted_at >= ${recentStart} THEN m.account_id END) AS "recentAccounts",
+             SUM(CASE WHEN m.tweeted_at >= ${priorStart} AND m.tweeted_at < ${recentStart} THEN 1 ELSE 0 END) AS "priorMentions"
+      FROM mentions m
+      LEFT JOIN tickers t ON t.symbol = m.symbol
+      LEFT JOIN ticker_sectors ts ON ts.symbol = m.symbol
+      WHERE m.tweeted_at >= ${priorStart} AND ${marketCond}
+      GROUP BY m.symbol, ts.sector, t.company_name, t.company_name_ko
+    `)) as unknown as any[];
+
+    // Distinct (sector, account) pairs in the recent window. We normalize the raw sector in JS
+    // and count distinct accounts per *normalized* sector (can't be summed — accounts overlap).
+    const acctRows = (await db.execute(sql`
+      SELECT COALESCE(ts.sector, '기타') AS sector, m.account_id AS "accountId"
+      FROM mentions m
+      LEFT JOIN tickers t ON t.symbol = m.symbol
+      LEFT JOIN ticker_sectors ts ON ts.symbol = m.symbol
+      WHERE m.tweeted_at >= ${recentStart} AND ${marketCond}
+      GROUP BY ts.sector, m.account_id
+    `)) as unknown as any[];
+    const acctSet = new Map<string, Set<number>>();
+    for (const r of acctRows) {
+      const key = normalizeSector(r.sector, market);
+      let set = acctSet.get(key);
+      if (!set) { set = new Set(); acctSet.set(key, set); }
+      set.add(Number(r.accountId));
+    }
+
+    const bySector = new Map<string, SectorMapRow>();
+    for (const r of rows) {
+      const recent = Number(r.recentMentions) || 0;
+      if (recent === 0) continue; // only sectors active in the recent window
+      const prior = Number(r.priorMentions) || 0;
+      const sector = normalizeSector(r.sector, market);
+      let s = bySector.get(sector);
+      if (!s) {
+        s = { sector, recentMentions: 0, recentAccounts: acctSet.get(sector)?.size ?? 0, priorMentions: 0, changePercent: 0, stocks: [] };
+        bySector.set(sector, s);
+      }
+      s.recentMentions += recent;
+      s.priorMentions += prior;
+      s.stocks.push({
+        symbol: r.symbol,
+        nameKo: r.nameKo ?? null,
+        nameEn: r.nameEn ?? null,
+        recentMentions: recent,
+        recentAccounts: Number(r.recentAccounts) || 0,
+        changePercent: Math.round(((recent + 1) / (prior + 1) - 1) * 100),
+      });
+    }
+
+    const out = [...bySector.values()];
+    for (const s of out) {
+      s.changePercent = Math.round(((s.recentMentions + 1) / (s.priorMentions + 1) - 1) * 100);
+      // drill-down surfaces newly-rising names first: by jump, then by breadth/volume.
+      s.stocks.sort((a, b) => b.changePercent - a.changePercent || b.recentAccounts - a.recentAccounts || b.recentMentions - a.recentMentions);
+    }
+    // biggest tiles first (size = recentMentions).
+    return out.sort((a, b) => b.recentMentions - a.recentMentions);
+  }
+
   async symbolTimeline(symbol: string, days: number) {
     const start = Date.now() - days * 86400 * 1000;
     const rows = (await db.execute(sql`
@@ -474,6 +635,11 @@ export class DatabaseStorage implements IStorage {
   async listTickerSectors() { return db.select().from(tickerSectors); }
   async distinctTradedSymbols() {
     const r = await db.selectDistinct({ symbol: politicalTrades.symbol }).from(politicalTrades);
+    return r.map((x) => x.symbol);
+  }
+
+  async distinctMentionedSymbols() {
+    const r = await db.selectDistinct({ symbol: mentions.symbol }).from(mentions);
     return r.map((x) => x.symbol);
   }
 

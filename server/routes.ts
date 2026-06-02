@@ -49,6 +49,13 @@ export function registerRoutes(app: Express) {
     res.json(await storage.surge(windowHours, minAccounts, market));
   });
 
+  // Sector treemap for the discovery dashboard (sized by mentions, colored by surge).
+  app.get("/api/sector-map", async (req, res) => {
+    const windowHours = Number(req.query.windowHours ?? 24);
+    const market = req.query.market === "kr" ? "kr" : "us";
+    res.json(await storage.sectorMap(windowHours, market));
+  });
+
   app.get("/api/symbols/:symbol/timeline", async (req, res) => {
     const days = Number(req.query.days ?? 14);
     res.json(await storage.symbolTimeline(req.params.symbol, days));

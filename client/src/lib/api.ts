@@ -27,6 +27,37 @@ export interface SurgeRow {
   trend: number[];
 }
 
+export interface SectorStock {
+  symbol: string;
+  nameKo: string | null;
+  nameEn: string | null;
+  recentMentions: number;
+  recentAccounts: number;
+  changePercent: number;
+}
+export interface SectorMapRow {
+  sector: string;
+  recentMentions: number;
+  recentAccounts: number;
+  priorMentions: number;
+  changePercent: number;
+  stocks: SectorStock[];
+}
+
+// Sector labels are already normalized to clean Korean by the server (storage.normalizeSector);
+// keep a passthrough here so callers don't need to special-case.
+export function sectorLabel(raw: string): string {
+  return raw;
+}
+
+// Up/down text color by market convention: US = green up / red down; KR = red up / blue down.
+export function changeColorClass(pct: number, market: string): string {
+  const up = pct >= 0;
+  return market === "kr"
+    ? (up ? "text-rose-500" : "text-blue-500")
+    : (up ? "text-emerald-500" : "text-rose-500");
+}
+
 export interface Tweet {
   id: number;
   tweetId: string;
