@@ -653,7 +653,7 @@ export class DatabaseStorage implements IStorage {
       // 인사이더별 합산 + 거래직후 보유량(최신 거래 기준) 추적
       const byIns = new Map<string, ClusterParticipant & { _lastDate: number }>();
       for (const t of bestTrades) {
-        const e = byIns.get(t.slug) || { slug: t.slug, name: t.name, role: null, value: 0, trades: 0, qty: 0, sharesAfter: null, pctOfHoldings: null, _lastDate: -1 };
+        const e = byIns.get(t.slug) || { slug: t.slug, name: t.name, role: null, value: 0, trades: 0, qty: 0, sharesAfter: null, pctOfHoldings: null, isNew: false, _lastDate: -1 };
         e.value += cleanValue(t); e.trades++; e.qty += Math.abs(Number(t.shares) || 0);
         if (!e.role && t.role) e.role = t.role;
         const td = Number(t.txnDate);
