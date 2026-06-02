@@ -137,7 +137,7 @@ function groupRows(trades: ITrade[], pred: (t: ITrade) => boolean): InsiderGroup
   for (const t of trades) {
     if (!pred(t)) continue;
     const e = m.get(t.insiderSlug) || { name: t.insiderName, slug: t.insiderSlug, role: null, value: 0, shares: 0, n: 0 };
-    e.value += t.value || 0; e.shares += t.shares || 0; e.n++;
+    e.value += Number(t.value) || 0; e.shares += Number(t.shares) || 0; e.n++;
     if (!e.role && t.role) e.role = t.role;
     m.set(t.insiderSlug, e);
   }
@@ -193,7 +193,7 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
   const byInsider = new Map<string, { name: string; slug: string; role: string | null; list: ITrade[] }>();
   for (const t of others) {
     const e = byInsider.get(t.insiderSlug) || { name: t.insiderName, slug: t.insiderSlug, role: null, list: [] };
-    e.list.push(t);
+    e.list.push({ ...t, value: Number(t.value) || 0, shares: Number(t.shares) || 0 });
     if (!e.role && t.role) e.role = t.role;
     byInsider.set(t.insiderSlug, e);
   }
@@ -385,7 +385,7 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
   });
   const list = trades ?? [];
   let buyV = 0, sellV = 0;
-  for (const t of list) { if (t.side === "buy") buyV += t.value || 0; else if (t.side === "sell") sellV += t.value || 0; }
+  for (const t of list) { if (t.side === "buy") buyV += Number(t.value) || 0; else if (t.side === "sell") sellV += Number(t.value) || 0; }
   const companies = new Set(list.map((t) => t.symbol));
   return (
     <div>

@@ -694,7 +694,8 @@ export class DatabaseStorage implements IStorage {
       shares: insiderTrades.shares,
       // 비정상 단가(>$1M/주, 데이터 오류)는 미상 처리 — 인사이더/수량은 유지, 가격·금액만 숨김
       price: sql<number | null>`CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.price} END`,
-      value: sql<number | null>`CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.value} END`,
+      // ::float8 — raw sql 의 bigint 는 postgres.js 가 문자열로 반환해 클라 합산에서 문자열 연결됨. 숫자로 캐스팅.
+      value: sql<number | null>`(CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.value} END)::float8`,
       txnDate: insiderTrades.txnDate, filedDate: insiderTrades.filedDate, role: insiderTrades.role,
       plan10b5: insiderTrades.plan10b5,
     }).from(insiderTrades)
