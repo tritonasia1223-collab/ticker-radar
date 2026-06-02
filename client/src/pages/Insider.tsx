@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserSearch, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { UserSearch, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft, Info } from "lucide-react";
 
 const BUY = "#3fb950";
 const SELL = "#f85149";
@@ -44,14 +45,15 @@ const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 //   대주주(10%+): 창업자·VC·행동주의 → 직책과 독립적인 고시그널 태그 (Director에 묻지 않음)
 //   미확인: See Remarks / 역할 결측 → 회색 임원과 섞지 않고 별도 표기
 type Tier = 1 | 2 | 3 | 4;
+// 색 = 시그널 티어. 라이트/다크 모두 가독되게 mode별 톤(light=진한 텍스트, dark=밝은 텍스트).
 const TIER_META: Record<Tier, { name: string; cls: string }> = {
-  1: { name: "전사·재무", cls: "bg-rose-500/20 text-rose-200 border-rose-400/50" },
-  2: { name: "운영 임원", cls: "bg-amber-500/20 text-amber-200 border-amber-400/50" },
-  3: { name: "기능 임원", cls: "bg-slate-500/20 text-slate-300 border-slate-400/40" },
-  4: { name: "이사", cls: "bg-zinc-700/40 text-zinc-400 border-zinc-600/50" },
+  1: { name: "전사·재무", cls: "bg-rose-500/15 text-rose-700 border-rose-500/40 dark:bg-rose-500/20 dark:text-rose-200" },
+  2: { name: "운영 임원", cls: "bg-amber-500/15 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200" },
+  3: { name: "기능 임원", cls: "bg-slate-500/15 text-slate-700 border-slate-400/50 dark:bg-slate-500/20 dark:text-slate-300" },
+  4: { name: "이사", cls: "bg-zinc-500/15 text-zinc-600 border-zinc-500/40 dark:bg-zinc-700/40 dark:text-zinc-400" },
 };
-const OWNER_CLS = "bg-violet-500/20 text-violet-200 border-violet-400/50";
-const UNCONF_CLS = "border-dashed border-muted-foreground/40 text-muted-foreground/80 bg-transparent";
+const OWNER_CLS = "bg-violet-500/15 text-violet-700 border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200";
+const UNCONF_CLS = "border-dashed border-muted-foreground/50 text-muted-foreground bg-transparent";
 
 // 우선순위 순서(위에서 먼저 매칭 = primary). 복합 직책은 최상위 시그널이 대표.
 const ROLE_RULES: { tier: Tier; label: string; test: (r: string) => boolean }[] = [
@@ -237,7 +239,22 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
 
 // ----- 클러스터 시그널 위젯 (메인) -----
 const pctLabel = (r: number) => (r >= 1 ? "100%+" : `${Math.round(r * 100)}%`);
-const pctCls = (r: number) => (r > 0.5 ? "bg-amber-500/20 text-amber-200 font-bold" : r >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50");
+const pctCls = (r: number) => (r > 0.5 ? "bg-amber-500/15 text-amber-700 font-bold dark:bg-amber-500/20 dark:text-amber-200" : r >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50");
+
+// 영구 플래그(얇음/구조적?) — Popover로 의미 설명. portal 렌더라 좁은 카드에서 안 잘리고, 클릭·탭·키보드 모두 동작.
+function FlagInfo({ label, cls, tip }: { label: string; cls: string; tip: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" onClick={(e) => e.stopPropagation()} title={tip} aria-label={`${label}: ${tip}`}
+          className={`inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded shrink-0 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}`}>
+          {label}<Info className="h-2.5 w-2.5 opacity-70" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-60 text-[11.5px] leading-snug p-2.5">{tip}</PopoverContent>
+    </Popover>
+  );
+}
 
 function ClusterCard({ c, onPick }: { c: Cluster; onPick: (sym: string) => void }) {
   const isBuy = c.side === "buy";
@@ -248,8 +265,8 @@ function ClusterCard({ c, onPick }: { c: Cluster; onPick: (sym: string) => void 
         <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(c.symbol) }} />
         <span className="font-bold text-sm">{c.symbol}</span>
         <span className="text-[10px] text-muted-foreground truncate max-w-[64px]">{sectorLabel(c.sector)}</span>
-        {c.thin && <span className="text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground/80 shrink-0" title="2인 클러스터 — 합의 증거 약함, 점수 페널티">얇음</span>}
-        {c.gated && <span className="text-[9px] px-1 py-0.5 rounded bg-zinc-700/50 text-zinc-400 shrink-0" title="다수 동시 전량청산(post=0 ≥3) — 구조적 이벤트 의심, 점수 게이트">구조적?</span>}
+        {c.thin && <FlagInfo label="얇음" cls="bg-muted text-muted-foreground" tip="참가자 2명 — 합의 근거가 약해 점수를 보정했습니다. 고티어 2인(CEO+CFO 등)은 실제 신호일 수 있습니다." />}
+        {c.gated && <FlagInfo label="구조적?" cls="bg-zinc-500/15 text-zinc-600 dark:bg-zinc-700/50 dark:text-zinc-400" tip="임원 다수가 동시에 보유 전량 매도 — 외국 발행사의 보고 아티팩트일 수 있어 점수를 낮췄습니다." />}
         <span className="ml-auto text-2xl font-bold tabular-nums shrink-0" style={{ color }}>{c.insiderCount}<span className="text-[11px] font-normal">명</span></span>
       </div>
       <div className="text-[10px] text-muted-foreground mt-1">{c.spanDays}일 · {fmtMoney(c.totalValue)} · {ymd(c.windowFromMs)}~{ymd(c.windowToMs)}</div>
