@@ -15,6 +15,7 @@
     "seed:kr-aliases": "tsx script/seed-kr-aliases.ts",
     "seed:kr-sectors": "tsx script/seed-kr-sectors.ts",
     "seed:us-sectors": "tsx script/seed-us-sectors.ts",
+    "collect:interest": "tsx script/collect-interest.ts",
     "reextract": "tsx script/reextract-mentions.ts",
     "seed:congress": "tsx script/seed-congress.ts",
     "collect:congress": "tsx script/collect-apify.ts",

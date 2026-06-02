@@ -11,6 +11,7 @@ import Accounts from "@/pages/Accounts";
 import Feed from "@/pages/Feed";
 import Congress from "@/pages/Congress";
 import Insider from "@/pages/Insider";
+import Interest from "@/pages/Interest";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
@@ -22,6 +23,7 @@ function AppRouter() {
       <Route path="/feed" component={Feed} />
       <Route path="/congress" component={Congress} />
       <Route path="/insider" component={Insider} />
+      <Route path="/interest" component={Interest} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

@@ -58,6 +58,20 @@ export function changeColorClass(pct: number, market: string): string {
     : (up ? "text-emerald-500" : "text-rose-500");
 }
 
+// 관심종목등록 상위 (KIS)
+export interface InterestRow {
+  symbol: string; name: string | null; rank: number; regCount: number;
+  price: number | null; changePct: number | null;
+}
+export interface InterestMover {
+  symbol: string; name: string | null; regNow: number; regPrev: number; delta: number; rank: number;
+}
+export interface InterestTrend {
+  dates: string[];
+  movers: { up: InterestMover[]; down: InterestMover[] };
+  series: { symbol: string; name: string | null; points: number[] }[];
+}
+
 export interface Tweet {
   id: number;
   tweetId: string;

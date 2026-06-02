@@ -1,7 +1,7 @@
 import {
   users, accounts, tweets, tickers, mentions, syncLogs, settings,
   politicians, committees, politicianCommittees, politicalTrades, tickerSectors,
-  insiders, insiderTrades,
+  insiders, insiderTrades, interestSnapshots,
 } from "../shared/schema.js";
 import type {
   User, InsertUser, Account, InsertAccount, Tweet, InsertTweet,
@@ -73,6 +73,20 @@ export interface SectorMapRow {
   priorMentions: number;
   changePercent: number;   // recent vs prior window
   stocks: SectorStock[];   // members mentioned in window, sorted newly-rising first
+}
+
+// 관심종목등록 상위 (KIS) — list + trend types
+export interface InterestRow {
+  symbol: string; name: string | null; rank: number; regCount: number;
+  price: number | null; changePct: number | null;
+}
+export interface InterestMover {
+  symbol: string; name: string | null; regNow: number; regPrev: number; delta: number; rank: number;
+}
+export interface InterestTrend {
+  dates: string[];                       // window snapshot dates, ascending
+  movers: { up: InterestMover[]; down: InterestMover[] };
+  series: { symbol: string; name: string | null; points: number[] }[]; // aligned to `dates`
 }
 
 // Collapse the messy raw industry strings (Nasdaq for US, Naver 업종 for KR) into clean,
@@ -218,6 +232,8 @@ export interface IStorage {
   insertMentionIfNew(m: InsertMention): Promise<boolean>;
   surge(windowHours: number, minAccounts: number, market?: string): Promise<SurgeRow[]>;
   sectorMap(windowHours: number, market?: string): Promise<SectorMapRow[]>;
+  interestToday(): Promise<{ date: string | null; rows: InterestRow[] }>;
+  interestTrend(days: number): Promise<InterestTrend>;
   symbolTimeline(symbol: string, days: number): Promise<{ day: string; count: number }[]>;
 
   // sync logs
@@ -493,6 +509,66 @@ export class DatabaseStorage implements IStorage {
     }
     // biggest tiles first (size = recentMentions).
     return out.sort((a, b) => b.recentMentions - a.recentMentions);
+  }
+
+  // ---- 관심종목등록 상위 (KIS daily snapshots) ----
+  async interestToday(): Promise<{ date: string | null; rows: InterestRow[] }> {
+    const d = (await db.execute(sql`SELECT MAX(date) AS date FROM interest_snapshots`)) as unknown as any[];
+    const date = d[0]?.date ?? null;
+    if (!date) return { date: null, rows: [] };
+    const rows = (await db.execute(sql`
+      SELECT symbol, name, rank, reg_count AS "regCount", price, change_pct AS "changePct"
+      FROM interest_snapshots WHERE date = ${date} ORDER BY rank ASC
+    `)) as unknown as any[];
+    return {
+      date,
+      rows: rows.map((r) => ({
+        symbol: r.symbol, name: r.name ?? null, rank: Number(r.rank), regCount: Number(r.regCount),
+        price: r.price == null ? null : Number(r.price), changePct: r.changePct == null ? null : Number(r.changePct),
+      })),
+    };
+  }
+
+  async interestTrend(days: number): Promise<InterestTrend> {
+    // the last `days` distinct snapshot dates
+    const dateRows = (await db.execute(sql`
+      SELECT DISTINCT date FROM interest_snapshots ORDER BY date DESC LIMIT ${days}
+    `)) as unknown as any[];
+    const dates = dateRows.map((r) => r.date as string).sort();
+    if (dates.length === 0) return { dates: [], movers: { up: [], down: [] }, series: [] };
+    const earliest = dates[0], latest = dates[dates.length - 1];
+
+    const rows = (await db.execute(sql`
+      SELECT date, symbol, name, reg_count AS "regCount", rank
+      FROM interest_snapshots WHERE date >= ${earliest}
+    `)) as unknown as any[];
+
+    // symbol -> { name, perDate: Map<date, regCount>, latestRank }
+    const bySym = new Map<string, { name: string | null; perDate: Map<string, number>; rank: number }>();
+    for (const r of rows) {
+      let e = bySym.get(r.symbol);
+      if (!e) { e = { name: r.name ?? null, perDate: new Map(), rank: 9999 }; bySym.set(r.symbol, e); }
+      e.perDate.set(r.date, Number(r.regCount));
+      if (r.date === latest) e.rank = Number(r.rank);
+    }
+
+    const movers: InterestMover[] = [];
+    for (const [symbol, e] of bySym) {
+      const regNow = e.perDate.get(latest) ?? 0;
+      const regPrev = e.perDate.get(earliest) ?? 0;
+      movers.push({ symbol, name: e.name, regNow, regPrev, delta: regNow - regPrev, rank: e.rank });
+    }
+    const up = movers.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 10);
+    const down = movers.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 10);
+
+    // chart trajectories of the currently most-popular 8 (rising & falling both visible)
+    const top = [...bySym.entries()]
+      .map(([symbol, e]) => ({ symbol, name: e.name, perDate: e.perDate, now: e.perDate.get(latest) ?? 0 }))
+      .sort((a, b) => b.now - a.now)
+      .slice(0, 8);
+    const series = top.map((t) => ({ symbol: t.symbol, name: t.name, points: dates.map((d) => t.perDate.get(d) ?? 0) }));
+
+    return { dates, movers: { up, down }, series };
   }
 
   async symbolTimeline(symbol: string, days: number) {

@@ -56,6 +56,13 @@ export function registerRoutes(app: Express) {
     res.json(await storage.sectorMap(windowHours, market));
   });
 
+  // ---- 관심종목등록 상위 (KIS daily snapshots) ----
+  app.get("/api/interest/today", async (_req, res) => res.json(await storage.interestToday()));
+  app.get("/api/interest/trend", async (req, res) => {
+    const days = Math.min(Number(req.query.days ?? 30), 120);
+    res.json(await storage.interestTrend(days));
+  });
+
   app.get("/api/symbols/:symbol/timeline", async (req, res) => {
     const days = Number(req.query.days ?? 14);
     res.json(await storage.symbolTimeline(req.params.symbol, days));

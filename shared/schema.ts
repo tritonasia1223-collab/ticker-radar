@@ -97,6 +97,28 @@ export const settings = pgTable("settings", {
   value: text("value"),
 });
 
+// --- 국내주식 관심종목등록 상위: 일별 스냅샷 (KIS Open API, FHPST01800000) ---
+// 맵/랭킹(SNS 발굴)과는 별개의 보조 신호 — retail이 관심종목으로 등록한 상위 종목.
+// 하루 한 번 스냅샷을 쌓아, 등록 건수(reg_count) 추이로 인기 상승/하락을 본다.
+export const interestSnapshots = pgTable(
+  "interest_snapshots",
+  {
+    id: serial("id").primaryKey(),
+    date: text("date").notNull(),                        // 'YYYY-MM-DD' (KST) — 스냅샷 날짜
+    symbol: text("symbol").notNull(),                    // 6자리 종목코드
+    name: text("name"),                                  // 한글 종목명
+    rank: integer("rank").notNull(),                     // data_rank (관심등록 순위)
+    regCount: integer("reg_count").notNull().default(0), // inter_issu_reg_csnu (관심 종목 등록 건수)
+    price: integer("price"),                             // stck_prpr (현재가)
+    changePct: real("change_pct"),                       // prdy_ctrt (전일 대비율)
+    collectedAt: bigint("collected_at", { mode: "number" }).notNull(),
+  },
+  (t) => ({
+    byDate: index("idx_interest_date").on(t.date),
+    uniqPerDay: uniqueIndex("uniq_interest").on(t.date, t.symbol), // re-run같은 날 = upsert
+  })
+);
+
 // ---------- Insert schemas & types ----------
 export const insertAccountSchema = createInsertSchema(accounts)
   .pick({ handle: true, displayName: true, note: true, active: true, platform: true })
@@ -123,6 +145,7 @@ export type Mention = typeof mentions.$inferSelect;
 
 export type SyncLog = typeof syncLogs.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
+export type InterestSnapshot = typeof interestSnapshots.$inferSelect;
 
 // keep template auth table so existing template code compiles
 export const users = pgTable("users", {

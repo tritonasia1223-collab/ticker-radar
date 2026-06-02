@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Moon, Sun } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -8,6 +8,7 @@ const NAV = [
   { href: "/accounts", label: "추적 계정", icon: Users },
   { href: "/congress", label: "정치인 거래", icon: Landmark },
   { href: "/insider", label: "내부자 거래", icon: UserSearch },
+  { href: "/interest", label: "관심종목", icon: Star },
 ];
 
 function Logo() {
