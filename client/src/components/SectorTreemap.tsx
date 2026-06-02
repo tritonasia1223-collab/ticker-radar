@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { SectorMapRow, SectorStock, sectorLabel, shortCompanyName, changeColorClass } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Treemap, ResponsiveContainer } from "recharts";
-import { Layers, ChevronRight } from "lucide-react";
+import { Layers, ChevronRight, X } from "lucide-react";
 
 // Tile color encodes mention surge (recent vs prior window), not price. Direction follows
 // each market's convention: US = green up / red down; KR = red up / blue down. Slate = 잠잠.
@@ -50,18 +50,33 @@ function TreeCell(props: any) {
 export default function SectorTreemap({
   market, windowHours, onPickStock,
 }: { market: string; windowHours: string; onPickStock: (s: SectorStock) => void }) {
-  const [selected, setSelected] = useState<string | null>(null);
+  // a clicked tile: which sector + the tile's pixel rect (for anchoring the floating card)
+  const [picked, setPicked] = useState<{ sector: string; x: number; y: number; w: number; h: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const { data, isLoading } = useQuery<SectorMapRow[]>({
     queryKey: ["/api/sector-map", windowHours, market],
     queryFn: async () => (await apiRequest("GET", `/api/sector-map?windowHours=${windowHours}&market=${market}`)).json(),
   });
   const rows = Array.isArray(data) ? data : [];
-  // selected tile defaults to the biggest sector so the drill-down is never empty.
-  const activeSector = selected && rows.some((r) => r.sector === selected) ? selected : rows[0]?.sector ?? null;
-  const active = rows.find((r) => r.sector === activeSector) ?? null;
+  const active = picked && rows.find((r) => r.sector === picked.sector) || null;
 
-  if (isLoading) return <Skeleton className="h-64 w-full mb-4" />;
+  if (isLoading) return <Skeleton className="h-72 w-full mb-4" />;
   if (rows.length === 0) return null;
+
+  // Anchor the floating card beside the clicked tile, clamped inside the treemap box.
+  const CARD_W = 260, CARD_H = 300;
+  let cardStyle: CSSProperties = {};
+  if (picked) {
+    const box = wrapRef.current;
+    const W = box?.clientWidth ?? 800, H = box?.clientHeight ?? 320;
+    // prefer to the right of the tile; flip left if it would overflow
+    let left = picked.x + picked.w + 8;
+    if (left + CARD_W > W) left = picked.x - CARD_W - 8;
+    left = Math.max(4, Math.min(left, W - CARD_W - 4));
+    let top = Math.min(picked.y, H - CARD_H - 4);
+    top = Math.max(4, top);
+    cardStyle = { left, top, width: CARD_W, maxHeight: CARD_H };
+  }
 
   return (
     <Card className="p-4 mb-4">
@@ -71,55 +86,56 @@ export default function SectorTreemap({
         <span className="text-xs text-muted-foreground">타일 크기 = 언급량 · 색 = 급상승도 · 클릭하면 새로 뜨는 종목</span>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* treemap */}
-        <div className="md:col-span-2 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <Treemap
-              data={rows}
-              dataKey="recentMentions"
-              isAnimationActive={false}
-              content={<TreeCell market={market} />}
-              onClick={(node: any) => {
-                const sec = node?.sector ?? node?.payload?.sector;
-                if (sec) setSelected(sec);
-              }}
-            />
-          </ResponsiveContainer>
-        </div>
+      {/* full-width treemap; floating card overlays it on tile click */}
+      <div ref={wrapRef} className="relative h-72 md:h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <Treemap
+            data={rows}
+            dataKey="recentMentions"
+            isAnimationActive={false}
+            content={<TreeCell market={market} />}
+            onClick={(node: any) => {
+              const sec = node?.sector ?? node?.payload?.sector;
+              if (sec) setPicked({ sector: sec, x: node.x ?? 0, y: node.y ?? 0, w: node.width ?? 0, h: node.height ?? 0 });
+            }}
+          />
+        </ResponsiveContainer>
 
-        {/* drill-down: newly-rising stocks in the active sector */}
-        <div className="md:col-span-1 min-w-0">
-          {active && (
-            <>
-              <div className="flex items-baseline justify-between mb-2">
+        {active && (
+          <div
+            className="absolute z-20 rounded-lg border bg-popover text-popover-foreground shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-150"
+            style={cardStyle}
+          >
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b">
+              <div className="min-w-0">
                 <div className="text-sm font-semibold truncate">{sectorLabel(active.sector)}</div>
-                <div className="text-xs text-muted-foreground shrink-0 ml-2">
-                  {active.recentAccounts}명 · {active.recentMentions}회
-                </div>
+                <div className="text-[11px] text-muted-foreground">{active.recentAccounts}명 · {active.recentMentions}회</div>
               </div>
-              <div className="space-y-1 max-h-56 overflow-auto pr-1">
-                {active.stocks.slice(0, 12).map((s) => (
-                  <button
-                    key={s.symbol}
-                    onClick={() => onPickStock(s)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover-elevate text-left"
-                    data-testid={`sector-stock-${s.symbol}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate leading-tight">{stockName(s)}</div>
-                      <div className="text-[11px] text-muted-foreground tabular-nums">{s.recentAccounts}명 · {s.recentMentions}회</div>
-                    </div>
-                    <span className={`text-xs tabular-nums shrink-0 ${changeColorClass(s.changePercent, market)}`}>
-                      {s.changePercent >= 0 ? "+" : ""}{s.changePercent}%
-                    </span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+              <button onClick={() => setPicked(null)} className="shrink-0 text-muted-foreground hover:text-foreground" data-testid="sector-popover-close">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-auto p-1">
+              {active.stocks.slice(0, 12).map((s) => (
+                <button
+                  key={s.symbol}
+                  onClick={() => onPickStock(s)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover-elevate text-left"
+                  data-testid={`sector-stock-${s.symbol}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm truncate leading-tight">{stockName(s)}</div>
+                    <div className="text-[11px] text-muted-foreground tabular-nums">{s.recentAccounts}명 · {s.recentMentions}회</div>
+                  </div>
+                  <span className={`text-xs tabular-nums shrink-0 ${changeColorClass(s.changePercent, market)}`}>
+                    {s.changePercent >= 0 ? "+" : ""}{s.changePercent}%
+                  </span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
