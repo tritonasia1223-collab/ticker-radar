@@ -63,6 +63,7 @@ export interface SectorStock {
   nameEn: string | null;
   recentMentions: number;
   recentAccounts: number;
+  priorMentions: number;
   changePercent: number;
 }
 // One sector tile for the discovery treemap. size = recentMentions, color = changePercent.
@@ -497,6 +498,7 @@ export class DatabaseStorage implements IStorage {
         nameEn: r.nameEn ?? null,
         recentMentions: recent,
         recentAccounts: Number(r.recentAccounts) || 0,
+        priorMentions: prior,
         changePercent: Math.round(((recent + 1) / (prior + 1) - 1) * 100),
       });
     }

@@ -33,6 +33,7 @@ export interface SectorStock {
   nameEn: string | null;
   recentMentions: number;
   recentAccounts: number;
+  priorMentions: number;
   changePercent: number;
 }
 export interface SectorMapRow {
@@ -53,6 +54,30 @@ export function sectorLabel(raw: string): string {
 // Up/down text color by market convention: US = green up / red down; KR = red up / blue down.
 export function changeColorClass(pct: number, market: string): string {
   const up = pct >= 0;
+  return market === "kr"
+    ? (up ? "text-rose-500" : "text-blue-500")
+    : (up ? "text-emerald-500" : "text-rose-500");
+}
+
+// 발굴 추세 상태 — 비율(%)은 모수가 작으면 왜곡되므로, 의미 있는 상태 라벨로 보여준다.
+// 이전 0 → 신규, 2배 이상 → 급증, 증가/유지/감소. 언급이 적으면(dim) 신뢰도 낮음 표시.
+const LOW_SAMPLE = 3; // 최근 언급이 이 미만이면 흐리게(신뢰도 낮음)
+export type SurgeTone = "new" | "up" | "flat" | "down";
+export interface SurgeStatus { label: string; tone: SurgeTone; dim: boolean }
+export function surgeStatus(recent: number, prior: number): SurgeStatus {
+  const dim = recent < LOW_SAMPLE;
+  if (recent === 0) return { label: "–", tone: "flat", dim: true };
+  if (prior === 0) return { label: "🆕 신규", tone: "new", dim };
+  if (recent >= prior * 2) return { label: "↑ 급증", tone: "up", dim };
+  if (recent > prior) return { label: "↑ 증가", tone: "up", dim };
+  if (recent === prior) return { label: "– 유지", tone: "flat", dim };
+  return { label: "↓ 감소", tone: "down", dim };
+}
+// 상태 색: 신규=앰버, 유지=회색, 증가·감소는 시장 관례(미장 초록/빨강, 국장 빨강/파랑).
+export function statusColorClass(tone: SurgeTone, market: string): string {
+  if (tone === "new") return "text-amber-500";
+  if (tone === "flat") return "text-muted-foreground";
+  const up = tone === "up";
   return market === "kr"
     ? (up ? "text-rose-500" : "text-blue-500")
     : (up ? "text-emerald-500" : "text-rose-500");

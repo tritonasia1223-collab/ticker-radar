@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SectorMapRow, SectorStock, sectorLabel, shortCompanyName, changeColorClass } from "@/lib/api";
+import { SectorMapRow, SectorStock, sectorLabel, shortCompanyName, surgeStatus, statusColorClass } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Treemap, ResponsiveContainer } from "recharts";
@@ -127,9 +127,9 @@ export default function SectorTreemap({
                     <div className="text-sm truncate leading-tight">{stockName(s)}</div>
                     <div className="text-[11px] text-muted-foreground tabular-nums">{s.recentAccounts}명 · {s.recentMentions}회</div>
                   </div>
-                  <span className={`text-xs tabular-nums shrink-0 ${changeColorClass(s.changePercent, market)}`}>
-                    {s.changePercent >= 0 ? "+" : ""}{s.changePercent}%
-                  </span>
+                  {(() => { const st = surgeStatus(s.recentMentions, s.priorMentions); return (
+                    <span className={`text-xs shrink-0 whitespace-nowrap ${statusColorClass(st.tone, market)} ${st.dim ? "opacity-40" : ""}`}>{st.label}</span>
+                  ); })()}
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                 </button>
               ))}

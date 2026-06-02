@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SurgeRow, SectorStock, Stats, SyncLog, Tweet, timeAgo, shortCompanyName, changeColorClass } from "@/lib/api";
+import { SurgeRow, SectorStock, Stats, SyncLog, Tweet, timeAgo, shortCompanyName, surgeStatus, statusColorClass } from "@/lib/api";
 import SectorTreemap from "@/components/SectorTreemap";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,6 +32,7 @@ type DetailRow = {
   companyNameKo: string | null;
   recentAccounts: number;
   recentMentions: number;
+  priorMentions: number;
   changePercent: number;
 };
 
@@ -55,10 +56,12 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-function ChangePct({ pct, market }: { pct: number; market: string }) {
+// 발굴 추세 상태 뱃지 (모수 작으면 흐림). 비율(%) 대신 신규/급증/증가/유지/감소로 표시.
+function StatusBadge({ recent, prior, market }: { recent: number; prior: number; market: string }) {
+  const s = surgeStatus(recent, prior);
   return (
-    <span className={`tabular-nums text-sm ${changeColorClass(pct, market)}`}>
-      {pct >= 0 ? "+" : ""}{pct}%
+    <span className={`text-sm whitespace-nowrap ${statusColorClass(s.tone, market)} ${s.dim ? "opacity-40" : ""}`}>
+      {s.label}
     </span>
   );
 }
@@ -147,7 +150,8 @@ export default function Discover() {
         windowHours={windowHours}
         onPickStock={(s: SectorStock) => setSelected({
           symbol: s.symbol, companyName: s.nameEn, companyNameKo: s.nameKo,
-          recentAccounts: s.recentAccounts, recentMentions: s.recentMentions, changePercent: s.changePercent,
+          recentAccounts: s.recentAccounts, recentMentions: s.recentMentions,
+          priorMentions: s.priorMentions, changePercent: s.changePercent,
         })}
       />
 
@@ -170,7 +174,7 @@ export default function Discover() {
             <div className="flex-1 min-w-0">종목</div>
             <Th className="w-12 justify-end" label="명" tip="중복 배제 — 이 종목을 언급한 서로 다른 계정 수입니다. 한 계정이 여러 번 올려도 1명. 순위 기준이에요." />
             <Th className="w-14 justify-end" label="언급" tip="중복 포함 — 총 게시물 수입니다. 같은 계정의 여러 글도 모두 셉니다." />
-            <Th className="w-16 justify-end" label="증가율" tip="직전 같은 기간 대비 언급 증가율입니다. 예: +450% = 약 4.5배 증가." />
+            <Th className="w-16 justify-end" label="추세" tip="직전 같은 기간 대비 추세입니다. 이전에 없던 종목이면 🆕신규, 2배 이상이면 급증. 언급이 적으면(3회 미만) 신뢰도가 낮아 흐리게 표시됩니다." />
             <Th className="w-20 justify-end hidden md:flex" label="추이" tip="최근 14일간 일별 언급 횟수의 추이입니다." />
           </div>
           {/* rows */}
@@ -193,7 +197,7 @@ export default function Discover() {
                 </div>
                 <div className="w-12 text-right tabular-nums text-sm font-medium">{row.recentAccounts}</div>
                 <div className="w-14 text-right tabular-nums text-sm text-muted-foreground">{row.recentMentions.toLocaleString()}</div>
-                <div className="w-16 text-right"><ChangePct pct={row.changePercent} market={market} /></div>
+                <div className="w-16 text-right"><StatusBadge recent={row.recentMentions} prior={row.priorMentions} market={market} /></div>
                 <div className="w-20 hidden md:block"><Sparkline data={row.trend} /></div>
               </div>
             );
@@ -237,7 +241,7 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
             </SheetHeader>
 
             <div className="grid grid-cols-3 gap-2 my-4">
-              <Card className="p-3"><div className="text-xs text-muted-foreground">증가율</div><div className={`text-lg font-semibold tabular-nums ${changeColorClass(row.changePercent, market)}`}>{row.changePercent >= 0 ? "+" : ""}{row.changePercent}%</div></Card>
+              <Card className="p-3"><div className="text-xs text-muted-foreground">추세</div><div className={`text-lg font-semibold ${statusColorClass(surgeStatus(row.recentMentions, row.priorMentions).tone, market)}`}>{surgeStatus(row.recentMentions, row.priorMentions).label}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 계정수</div><div className="text-lg font-semibold tabular-nums">{row.recentAccounts}</div></Card>
               <Card className="p-3"><div className="text-xs text-muted-foreground">최근 언급</div><div className="text-lg font-semibold tabular-nums">{row.recentMentions}</div></Card>
             </div>
