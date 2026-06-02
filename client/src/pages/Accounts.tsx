@@ -105,7 +105,7 @@ export default function Accounts() {
                   {!a.active && <Badge variant="secondary" className="text-[10px]">비활성</Badge>}
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  마지막 수집 {timeAgo(a.lastSyncedAt)} {a.lastTweetId ? `· 커서 …${a.lastTweetId.slice(-6)}` : "· 미수집"}
+                  마지막 수집 {timeAgo(a.lastSyncedAt)} {a.lastTweetId ? `· 커서 …${a.lastTweetId.slice(-6)}` : a.lastSyncedAt ? "· 수집됨" : "· 미수집"}
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => remove.mutate(a.id)} data-testid={`button-delete-${a.handle}`}>
