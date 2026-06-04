@@ -190,6 +190,41 @@ function thinPenalty(perCapita: number): number {
   return 0.65 + 0.25 * t; // [0.65, 0.90]
 }
 
+// ── joint-filer dedup ────────────────────────────────────────────────────────
+// 문제: 엔티티(펀드)와 그 지배인/관계회사가 '동일 수익포지션'을 각자 Form4 로 신고 → 한 포지션이 N개 이름으로.
+//   결과: 클러스터 insiderCount(breadth) 가짜 부풀림 + value log항 N중 중복(예: NRG LS Power+Nanus $2.6B 2번).
+//   이건 분모/캡 문제가 아니라 '한 번만 세기' 문제 → 동일 포지션 행을 대표 1행으로 접는다.
+// 안전조건(전 테이블 충돌 리포트로 검증, script/dedup-report.ts):
+//   ① side IN(buy,sell) — A(부여) 코드는 이미 제외(이사회 일괄부여 오병합 차단).
+//   ② 동일 튜플 = (txnDate, shares, sharesAfter, txnCode).
+//   ③ 동일 filer-prefix(accession 앞 10자리 = 같은 제출배치). 공동신고자는 인접 accession을 받음(-023624/-023625).
+//   ④ 그룹에 조직 엔티티 ≥1개. 자연인-only(예: ESLT 임원 3인 동일수량)는 진짜 피어 → 보존(실제 합의 파괴 방지).
+//   ⑤ 서로 다른 인사이더 ≥2.
+// 병합 속성 생존: 대표=roleWeight max(→엔티티 우선→slug순), 10%Owner=그룹 OR(클래스캡 자격 보존 — dedup이 점수 올리는 사고 방지).
+const ENTITY_RE = /\b(l\.?l\.?c|l\.?p\.?|lp|inc|corp|ltd|group|partners?|capital|fund|trust|holdings?|holdco|advis|management|ventures?|equity|coinvest|investment|associates|gp)\b/i;
+const isEntityName = (name: string | null) => !!name && ENTITY_RE.test(name);
+const filerPrefix = (ext: string | null): string => { const m = /^fin:(\d{10})-/.exec(ext || ""); return m ? m[1] : ""; };
+function dedupeJointFilers(rows: any[]): any[] {
+  const groups = new Map<string, any[]>();
+  for (const r of rows) {
+    const k = [r.symbol, r.side, filerPrefix(r.ext), r.txnDate, r.shares, r.sharesAfter, r.code].join("|");
+    const g = groups.get(k); if (g) g.push(r); else groups.set(k, [r]);
+  }
+  const drop = new Set<any>();
+  for (const g of groups.values()) {
+    if (new Set(g.map((r) => r.slug)).size < 2) continue;        // ⑤ 단독 → 유지
+    if (!g.some((r) => isEntityName(r.name))) continue;          // ④ 자연인-only 피어 → 보존
+    const rep = g.slice().sort((a, b) =>
+      roleSignalWeight(b.role) - roleSignalWeight(a.role) ||
+      (isEntityName(b.name) ? 1 : 0) - (isEntityName(a.name) ? 1 : 0) ||
+      (String(a.slug) < String(b.slug) ? -1 : 1))[0];
+    if (g.some((r) => isTenPctOwner(r.role)) && !isTenPctOwner(rep.role))
+      rep.role = (rep.role ? rep.role + " · " : "") + "10% Owner";  // 10%Owner OR (캡 자격 보존)
+    for (const r of g) if (r !== rep) drop.add(r);
+  }
+  return drop.size ? rows.filter((r) => !drop.has(r)) : rows;
+}
+
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -623,11 +658,12 @@ export class DatabaseStorage implements IStorage {
     const windowMs = (opts.windowDays ?? 30) * 86400000;
     const minIns = opts.minInsiders ?? 2;
     const limit = opts.limit ?? 40;
-    const rows = (await db.execute(sql`
+    const rawRows = (await db.execute(sql`
       SELECT it.insider_id AS "insiderId", i.name AS name, i.slug AS slug, it.role AS role,
              it.symbol AS symbol, t.company_name AS company, ts.sector AS sector,
              it.side AS side, COALESCE(it.value, 0) AS value, it.price AS price,
-             it.shares AS shares, it.shares_after AS "sharesAfter", it.txn_date AS "txnDate"
+             it.shares AS shares, it.shares_after AS "sharesAfter", it.txn_date AS "txnDate",
+             it.txn_code AS code, it.external_id AS ext
       FROM insider_trades it
       JOIN insiders i ON i.id = it.insider_id
       LEFT JOIN tickers t ON t.symbol = it.symbol
@@ -635,6 +671,8 @@ export class DatabaseStorage implements IStorage {
       WHERE it.side IN ('buy','sell') AND it.txn_date >= ${from} AND it.txn_date <= ${to}
         AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)
     `)) as unknown as any[];
+    // 공동신고 중복 제거(엔티티+지배인 동일 포지션 → 대표 1행). 위젯·랭킹 양쪽이 같은 정제입력을 쓰도록 여기서 1회.
+    const rows = dedupeJointFilers(rawRows);
 
     // 종목별 median 단가 → 비정상 단가(>$1M 또는 median의 50배 초과, 예: CRWV $117인데 $700k~$11M)는 금액 0 처리
     const pricesBySym = new Map<string, number[]>();

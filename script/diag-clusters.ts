@@ -83,7 +83,7 @@ async function main() {
 
   // 4) 특정 종목 추적 (WIT/AVT/JKHY/BLK)
   console.log("\n=== ④ 지목 종목 추적 (old→new 순위) ===");
-  for (const sym of ["WIT", "AVT", "JKHY", "BLK", "NRG", "LGN"]) {
+  for (const sym of ["WIT", "AVT", "JKHY", "BLK", "NRG", "LGN", "ESLT", "MDLN", "DELL", "SYM"]) {
     const found = rows.filter((r) => r.c.symbol === sym);
     if (!found.length) { console.log(`  ${sym}: 클러스터 없음`); continue; }
     for (const r of found) {
