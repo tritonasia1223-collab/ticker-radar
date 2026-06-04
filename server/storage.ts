@@ -361,9 +361,18 @@ export class DatabaseStorage implements IStorage {
     return r.length > 0;
   }
 
+  // Anchor the discovery time-windows to the latest collected mention, NOT wall-clock now.
+  // So "최근 24시간" means the 24h ending at the last collection — the surge stays visible
+  // until the next collect, instead of going empty as real time slides past the data.
+  private async anchorTime(): Promise<number> {
+    const r = (await db.execute(sql`SELECT MAX(tweeted_at) AS t FROM mentions`)) as unknown as any[];
+    const t = Number(r[0]?.t);
+    return Number.isFinite(t) && t > 0 ? t : Date.now();
+  }
+
   // Surge detection: compare a recent window vs the immediately preceding window of equal length.
   async surge(windowHours: number, minAccounts: number, market = "us"): Promise<SurgeRow[]> {
-    const now = Date.now();
+    const now = await this.anchorTime();
     const winMs = windowHours * 3600 * 1000;
     const recentStart = now - winMs;
     const priorStart = now - 2 * winMs;
@@ -455,7 +464,7 @@ export class DatabaseStorage implements IStorage {
   // recentMentions, colored by changePercent (recent vs prior window). Each tile carries its
   // member stocks (sorted newly-rising first) so the client can drill down without another call.
   async sectorMap(windowHours: number, market = "us"): Promise<SectorMapRow[]> {
-    const now = Date.now();
+    const now = await this.anchorTime();
     const winMs = windowHours * 3600 * 1000;
     const recentStart = now - winMs;
     const priorStart = now - 2 * winMs;
@@ -598,7 +607,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async symbolTimeline(symbol: string, days: number) {
-    const start = Date.now() - days * 86400 * 1000;
+    const start = (await this.anchorTime()) - days * 86400 * 1000;
     const rows = (await db.execute(sql`
       SELECT to_char(to_timestamp(m.tweeted_at / 1000), 'YYYY-MM-DD') AS day, COUNT(*) AS count
       FROM mentions m WHERE m.symbol = ${symbol.toUpperCase()} AND m.tweeted_at >= ${start}
