@@ -224,6 +224,19 @@ function dedupeJointFilers(rows: any[]): any[] {
   }
   return drop.size ? rows.filter((r) => !drop.has(r)) : rows;
 }
+// 종목별 median 단가 → 비정상 단가(>$1M 또는 median 50배 초과, 예: CRWV $117인데 $700k~$11M)는 금액 0.
+//   클러스터·랭킹이 같은 가드를 쓰도록 모듈 공유(복사 금지 — 한 벌만 존재).
+function makeCleanValue(rows: any[]): (r: any) => number {
+  const pricesBySym = new Map<string, number[]>();
+  for (const r of rows) { const p = Number(r.price); if (p > 0) { const a = pricesBySym.get(r.symbol); if (a) a.push(p); else pricesBySym.set(r.symbol, [p]); } }
+  const medBySym = new Map<string, number>();
+  for (const [s, a] of pricesBySym) { a.sort((x, y) => x - y); medBySym.set(s, a[Math.floor(a.length / 2)]); }
+  return (r: any): number => {
+    const p = Number(r.price); const med = medBySym.get(r.symbol);
+    if (p > 1_000_000 || (med && p > 50 * med)) return 0;
+    return Number(r.value) || 0;
+  };
+}
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -601,64 +614,60 @@ export class DatabaseStorage implements IStorage {
     await db.delete(insiders);
   }
 
-  // 종목 랭킹 — 서버측 GROUP BY 집계 (볼륨 커서 클라 전량 전송 회피)
+  // 종목 랭킹 — 클러스터와 동일한 dedup·가격가드를 거친 단일 소스에서 JS 집계(#23).
+  //   raw SQL SUM/COUNT 은 공동신고자(엔티티+지배인) 금액·인사이더수를 이중계산 → dedupeJointFilers 통과 후 집계.
+  //   랭킹은 10b5-1 정기매도 포함(클러스터와 달리) — fetch false. 금액 의미는 '기간 총액' 그대로(윈도우 아님).
   async insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]> {
     const from = opts.fromMs ?? 0;
     const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
-    // med: 종목별 median 단가 → 비정상 단가(>$1M 또는 median 50배 초과)는 금액 0 처리(데이터 오류 가드)
-    const rows = (await db.execute(sql`
-      WITH med AS (
-        SELECT symbol, percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS medp
-        FROM insider_trades WHERE price > 0 GROUP BY symbol
-      )
+    const rows = dedupeJointFilers(await this.fetchInsiderPsRows(from, to, false));
+    const cleanValue = makeCleanValue(rows); // 클러스터와 같은 모듈 가드(복사 아님)
+
+    type Agg = { company: string | null; sector: string | null; buyValue: number; sellValue: number; buyCount: number; sellCount: number; tradeCount: number; insiders: Set<number> };
+    const agg = new Map<string, Agg>();
+    for (const r of rows) {
+      let a = agg.get(r.symbol);
+      if (!a) { a = { company: r.company ?? null, sector: r.sector ?? null, buyValue: 0, sellValue: 0, buyCount: 0, sellCount: 0, tradeCount: 0, insiders: new Set() }; agg.set(r.symbol, a); }
+      const v = cleanValue(r);
+      a.tradeCount++; a.insiders.add(Number(r.insiderId));
+      if (r.side === "buy") { a.buyValue += v; a.buyCount++; } else { a.sellValue += v; a.sellCount++; }
+    }
+
+    // otherInsiderCount(보상·행사 등만 한 인사이더 — 신호 아님, #23 스코프 밖): raw 카운트 유지.
+    const otherRows = (await db.execute(sql`
       SELECT it.symbol AS symbol,
-             t.company_name AS company,
-             ts.sector AS sector,
-             SUM(CASE WHEN it.side='buy'  THEN (CASE WHEN it.price > 1000000 OR (m.medp IS NOT NULL AND it.price > 50*m.medp) THEN 0 ELSE COALESCE(it.value,0) END) ELSE 0 END) AS "buyValue",
-             SUM(CASE WHEN it.side='sell' THEN (CASE WHEN it.price > 1000000 OR (m.medp IS NOT NULL AND it.price > 50*m.medp) THEN 0 ELSE COALESCE(it.value,0) END) ELSE 0 END) AS "sellValue",
-             SUM(CASE WHEN it.side='buy'  THEN 1 ELSE 0 END) AS "buyCount",
-             SUM(CASE WHEN it.side='sell' THEN 1 ELSE 0 END) AS "sellCount",
-             COUNT(DISTINCT CASE WHEN it.side IN ('buy','sell') THEN it.insider_id END) AS "insiderCount",
              COUNT(DISTINCT it.insider_id)
-               - COUNT(DISTINCT CASE WHEN it.side IN ('buy','sell') THEN it.insider_id END) AS "otherInsiderCount",
-             SUM(CASE WHEN it.side IN ('buy','sell') THEN 1 ELSE 0 END) AS "tradeCount"
+               - COUNT(DISTINCT CASE WHEN it.side IN ('buy','sell') THEN it.insider_id END) AS "other"
       FROM insider_trades it
-      LEFT JOIN tickers t ON t.symbol = it.symbol
-      LEFT JOIN ticker_sectors ts ON ts.symbol = it.symbol
-      LEFT JOIN med m ON m.symbol = it.symbol
       WHERE it.txn_date >= ${from} AND it.txn_date <= ${to}
-      GROUP BY it.symbol, t.company_name, ts.sector
-      HAVING SUM(CASE WHEN it.side IN ('buy','sell') THEN 1 ELSE 0 END) > 0
+      GROUP BY it.symbol
     `)) as unknown as any[];
-    // 유의미도 점수: 클러스터와 동일 엔진을 minInsiders=1(단독 포함)로 돌려 종목별 max 점수 산출.
-    // → 하단 랭킹이 절대달러가 아니라 6레버(티어·보유%·10b5제외·√n·thin·캡·post0) 점수로 줄세워짐.
+    const otherBySym = new Map(otherRows.map((r) => [r.symbol, Number(r.other) || 0]));
+
+    // 유의미도 점수: 클러스터와 동일 엔진을 minInsiders=1(단독 포함)로 돌려 종목별 max 점수 산출(이미 dedup됨).
     const sigClusters = await this.insiderClusters({ fromMs: opts.fromMs, toMs: opts.toMs, minInsiders: 1, limit: 100000 });
     const sig = new Map<string, { score: number; side: "buy" | "sell" }>();
     for (const c of sigClusters) { const cur = sig.get(c.symbol); if (!cur || c.score > cur.score) sig.set(c.symbol, { score: c.score, side: c.side }); }
 
-    return rows.map((r) => {
-      const buyValue = Number(r.buyValue) || 0, sellValue = Number(r.sellValue) || 0;
-      const s = sig.get(r.symbol);
-      return {
-        symbol: r.symbol, company: r.company ?? null, sector: r.sector ?? null,
-        buyValue, sellValue, netValue: buyValue - sellValue,
-        buyCount: Number(r.buyCount) || 0, sellCount: Number(r.sellCount) || 0,
-        insiderCount: Number(r.insiderCount) || 0, otherInsiderCount: Number(r.otherInsiderCount) || 0,
-        tradeCount: Number(r.tradeCount) || 0,
+    const result: InsiderRankRow[] = [];
+    for (const [symbol, a] of agg) {
+      const s = sig.get(symbol);
+      result.push({
+        symbol, company: a.company, sector: a.sector,
+        buyValue: a.buyValue, sellValue: a.sellValue, netValue: a.buyValue - a.sellValue,
+        buyCount: a.buyCount, sellCount: a.sellCount,
+        insiderCount: a.insiders.size, otherInsiderCount: otherBySym.get(symbol) ?? 0,
+        tradeCount: a.tradeCount,
         signalScore: s?.score ?? 0, signalSide: s?.side ?? null,
-      };
-    });
+      });
+    }
+    return result;
   }
 
-  // 클러스터 시그널 — 종목·방향별로 windowDays 안에서 가장 많은 서로 다른 인사이더가 모인 윈도우를 찾는다.
-  //   매수 ≫ 매도(노이즈 많음), 10b5-1 플랜 매도는 제외. 점수 = 인사이더수 × 방향가중, 동률이면 금액.
-  async insiderClusters(opts: { fromMs?: number; toMs?: number; windowDays?: number; minInsiders?: number; limit?: number }): Promise<InsiderCluster[]> {
-    const from = opts.fromMs ?? 0;
-    const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
-    const windowMs = (opts.windowDays ?? 30) * 86400000;
-    const minIns = opts.minInsiders ?? 2;
-    const limit = opts.limit ?? 40;
-    const rawRows = (await db.execute(sql`
+  // P/S 원시행 fetch — 클러스터·랭킹 공유 단일 소스. excludePlanSells: 클러스터 true / 랭킹 false.
+  private async fetchInsiderPsRows(from: number, to: number, excludePlanSells: boolean): Promise<any[]> {
+    const planClause = excludePlanSells ? sql`AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)` : sql``;
+    return (await db.execute(sql`
       SELECT it.insider_id AS "insiderId", i.name AS name, i.slug AS slug, it.role AS role,
              it.symbol AS symbol, t.company_name AS company, ts.sector AS sector,
              it.side AS side, COALESCE(it.value, 0) AS value, it.price AS price,
@@ -669,21 +678,22 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN tickers t ON t.symbol = it.symbol
       LEFT JOIN ticker_sectors ts ON ts.symbol = it.symbol
       WHERE it.side IN ('buy','sell') AND it.txn_date >= ${from} AND it.txn_date <= ${to}
-        AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)
+        ${planClause}
     `)) as unknown as any[];
-    // 공동신고 중복 제거(엔티티+지배인 동일 포지션 → 대표 1행). 위젯·랭킹 양쪽이 같은 정제입력을 쓰도록 여기서 1회.
-    const rows = dedupeJointFilers(rawRows);
+  }
 
-    // 종목별 median 단가 → 비정상 단가(>$1M 또는 median의 50배 초과, 예: CRWV $117인데 $700k~$11M)는 금액 0 처리
-    const pricesBySym = new Map<string, number[]>();
-    for (const r of rows) { const p = Number(r.price); if (p > 0) { const a = pricesBySym.get(r.symbol); if (a) a.push(p); else pricesBySym.set(r.symbol, [p]); } }
-    const medBySym = new Map<string, number>();
-    for (const [s, a] of pricesBySym) { a.sort((x, y) => x - y); medBySym.set(s, a[Math.floor(a.length / 2)]); }
-    const cleanValue = (r: any): number => {
-      const p = Number(r.price); const med = medBySym.get(r.symbol);
-      if (p > 1_000_000 || (med && p > 50 * med)) return 0;
-      return Number(r.value) || 0;
-    };
+  // 클러스터 시그널 — 종목·방향별로 windowDays 안에서 가장 많은 서로 다른 인사이더가 모인 윈도우를 찾는다.
+  //   매수 ≫ 매도(노이즈 많음), 10b5-1 플랜 매도는 제외. 점수 = 인사이더수 × 방향가중, 동률이면 금액.
+  async insiderClusters(opts: { fromMs?: number; toMs?: number; windowDays?: number; minInsiders?: number; limit?: number }): Promise<InsiderCluster[]> {
+    const from = opts.fromMs ?? 0;
+    const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
+    const windowMs = (opts.windowDays ?? 30) * 86400000;
+    const minIns = opts.minInsiders ?? 2;
+    const limit = opts.limit ?? 40;
+    // 공동신고 중복 제거(엔티티+지배인 동일 포지션 → 대표 1행). 위젯·랭킹 양쪽이 같은 정제입력을 쓰도록 여기서 1회.
+    //   클러스터는 10b5-1 정기매도 제외(노이즈). 랭킹은 포함 — fetch 의 excludePlanSells 플래그로 분기.
+    const rows = dedupeJointFilers(await this.fetchInsiderPsRows(from, to, true));
+    const cleanValue = makeCleanValue(rows);
 
     const groups = new Map<string, any[]>();
     for (const r of rows) { const k = r.symbol + "|" + r.side; const g = groups.get(k); if (g) g.push(r); else groups.set(k, [r]); }
