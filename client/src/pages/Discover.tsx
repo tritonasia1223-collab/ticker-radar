@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle, Sparkles } from "lucide-react";
+import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle, Sparkles, AlertTriangle, Clock } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number | string }) {
@@ -78,6 +78,32 @@ function Th({ label, tip, className = "" }: { label: string; tip: string; classN
   );
 }
 
+// 데이터가 마지막 수집 시점 기준임을 알리는 우상단 배지. 24h 넘으면 '갱신 필요' 경고.
+function FreshnessBadge({ lastAt }: { lastAt?: number | null }) {
+  if (!lastAt) return null;
+  const stale = Date.now() - lastAt > 24 * 3600 * 1000;
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={`shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border cursor-help whitespace-nowrap ${
+              stale ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+            }`}
+            data-testid="freshness-badge"
+          >
+            {stale ? <AlertTriangle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+            <span>데이터 {timeAgo(lastAt)}{stale ? " · 갱신 필요" : ""}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[15rem] text-xs font-normal leading-snug">
+          급상승·신규·섹터맵은 모두 <b>마지막 수집 시점</b> 기준입니다. 최신 데이터를 보려면 수집(<code>npm run collect</code>)을 다시 실행하세요.
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 export default function Discover() {
   const [windowHours, setWindowHours] = useState("24");
   const [minAccounts, setMinAccounts] = useState("1");
@@ -101,12 +127,14 @@ export default function Discover() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-xl font-semibold flex items-center gap-2"><Radar className="h-5 w-5 text-primary" /> 종목 발견</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          추적 계정들이 새로 언급하는 종목을 역추출해, 여러 계정에서 동시에 급상승하는 종목을 찾아냅니다.
-          {lastLog?.startedAt && <span> · 마지막 수집 {timeAgo(lastLog.startedAt)}</span>}
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold flex items-center gap-2"><Radar className="h-5 w-5 text-primary" /> 종목 발견</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            추적 계정들이 새로 언급하는 종목을 역추출해, 여러 계정에서 동시에 급상승하는 종목을 찾아냅니다.
+          </p>
+        </div>
+        <FreshnessBadge lastAt={lastLog?.startedAt} />
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
