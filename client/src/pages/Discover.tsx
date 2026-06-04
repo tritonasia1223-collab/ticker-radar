@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { SurgeRow, SectorStock, Stats, SyncLog, Tweet, Report, ReportSource, timeAgo, shortCompanyName, surgeStatus, statusColorClass } from "@/lib/api";
 import SectorTreemap from "@/components/SectorTreemap";
 import { Card } from "@/components/ui/card";
@@ -8,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle, Sparkles, AlertTriangle, Clock } from "lucide-react";
+import { TrendingUp, Users2, Hash, ExternalLink, Radar, Heart, Repeat2, MessageCircle, Sparkles, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number | string }) {
@@ -104,6 +106,47 @@ function FreshnessBadge({ lastAt }: { lastAt?: number | null }) {
   );
 }
 
+// '갱신' 버튼: GitHub Actions 수집을 트리거하고, sync-logs를 폴링해 끝나면 자동 갱신.
+function CollectButton() {
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const poll = async (since: number, n: number) => {
+    if (n > 45) { setBusy(false); toast({ title: "수집이 예상보다 오래 걸려요", description: "잠시 후 새로고침해 확인하세요." }); return; }
+    try {
+      const logs = await (await apiRequest("GET", "/api/sync-logs?limit=3")).json();
+      const done = Array.isArray(logs) && logs.find((l: any) => l.startedAt > since - 120_000 && l.finishedAt);
+      if (done) {
+        await queryClient.invalidateQueries();
+        setBusy(false);
+        toast({ title: "갱신 완료", description: `새 글 ${done.tweetsNew ?? 0} · 새 언급 ${done.mentionsNew ?? 0}` });
+        return;
+      }
+    } catch { /* keep polling */ }
+    setTimeout(() => poll(since, n + 1), 6000);
+  };
+
+  const start = async () => {
+    setBusy(true);
+    const since = Date.now();
+    try {
+      await apiRequest("POST", "/api/collect/trigger");
+      toast({ title: "수집을 시작했어요", description: "1~2분 걸려요. 끝나면 자동으로 갱신됩니다." });
+      poll(since, 0);
+    } catch (e: any) {
+      setBusy(false);
+      toast({ title: "수집 시작 실패", description: String(e?.message || e).replace(/^\d+:\s*/, ""), variant: "destructive" });
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" disabled={busy} onClick={start} data-testid="button-collect">
+      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${busy ? "animate-spin" : ""}`} />
+      {busy ? "수집 중…" : "갱신"}
+    </Button>
+  );
+}
+
 export default function Discover() {
   const [windowHours, setWindowHours] = useState("24");
   const [minAccounts, setMinAccounts] = useState("1");
@@ -134,7 +177,10 @@ export default function Discover() {
             추적 계정들이 새로 언급하는 종목을 역추출해, 여러 계정에서 동시에 급상승하는 종목을 찾아냅니다.
           </p>
         </div>
-        <FreshnessBadge lastAt={lastLog?.startedAt} />
+        <div className="flex items-center gap-2 shrink-0">
+          <FreshnessBadge lastAt={lastLog?.startedAt} />
+          <CollectButton />
+        </div>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

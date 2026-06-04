@@ -1,0 +1,30 @@
+# 수집 워크플로 — 앱의 '갱신' 버튼(또는 GitHub UI)에서 수동 실행(workflow_dispatch).
+# Vercel 서버리스는 10초 제한이라 긴 Apify 수집을 못 돌리므로, 여기 GH 러너에서 돌려
+# 같은 Supabase 에 기록한다. 필요 시크릿: DATABASE_URL, APIFY_TOKEN (저장소 Settings → Secrets).
+name: collect
+on:
+  workflow_dispatch:
+
+# 동시 실행 1개로 제한(중복 수집 방지)
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Collect X
+        run: npm run collect
+      - name: Collect Threads
+        run: npm run collect:threads

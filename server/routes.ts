@@ -95,6 +95,38 @@ export function registerRoutes(app: Express) {
     res.json(r);
   });
 
+  // '갱신' 버튼 → GitHub Actions(collect.yml)을 workflow_dispatch로 트리거. Vercel 함수는
+  // 10초 제한이라 직접 수집 못 돌리므로, GH 러너가 돌려 같은 Supabase에 기록한다.
+  app.post("/api/collect/trigger", async (_req, res) => {
+    const token = process.env.GH_DISPATCH_TOKEN;
+    if (!token) return res.status(501).json({ ok: false, error: "GH_DISPATCH_TOKEN 미설정 (Vercel 환경변수에 GitHub 토큰 추가 필요)" });
+    const repo = process.env.GH_REPO || "tritonasia1223-collab/ticker-radar";
+    const workflow = process.env.GH_WORKFLOW || "collect.yml";
+    const ref = process.env.GH_REF || "master";
+
+    // 과도한 트리거 방지: 최근 90초 내 시작된 수집이 있으면 막는다.
+    const recent = await storage.recentSyncLogs(1);
+    if (recent[0] && Date.now() - recent[0].startedAt < 90_000) {
+      return res.status(429).json({ ok: false, error: "방금 수집을 시작했어요. 잠시 후 다시 시도하세요." });
+    }
+    try {
+      const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflow}/dispatches`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: "application/vnd.github+json",
+          "x-github-api-version": "2022-11-28",
+          "user-agent": "ticker-radar",
+        },
+        body: JSON.stringify({ ref }),
+      });
+      if (r.status === 204) return res.json({ ok: true });
+      return res.status(502).json({ ok: false, error: `GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` });
+    } catch (e: any) {
+      return res.status(502).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
   app.get("/api/sync-logs", async (req, res) => {
     res.json(await storage.recentSyncLogs(Number(req.query.limit ?? 20)));
   });
