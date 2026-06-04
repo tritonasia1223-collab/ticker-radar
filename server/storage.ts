@@ -224,6 +224,49 @@ function dedupeJointFilers(rows: any[]): any[] {
   }
   return drop.size ? rows.filter((r) => !drop.has(r)) : rows;
 }
+// ── cross-ticker dedup (#24) ──────────────────────────────────────────────────
+// 문제: 듀얼클래스 발행사(Alphabet GOOG/GOOGL · Fox FOX/FOXA · Alibaba BABA/BABAF …)의 한 Form4 가
+//   Finnhub 의 클래스별 티커 조회 양쪽에서 반환 → 동일 제출이 두 심볼로 들어와 인사이더·금액 이중계상.
+//   accession(=external_id 의 2번째 토큰)은 SEC 전역 유일 → 같은 accession 이 ≥2 심볼이면 동일 제출 확정
+//   (우연 불가; filerPrefix 가 아니라 전체 accession 으로 매칭). 전수 검증: script/orphan-classify.ts.
+//   GOOG 케이스는 insider FK 깨짐(orphan)이라 이미 fetch 의 INNER JOIN 에서 드롭됨 → 여기 입력에 없음.
+//   여기서 실제로 접는 건 양쪽 다 healthy 라 둘 다 살아있는 FOX/FOXA·BABA/BABAF 류.
+// canonical = 기존 데이터만으로 답이 나오는 전함수(외부 거래량 피드 의존·하드코딩 쌍 예외 없음 — 미래 쌍 자동 커버):
+//   ① healthy distinct 인사이더 수 desc(실데이터 있는 쪽 우선: GOOGL 5 > GOOG 0)
+//   ② 동률 → 행 수 desc   ③ 동률 → 심볼 길이 asc(F·접미사 비유동 클래스가 길어지는 경향: BABA<BABAF)
+//   ④ 최종 결정적 폴백 → 사전순 asc  ⟶ 어떤 입력에도 단일 canonical 보장.
+//   주의: ③④는 유동성 신호가 아니라 '데이터 대칭일 때의 결정적 타이브레이크'(금액·점수는 어느 쪽이든 동일 — 표시문제).
+//   현 데이터 결과: GOOGL·BABA·FOX 보존. (FOX vs FOXA 는 대칭이라 길이규칙이 FOX 선택 — 표시상 무의미한 차이.)
+const accessionOf = (ext: string | null): string => { const m = /^fin:([^:]+):/.exec(ext || ""); return m ? m[1] : ""; };
+function dedupeCrossTicker(rows: any[]): any[] {
+  const symsByAcc = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const a = accessionOf(r.ext); if (!a) continue;
+    const s = symsByAcc.get(a); if (s) s.add(r.symbol); else symsByAcc.set(a, new Set([r.symbol]));
+  }
+  const crossSyms = new Set<string>();
+  for (const s of symsByAcc.values()) if (s.size >= 2) for (const x of s) crossSyms.add(x);
+  if (!crossSyms.size) return rows;
+  const stat = new Map<string, { ins: Set<number>; rows: number }>();
+  for (const r of rows) {
+    if (!crossSyms.has(r.symbol)) continue;
+    const st = stat.get(r.symbol) || { ins: new Set<number>(), rows: 0 };
+    st.ins.add(Number(r.insiderId)); st.rows++; stat.set(r.symbol, st);
+  }
+  const better = (a: string, b: string): string => {       // canonical = 더 'primary' 한 심볼
+    const sa = stat.get(a)!, sb = stat.get(b)!;
+    if (sa.ins.size !== sb.ins.size) return sa.ins.size > sb.ins.size ? a : b; // ①
+    if (sa.rows !== sb.rows) return sa.rows > sb.rows ? a : b;                  // ②
+    if (a.length !== b.length) return a.length < b.length ? a : b;             // ③
+    return a < b ? a : b;                                                      // ④
+  };
+  const canonByAcc = new Map<string, string>();
+  for (const [a, s] of symsByAcc) if (s.size >= 2) canonByAcc.set(a, [...s].reduce((x, y) => better(x, y)));
+  const drop = new Set<any>();
+  for (const r of rows) { const c = canonByAcc.get(accessionOf(r.ext)); if (c && r.symbol !== c) drop.add(r); }
+  return drop.size ? rows.filter((r) => !drop.has(r)) : rows;
+}
+
 // 종목별 median 단가 → 비정상 단가(>$1M 또는 median 50배 초과, 예: CRWV $117인데 $700k~$11M)는 금액 0.
 //   클러스터·랭킹이 같은 가드를 쓰도록 모듈 공유(복사 금지 — 한 벌만 존재).
 function makeCleanValue(rows: any[]): (r: any) => number {
@@ -667,7 +710,7 @@ export class DatabaseStorage implements IStorage {
   // P/S 원시행 fetch — 클러스터·랭킹 공유 단일 소스. excludePlanSells: 클러스터 true / 랭킹 false.
   private async fetchInsiderPsRows(from: number, to: number, excludePlanSells: boolean): Promise<any[]> {
     const planClause = excludePlanSells ? sql`AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)` : sql``;
-    return (await db.execute(sql`
+    const raw = (await db.execute(sql`
       SELECT it.insider_id AS "insiderId", i.name AS name, i.slug AS slug, it.role AS role,
              it.symbol AS symbol, t.company_name AS company, ts.sector AS sector,
              it.side AS side, COALESCE(it.value, 0) AS value, it.price AS price,
@@ -680,6 +723,8 @@ export class DatabaseStorage implements IStorage {
       WHERE it.side IN ('buy','sell') AND it.txn_date >= ${from} AND it.txn_date <= ${to}
         ${planClause}
     `)) as unknown as any[];
+    // #24 교차티커(듀얼클래스) 이중계상 제거 — joint-filer dedup 보다 먼저(심볼 전체를 접어 단일 소스를 정규화).
+    return dedupeCrossTicker(raw);
   }
 
   // 클러스터 시그널 — 종목·방향별로 windowDays 안에서 가장 많은 서로 다른 인사이더가 모인 윈도우를 찾는다.

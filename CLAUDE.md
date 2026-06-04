@@ -21,6 +21,7 @@ postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 
 - thin(n=2): **percap 비례** 0.65~0.90 (개수 아닌 1인당 시그널 강도에 연동)
 - 클래스캡: 10%Owner의 ≥80% 매도 → 배율 ≤1.0 (PE 블록청산은 컨빅션 아님)
 - joint-filer dedup: 엔티티+지배인 동일포지션 중복신고를 대표 1행으로 (가짜 합의 차단)
+- cross-ticker dedup(#24): 듀얼클래스 한 Form4가 양쪽 클래스 티커(FOX/FOXA·BABA/BABAF·GOOG/GOOGL)로 이중계상되는 것 제거 — accession(SEC 전역유일)이 ≥2 심볼이면 동일제출 확정, canonical 1벌만 집계에 보존(query-time, 비파괴). canonical = **healthy인사이더 desc → 행수 desc → 심볼길이 asc → 사전순** = 전함수(외부 거래량피드·쌍별 예외 금지, 미래 쌍 자동 커버). ⚠ **FOX(not FOXA)는 이 규칙의 의도된 결과** — healthy 대칭이라 어휘규칙으로 갈릴 뿐 금액·인원·점수 동일한 **표시 전용** 차이. **쌍별 override 추가 금지**(선례 되어 쌍별 하드코딩으로 회귀); 라벨 불만은 표시 레이어 별칭으로. 검증: `script/orphan-classify.ts`(읽기전용, ②축).
 
 ---
 
