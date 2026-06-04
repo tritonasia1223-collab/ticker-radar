@@ -129,7 +129,7 @@ export interface InsiderCluster {
   side: "buy" | "sell"; insiderCount: number; tradeCount: number; totalValue: number;
   windowFromMs: number; windowToMs: number; spanDays: number;
   participants: ClusterParticipant[]; score: number;
-  thin: boolean;  // n=2 (합의 증거 약함, ×0.65 페널티)
+  thin: boolean;  // n=2 (합의 증거 약함, percap 비례 페널티 ×0.65~0.90)
   gated: boolean; // post=0 ≥3명 (구조적 일괄청산 의심, ×0.5 게이트)
 }
 
@@ -176,6 +176,18 @@ function participantSignal(p: ClusterParticipant, side: string, massPost0: boole
   //   단독(1~2명) post=0 은 진짜 전량매도 경보라 유지. 캡 받은 건엔 중복 적용 안 함(상호배제).
   else if (side === "sell" && massPost0 && p.sharesAfter === 0) m *= 0.5;
   return roleSignalWeight(p.role) * (1 + Math.log10(1 + Math.abs(p.value) / 1e5)) * m;
+}
+// thin(n=2) 페널티 — 개수가 아니라 1인당 시그널 강도에 연동.
+//   n=2는 breadth(합의 증거)가 약하지만, 그 약함의 정도는 '누가' 모였느냐에 달림.
+//   고티어 2인 큰 컨빅션(percap↑, 예: CEO+CFO 보유 다수 매도)은 우연일 확률이 낮음 → 페널티 완화.
+//   저티어/소액 2인(percap↓)은 우연 vs 조율 구분 안 됨 → full 페널티 유지(하단 노이즈 그대로).
+//   천장 0.90: 아무리 강해도 n≥3 정상 클러스터 대비 breadth 겸손분 10%는 남긴다.
+//   ※ percap 은 클래스캡 적용 後 시그널로 계산됨(participantSignal 내부 캡 반영) → 캡이 죽인 규모가 thin 완화로 안 샘.
+//   앵커 0.5/1.5 출처: 2026-06 데이터셋(240클러스터) 분포 캘리브레이션 — 저티어n=2 percap 0.66 / n≥3 0.97 / 고티어n=2 1.46.
+//   → 0.5=노이즈 바닥(full 페널티), 1.5=고티어 평균 부근(거의 완화). 데이터 크게 늘면 script/diag-clusters.ts 로 재캘리브레이션.
+function thinPenalty(perCapita: number): number {
+  const t = Math.max(0, Math.min(1, (perCapita - 0.5) / 1.0)); // percap 0.5→0, 1.5→1
+  return 0.65 + 0.25 * t; // [0.65, 0.90]
 }
 
 export interface IStorage {
@@ -673,11 +685,13 @@ export class DatabaseStorage implements IStorage {
       // 점수 = 방향(매수≫매도) × Σ(티어 × 절대규모로그 × 보유대비배율) / √n.
       //   /√n: breadth(인원수)는 플러스 요인이되 한계체감 — 29명이 5명의 6배가 아니라 ~2.4배. 규모처럼 한 항(인원)이 폭주 방지.
       const dir = side === "buy" ? 2 : 1;
-      // 최소 인원 게이트: n=2는 '합의'의 통계적 증거가 약함(우연 vs 조율 구분 안 됨) → thin 페널티 ×0.65.
-      //   고티어 2인(CEO+CFO 등)은 per-capita가 높아 살아남고, 저티어·SPV 2인은 가라앉음. n≥3이 정상 클러스터 바닥.
+      // 최소 인원 게이트: n=2는 '합의'의 통계적 증거가 약함(우연 vs 조율 구분 안 됨) → thin 페널티.
+      //   단, 페널티는 개수가 아니라 1인당 시그널(percap)에 비례 → 고티어 큰 컨빅션 2인은 완화, 저티어 2인은 full.
       const thin = insiderCount === 2;
       const massPost0 = participants.filter((p) => p.sharesAfter === 0).length >= 3; // 다수 동시 전량청산 = 구조적 이벤트
-      const score = (dir * participants.reduce((s, p) => s + participantSignal(p, side, massPost0), 0) / Math.sqrt(insiderCount)) * (thin ? 0.65 : 1);
+      const sumSignal = participants.reduce((s, p) => s + participantSignal(p, side, massPost0), 0);
+      const perCapita = sumSignal / insiderCount;
+      const score = (dir * sumSignal / Math.sqrt(insiderCount)) * (thin ? thinPenalty(perCapita) : 1);
       participants.sort((a, b) => participantSignal(b, side, massPost0) - participantSignal(a, side, massPost0)); // 리더가 카드 상단
       clusters.push({
         symbol: r0.symbol, company: r0.company ?? null, sector: r0.sector ?? null,
