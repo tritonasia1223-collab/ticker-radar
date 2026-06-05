@@ -29,7 +29,7 @@
     "enrich:10b5": "tsx script/enrich-10b5.ts",
     "enrich:holdings": "tsx script/enrich-holdings.ts",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "tsx script/db-push-guard.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

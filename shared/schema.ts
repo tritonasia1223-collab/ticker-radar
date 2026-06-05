@@ -271,7 +271,10 @@ export const insiderTrades = pgTable(
   "insider_trades",
   {
     id: serial("id").primaryKey(),
-    insiderId: integer("insider_id").notNull(),
+    // #26: FK + ON DELETE RESTRICT — insiders 행이 거래를 남긴 채 사라지면(과거 db:push 재생성) orphan 발생.
+    //   운영엔 script/db-fk-insider.ts 로 NOT VALID 추가(기존 GOOG 교차티커 orphan 때문). 이 선언은 진실 기록용 —
+    //   drizzle-kit push 는 공유 DB 금지(db-push-guard 참고)라 자동 적용 경로 아님.
+    insiderId: integer("insider_id").notNull().references(() => insiders.id, { onDelete: "restrict" }),
     symbol: text("symbol").notNull(),
     txnCode: text("txn_code"), // Form4 코드: P/S/A/M/F/G/C/J ...
     side: text("side").notNull(), // buy | sell | award | exercise | tax | gift | conversion | other

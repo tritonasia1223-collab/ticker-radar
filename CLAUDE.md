@@ -56,5 +56,6 @@ postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 
 
 ### 제약
 - 공유 Supabase에 **대량 파괴적 UPDATE 금지**(분류기가 차단). 비파괴 query-time 가드로 처리.
+- **공유 Supabase에 `drizzle-kit push` 절대 금지**(#26). 전-DB diff 라 미선언 테이블을 `DROP ... CASCADE` 로 날린다(=insiders orphan #23~#26 근본원인). 운영 DDL 은 raw 스크립트로만: `script/db-push-*.ts`(CREATE TABLE IF NOT EXISTS) · `script/db-fk-insider.ts`(ADD CONSTRAINT). `npm run db:push` 는 가드(db-push-guard)로 차단. FK 는 부분 보호일 뿐(평 DROP만 차단, CASCADE 못 막음) — 진짜 방어는 이 도구운용 규약 + FK + orphan 헬스체크(#27).
 - 시크릿/.env 는 gitignore 유지. 절대 커밋 안 함.
 - bash cwd가 가끔 리셋됨 → `cd /c/Users/1/Desktop/ticker-radar &&` 프리픽스로 실행.
