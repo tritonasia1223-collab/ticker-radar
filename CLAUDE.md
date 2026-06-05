@@ -1,7 +1,7 @@
 # ticker-radar — 작업 가이드
 
 통합 금융 대시보드: **정치인 거래 / 내부자 거래 / SNS 인플루언서** 3개 모듈.
-작업 브랜치: `feat/congress-tracker`. 커밋 끝에 `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 피처 브랜치 푸시는 비공개 Preview만 만들어지니 평소엔 master 에서 바로 작업. 커밋 끝에 `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 
 ## 스택
 React 18 + Vite + TS, wouter(#hash 라우트), @tanstack/react-query, shadcn/ui(@radix-ui),
