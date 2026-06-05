@@ -11,6 +11,24 @@ import { z } from "zod";
 const COLLECTION_DISABLED = process.env.DEPLOY_TARGET === "vercel";
 
 export function registerRoutes(app: Express) {
+  // CDN edge caching for collect-driven read endpoints. The data changes only when the
+  // collector runs (weekly cron / manual 갱신), so let Vercel serve cached JSON from the
+  // edge — repeat and multi-user loads skip the function entirely. Clients bucket their
+  // from/to to the hour so these URLs are stable enough to actually hit the cache.
+  const EDGE_CACHE = "public, s-maxage=300, stale-while-revalidate=3600";
+  app.use((req, res, next) => {
+    if (req.method === "GET" && req.path.startsWith("/api/")) {
+      const p = req.path;
+      if (
+        p.startsWith("/api/insider/") || p.startsWith("/api/congress/") ||
+        p === "/api/surge" || p === "/api/sector-map" || p === "/api/tickers"
+      ) {
+        res.set("Cache-Control", EDGE_CACHE);
+      }
+    }
+    next();
+  });
+
   // ---- Accounts ----
   app.get("/api/accounts", async (_req, res) => {
     res.json(await storage.listAccounts());

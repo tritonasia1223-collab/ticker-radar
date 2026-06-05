@@ -484,7 +484,11 @@ export default function Insider() {
   const [selSymbol, setSelSymbol] = useState<string | null>(null);
   const [selInsider, setSelInsider] = useState<{ slug: string; name: string } | null>(null);
 
-  const now = Date.now();
+  // Bucket "now" to the hour so the request URL (?from&to) is stable within the hour.
+  // ms-precision now would make every load a unique URL → busts the CDN edge cache and
+  // the server-side cache, forcing a full ~3s recompute on every visit. Insider data is
+  // daily-granular and only changes when the collector runs, so hour buckets are invisible.
+  const now = Math.floor(Date.now() / 3_600_000) * 3_600_000;
   const from = period === "all" ? undefined : now - Number(period) * 86400000;
   const to = period === "all" ? undefined : now;
 

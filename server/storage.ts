@@ -42,6 +42,24 @@ export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof 
   },
 });
 
+// ── TTL cache for collect-driven read aggregations ────────────────────────────
+// Insider ranking/clusters recompute heavy 4-table joins + JS scoring on every
+// request, but the underlying data only changes when the collector runs (weekly
+// cron / manual 갱신). Cache computed OUTPUTS per period for a few minutes so repeat
+// and concurrent loads are instant. Per warm-instance only; the CDN edge cache
+// (Cache-Control in routes.ts) covers cross-instance / multi-user.
+// NOTE: we cache only final result objects — never the shared mutable PS-row arrays,
+// which dedupeJointFilers mutates in place (rep.role) and would corrupt on reuse.
+const _aggCache = new Map<string, { at: number; val: unknown }>();
+const AGG_TTL_MS = 5 * 60_000;
+async function cachedAgg<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const hit = _aggCache.get(key);
+  if (hit && Date.now() - hit.at < AGG_TTL_MS) return hit.val as T;
+  const val = await fn();
+  _aggCache.set(key, { at: Date.now(), val });
+  return val;
+}
+
 export interface SurgeRow {
   symbol: string;
   companyName: string | null;
@@ -942,6 +960,7 @@ export class DatabaseStorage implements IStorage {
   async insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]> {
     const from = opts.fromMs ?? 0;
     const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
+    return cachedAgg(`rank|${from}|${to}`, async () => {
     const rows = dedupeJointFilers(await this.fetchInsiderPsRows(from, to, false));
     const cleanValue = makeCleanValue(rows); // 클러스터와 같은 모듈 가드(복사 아님)
 
@@ -984,6 +1003,7 @@ export class DatabaseStorage implements IStorage {
       });
     }
     return result;
+    });
   }
 
   // P/S 원시행 fetch — 클러스터·랭킹 공유 단일 소스. excludePlanSells: 클러스터 true / 랭킹 false.
@@ -1014,6 +1034,7 @@ export class DatabaseStorage implements IStorage {
     const windowMs = (opts.windowDays ?? 30) * 86400000;
     const minIns = opts.minInsiders ?? 2;
     const limit = opts.limit ?? 40;
+    return cachedAgg(`clus|${from}|${to}|${windowMs}|${minIns}|${limit}`, async () => {
     // 공동신고 중복 제거(엔티티+지배인 동일 포지션 → 대표 1행). 위젯·랭킹 양쪽이 같은 정제입력을 쓰도록 여기서 1회.
     //   클러스터는 10b5-1 정기매도 제외(노이즈). 랭킹은 포함 — fetch 의 excludePlanSells 플래그로 분기.
     const rows = dedupeJointFilers(await this.fetchInsiderPsRows(from, to, true));
@@ -1074,6 +1095,7 @@ export class DatabaseStorage implements IStorage {
     }
     clusters.sort((a, b) => b.score - a.score);
     return clusters.slice(0, limit);
+    });
   }
 
   private async joinedInsiderTrades(where: any, limit?: number): Promise<InsiderTradeRow[]> {
