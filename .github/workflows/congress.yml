@@ -30,22 +30,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # 내부자(insider)는 daily 로 분리(.github/workflows/insider.yml) — Form 4 알파가 공시 직후 강해서.
+      # 여긴 PTR(정치인)만: 최대 45일 지연이라 weekly 로 신선도 충분(비대칭 주기).
       - name: Collect (Apify johnvc, last 60 days) + enrich
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: |
           npm run collect:congress -- --days 60
           npm run enrich:congress
-          npm run collect:insider -- --days 14
-          npm run enrich:tickers
-          npm run enrich:insider-roles
-          npm run enrich:10b5
-          npm run enrich:holdings
-
-      # #27 — 수집·보강 직후 데이터 정합 모니터. orphan B(진짜 링크깨짐)>0 면 step 실패(RED)로 알림.
-      - name: Healthcheck (insider 정합 모니터 #27)
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npm run healthcheck

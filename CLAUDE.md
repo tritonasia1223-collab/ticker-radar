@@ -12,6 +12,7 @@ postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 
 - `server/storage.ts` — 서버측 집계 + **내부자 스코어링 엔진**(클러스터/랭킹). 점수 로직의 단일 출처.
 - `client/src/pages/Insider.tsx` / `Congress.tsx` — UI. `client/src/lib/format.ts` — 도메인 무관 표시 유틸(공유).
 - `script/` — 수집/보강(collect-*, enrich-*) + **검증 하네스**(아래).
+- 수집 주기는 **비대칭**(소스 신선도에 맞춤): 내부자 Form4 = **일 1회**(`.github/workflows/insider.yml`, 03:00 UTC — 클러스터 매수 알파가 공시 직후 수일에 가장 강함, T+2라 인트라데이는 무의미) / 정치인 PTR = **주 1회**(`congress.yml` — 최대 45일 지연이라 충분). 둘 다 수집 직후 `npm run healthcheck`(#27) 자동, orphan B(진짜깨짐)>0면 RED. 겹침-증분 멱등은 external_id 유니크(`uniq_itrade_ext`)가 보장.
 - 데이터: 정치인·내부자는 완전 분리(DB 테이블·API 라우트·페이지 파일). format.ts 유틸만 공유.
 
 ## 내부자 클러스터 점수 (현재 레버)
