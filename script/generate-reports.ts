@@ -12,9 +12,10 @@ import { storage } from "../server/storage.js";
 const KEY = process.env.GEMINI_TOKEN || process.env.GEMINI_API_KEY || "";
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const API = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const MAX_TOTAL = 30;          // 비용/시간 상한
-const PER_MARKET_NEW = 10;     // 시장별 신규 급부상 상한
-const PER_MARKET_TOP = 6;      // 시장별 상위 급상승 상한
+const MAX_TOTAL = 60;          // 비용/시간 안전 상한
+const WINDOWS = [24, 72, 168]; // 보는 기간이 달라도 신규 급부상이 커버되게 합집합
+const PER_WINDOW_NEW = 12;     // 기간×시장별 신규 급부상 상위 N (UI가 보여주는 만큼)
+const PER_MARKET_TOP = 5;      // 시장별 상위 급상승(메이저) — 랭킹 클릭 시 레포트 보장
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const MARKET_KO: Record<string, string> = { us: "미국", kr: "한국" };
@@ -65,22 +66,32 @@ async function gemini(name: string, symbol: string, market: string): Promise<{ s
 async function run() {
   if (!KEY) { console.error("GEMINI_TOKEN 가 .env 에 없습니다. (aistudio.google.com 에서 발급)"); process.exit(1); }
 
-  // 대상 선정: 시장별 신규 급부상 + 상위 급상승, 중복 제거.
+  // 대상 = '신규 급부상'(prior 0, recent>=2) 우선. UI가 보는 기간에 따라 신규 목록이 바뀌므로
+  // 여러 기간(24/72/168h)의 상위 12를 합집합으로 잡아 '보이는 신규'를 빠짐없이 커버. 그다음
+  // 잔여 예산이 있으면 시장별 상위 급상승(메이저)도 — 랭킹/섹터 클릭 시 레포트가 비지 않게.
   const targets = new Map<string, { symbol: string; name: string; market: string }>();
+  const add = (r: any, market: string) => {
+    if (targets.size >= MAX_TOTAL || targets.has(r.symbol)) return;
+    const name = market === "kr" ? (r.companyNameKo || r.companyName || r.symbol) : (r.companyName || r.companyNameKo || r.symbol);
+    targets.set(r.symbol, { symbol: r.symbol, name, market });
+  };
+  // 1) 신규 급부상 (시장 × 기간별 상위 PER_WINDOW_NEW, 계정수 순)
   for (const market of ["us", "kr"]) {
-    const rows = await storage.surge(72, 1, market); // 최근 3일, 명>=1, 명 순 정렬
-    const newcomers = rows.filter((r) => r.priorMentions === 0 && r.recentMentions >= 2).slice(0, PER_MARKET_NEW);
-    const top = rows.slice(0, PER_MARKET_TOP);
-    for (const r of [...newcomers, ...top]) {
-      if (targets.size >= MAX_TOTAL) break;
-      if (!targets.has(r.symbol)) {
-        const name = market === "kr" ? (r.companyNameKo || r.companyName || r.symbol) : (r.companyName || r.companyNameKo || r.symbol);
-        targets.set(r.symbol, { symbol: r.symbol, name, market });
-      }
+    for (const w of WINDOWS) {
+      const rows = await storage.surge(w, 1, market);
+      rows.filter((r) => r.priorMentions === 0 && r.recentMentions >= 2)
+        .sort((a, b) => b.recentAccounts - a.recentAccounts || b.recentMentions - a.recentMentions)
+        .slice(0, PER_WINDOW_NEW)
+        .forEach((r) => add(r, market));
     }
   }
+  const newcomerCount = targets.size;
+  // 2) 메이저(상위 급상승) 소수 보강
+  for (const market of ["us", "kr"]) {
+    (await storage.surge(72, 1, market)).slice(0, PER_MARKET_TOP).forEach((r) => add(r, market));
+  }
   const list = [...targets.values()];
-  console.log(`레포트 생성 대상 ${list.length}개 (${MODEL}) …`);
+  console.log(`레포트 생성 대상 ${list.length}개 (신규 ${newcomerCount} + 메이저 ${list.length - newcomerCount}, ${MODEL}) …`);
 
   const sql = postgres(process.env.DATABASE_URL!, { prepare: false, max: 2 });
   let ok = 0, fail = 0;
