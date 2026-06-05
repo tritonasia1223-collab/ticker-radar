@@ -15,7 +15,7 @@
   - **섹터 지형(트리맵)** — 타일 크기=언급량, 색=급상승도(미장 초록/빨강·국장 빨강/파랑) + 이모지 상태(🔥급증·🆕신규·📈증가·➖유지·🔻감소). 타일 클릭 시 그 섹터의 **새로 뜨는 종목** 드릴다운
   - **🆕 신규 급부상** — 직전 기간엔 없다가 이번에 새로 언급된 종목 모음 (발굴 핵심)
   - **랭킹** — **명**(서로 다른 계정 수, 도배 제외) 순 정렬 + **언급**(중복 포함)·**추세**(비율% 대신 상태) 병기. 한글 종목명 우선, 기간(6시간~7일)·최소 계정수 필터
-  - **종목 상세** — 14일 추이 + 원문 글 + **✨ 왜 뜨나** 최신 뉴스 레포트(Gemini 그라운딩, 호재/악재+출처)
+  - **종목 상세** — 14일 추이 + 원문 글 + **✨ 왜 뜨나** 최신 뉴스 레포트(Claude/Gemini 웹검색 그라운딩, 호재/악재+출처). 대상은 **신규 급부상** 중심
 - **추적 계정** (`/accounts`) — X·Threads 핸들 단건/일괄 추가, 플랫폼 지정, 활성 토글, 삭제
 - **정치인 거래** (`/congress`) — 미 의원 STOCK Act 공시 거래 (아래 별도 섹션)
 - **내부자 거래** (`/insider`) — Form 4 내부자 매매 랭킹
@@ -41,7 +41,7 @@
 | 섹터(국장) | **네이버 증권 업종**(WICS) 79개 스크래핑 | 키 불필요 |
 | 섹터(미장) | **Nasdaq 스크리너**(산업 단위) | 키 불필요 |
 | 관심종목(국장) | **한국투자증권 Open API** 관심종목등록 상위 | 앱키 필요 |
-| "왜 뜨나" 뉴스 레포트 | **Gemini** + Google Search 그라운딩 | `GEMINI_TOKEN` 필요 |
+| "왜 뜨나" 뉴스 레포트 | **Anthropic**(Claude `web_search`) 또는 **Gemini**(Google Search) | 키 있는 쪽 자동 선택 |
 | 섹터 보강(선택) | **Finnhub** profile2 | 정치인·내부자 종목용 |
 
 ---
@@ -106,7 +106,7 @@ npm run build && npm start
 | `npm run seed:kr-sectors` | 네이버 업종 → 국장 섹터 |
 | `npm run seed:us-sectors` | Nasdaq 스크리너 → 미장 섹터(산업 단위) |
 | `npm run collect:interest` | 한국투자증권 관심종목등록 상위 일별 스냅샷(KIS 앱키 필요) |
-| `npm run reports` | 급상승·신규 종목의 "왜 뜨나" 뉴스 레포트 생성(Gemini 그라운딩, `GEMINI_TOKEN` 필요) |
+| `npm run reports` | **신규 급부상** 종목의 "왜 뜨나" 뉴스 레포트 생성(웹검색 그라운딩). `ANTHROPIC_API_KEY`(Claude) 우선, 없으면 `GEMINI_TOKEN`(Gemini) |
 | `npm run backfill:names` | 계정 표시 이름 일괄 채우기(X author.name / Threads fullName) |
 | `npm run enrich:tickers` | Finnhub로 섹터 보강(정치인·내부자·SNS 언급 종목) |
 
@@ -147,7 +147,8 @@ npm run build && npm start
 | `FINNHUB_API_KEY` |  | — | `enrich:tickers`(섹터 보강) |
 | `FMP_API_KEY` |  | — | 정치인 거래 수집 |
 | `KIS_APP_KEY` / `KIS_APP_SECRET` |  | — | 관심종목(KIS) 수집 |
-| `GEMINI_TOKEN` |  | — | "왜 뜨나" 뉴스 레포트 생성(`npm run reports`) |
+| `ANTHROPIC_API_KEY` |  | — | "왜 뜨나" 레포트(Claude `web_search`) — 우선 사용 · 선택 `ANTHROPIC_MODEL`(기본 claude-sonnet-4-6) |
+| `GEMINI_TOKEN` |  | — | "왜 뜨나" 레포트(Gemini) — Anthropic 키 없을 때 대체 |
 | `GH_DISPATCH_TOKEN` |  | — | 배포 앱 [↻ 갱신] 버튼용 — GitHub Actions 트리거 (Vercel 환경변수, [setup](docs/COLLECT-BUTTON-SETUP.md)) |
 
 > `.env`는 `.gitignore` 처리. 토큰·키는 본인 PC에만 남습니다.
