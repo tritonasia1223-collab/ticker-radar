@@ -52,15 +52,26 @@ async function main() {
   // ④ 심볼수 (P/S)
   const symbolCount = new Set(rows.map((r) => r.symbol)).size;
 
-  const red = B > 0;
-  console.log(`\n[insider 헬스체크] P/S행 ${rows.length} · 심볼 ${symbolCount}`);
+  // ⑤ 정치인(PTR) 소스 신선도 — 의원 거래금지 입법(예: S.1498) 등으로 소스가 구조적으로 끊기면 최신 공시가 멈춘다.
+  //   N=45일: 실측 평시 최대 무공시 간격 6일 + 의회 휴회(8월·연말 ~4–5주)를 넉넉히 넘김 → 휴회 오탐 회피.
+  //   거래금지는 영구 0 라 45일 연속 무공시면 RED(소스 점검). 8월 데이터 쌓이면 임계 재검토.
+  const POL_STALE_N = 45;
+  const pol = (await db.execute(sql`SELECT max(filed_date)::float8 AS mx, count(*)::int AS n FROM political_trades`)) as unknown as any[];
+  const lastFiled = Number(pol[0]?.mx ?? 0);
+  const polAgeDays = lastFiled ? Math.floor((Date.now() - lastFiled) / 86400000) : 9999;
+  const polStale = polAgeDays > POL_STALE_N;
+
+  const red = B > 0 || polStale;
+  console.log(`\n[데이터 헬스체크] insider P/S행 ${rows.length} · 심볼 ${symbolCount}`);
   console.log(`  ① orphan: 전체 ${totalOrphans}행 · P/S ${orphans.length}행 → A(교차티커중복) ${A} · B(진짜깨짐) ${B} · C(기타) ${C}`);
   console.log(`  ② 교차티커 이중합산(양쪽healthy ⚠, #24 가드 처리): accession ${crossDouble}건 · 쌍 ${[...crossPairs].join(", ") || "-"}`);
   console.log(`  ③ joint-filer 병합: ${jointDropped}행 드롭 (${healthy.length}→${healthy.length - jointDropped})`);
   console.log(`  ④ 심볼수(P/S): ${symbolCount}`);
-  console.log(red
-    ? `\n❌ RED — B(진짜 링크깨짐) ${B}행: orphan 능동생성 의심. orphan-classify.ts 분류 후 repair-orphan-links.ts 로 복구.`
-    : `\n✅ PASS — 진짜 링크깨짐(B) 0. A(교차티커)·② ⚠ 는 정상(query-time 가드가 처리).`);
+  console.log(`  ⑤ 정치인 소스: 최신 공시 ${polAgeDays}일 전 · ${pol[0]?.n ?? 0}행 (임계 ${POL_STALE_N}일)${polStale ? " ⚠ STALE" : ""}`);
+  const msgs: string[] = [];
+  if (B > 0) msgs.push(`B(진짜 링크깨짐) ${B}행 — orphan-classify.ts 분류 후 repair-orphan-links.ts 로 복구`);
+  if (polStale) msgs.push(`정치인 소스 ${polAgeDays}일 무공시 — 수집/소스 점검(거래금지 입법 시 소스 단절 가능)`);
+  console.log(red ? `\n❌ RED — ${msgs.join(" · ")}` : `\n✅ PASS — insider B=0, 정치인 소스 신선. A(교차티커)·② ⚠ 는 정상(가드 처리).`);
   process.exit(red ? 1 : 0);
 }
 main().catch((e) => { console.error("헬스체크 실패:", e); process.exit(1); });

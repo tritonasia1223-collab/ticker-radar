@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Politician, Committee, Trade, TickerAgg, SortMetric,
   aggregate, rankList, tradersOf, quarterSeries, sortedQuarters, quarterOf,
-  SECTOR, partyColor, fmtQ, cmtLabel,
+  SECTOR, partyColor, fmtQ, cmtLabel, gapDays, freshTier, FRESH_META,
 } from "@/lib/congress";
 import { koSector, koCompany, tickerColor, fmtMoney } from "@/lib/format";
 import { Card } from "@/components/ui/card";
@@ -407,14 +407,21 @@ function MemberDetail({ slug, trades, quarters, periodLabel, ctx, onBack }: {
       </div>
       <Card className="p-5">
         <h2 className="text-base font-semibold mb-2">거래 내역 <span className="text-xs font-normal text-muted-foreground">· {ts.length}건 (최신순)</span></h2>
-        {[...ts].sort((a, b) => b.txnDate - a.txnDate).map((t) => (
-          <div key={t.id} className="grid items-center gap-2.5 py-2 border-b border-border/50 last:border-0 text-[13px]" style={{ gridTemplateColumns: "96px 1fr 64px 140px" }}>
+        <div className="grid items-center gap-2.5 px-0 py-1 text-[10.5px] text-muted-foreground border-b" style={{ gridTemplateColumns: "92px 1fr 56px 84px 124px" }}>
+          <span>거래일</span><span>종목</span><span>방향</span><span title="공시까지 걸린 일수(거래일→공시일). 짧을수록 신선">공시지연</span><span className="text-right">금액범위</span>
+        </div>
+        {[...ts].sort((a, b) => b.txnDate - a.txnDate).map((t) => {
+          const ft = freshTier(t); const g = gapDays(t);
+          return (
+          <div key={t.id} className="grid items-center gap-2.5 py-2 border-b border-border/50 last:border-0 text-[13px]" style={{ gridTemplateColumns: "92px 1fr 56px 84px 124px" }}>
             <span className="text-muted-foreground tabular-nums">{new Date(t.txnDate).toISOString().slice(0, 10)}</span>
             <span className="font-bold cursor-pointer" style={{ color: tickerColor(t.symbol) }} onClick={() => ctx.openTicker(t.symbol)}>{t.symbol} <span className="text-muted-foreground font-normal text-xs">{ctx.sectorOf(t.symbol)}</span></span>
             <span><span className="text-[10.5px] px-2 py-0.5 rounded font-bold" style={{ background: t.side === "sell" ? "rgba(248,81,73,.15)" : "rgba(63,185,80,.15)", color: t.side === "sell" ? SELL : BUY }}>{t.side === "sell" ? "매도" : "매수"}</span></span>
+            <span><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap ${FRESH_META[ft].cls}`} title={`거래일→공시일 ${g == null ? "미상" : g + "일"}`}>{g == null ? "미상" : `${g}d`} {FRESH_META[ft].ko}</span></span>
             <span className="text-right text-muted-foreground tabular-nums">{fmtMoney(t.amountLow ?? 0)}–{fmtMoney(t.amountHigh ?? 0)}</span>
           </div>
-        ))}
+          );
+        })}
       </Card>
     </div>
   );
@@ -439,6 +446,8 @@ export default function Congress() {
   const [cmtSearch, setCmtSearch] = useState<string>("");
   const [sort, setSort] = useState<SortMetric>("vol");
   const [committeeFilter, setCommitteeFilter] = useState<string>("all");
+  const [freshFilter, setFreshFilter] = useState<"all" | "21" | "7">("all"); // 거래일→공시일 gap 필터
+  const [freshWeighted, setFreshWeighted] = useState(false); // 신선도 가중 랭킹 토글(기본 off)
   const [period, setPeriod] = useState<string>("all"); // all | q:<quarter> | custom
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
@@ -480,11 +489,23 @@ export default function Congress() {
   if (lp || lt) return <div className="p-6 max-w-7xl mx-auto"><Skeleton className="h-8 w-48 mb-4" /><Skeleton className="h-64 w-full" /></div>;
 
   // ----- tickers view data -----
-  const scopedTrades = committeeFilter === "all" ? periodTrades
-    : periodTrades.filter((t) => polBySlug.get(t.slug)?.committees.includes(committeeFilter));
-  const tickerAggs = rankList([...aggregate(scopedTrades).values()], sort);
+  const freshThresh = freshFilter === "all" ? Infinity : Number(freshFilter);
+  const scopedTrades = periodTrades
+    .filter((t) => committeeFilter === "all" || polBySlug.get(t.slug)?.committees.includes(committeeFilter))
+    .filter((t) => { if (freshThresh === Infinity) return true; const g = gapDays(t); return g != null && g <= freshThresh; });
+  const aggMapTk = aggregate(scopedTrades);
+  const aggsArr = [...aggMapTk.values()];
+  // raw/가중 랭킹을 둘 다 계산 → 토글로 선택 + "가중이 top-N 을 바꾸는가" 측정(B 게이트).
+  const rankedRaw = rankList(aggsArr, sort, false);
+  const rankedW = rankList(aggsArr, sort, true);
+  const tickerAggs = freshWeighted ? rankedW : rankedRaw;
+  const topChange = (() => {
+    const n = Math.min(10, rankedRaw.length);
+    const a = rankedRaw.slice(0, n).map((s) => s.symbol), b = rankedW.slice(0, n).map((s) => s.symbol);
+    return { n, moved: a.filter((s, i) => b[i] !== s).length, entered: b.filter((s) => !a.includes(s)).length };
+  })();
   const maxVol = Math.max(1, ...tickerAggs.map((s) => s.vol));
-  const selAgg = selTicker ? aggregate(scopedTrades).get(selTicker) : undefined;
+  const selAgg = selTicker ? aggMapTk.get(selTicker) : undefined;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -530,6 +551,19 @@ export default function Congress() {
                 <SelectContent><SelectItem value="vol">총 거래액 순</SelectItem><SelectItem value="net">매수 우위 순</SelectItem><SelectItem value="traders">거래 의원 수 순</SelectItem></SelectContent>
               </Select>
             </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground mb-1">신선도 (공시지연)</div>
+              <Select value={freshFilter} onValueChange={(v) => { setFreshFilter(v as "all" | "21" | "7"); setSelTicker(null); }}>
+                <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">전체</SelectItem><SelectItem value="21">≤21일</SelectItem><SelectItem value="7">≤7일</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground mb-1">신선도 가중</div>
+              <Button variant={freshWeighted ? "secondary" : "outline"} size="sm" className="h-9" onClick={() => setFreshWeighted((v) => !v)} title="거래일→공시일 gap 반감기 14일 지수감쇠로 랭킹 가중 (기본 off)">
+                {freshWeighted ? "ON" : "OFF"}
+              </Button>
+            </div>
           </>}
         </div>
       </header>
@@ -549,8 +583,14 @@ export default function Congress() {
       {view === "tickers" && (
         <div className="grid gap-5 items-start lg:grid-cols-[1.5fr_1fr]">
           <Card className="p-4">
-            <h2 className="text-sm font-semibold mb-0.5">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· 집계기간 {periodLabel} · {committeeFilter === "all" ? `전체 ${tickerAggs.length}종목` : `${cmtLabel(cmtById.get(committeeFilter))} 소속`}</span></h2>
-            <p className="text-[11.5px] text-muted-foreground mb-3">막대=매수(초록)/매도(빨강) 활동량, 스파크라인=분기별 순매수 추이. 행 클릭 시 거래 의원·추이 표시.</p>
+            <h2 className="text-sm font-semibold mb-0.5">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· 집계기간 {periodLabel} · {committeeFilter === "all" ? `전체 ${tickerAggs.length}종목` : `${cmtLabel(cmtById.get(committeeFilter))} 소속`}{freshFilter !== "all" ? ` · 신선 ≤${freshFilter}일` : ""}{freshWeighted ? " · 가중 ON" : ""}</span></h2>
+            <p className="text-[11.5px] text-muted-foreground mb-1">막대=매수(초록)/매도(빨강) 활동량, 스파크라인=분기별 순매수 추이. 행 클릭 시 거래 의원·추이 표시.</p>
+            {/* B 게이트 측정: 신선도 가중이 상위 랭킹을 실제로 바꾸는가 (안 바꾸면 풀 스코어 엔진 불필요) */}
+            <p className="text-[11px] mb-3" style={{ color: topChange.moved ? "var(--primary)" : undefined }}>
+              <span className="text-muted-foreground">신선도 가중 영향: </span>
+              top-{topChange.n} 중 <b className={topChange.moved ? "text-primary" : "text-muted-foreground"}>{topChange.moved}칸</b> 순위 변동{topChange.entered ? ` · 신규진입 ${topChange.entered}` : ""}
+              {topChange.moved === 0 && <span className="text-muted-foreground"> (가중 효과 미미 — 포지셔닝 신호 가설 지지)</span>}
+            </p>
             <RankHead />
             {tickerAggs.map((s, i) => <RankRow key={s.symbol} s={s} idx={i} maxVol={maxVol} quarters={AQ} ctx={ctx} selected={s.symbol === selTicker} onClick={() => { setReturnToMember(null); setReturnToCommittee(null); setSelTicker(s.symbol); }} />)}
           </Card>
