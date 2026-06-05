@@ -43,3 +43,9 @@ jobs:
           npm run enrich:insider-roles
           npm run enrich:10b5
           npm run enrich:holdings
+
+      # #27 — 수집·보강 직후 데이터 정합 모니터. orphan B(진짜 링크깨짐)>0 면 step 실패(RED)로 알림.
+      - name: Healthcheck (insider 정합 모니터 #27)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run healthcheck

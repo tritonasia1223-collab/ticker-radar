@@ -29,6 +29,7 @@
     "enrich:10b5": "tsx script/enrich-10b5.ts",
     "enrich:holdings": "tsx script/enrich-holdings.ts",
     "check": "tsc",
+    "healthcheck": "tsx script/healthcheck.ts",
     "db:push": "tsx script/db-push-guard.ts"
   },
   "dependencies": {

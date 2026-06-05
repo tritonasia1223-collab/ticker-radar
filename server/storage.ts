@@ -332,7 +332,7 @@ function thinPenalty(perCapita: number): number {
 const ENTITY_RE = /\b(l\.?l\.?c|l\.?p\.?|lp|inc|corp|ltd|group|partners?|capital|fund|trust|holdings?|holdco|advis|management|ventures?|equity|coinvest|investment|associates|gp)\b/i;
 const isEntityName = (name: string | null) => !!name && ENTITY_RE.test(name);
 const filerPrefix = (ext: string | null): string => { const m = /^fin:(\d{10})-/.exec(ext || ""); return m ? m[1] : ""; };
-function dedupeJointFilers(rows: any[]): any[] {
+export function dedupeJointFilers(rows: any[]): any[] {
   const groups = new Map<string, any[]>();
   for (const r of rows) {
     const k = [r.symbol, r.side, filerPrefix(r.ext), r.txnDate, r.shares, r.sharesAfter, r.code].join("|");
