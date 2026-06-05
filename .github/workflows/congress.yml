@@ -29,7 +29,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # npm ci 대신 npm install: lock 의 플랫폼별 optional 의존성 불완전으로 ubuntu npm ci 실패 → install 로 흡수.
+      - run: npm install --no-audit --no-fund
       # 내부자(insider)는 daily 로 분리(.github/workflows/insider.yml) — Form 4 알파가 공시 직후 강해서.
       # 여긴 PTR(정치인)만: 최대 45일 지연이라 weekly 로 신선도 충분(비대칭 주기).
       - name: Collect (Apify johnvc, last 60 days) + enrich

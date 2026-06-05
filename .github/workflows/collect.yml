@@ -23,7 +23,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # npm ci 대신 npm install: lock 의 플랫폼별 optional 의존성 불완전으로 ubuntu npm ci 실패 → install 로 흡수.
+      - run: npm install --no-audit --no-fund
       - name: Collect X
         run: npm run collect
       - name: Collect Threads

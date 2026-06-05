@@ -29,7 +29,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # npm ci 대신 npm install: lock 에 플랫폼별 optional 의존성(bufferutil 등)이 불완전해
+      # ubuntu 러너에서 npm ci(엄격 동기화)가 실패함. npm install 은 그 불일치를 흡수해 견고.
+      - run: npm install --no-audit --no-fund
       - name: Collect insider (Finnhub, last 7 days) + enrich
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
