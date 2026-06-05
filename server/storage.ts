@@ -205,8 +205,11 @@ export interface InsiderRankRow {
   netValue: number;
   buyCount: number;
   sellCount: number;
-  insiderCount: number;
-  tradeCount: number;
+  insiderCount: number; // 매수·매도(P·S) 한 인사이더 수
+  otherInsiderCount: number; // 보상·옵션행사·세금 등만 한 인사이더 수(신호 아님)
+  tradeCount: number; // 매수·매도 거래 건수
+  signalScore: number; // 6레버 유의미도 점수(클러스터와 동일 엔진, 단독 포함). 하단 랭킹 정렬용.
+  signalSide: "buy" | "sell" | null; // 유의미도를 주도한 방향
 }
 export interface InsiderTradeRow {
   id: number;
@@ -223,6 +226,169 @@ export interface InsiderTradeRow {
   txnDate: number;
   filedDate: number | null;
   role: string | null;
+  plan10b5: boolean | null; // true=10b5-1 정기플랜(노이즈) / false=재량적(시그널) / null=미확인
+}
+// 클러스터 시그널 — 같은 윈도우에 여러 인사이더가 같은 방향
+export interface ClusterParticipant {
+  slug: string; name: string; role: string | null; value: number; trades: number;
+  qty: number; sharesAfter: number | null; pctOfHoldings: number | null; // 보유 대비 거래 비중(0~1+) — 절대액보다 핵심
+  isNew: boolean; // 매수 pre≤0 = 진짜 신규 포지션(보유 0에서 매수). pct≥1 대량추가(pre>0)와 구분.
+}
+export interface InsiderCluster {
+  symbol: string; company: string | null; sector: string | null;
+  side: "buy" | "sell"; insiderCount: number; tradeCount: number; totalValue: number;
+  windowFromMs: number; windowToMs: number; spanDays: number;
+  participants: ClusterParticipant[]; score: number;
+  thin: boolean;  // n=2 (합의 증거 약함, percap 비례 페널티 ×0.65~0.90)
+  gated: boolean; // post=0 ≥3명 (구조적 일괄청산 의심, ×0.5 게이트)
+}
+
+// 직책 → 시그널 티어 가중(정보 접근도). 클라이언트 classifyRole 의 우선순위와 동일.
+//   T1 CEO·회장/CFO=1.0 · 대주주=0.9 · T2 운영(COO/CTO/President)=0.7 · T3 기능=0.4 · T4 이사=0.25 · 미확인=0.3
+function roleSignalWeight(role: string | null): number {
+  if (!role) return 0.3;
+  const r = role;
+  const owner = /10\s*%/.test(r);
+  if (/see\s*remarks/i.test(r)) return Math.max(0.3, owner ? 0.9 : 0);
+  let w = 0.3;
+  if (/\bceo\b/i.test(r) || /chief executive/i.test(r) || /chair(man|person|woman)?\b/i.test(r) || /\bcfo\b/i.test(r) || /chief financial/i.test(r)) w = 1.0;
+  else if (/\bcoo\b/i.test(r) || /chief operating/i.test(r) || /\bcto\b/i.test(r) || /chief technology/i.test(r) || (/\bpresident\b/i.test(r) && !/vice[\s-]*president/i.test(r))) w = 0.7;
+  else if (/\bclo\b/i.test(r) || /chief legal/i.test(r) || /general counsel/i.test(r) || /\bcounsel\b/i.test(r) || /\bcao\b/i.test(r) || /\bpao\b/i.test(r) || /chief accounting/i.test(r) || /controller/i.test(r) || /\bchro\b/i.test(r) || /\bcmo\b/i.test(r) || /chief\s+[\w\s]+officer/i.test(r) || /\b(?:e|s)?vp\b/i.test(r) || /vice\s*president/i.test(r) || /\bofficer\b/i.test(r)) w = 0.4;
+  else if (/\bdirector\b/i.test(r)) w = 0.25;
+  return Math.max(w, owner ? 0.9 : 0); // 대주주는 최소 0.9 (창업자·VC·행동주의)
+}
+// 보유 대비 거래 비중 = qty / 거래직전 보유(pre). pre = 매수 ? after-qty : after+qty.
+function holdingsPct(side: string, qty: number, sharesAfter: number | null): number | null {
+  if (sharesAfter == null || qty <= 0) return null;
+  if (side === "buy") {
+    const pre = sharesAfter - qty;
+    if (pre < 0) return null;   // qty>post = 데이터 이상(외국발행사 post-holdings 깨짐) → 중립(강함 아님)
+    if (pre === 0) return 1.0;  // 순수 신규 포지션 = 강한 컨빅션
+    return qty / pre;
+  }
+  // 매도: pre = post + qty (항상 ≥ qty > 0). post=0 이면 전량청산(ratio=100%).
+  return qty / (sharesAfter + qty);
+}
+// 보유% → 배율: >50%=1.5 · 10~50%=1.0 · <10%=0.5 · 데이터없음=1.0(중립). "비정상 규모"의 진짜 의미.
+function holdingsMultiplier(pct: number | null): number {
+  if (pct == null) return 1.0;
+  return pct > 0.5 ? 1.5 : pct >= 0.1 ? 1.0 : 0.5;
+}
+const isTenPctOwner = (role: string | null) => role != null && /10\s*%/.test(role);
+// 참가자 1인의 시그널 기여 = 티어 가중 × 절대규모(로그=바닥필터) × 보유대비배율(진짜 가중).
+//   클래스 캡: 10% Owner의 거의-전량 매도(≥80%)는 PE 블록 청산 패턴(컨빅션 아님) → 배율 최대 1.0(×1.5 금지).
+//   매수·부분매도·저비중·비(非)10%Owner 는 캡 없음 — PE의 드문 진짜 베팅/추가매집은 안 죽임. 0이 아니라 '보통 매도' 수준으로 하향.
+function participantSignal(p: ClusterParticipant, side: string, massPost0: boolean): number {
+  let m = holdingsMultiplier(p.pctOfHoldings);
+  const capped = side === "sell" && isTenPctOwner(p.role) && p.pctOfHoldings != null && p.pctOfHoldings >= 0.80;
+  if (capped) m = Math.min(m, 1.0); // 클래스 캡: 10%Owner 거의-전량 매도(PE 블록청산)
+  // post=0 동시성 게이트: 같은 윈도우 post=0 ≥3명 = 구조적 이벤트(외국발행사 일괄 정정·전환 등) → 그 건들 ×0.5.
+  //   단독(1~2명) post=0 은 진짜 전량매도 경보라 유지. 캡 받은 건엔 중복 적용 안 함(상호배제).
+  else if (side === "sell" && massPost0 && p.sharesAfter === 0) m *= 0.5;
+  return roleSignalWeight(p.role) * (1 + Math.log10(1 + Math.abs(p.value) / 1e5)) * m;
+}
+// thin(n=2) 페널티 — 개수가 아니라 1인당 시그널 강도에 연동.
+//   n=2는 breadth(합의 증거)가 약하지만, 그 약함의 정도는 '누가' 모였느냐에 달림.
+//   고티어 2인 큰 컨빅션(percap↑, 예: CEO+CFO 보유 다수 매도)은 우연일 확률이 낮음 → 페널티 완화.
+//   저티어/소액 2인(percap↓)은 우연 vs 조율 구분 안 됨 → full 페널티 유지(하단 노이즈 그대로).
+//   천장 0.90: 아무리 강해도 n≥3 정상 클러스터 대비 breadth 겸손분 10%는 남긴다.
+//   ※ percap 은 클래스캡 적용 後 시그널로 계산됨(participantSignal 내부 캡 반영) → 캡이 죽인 규모가 thin 완화로 안 샘.
+//   앵커 0.5/1.5 출처: 2026-06 데이터셋(240클러스터) 분포 캘리브레이션 — 저티어n=2 percap 0.66 / n≥3 0.97 / 고티어n=2 1.46.
+//   → 0.5=노이즈 바닥(full 페널티), 1.5=고티어 평균 부근(거의 완화). 데이터 크게 늘면 script/diag-clusters.ts 로 재캘리브레이션.
+function thinPenalty(perCapita: number): number {
+  const t = Math.max(0, Math.min(1, (perCapita - 0.5) / 1.0)); // percap 0.5→0, 1.5→1
+  return 0.65 + 0.25 * t; // [0.65, 0.90]
+}
+
+// ── joint-filer dedup ────────────────────────────────────────────────────────
+// 문제: 엔티티(펀드)와 그 지배인/관계회사가 '동일 수익포지션'을 각자 Form4 로 신고 → 한 포지션이 N개 이름으로.
+//   결과: 클러스터 insiderCount(breadth) 가짜 부풀림 + value log항 N중 중복(예: NRG LS Power+Nanus $2.6B 2번).
+//   이건 분모/캡 문제가 아니라 '한 번만 세기' 문제 → 동일 포지션 행을 대표 1행으로 접는다.
+// 안전조건(전 테이블 충돌 리포트로 검증, script/dedup-report.ts):
+//   ① side IN(buy,sell) — A(부여) 코드는 이미 제외(이사회 일괄부여 오병합 차단).
+//   ② 동일 튜플 = (txnDate, shares, sharesAfter, txnCode).
+//   ③ 동일 filer-prefix(accession 앞 10자리 = 같은 제출배치). 공동신고자는 인접 accession을 받음(-023624/-023625).
+//   ④ 그룹에 조직 엔티티 ≥1개. 자연인-only(예: ESLT 임원 3인 동일수량)는 진짜 피어 → 보존(실제 합의 파괴 방지).
+//   ⑤ 서로 다른 인사이더 ≥2.
+// 병합 속성 생존: 대표=roleWeight max(→엔티티 우선→slug순), 10%Owner=그룹 OR(클래스캡 자격 보존 — dedup이 점수 올리는 사고 방지).
+const ENTITY_RE = /\b(l\.?l\.?c|l\.?p\.?|lp|inc|corp|ltd|group|partners?|capital|fund|trust|holdings?|holdco|advis|management|ventures?|equity|coinvest|investment|associates|gp)\b/i;
+const isEntityName = (name: string | null) => !!name && ENTITY_RE.test(name);
+const filerPrefix = (ext: string | null): string => { const m = /^fin:(\d{10})-/.exec(ext || ""); return m ? m[1] : ""; };
+function dedupeJointFilers(rows: any[]): any[] {
+  const groups = new Map<string, any[]>();
+  for (const r of rows) {
+    const k = [r.symbol, r.side, filerPrefix(r.ext), r.txnDate, r.shares, r.sharesAfter, r.code].join("|");
+    const g = groups.get(k); if (g) g.push(r); else groups.set(k, [r]);
+  }
+  const drop = new Set<any>();
+  for (const g of groups.values()) {
+    if (new Set(g.map((r) => r.slug)).size < 2) continue;        // ⑤ 단독 → 유지
+    if (!g.some((r) => isEntityName(r.name))) continue;          // ④ 자연인-only 피어 → 보존
+    const rep = g.slice().sort((a, b) =>
+      roleSignalWeight(b.role) - roleSignalWeight(a.role) ||
+      (isEntityName(b.name) ? 1 : 0) - (isEntityName(a.name) ? 1 : 0) ||
+      (String(a.slug) < String(b.slug) ? -1 : 1))[0];
+    if (g.some((r) => isTenPctOwner(r.role)) && !isTenPctOwner(rep.role))
+      rep.role = (rep.role ? rep.role + " · " : "") + "10% Owner";  // 10%Owner OR (캡 자격 보존)
+    for (const r of g) if (r !== rep) drop.add(r);
+  }
+  return drop.size ? rows.filter((r) => !drop.has(r)) : rows;
+}
+// ── cross-ticker dedup (#24) ──────────────────────────────────────────────────
+// 문제: 듀얼클래스 발행사(Alphabet GOOG/GOOGL · Fox FOX/FOXA · Alibaba BABA/BABAF …)의 한 Form4 가
+//   Finnhub 의 클래스별 티커 조회 양쪽에서 반환 → 동일 제출이 두 심볼로 들어와 인사이더·금액 이중계상.
+//   accession(=external_id 의 2번째 토큰)은 SEC 전역 유일 → 같은 accession 이 ≥2 심볼이면 동일 제출 확정
+//   (우연 불가; filerPrefix 가 아니라 전체 accession 으로 매칭). 전수 검증: script/orphan-classify.ts.
+//   GOOG 케이스는 insider FK 깨짐(orphan)이라 이미 fetch 의 INNER JOIN 에서 드롭됨 → 여기 입력에 없음.
+//   여기서 실제로 접는 건 양쪽 다 healthy 라 둘 다 살아있는 FOX/FOXA·BABA/BABAF 류.
+// canonical = 기존 데이터만으로 답이 나오는 전함수(외부 거래량 피드 의존·하드코딩 쌍 예외 없음 — 미래 쌍 자동 커버):
+//   ① healthy distinct 인사이더 수 desc(실데이터 있는 쪽 우선: GOOGL 5 > GOOG 0)
+//   ② 동률 → 행 수 desc   ③ 동률 → 심볼 길이 asc(F·접미사 비유동 클래스가 길어지는 경향: BABA<BABAF)
+//   ④ 최종 결정적 폴백 → 사전순 asc  ⟶ 어떤 입력에도 단일 canonical 보장.
+//   주의: ③④는 유동성 신호가 아니라 '데이터 대칭일 때의 결정적 타이브레이크'(금액·점수는 어느 쪽이든 동일 — 표시문제).
+//   현 데이터 결과: GOOGL·BABA·FOX 보존. (FOX vs FOXA 는 대칭이라 길이규칙이 FOX 선택 — 표시상 무의미한 차이.)
+const accessionOf = (ext: string | null): string => { const m = /^fin:([^:]+):/.exec(ext || ""); return m ? m[1] : ""; };
+function dedupeCrossTicker(rows: any[]): any[] {
+  const symsByAcc = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const a = accessionOf(r.ext); if (!a) continue;
+    const s = symsByAcc.get(a); if (s) s.add(r.symbol); else symsByAcc.set(a, new Set([r.symbol]));
+  }
+  const crossSyms = new Set<string>();
+  for (const s of symsByAcc.values()) if (s.size >= 2) for (const x of s) crossSyms.add(x);
+  if (!crossSyms.size) return rows;
+  const stat = new Map<string, { ins: Set<number>; rows: number }>();
+  for (const r of rows) {
+    if (!crossSyms.has(r.symbol)) continue;
+    const st = stat.get(r.symbol) || { ins: new Set<number>(), rows: 0 };
+    st.ins.add(Number(r.insiderId)); st.rows++; stat.set(r.symbol, st);
+  }
+  const better = (a: string, b: string): string => {       // canonical = 더 'primary' 한 심볼
+    const sa = stat.get(a)!, sb = stat.get(b)!;
+    if (sa.ins.size !== sb.ins.size) return sa.ins.size > sb.ins.size ? a : b; // ①
+    if (sa.rows !== sb.rows) return sa.rows > sb.rows ? a : b;                  // ②
+    if (a.length !== b.length) return a.length < b.length ? a : b;             // ③
+    return a < b ? a : b;                                                      // ④
+  };
+  const canonByAcc = new Map<string, string>();
+  for (const [a, s] of symsByAcc) if (s.size >= 2) canonByAcc.set(a, [...s].reduce((x, y) => better(x, y)));
+  const drop = new Set<any>();
+  for (const r of rows) { const c = canonByAcc.get(accessionOf(r.ext)); if (c && r.symbol !== c) drop.add(r); }
+  return drop.size ? rows.filter((r) => !drop.has(r)) : rows;
+}
+
+// 종목별 median 단가 → 비정상 단가(>$1M 또는 median 50배 초과, 예: CRWV $117인데 $700k~$11M)는 금액 0.
+//   클러스터·랭킹이 같은 가드를 쓰도록 모듈 공유(복사 금지 — 한 벌만 존재).
+function makeCleanValue(rows: any[]): (r: any) => number {
+  const pricesBySym = new Map<string, number[]>();
+  for (const r of rows) { const p = Number(r.price); if (p > 0) { const a = pricesBySym.get(r.symbol); if (a) a.push(p); else pricesBySym.set(r.symbol, [p]); } }
+  const medBySym = new Map<string, number>();
+  for (const [s, a] of pricesBySym) { a.sort((x, y) => x - y); medBySym.set(s, a[Math.floor(a.length / 2)]); }
+  return (r: any): number => {
+    const p = Number(r.price); const med = medBySym.get(r.symbol);
+    if (p > 1_000_000 || (med && p > 50 * med)) return 0;
+    return Number(r.value) || 0;
+  };
 }
 
 export interface IStorage {
@@ -770,35 +936,144 @@ export class DatabaseStorage implements IStorage {
     await db.delete(insiders);
   }
 
-  // 종목 랭킹 — 서버측 GROUP BY 집계 (볼륨 커서 클라 전량 전송 회피)
+  // 종목 랭킹 — 클러스터와 동일한 dedup·가격가드를 거친 단일 소스에서 JS 집계(#23).
+  //   raw SQL SUM/COUNT 은 공동신고자(엔티티+지배인) 금액·인사이더수를 이중계산 → dedupeJointFilers 통과 후 집계.
+  //   랭킹은 10b5-1 정기매도 포함(클러스터와 달리) — fetch false. 금액 의미는 '기간 총액' 그대로(윈도우 아님).
   async insiderRanking(opts: { fromMs?: number; toMs?: number }): Promise<InsiderRankRow[]> {
     const from = opts.fromMs ?? 0;
     const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
-    const rows = (await db.execute(sql`
+    const rows = dedupeJointFilers(await this.fetchInsiderPsRows(from, to, false));
+    const cleanValue = makeCleanValue(rows); // 클러스터와 같은 모듈 가드(복사 아님)
+
+    type Agg = { company: string | null; sector: string | null; buyValue: number; sellValue: number; buyCount: number; sellCount: number; tradeCount: number; insiders: Set<number> };
+    const agg = new Map<string, Agg>();
+    for (const r of rows) {
+      let a = agg.get(r.symbol);
+      if (!a) { a = { company: r.company ?? null, sector: r.sector ?? null, buyValue: 0, sellValue: 0, buyCount: 0, sellCount: 0, tradeCount: 0, insiders: new Set() }; agg.set(r.symbol, a); }
+      const v = cleanValue(r);
+      a.tradeCount++; a.insiders.add(Number(r.insiderId));
+      if (r.side === "buy") { a.buyValue += v; a.buyCount++; } else { a.sellValue += v; a.sellCount++; }
+    }
+
+    // otherInsiderCount(보상·행사 등만 한 인사이더 — 신호 아님, #23 스코프 밖): raw 카운트 유지.
+    const otherRows = (await db.execute(sql`
       SELECT it.symbol AS symbol,
-             t.company_name AS company,
-             ts.sector AS sector,
-             SUM(CASE WHEN it.side='buy'  THEN COALESCE(it.value,0) ELSE 0 END) AS "buyValue",
-             SUM(CASE WHEN it.side='sell' THEN COALESCE(it.value,0) ELSE 0 END) AS "sellValue",
-             SUM(CASE WHEN it.side='buy'  THEN 1 ELSE 0 END) AS "buyCount",
-             SUM(CASE WHEN it.side='sell' THEN 1 ELSE 0 END) AS "sellCount",
-             COUNT(DISTINCT it.insider_id) AS "insiderCount",
-             COUNT(*) AS "tradeCount"
+             COUNT(DISTINCT it.insider_id)
+               - COUNT(DISTINCT CASE WHEN it.side IN ('buy','sell') THEN it.insider_id END) AS "other"
       FROM insider_trades it
+      WHERE it.txn_date >= ${from} AND it.txn_date <= ${to}
+      GROUP BY it.symbol
+    `)) as unknown as any[];
+    const otherBySym = new Map(otherRows.map((r) => [r.symbol, Number(r.other) || 0]));
+
+    // 유의미도 점수: 클러스터와 동일 엔진을 minInsiders=1(단독 포함)로 돌려 종목별 max 점수 산출(이미 dedup됨).
+    const sigClusters = await this.insiderClusters({ fromMs: opts.fromMs, toMs: opts.toMs, minInsiders: 1, limit: 100000 });
+    const sig = new Map<string, { score: number; side: "buy" | "sell" }>();
+    for (const c of sigClusters) { const cur = sig.get(c.symbol); if (!cur || c.score > cur.score) sig.set(c.symbol, { score: c.score, side: c.side }); }
+
+    const result: InsiderRankRow[] = [];
+    for (const [symbol, a] of agg) {
+      const s = sig.get(symbol);
+      result.push({
+        symbol, company: a.company, sector: a.sector,
+        buyValue: a.buyValue, sellValue: a.sellValue, netValue: a.buyValue - a.sellValue,
+        buyCount: a.buyCount, sellCount: a.sellCount,
+        insiderCount: a.insiders.size, otherInsiderCount: otherBySym.get(symbol) ?? 0,
+        tradeCount: a.tradeCount,
+        signalScore: s?.score ?? 0, signalSide: s?.side ?? null,
+      });
+    }
+    return result;
+  }
+
+  // P/S 원시행 fetch — 클러스터·랭킹 공유 단일 소스. excludePlanSells: 클러스터 true / 랭킹 false.
+  private async fetchInsiderPsRows(from: number, to: number, excludePlanSells: boolean): Promise<any[]> {
+    const planClause = excludePlanSells ? sql`AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)` : sql``;
+    const raw = (await db.execute(sql`
+      SELECT it.insider_id AS "insiderId", i.name AS name, i.slug AS slug, it.role AS role,
+             it.symbol AS symbol, t.company_name AS company, ts.sector AS sector,
+             it.side AS side, COALESCE(it.value, 0) AS value, it.price AS price,
+             it.shares AS shares, it.shares_after AS "sharesAfter", it.txn_date AS "txnDate",
+             it.txn_code AS code, it.external_id AS ext
+      FROM insider_trades it
+      JOIN insiders i ON i.id = it.insider_id
       LEFT JOIN tickers t ON t.symbol = it.symbol
       LEFT JOIN ticker_sectors ts ON ts.symbol = it.symbol
-      WHERE it.txn_date >= ${from} AND it.txn_date <= ${to}
-      GROUP BY it.symbol, t.company_name, ts.sector
+      WHERE it.side IN ('buy','sell') AND it.txn_date >= ${from} AND it.txn_date <= ${to}
+        ${planClause}
     `)) as unknown as any[];
-    return rows.map((r) => {
-      const buyValue = Number(r.buyValue) || 0, sellValue = Number(r.sellValue) || 0;
-      return {
-        symbol: r.symbol, company: r.company ?? null, sector: r.sector ?? null,
-        buyValue, sellValue, netValue: buyValue - sellValue,
-        buyCount: Number(r.buyCount) || 0, sellCount: Number(r.sellCount) || 0,
-        insiderCount: Number(r.insiderCount) || 0, tradeCount: Number(r.tradeCount) || 0,
-      };
-    });
+    // #24 교차티커(듀얼클래스) 이중계상 제거 — joint-filer dedup 보다 먼저(심볼 전체를 접어 단일 소스를 정규화).
+    return dedupeCrossTicker(raw);
+  }
+
+  // 클러스터 시그널 — 종목·방향별로 windowDays 안에서 가장 많은 서로 다른 인사이더가 모인 윈도우를 찾는다.
+  //   매수 ≫ 매도(노이즈 많음), 10b5-1 플랜 매도는 제외. 점수 = 인사이더수 × 방향가중, 동률이면 금액.
+  async insiderClusters(opts: { fromMs?: number; toMs?: number; windowDays?: number; minInsiders?: number; limit?: number }): Promise<InsiderCluster[]> {
+    const from = opts.fromMs ?? 0;
+    const to = opts.toMs ?? Number.MAX_SAFE_INTEGER;
+    const windowMs = (opts.windowDays ?? 30) * 86400000;
+    const minIns = opts.minInsiders ?? 2;
+    const limit = opts.limit ?? 40;
+    // 공동신고 중복 제거(엔티티+지배인 동일 포지션 → 대표 1행). 위젯·랭킹 양쪽이 같은 정제입력을 쓰도록 여기서 1회.
+    //   클러스터는 10b5-1 정기매도 제외(노이즈). 랭킹은 포함 — fetch 의 excludePlanSells 플래그로 분기.
+    const rows = dedupeJointFilers(await this.fetchInsiderPsRows(from, to, true));
+    const cleanValue = makeCleanValue(rows);
+
+    const groups = new Map<string, any[]>();
+    for (const r of rows) { const k = r.symbol + "|" + r.side; const g = groups.get(k); if (g) g.push(r); else groups.set(k, [r]); }
+
+    const clusters: InsiderCluster[] = [];
+    for (const [k, list] of groups) {
+      list.sort((a, b) => Number(a.txnDate) - Number(b.txnDate));
+      // 각 거래를 시작점으로 forward window 를 잡아 서로 다른 인사이더가 가장 많은 구간 선택
+      let bestTrades: any[] = []; let bestSize = 0;
+      for (let i = 0; i < list.length; i++) {
+        const t0 = Number(list[i].txnDate); const set = new Set<number>(); const win: any[] = [];
+        for (let j = i; j < list.length && Number(list[j].txnDate) - t0 <= windowMs; j++) { win.push(list[j]); set.add(Number(list[j].insiderId)); }
+        if (set.size > bestSize) { bestSize = set.size; bestTrades = win; }
+      }
+      if (bestSize < minIns) continue;
+      const side = k.endsWith("|buy") ? "buy" : "sell";
+      // 인사이더별 합산 + 거래직후 보유량(최신 거래 기준) 추적
+      const byIns = new Map<string, ClusterParticipant & { _lastDate: number }>();
+      for (const t of bestTrades) {
+        const e = byIns.get(t.slug) || { slug: t.slug, name: t.name, role: null, value: 0, trades: 0, qty: 0, sharesAfter: null, pctOfHoldings: null, isNew: false, _lastDate: -1 };
+        e.value += cleanValue(t); e.trades++; e.qty += Math.abs(Number(t.shares) || 0);
+        if (!e.role && t.role) e.role = t.role;
+        const td = Number(t.txnDate);
+        if (t.sharesAfter != null && td >= e._lastDate) { e.sharesAfter = Number(t.sharesAfter); e._lastDate = td; }
+        byIns.set(t.slug, e);
+      }
+      if (byIns.size < minIns) continue;
+      const r0 = bestTrades[0];
+      const wFrom = Number(bestTrades[0].txnDate), wTo = Number(bestTrades[bestTrades.length - 1].txnDate);
+      const participants: ClusterParticipant[] = [...byIns.values()].map(({ _lastDate, ...p }) => ({
+        ...p,
+        pctOfHoldings: holdingsPct(side, p.qty, p.sharesAfter),
+        isNew: side === "buy" && p.sharesAfter != null && p.sharesAfter - p.qty <= 0, // pre≤0 = 신규
+      }));
+      const totalValue = participants.reduce((s, p) => s + p.value, 0);
+      const insiderCount = participants.length;
+      // 점수 = 방향(매수≫매도) × Σ(티어 × 절대규모로그 × 보유대비배율) / √n.
+      //   /√n: breadth(인원수)는 플러스 요인이되 한계체감 — 29명이 5명의 6배가 아니라 ~2.4배. 규모처럼 한 항(인원)이 폭주 방지.
+      const dir = side === "buy" ? 2 : 1;
+      // 최소 인원 게이트: n=2는 '합의'의 통계적 증거가 약함(우연 vs 조율 구분 안 됨) → thin 페널티.
+      //   단, 페널티는 개수가 아니라 1인당 시그널(percap)에 비례 → 고티어 큰 컨빅션 2인은 완화, 저티어 2인은 full.
+      const thin = insiderCount === 2;
+      const massPost0 = participants.filter((p) => p.sharesAfter === 0).length >= 3; // 다수 동시 전량청산 = 구조적 이벤트
+      const sumSignal = participants.reduce((s, p) => s + participantSignal(p, side, massPost0), 0);
+      const perCapita = sumSignal / insiderCount;
+      const score = (dir * sumSignal / Math.sqrt(insiderCount)) * (thin ? thinPenalty(perCapita) : 1);
+      participants.sort((a, b) => participantSignal(b, side, massPost0) - participantSignal(a, side, massPost0)); // 리더가 카드 상단
+      clusters.push({
+        symbol: r0.symbol, company: r0.company ?? null, sector: r0.sector ?? null,
+        side, insiderCount, tradeCount: bestTrades.length, totalValue,
+        windowFromMs: wFrom, windowToMs: wTo, spanDays: Math.round((wTo - wFrom) / 86400000),
+        participants, score, thin, gated: massPost0,
+      });
+    }
+    clusters.sort((a, b) => b.score - a.score);
+    return clusters.slice(0, limit);
   }
 
   private async joinedInsiderTrades(where: any, limit?: number): Promise<InsiderTradeRow[]> {
@@ -807,8 +1082,13 @@ export class DatabaseStorage implements IStorage {
       insiderName: insiders.name, insiderSlug: insiders.slug,
       symbol: insiderTrades.symbol, company: tickers.companyName,
       txnCode: insiderTrades.txnCode, side: insiderTrades.side,
-      shares: insiderTrades.shares, price: insiderTrades.price, value: insiderTrades.value,
+      shares: insiderTrades.shares,
+      // 비정상 단가(>$1M/주, 데이터 오류)는 미상 처리 — 인사이더/수량은 유지, 가격·금액만 숨김
+      price: sql<number | null>`CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.price} END`,
+      // ::float8 — raw sql 의 bigint 는 postgres.js 가 문자열로 반환해 클라 합산에서 문자열 연결됨. 숫자로 캐스팅.
+      value: sql<number | null>`(CASE WHEN ${insiderTrades.price} > 1000000 THEN NULL ELSE ${insiderTrades.value} END)::float8`,
       txnDate: insiderTrades.txnDate, filedDate: insiderTrades.filedDate, role: insiderTrades.role,
+      plan10b5: insiderTrades.plan10b5,
     }).from(insiderTrades)
       .innerJoin(insiders, eq(insiderTrades.insiderId, insiders.id))
       .leftJoin(tickers, eq(tickers.symbol, insiderTrades.symbol))
@@ -847,6 +1127,41 @@ export class DatabaseStorage implements IStorage {
   }
   async setInsiderRole(insiderId: number, symbol: string, role: string | null) {
     await db.update(insiderTrades).set({ role }).where(and(eq(insiderTrades.insiderId, insiderId), eq(insiderTrades.symbol, symbol)));
+  }
+
+  // 보유량 백필 — external_id 매칭으로 shares_after 일괄 UPDATE (Finnhub share 재호출분)
+  async setSharesAfterByExternal(pairs: { eid: string; sa: number | null }[]) {
+    if (!pairs.length) return;
+    await db.execute(sql`
+      UPDATE insider_trades it SET shares_after = d.sa
+      FROM json_to_recordset(${JSON.stringify(pairs)}::json) AS d(eid text, sa bigint)
+      WHERE it.external_id = d.eid AND it.shares_after IS DISTINCT FROM d.sa
+    `);
+  }
+  // 보유% 미보강(shares_after NULL)인 매수·매도 종목 목록
+  async symbolsNeedingHoldings(): Promise<string[]> {
+    const r = (await db.execute(sql`
+      SELECT DISTINCT symbol FROM insider_trades WHERE side IN ('buy','sell') AND shares_after IS NULL
+    `)) as unknown as any[];
+    return r.map((x) => x.symbol);
+  }
+
+  // 10b5-1 보강용 — 매수·매도 중 plan10b5 미확인인 고유 accession 목록 (한 Form4=한 accession에 여러 거래라인이 묶임)
+  async psAccessionsNeedingPlan(): Promise<{ accession: string; symbol: string }[]> {
+    const rows = (await db.execute(sql`
+      SELECT DISTINCT split_part(it.external_id, ':', 2) AS accession, it.symbol AS symbol
+      FROM insider_trades it
+      WHERE it.side IN ('buy','sell') AND it.plan10b5 IS NULL
+        AND it.external_id LIKE 'fin:%' AND split_part(it.external_id, ':', 2) <> ''
+    `)) as unknown as any[];
+    return rows.map((r) => ({ accession: r.accession, symbol: r.symbol }));
+  }
+  // accession 의 모든 거래라인에 10b5-1 플래그 적용 (문서레벨 필드라 동일 accession 공유)
+  async setPlan10b5ByAccession(accession: string, plan: boolean | null) {
+    await db.execute(sql`
+      UPDATE insider_trades SET plan10b5 = ${plan}
+      WHERE external_id LIKE ${"fin:" + accession + ":%"}
+    `);
   }
 }
 

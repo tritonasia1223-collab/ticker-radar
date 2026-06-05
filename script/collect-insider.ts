@@ -84,10 +84,13 @@ async function main() {
       let insiderId = insiderCache.get(slug);
       if (insiderId === undefined) { insiderId = await storage.upsertInsider({ slug, name: r.name, createdAt: now }); insiderCache.set(slug, insiderId); }
       const shares = Math.abs(r.change ?? 0);
-      const price = r.transactionPrice ?? 0;
+      // 비정상 단가 가드: 주당 $1M 초과는 데이터 오류(예: CRWV가 $11M/주로 들어옴) → 미상 처리
+      const rawPrice = r.transactionPrice ?? 0;
+      const price = rawPrice > 1_000_000 ? null : rawPrice;
+      const value = price == null ? null : Math.round(shares * price);
       const trade: InsertInsiderTrade = {
         insiderId, symbol: sym, txnCode: r.transactionCode || null, side: sideOf(r.transactionCode),
-        shares, price, value: Math.round(shares * price), txnDate: txnMs,
+        shares, sharesAfter: Number.isFinite(r.share) ? Math.round(r.share) : null, price, value, txnDate: txnMs,
         filedDate: r.filingDate ? Date.parse(r.filingDate) || null : null,
         externalId: `fin:${r.id}:${sym}:${r.transactionCode}:${r.transactionDate}:${r.change}`,
         createdAt: now,

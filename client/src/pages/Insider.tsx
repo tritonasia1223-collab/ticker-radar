@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { fmtMoney, tickerColor, koSector, koCompany } from "@/lib/congress";
+import { fmtMoney, tickerColor, koSector, koCompany } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserSearch, ChevronRight, ChevronLeft, ArrowLeft } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { UserSearch, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft, Info } from "lucide-react";
 
 const BUY = "#3fb950";
 const SELL = "#f85149";
@@ -14,19 +16,146 @@ const SELL = "#f85149";
 interface RankRow {
   symbol: string; company: string | null; sector: string | null;
   buyValue: number; sellValue: number; netValue: number;
-  buyCount: number; sellCount: number; insiderCount: number; tradeCount: number;
+  buyCount: number; sellCount: number; insiderCount: number; otherInsiderCount: number; tradeCount: number;
+  signalScore: number; signalSide: "buy" | "sell" | null;
 }
 interface ITrade {
   id: number; insiderId: number; insiderName: string; insiderSlug: string;
   symbol: string; company: string | null; txnCode: string | null; side: string;
   shares: number | null; price: number | null; value: number | null; txnDate: number; filedDate: number | null;
   role: string | null;
+  plan10b5: boolean | null; // true=10b5-1 정기플랜(노이즈) / false=재량적(시그널) / null=미확인
+}
+interface ClusterParticipant { slug: string; name: string; role: string | null; value: number; trades: number; qty: number; sharesAfter: number | null; pctOfHoldings: number | null; isNew: boolean }
+interface Cluster {
+  symbol: string; company: string | null; sector: string | null;
+  side: "buy" | "sell"; insiderCount: number; tradeCount: number; totalValue: number;
+  windowFromMs: number; windowToMs: number; spanDays: number;
+  participants: ClusterParticipant[]; score: number; thin: boolean; gated: boolean;
 }
 
 const SIDE_KO: Record<string, string> = { buy: "매수", sell: "매도", award: "보상", exercise: "옵션행사", tax: "세금", gift: "증여", conversion: "전환", other: "기타" };
 const sectorLabel = (s: string | null) => koSector(s) || "";
 const fmtShares = (n: number | null) => (n == null ? "—" : n.toLocaleString());
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+// ----- 직책(role) → 시그널 티어 분류 -----
+// 핵심: 색 = "시그널 티어(정보 접근도)" 한 축만 인코딩, 라벨 = 구체 직책. (역할-식별과 시그널을 색에 섞지 않음)
+//   T1 전사·재무 시야: CEO·회장, CFO        T2 운영 임원: COO, (운영)President, CTO, 사업부장  ← 시그널 큼
+//   T3 기능 임원: CAO/PAO/Controller, GC/CLO, CHRO, CMO, 기타 C-suite, EVP/SVP/VP
+//   T4 이사(Director): 노이즈 최다
+//   대주주(10%+): 창업자·VC·행동주의 → 직책과 독립적인 고시그널 태그 (Director에 묻지 않음)
+//   미확인: See Remarks / 역할 결측 → 회색 임원과 섞지 않고 별도 표기
+type Tier = 1 | 2 | 3 | 4;
+// 색 = 시그널 티어. 라이트/다크 모두 가독되게 mode별 톤(light=진한 텍스트, dark=밝은 텍스트).
+const TIER_META: Record<Tier, { name: string; cls: string }> = {
+  1: { name: "전사·재무", cls: "bg-rose-500/15 text-rose-700 border-rose-500/40 dark:bg-rose-500/20 dark:text-rose-200" },
+  2: { name: "운영 임원", cls: "bg-amber-500/15 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200" },
+  3: { name: "기능 임원", cls: "bg-teal-500/15 text-teal-700 border-teal-500/40 dark:bg-teal-500/20 dark:text-teal-300" },
+  4: { name: "이사", cls: "bg-zinc-500/20 text-zinc-600 border-zinc-500/40 dark:bg-zinc-500/25 dark:text-zinc-300" },
+};
+const OWNER_CLS = "bg-violet-500/15 text-violet-700 border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200";
+const UNCONF_CLS = "border-dashed border-muted-foreground/50 text-muted-foreground bg-transparent";
+
+// 우선순위 순서(위에서 먼저 매칭 = primary). 복합 직책은 최상위 시그널이 대표.
+const ROLE_RULES: { tier: Tier; label: string; test: (r: string) => boolean }[] = [
+  { tier: 1, label: "CEO·회장", test: (r) => /\bceo\b/i.test(r) || /chief executive/i.test(r) || /chair(man|person|woman)?\b/i.test(r) },
+  { tier: 1, label: "CFO", test: (r) => /\bcfo\b/i.test(r) || /chief financial/i.test(r) },
+  { tier: 2, label: "COO", test: (r) => /\bcoo\b/i.test(r) || /chief operating/i.test(r) },
+  { tier: 2, label: "CTO", test: (r) => /\bcto\b/i.test(r) || /chief technology/i.test(r) },
+  { tier: 2, label: "President", test: (r) => /\bpresident\b/i.test(r) && !/vice[\s-]*president/i.test(r) },
+  { tier: 3, label: "법무(GC)", test: (r) => /\bclo\b/i.test(r) || /chief legal/i.test(r) || /general counsel/i.test(r) || /\bcounsel\b/i.test(r) },
+  { tier: 3, label: "회계(CAO)", test: (r) => /\bcao\b/i.test(r) || /\bpao\b/i.test(r) || /chief accounting/i.test(r) || /principal accounting/i.test(r) || /controller/i.test(r) },
+  { tier: 3, label: "CHRO", test: (r) => /\bchro\b/i.test(r) || /chief (human|people)/i.test(r) },
+  { tier: 3, label: "CMO", test: (r) => /\bcmo\b/i.test(r) || /chief marketing/i.test(r) },
+  { tier: 3, label: "C-임원", test: (r) => /chief\s+[\w\s]+\bofficer\b/i.test(r) },
+  { tier: 3, label: "임원", test: (r) => /\b(?:e|s)?vp\b/i.test(r) || /vice\s*president/i.test(r) || /\bofficer\b/i.test(r) },
+  { tier: 4, label: "이사", test: (r) => /\bdirector\b/i.test(r) },
+];
+
+interface RoleClass { primary?: { tier: Tier; label: string }; owner: boolean; unconfirmed: boolean; raw: string }
+function classifyRole(role: string | null): RoleClass | null {
+  if (role == null) return null; // 아직 미보강
+  const raw = role.trim();
+  if (!raw) return { owner: false, unconfirmed: true, raw: "" }; // 빈 role = 역할 결측
+  const owner = /10\s*%/.test(raw);
+  if (/see\s*remarks/i.test(raw)) return { owner, unconfirmed: true, raw }; // See Remarks = 역할 결측(미확인)
+  let primary: { tier: Tier; label: string } | undefined;
+  for (const rule of ROLE_RULES) if (rule.test(raw)) { primary = { tier: rule.tier, label: rule.label }; break; }
+  return { primary, owner, unconfirmed: false, raw };
+}
+
+function RoleBadges({ role, className = "" }: { role: string | null; className?: string }) {
+  const c = classifyRole(role);
+  if (!c) return null;
+  const chips: { key: string; label: string; cls: string }[] = [];
+  if (c.unconfirmed) chips.push({ key: "unconf", label: "미확인", cls: UNCONF_CLS });
+  else if (c.primary) {
+    // Director(T4)인데 대주주면 Director는 묻고 대주주를 대표로 (창업자·VC·행동주의)
+    if (!(c.primary.tier === 4 && c.owner)) chips.push({ key: "role", label: c.primary.label, cls: TIER_META[c.primary.tier].cls });
+  } else if (!c.owner) chips.push({ key: "raw", label: c.raw.length > 18 ? c.raw.slice(0, 18) + "…" : c.raw, cls: TIER_META[3].cls });
+  if (c.owner) chips.push({ key: "owner", label: "대주주", cls: OWNER_CLS });
+  if (!chips.length) return null;
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-1 ${className}`} title={c.raw || "역할 미확인(See Remarks/결측)"}>
+      {chips.map((ch) => <span key={ch.key} className={`text-[10px] font-bold border rounded px-1.5 py-0.5 ${ch.cls}`}>{ch.label}</span>)}
+    </span>
+  );
+}
+
+// 티어 색상 범례 (한 줄)
+function TierLegend() {
+  const items = [
+    { label: "전사·재무", cls: TIER_META[1].cls }, { label: "대주주", cls: OWNER_CLS },
+    { label: "운영", cls: TIER_META[2].cls }, { label: "기능", cls: TIER_META[3].cls },
+    { label: "이사", cls: TIER_META[4].cls }, { label: "미확인", cls: UNCONF_CLS },
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-1 mb-2.5">
+      <span className="text-[10px] text-muted-foreground mr-0.5">직책 티어(시그널 순):</span>
+      {items.map((i) => <span key={i.label} className={`text-[9.5px] font-bold border rounded px-1.5 py-0.5 ${i.cls}`}>{i.label}</span>)}
+    </div>
+  );
+}
+
+// 직책 티어 설명 — 헤더에 호버 버튼. 각 티어 예시 직책 + 왜 이렇게 나눴는지.
+// 가중치 순서대로 — 대주주(0.9)는 운영·기능·이사보다 위(고시그널). 최하위 아님.
+const TIER_GUIDE: { label: string; w: string; cls: string; ex: string; why: string }[] = [
+  { label: "전사·재무", w: "×1.0", cls: TIER_META[1].cls, ex: "CEO · 회장(Chairman) · CFO", why: "전사 실적 + 단기 재무를 동시에 봄 — 정보 접근 최상" },
+  { label: "대주주", w: "×0.9", cls: OWNER_CLS, ex: "10% Owner (창업자·VC·행동주의 펀드)", why: "자기 돈·큰 지분이라 정보·확신 최상위급. 직책과 독립적. 단, 거의-전량 매도는 PE 블록청산이라 점수 캡" },
+  { label: "운영", w: "×0.7", cls: TIER_META[2].cls, ex: "COO · (운영)President · CTO · 핵심 사업부 사장", why: "사업 실태를 직접 관할. 테크·바이오는 CTO도 사실상 최상위급" },
+  { label: "기능", w: "×0.4", cls: TIER_META[3].cls, ex: "회계(CAO·PAO·Controller) · 법무(CLO·General Counsel) · CHRO · CMO", why: "전문 영역은 깊지만 전사 시야는 좁음" },
+  { label: "이사", w: "×0.25", cls: TIER_META[4].cls, ex: "Director (사내·사외 이사)", why: "이사회는 분기 미팅 수준 — 일상 실태 정보가 약해 노이즈가 가장 많음" },
+];
+function TierGuide() {
+  return (
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <button type="button" className="h-9 inline-flex items-center gap-1 rounded-md border bg-background px-2.5 text-[12px] text-muted-foreground hover:text-foreground hover:border-primary cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-ring" aria-label="직책 티어 기준 설명">
+          직책 티어 <Info className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-[360px] p-3">
+        <div className="text-xs font-semibold mb-1">직책 티어 = 정보 접근도(시그널 가치)</div>
+        <p className="text-[11px] text-muted-foreground mb-2 leading-snug">같은 매수·매도라도 <b>누가</b> 했느냐로 정보가치가 다릅니다. 색은 직책 문자열이 아니라 그 사람이 회사 실태를 얼마나 아는지로 가중합니다. (복합 직책은 최상위 시그널이 대표)</p>
+        <div className="space-y-0">
+          {TIER_GUIDE.map((t) => (
+            <div key={t.label} className="flex items-start gap-2 py-1.5 border-t">
+              <div className="flex flex-col items-center shrink-0 mt-0.5 w-[58px]">
+                <span className={`text-[10px] font-bold border rounded px-1.5 py-0.5 w-full text-center ${t.cls}`}>{t.label}</span>
+                <span className="text-[9px] text-muted-foreground/70 tabular-nums mt-0.5">{t.w}</span>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11.5px] font-medium leading-snug">{t.ex}</div>
+                <div className="text-[10.5px] text-muted-foreground leading-snug">{t.why}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 function StackedBar({ r, maxVol }: { r: RankRow; maxVol: number }) {
   const vol = r.buyValue + r.sellValue;
@@ -39,15 +168,16 @@ function StackedBar({ r, maxVol }: { r: RankRow; maxVol: number }) {
   );
 }
 
-type Metric = "buy" | "sell" | "net" | "trades" | "insiders";
+type Metric = "signal" | "buy" | "sell" | "net" | "trades" | "insiders";
 
-// 한 종목 상세에서 인사이더별로 묶기 (side 별 합산)
-function groupBySide(trades: ITrade[], side: "buy" | "sell") {
-  const m = new Map<string, { name: string; slug: string; role: string | null; value: number; shares: number; n: number }>();
+// 한 종목 상세에서 인사이더별로 묶기 (조건자로 부분집합 선택, 금액 내림차순)
+interface InsiderGroup { name: string; slug: string; role: string | null; value: number; shares: number; n: number }
+function groupRows(trades: ITrade[], pred: (t: ITrade) => boolean): InsiderGroup[] {
+  const m = new Map<string, InsiderGroup>();
   for (const t of trades) {
-    if (t.side !== side) continue;
+    if (!pred(t)) continue;
     const e = m.get(t.insiderSlug) || { name: t.insiderName, slug: t.insiderSlug, role: null, value: 0, shares: 0, n: 0 };
-    e.value += t.value || 0; e.shares += t.shares || 0; e.n++;
+    e.value += Number(t.value) || 0; e.shares += Number(t.shares) || 0; e.n++;
     if (!e.role && t.role) e.role = t.role;
     m.set(t.insiderSlug, e);
   }
@@ -56,22 +186,207 @@ function groupBySide(trades: ITrade[], side: "buy" | "sell") {
 
 interface Ctx { openInsider: (slug: string, name: string) => void; openTicker: (sym: string) => void; }
 
-function InsiderBox({ side, trades, ctx }: { side: "buy" | "sell"; trades: ITrade[]; ctx: Ctx }) {
-  const rows = groupBySide(trades, side);
-  const color = side === "buy" ? BUY : SELL;
+function InsiderRow({ r, color, sign, ctx }: { r: InsiderGroup; color: string; sign: "+" | "−"; ctx: Ctx }) {
   return (
-    <div className="rounded-lg border bg-background/50 p-2.5" style={{ borderLeft: `3px solid ${color}` }}>
-      <div className="text-xs font-bold mb-1.5" style={{ color }}>{side === "buy" ? "🟢 매수한 인사이더" : "🔴 매도한 인사이더"} ({rows.length})</div>
-      {rows.length === 0 && <div className="text-xs text-muted-foreground">없음</div>}
-      {rows.map((r) => (
-        <div key={r.slug} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0 cursor-pointer rounded hover:bg-muted/40 px-1" onClick={() => ctx.openInsider(r.slug, r.name)} title={`${r.name}${r.role ? ` · ${r.role}` : ""} 거래 보기`}>
-          <span className="font-semibold text-[13px] shrink-0">{r.name}</span>
-          {r.role && <span className="text-[10px] text-muted-foreground bg-background border rounded px-1.5 py-0.5 truncate max-w-[160px]">{r.role}</span>}
+    <div className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0 cursor-pointer rounded hover:bg-muted/40 px-1" onClick={() => ctx.openInsider(r.slug, r.name)} title={`${r.name}${r.role ? ` · ${r.role}` : ""} 거래 보기`}>
+      {/* 이름(말줄임+호버 전체) + 직책 티어 라벨을 이름 아래 스티커로 */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <span className="font-semibold text-[13px] truncate" title={r.name}>{r.name}</span>
           <ChevronRight className="h-3 w-3 text-primary shrink-0" />
-          <span className="ml-auto text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
-          <span className="text-[12.5px] font-bold tabular-nums shrink-0" style={{ color }}>{side === "buy" ? "+" : "−"}{fmtMoney(r.value)}</span>
         </div>
-      ))}
+        <RoleBadges role={r.role} className="mt-0.5" />
+      </div>
+      <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
+      <span className="text-[12.5px] font-bold tabular-nums shrink-0" style={{ color }}>{sign}{fmtMoney(r.value)}</span>
+    </div>
+  );
+}
+
+// 인사이더 그룹 박스 — 강조(기본) 또는 흐림·접힘(collapsible) 모드
+function InsiderListBox({ title, subtitle, color, sign, rows, ctx, dim, collapsible, testid }: {
+  title: string; subtitle?: string; color: string; sign: "+" | "−"; rows: InsiderGroup[]; ctx: Ctx; dim?: boolean; collapsible?: boolean; testid?: string;
+}) {
+  const [open, setOpen] = useState(!collapsible);
+  return (
+    <div className={`rounded-lg border bg-background/50 ${dim ? "opacity-75" : ""}`} style={{ borderLeft: `3px solid ${color}` }}>
+      <div
+        className={`flex items-center gap-1.5 px-2.5 pt-2.5 ${open ? "pb-1.5" : "pb-2.5"} ${collapsible ? "cursor-pointer hover:bg-muted/20 rounded-lg" : ""}`}
+        onClick={collapsible ? () => setOpen((o) => !o) : undefined}
+        data-testid={testid}
+      >
+        {collapsible && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} style={{ color }} />}
+        <span className="text-xs font-bold" style={{ color }}>{title} ({rows.length})</span>
+        {subtitle && <span className="text-[10.5px] font-normal text-muted-foreground ml-1">{subtitle}</span>}
+        {collapsible && !open && <span className="ml-auto text-[10.5px] text-muted-foreground/70">펼치기</span>}
+      </div>
+      {open && (
+        <div className="px-2.5 pb-2.5">
+          {rows.length === 0 && <div className="text-xs text-muted-foreground">없음</div>}
+          {rows.map((r) => <InsiderRow key={r.slug} r={r} color={color} sign={sign} ctx={ctx} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 보상·옵션행사·세금 등 비(非)매매 거래 — 기본 접힘, 클릭 시 인사이더별 상세
+function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
+  const [open, setOpen] = useState(false);
+  const others = trades.filter((t) => t.side !== "buy" && t.side !== "sell");
+  if (!others.length) return null;
+  const byInsider = new Map<string, { name: string; slug: string; role: string | null; list: ITrade[] }>();
+  for (const t of others) {
+    const e = byInsider.get(t.insiderSlug) || { name: t.insiderName, slug: t.insiderSlug, role: null, list: [] };
+    e.list.push({ ...t, value: Number(t.value) || 0, shares: Number(t.shares) || 0 });
+    if (!e.role && t.role) e.role = t.role;
+    byInsider.set(t.insiderSlug, e);
+  }
+  const groups = [...byInsider.values()].sort((a, b) => b.list.length - a.list.length);
+  return (
+    <div className="rounded-lg border bg-background/50" style={{ borderLeft: "3px solid #8b949e" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/30 rounded-lg"
+        data-testid="toggle-other-trades"
+      >
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} />
+        ⚪ 보상·옵션행사·세금 등
+        <span className="font-normal">({groups.length}명 · {others.length}건)</span>
+        <span className="ml-auto font-normal text-[10.5px] text-muted-foreground/70">매매 신호 아님 · 펼치기</span>
+      </button>
+      {open && (
+        <div className="px-2.5 pb-2.5 space-y-2">
+          {groups.map((g) => (
+            <div key={g.slug} className="border-t border-border/50 pt-2">
+              <div className="flex items-center gap-1.5 cursor-pointer rounded hover:bg-muted/40 px-1 py-0.5" onClick={() => ctx.openInsider(g.slug, g.name)} title={`${g.name} 거래 보기`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-[13px] truncate" title={g.name}>{g.name}</span>
+                    <ChevronRight className="h-3 w-3 text-primary shrink-0" />
+                  </div>
+                  <RoleBadges role={g.role} className="mt-0.5" />
+                </div>
+                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{g.list.length}건</span>
+              </div>
+              <div className="mt-1 ml-1">
+                {[...g.list].sort((a, b) => b.txnDate - a.txnDate).map((t) => (
+                  <div key={t.id} className="grid items-center gap-2 py-0.5 text-[11.5px] text-muted-foreground" style={{ gridTemplateColumns: "78px 60px 1fr 84px" }}>
+                    <span className="tabular-nums">{ymd(t.txnDate)}</span>
+                    <span><span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-muted/60 text-muted-foreground">{SIDE_KO[t.side] || t.side}</span></span>
+                    <span className="tabular-nums">{fmtShares(t.shares)}주{t.price ? ` @ $${t.price.toFixed(2)}` : ""}</span>
+                    <span className="text-right tabular-nums">{t.value ? fmtMoney(t.value) : "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ----- 클러스터 시그널 위젯 (메인) -----
+const mdDate = (ms: number) => { const d = new Date(ms); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+// 보유 대비 비중을 방향까지 담은 한 단어로 번역: 신규 매수(pre=0만) / X% 추가 / 전량 매도 / X% 매도.
+function pctSemantic(pct: number | null, side: string, isNew: boolean): { label: string; cls: string } {
+  if (side === "buy" && isNew) return { label: "신규 매수", cls: "text-amber-700 font-bold dark:text-amber-300" };
+  if (pct == null) return { label: "—", cls: "text-muted-foreground/50" };
+  const cls = pct > 0.5 ? "text-amber-700 font-bold dark:text-amber-300" : pct >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50";
+  const label = side === "buy"
+    ? `${Math.round(pct * 100)}% 추가` // pre>0 이면 보유 대비 추가매집(대량이면 337% 추가 등)
+    : (pct >= 1 ? "전량 매도" : `${Math.round(pct * 100)}% 매도`);
+  return { label, cls };
+}
+
+// 영구 플래그(얇음/구조적?) — Popover로 의미 설명. portal 렌더라 좁은 카드에서 안 잘리고, 클릭·탭·키보드 모두 동작.
+function FlagInfo({ label, cls, tip }: { label: string; cls: string; tip: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" onClick={(e) => e.stopPropagation()} title={tip} aria-label={`${label}: ${tip}`}
+          className={`inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded shrink-0 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}`}>
+          {label}<Info className="h-2.5 w-2.5 opacity-70" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-60 text-[11.5px] leading-snug p-2.5">{tip}</PopoverContent>
+    </Popover>
+  );
+}
+
+function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (sym: string) => void }) {
+  const isBuy = c.side === "buy";
+  const color = isBuy ? BUY : SELL;
+  return (
+    <div onClick={() => onPick(c.symbol)} className="shrink-0 w-[258px] rounded-lg border p-3 cursor-pointer hover:border-primary bg-background/50" style={{ borderLeft: `3px solid ${color}` }} data-testid={`cluster-${c.symbol}-${c.side}`}>
+      <div className="flex items-center gap-1.5">
+        <span className={`text-[11px] font-bold tabular-nums shrink-0 rounded px-1 ${rank <= 3 ? "bg-primary/15 text-primary" : "text-muted-foreground/70"}`} title={`이 섹션 점수 ${rank}위`}>#{rank}</span>
+        <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(c.symbol) }} />
+        <span className="font-bold text-sm">{c.symbol}</span>
+        <span className="text-[10px] text-muted-foreground truncate max-w-[64px]">{sectorLabel(c.sector)}</span>
+        {c.thin && <FlagInfo label="얇음" cls="bg-muted text-muted-foreground" tip="참가자 2명 — 합의 근거가 약해 점수를 보정했습니다. 고티어 2인(CEO+CFO 등)은 실제 신호일 수 있습니다." />}
+        {c.gated && <FlagInfo label="구조적?" cls="bg-zinc-500/15 text-zinc-600 dark:bg-zinc-700/50 dark:text-zinc-400" tip="임원 다수가 동시에 보유 전량 매도 — 외국 발행사의 보고 아티팩트일 수 있어 점수를 낮췄습니다." />}
+        <span className="ml-auto text-2xl font-bold tabular-nums shrink-0" style={{ color }}>{c.insiderCount}<span className="text-[11px] font-normal">명</span></span>
+      </div>
+      {/* 메타: 한 줄을 라벨 단 칩으로 — 각 숫자가 '뭔지'를 달고 있음 */}
+      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
+        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
+      </div>
+      {/* 컬럼 헤더 */}
+      <div className="flex items-center text-[9px] text-muted-foreground/70 mt-2 mb-0.5 px-0.5">
+        <span className="flex-1">인사이더</span>
+        <span className="w-[58px] text-right">보유 대비</span>
+        <span className="w-[50px] text-right">금액</span>
+      </div>
+      <div className="space-y-1">
+        {c.participants.slice(0, 4).map((p) => {
+          const sem = pctSemantic(p.pctOfHoldings, c.side, p.isNew);
+          return (
+            <div key={p.slug} className="flex items-center gap-1 text-[11px] px-0.5">
+              <span className="truncate max-w-[64px] shrink-0">{p.name}</span>
+              <RoleBadges role={p.role} />
+              <span className={`ml-auto w-[58px] text-right text-[9.5px] tabular-nums shrink-0 ${sem.cls}`} title="거래 직전 보유 대비 거래 비중">{sem.label}</span>
+              <span className="w-[50px] text-right text-[10px] tabular-nums text-muted-foreground/80 shrink-0">{fmtMoney(p.value)}</span>
+            </div>
+          );
+        })}
+        {c.participants.length > 4 && <div className="text-[10px] text-muted-foreground px-0.5">+{c.participants.length - 4}명 더</div>}
+      </div>
+    </div>
+  );
+}
+
+function ClusterSection({ title, subtitle, accent, clusters, onPick }: { title: string; subtitle: string; accent: string; clusters: Cluster[]; onPick: (sym: string) => void }) {
+  if (!clusters.length) return null;
+  return (
+    <Card className="p-4">
+      <div className="flex items-baseline gap-2 mb-2 flex-wrap">
+        <h2 className="text-sm font-semibold" style={{ color: accent }}>{title} <span className="text-xs font-normal text-muted-foreground">· {clusters.length}건</span></h2>
+        <span className="text-[11.5px] text-muted-foreground">{subtitle}</span>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {clusters.map((c, i) => <ClusterCard key={c.symbol + c.side} c={c} rank={i + 1} onPick={onPick} />)}
+      </div>
+    </Card>
+  );
+}
+
+function ClusterWidget({ from, to, onPick }: { from?: number; to?: number; onPick: (sym: string) => void }) {
+  const { data } = useQuery<Cluster[]>({
+    queryKey: ["/api/insider/clusters", from, to],
+    queryFn: async () => (await apiRequest("GET", `/api/insider/clusters${from ? `?from=${from}&to=${to}` : ""}`)).json(),
+  });
+  const clusters = data ?? [];
+  if (!clusters.length) return null;
+  const buys = clusters.filter((c) => c.side === "buy");
+  const sells = clusters.filter((c) => c.side === "sell");
+  return (
+    <div className="mb-5 space-y-3">
+      <div className="text-[11px] text-muted-foreground">같은 ~30일 윈도우에 다수 인사이더가 같은 방향. 점수 = 티어(정보접근도) × <b>보유 대비 비중</b> × 절대규모(바닥필터). 10b5-1 플랜 매도 제외. 카드 #=섹션 점수 순위, %=보유 대비 거래 비중.</div>
+      <ClusterSection title="🟢 매수 클러스터" subtitle="누가 베팅하나 — 기회 탐색" accent={BUY} clusters={buys} onPick={onPick} />
+      <ClusterSection title="🔴 매도 클러스터" subtitle="누가 빠져나가나 — 리스크 경보" accent={SELL} clusters={sells} onPick={onPick} />
     </div>
   );
 }
@@ -93,12 +408,20 @@ function TickerDetail({ row, from, to, ctx }: { row: RankRow; from?: number; to?
         <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(row.buyValue)}</div><div className="text-[11px] text-muted-foreground">내부자 매수</div></div>
         <div><div className="text-lg font-bold tabular-nums" style={{ color: SELL }}>{fmtMoney(row.sellValue)}</div><div className="text-[11px] text-muted-foreground">내부자 매도</div></div>
         <div><div className="text-lg font-bold tabular-nums" style={{ color: row.netValue >= 0 ? BUY : SELL }}>{row.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(row.netValue))}</div><div className="text-[11px] text-muted-foreground">순매수</div></div>
-        <div><div className="text-lg font-bold tabular-nums">{row.insiderCount}명</div><div className="text-[11px] text-muted-foreground">인사이더</div></div>
+        <div>
+          <div className="text-lg font-bold tabular-nums">{row.insiderCount}명</div>
+          <div className="text-[11px] text-muted-foreground">매수·매도 인사이더{row.otherInsiderCount > 0 && <span className="ml-1 text-muted-foreground/70">· 보상·옵션 {row.otherInsiderCount}명</span>}</div>
+        </div>
       </div>
       {isLoading ? <Skeleton className="h-40 w-full" /> : (
         <div className="grid gap-3">
-          <InsiderBox side="buy" trades={list} ctx={ctx} />
-          <InsiderBox side="sell" trades={list} ctx={ctx} />
+          <TierLegend />
+          <InsiderListBox title="🟢 매수한 인사이더" color={BUY} sign="+" rows={groupRows(list, (t) => t.side === "buy")} ctx={ctx} />
+          <InsiderListBox title="🔴 재량적 매도" subtitle="플랜 없는 자발적 매도 · 진짜 시그널" color={SELL} sign="−" rows={groupRows(list, (t) => t.side === "sell" && t.plan10b5 !== true)} ctx={ctx} />
+          {list.some((t) => t.side === "sell" && t.plan10b5 === true) && (
+            <InsiderListBox title="🔇 10b5-1·정기 매도" subtitle="사전 약정 매도 · 노이즈" color="#8b949e" sign="−" rows={groupRows(list, (t) => t.side === "sell" && t.plan10b5 === true)} ctx={ctx} dim collapsible testid="toggle-plan-sells" />
+          )}
+          <OtherTradesBox trades={list} ctx={ctx} />
         </div>
       )}
     </div>
@@ -112,14 +435,14 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
   });
   const list = trades ?? [];
   let buyV = 0, sellV = 0;
-  for (const t of list) { if (t.side === "buy") buyV += t.value || 0; else if (t.side === "sell") sellV += t.value || 0; }
+  for (const t of list) { if (t.side === "buy") buyV += Number(t.value) || 0; else if (t.side === "sell") sellV += Number(t.value) || 0; }
   const companies = new Set(list.map((t) => t.symbol));
   return (
     <div>
       <Button className="mb-4 font-bold shadow-lg" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1.5" />뒤로</Button>
       <Card className="p-5 mb-4">
         <div className="text-xl font-bold flex items-center gap-2 flex-wrap"><UserSearch className="h-5 w-5 text-primary" />{name}
-          {list.find((t) => t.role)?.role && <span className="text-[11px] font-medium text-muted-foreground bg-background border rounded px-2 py-0.5">{list.find((t) => t.role)?.role}</span>}
+          <RoleBadges role={list.find((t) => t.role)?.role ?? null} />
         </div>
         <div className="flex gap-5 mt-3 flex-wrap">
           <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(buyV)}</div><div className="text-[11px] text-muted-foreground">매수</div></div>
@@ -155,7 +478,7 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
 // ============================= MAIN =============================
 export default function Insider() {
   const [period, setPeriod] = useState<string>("90"); // all | 7 | 30 | 90 (days)
-  const [metric, setMetric] = useState<Metric>("buy");
+  const [metric, setMetric] = useState<Metric>("signal");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"tickers" | "insider">("tickers");
   const [selSymbol, setSelSymbol] = useState<string | null>(null);
@@ -176,7 +499,7 @@ export default function Insider() {
     openTicker: (sym) => { setSelSymbol(sym); setView("tickers"); },
   };
 
-  const key = (r: RankRow) => metric === "buy" ? r.buyValue : metric === "sell" ? r.sellValue : metric === "net" ? r.netValue : metric === "trades" ? r.tradeCount : r.insiderCount;
+  const key = (r: RankRow) => metric === "signal" ? r.signalScore : metric === "buy" ? r.buyValue : metric === "sell" ? r.sellValue : metric === "net" ? r.netValue : metric === "trades" ? r.tradeCount : r.insiderCount;
   const q = search.trim().toLowerCase();
   const sorted = useMemo(() => {
     const filtered = q ? rows.filter((r) => r.symbol.toLowerCase().includes(q) || (r.company || "").toLowerCase().includes(q)) : rows;
@@ -193,6 +516,7 @@ export default function Insider() {
         <h1 className="text-xl font-semibold flex items-center gap-2"><UserSearch className="h-5 w-5 text-primary" /> 내부자 거래</h1>
         <span className="text-xs text-muted-foreground">SEC Form 4 · 추적 종목(우리 DB + S&P500)</span>
         <div className="ml-auto flex items-end gap-3 flex-wrap">
+          <TierGuide />
           <div><div className="text-[11px] text-muted-foreground mb-1">기간</div>
             <Select value={period} onValueChange={(v) => { setPeriod(v); setSelSymbol(null); }}>
               <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
@@ -203,6 +527,7 @@ export default function Insider() {
             <Select value={metric} onValueChange={(v) => setMetric(v as Metric)}>
               <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="signal">시그널(유의미도) 순</SelectItem>
                 <SelectItem value="buy">내부자 매수액 순</SelectItem>
                 <SelectItem value="sell">내부자 매도액 순</SelectItem>
                 <SelectItem value="net">순매수 순</SelectItem>
@@ -217,13 +542,23 @@ export default function Insider() {
       {view === "insider" && selInsider ? (
         <InsiderDetail slug={selInsider.slug} name={selInsider.name} from={from} to={to} ctx={ctx} onBack={() => setView("tickers")} />
       ) : (
+        <>
+        {/* ── 상단 섹션: 클러스터(다수 합의) ── */}
+        <div className="mb-3">
+          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">🔥 클러스터 시그널 <span className="text-[13px] font-medium text-muted-foreground">여러 명이 뭉친 곳은? (합의 신호)</span></h2>
+        </div>
+        <ClusterWidget from={from} to={to} onPick={(s) => setSelSymbol(s)} />
+        {/* ── 하단 섹션: 종목 랭킹(전체 스캔) ── */}
+        <div className="border-t mt-6 pt-5 mb-3">
+          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">📋 종목 랭킹 <span className="text-[13px] font-medium text-muted-foreground">단독이든 뭉쳤든, 가장 큰/유의미한 거래는? (전체 스캔)</span></h2>
+        </div>
         <div className="grid gap-5 items-start lg:grid-cols-[1.5fr_1fr]">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· {period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</span></h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</h2>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="종목/회사 검색" className="h-8 w-44 rounded-md border bg-background px-2.5 text-[13px]" />
             </div>
-            <p className="text-[11.5px] text-muted-foreground mb-3">막대=내부자 매수(초록)/매도(빨강) 금액. P=매수·S=매도 등 Form4 거래. 행 클릭 시 누가 거래했는지 표시.</p>
+            <p className="text-[11.5px] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
             <div className="grid items-center gap-2.5 px-2 py-1.5 text-[11px] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 110px 1fr 96px 52px" }}>
               <div className="text-center">#</div><div>종목</div><div>매수/매도</div><div className="text-right">순매수</div><div className="text-center">인사이더</div>
             </div>
@@ -243,6 +578,7 @@ export default function Insider() {
             {selRow ? <TickerDetail row={selRow} from={from} to={to} ctx={ctx} /> : <div className="text-center text-sm text-muted-foreground py-20">← 종목을 선택하면 거래한 인사이더가 표시됩니다</div>}
           </Card>
         </div>
+        </>
       )}
     </div>
   );

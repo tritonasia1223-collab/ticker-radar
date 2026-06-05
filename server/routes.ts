@@ -202,6 +202,12 @@ export function registerRoutes(app: Express) {
     const to = req.query.to ? Number(req.query.to) : undefined;
     res.json(await storage.insiderTradesForInsider(req.params.slug, { fromMs: from, toMs: to }));
   });
+  app.get("/api/insider/clusters", async (req, res) => {
+    const from = req.query.from ? Number(req.query.from) : undefined;
+    const to = req.query.to ? Number(req.query.to) : undefined;
+    const windowDays = req.query.window ? Number(req.query.window) : undefined;
+    res.json(await storage.insiderClusters({ fromMs: from, toMs: to, windowDays }));
+  });
   app.get("/api/insider/sectors", async (_req, res) => res.json(await storage.listTickerSectors()));
 
   // ---- Dummy data (testing) ----

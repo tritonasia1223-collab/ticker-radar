@@ -4,8 +4,9 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Politician, Committee, Trade, TickerAgg, SortMetric,
   aggregate, rankList, tradersOf, quarterSeries, sortedQuarters, quarterOf,
-  SECTOR, koSector, koCompany, tickerColor, partyColor, fmtMoney, fmtQ, cmtLabel,
+  SECTOR, partyColor, fmtQ, cmtLabel,
 } from "@/lib/congress";
+import { koSector, koCompany, tickerColor, fmtMoney } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, ReferenceLine,
-  ResponsiveContainer, Tooltip as RTooltip,
+  ResponsiveContainer, Tooltip as RTooltip, PieChart, Pie, Cell,
 } from "recharts";
 import { Landmark, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 
@@ -182,6 +183,80 @@ function RankHead() {
   );
 }
 
+// ---------- committee distribution donut (among buyers / sellers) ----------
+function cmtColor(id: string): string {
+  if (id === "__none__") return "#8b949e";
+  if (id === "__rest__") return "#3a3f47";
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+  return `hsl(${h} 60% 58%)`;
+}
+
+// 매수(또는 매도)한 의원들의 위원회 분포. 의원이 여러 위원회면 각 위원회에 중복 집계.
+function buildCmtDist(entries: Map<string, number>, ctx: Ctx) {
+  const m = new Map<string, { members: Set<string>; amount: number; label: string }>();
+  for (const [slug, amt] of entries) {
+    const p = ctx.polBySlug.get(slug);
+    const cids = p && p.committees.length ? p.committees : ["__none__"];
+    for (const cid of cids) {
+      if (!m.has(cid)) {
+        const label = cid === "__none__" ? "무소속·지도부" : (ctx.cmtById.get(cid)?.ko ?? cid);
+        m.set(cid, { members: new Set(), amount: 0, label });
+      }
+      const e = m.get(cid)!;
+      e.members.add(slug);
+      e.amount += amt;
+    }
+  }
+  return [...m.entries()]
+    .map(([id, e]) => ({ id, label: e.label, members: e.members.size, amount: e.amount }))
+    .sort((a, b) => b.members - a.members || b.amount - a.amount);
+}
+
+function CmtPieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-md border bg-popover px-2.5 py-1.5 text-xs shadow">
+      <div className="font-medium">{d.label}</div>
+      <div className="text-muted-foreground">{d.members}명 · {fmtMoney(d.amount)}</div>
+    </div>
+  );
+}
+
+function CommitteePie({ side, entries, ctx }: { side: "buy" | "sell"; entries: Map<string, number>; ctx: Ctx }) {
+  const dist = buildCmtDist(entries, ctx);
+  if (!dist.length) return null;
+  const color = side === "buy" ? BUY : SELL;
+  const data = dist.map((d) => ({ ...d, name: d.label }));
+  return (
+    <div className="rounded-lg border bg-background/50 p-2.5" style={{ borderLeft: `3px solid ${color}` }}>
+      <div className="text-xs font-bold mb-1" style={{ color }}>
+        {side === "buy" ? "🟢 매수 의원 위원회" : "🔴 매도 의원 위원회"}
+        <span className="font-normal text-muted-foreground"> · 의원 {entries.size}명</span>
+      </div>
+      <div className="flex items-center gap-2.5">
+        <PieChart width={104} height={104} className="shrink-0">
+          <Pie data={data} dataKey="members" nameKey="name" cx="50%" cy="50%" innerRadius={24} outerRadius={48} paddingAngle={1} stroke="none">
+            {data.map((d) => <Cell key={d.id} fill={cmtColor(d.id)} />)}
+          </Pie>
+          <RTooltip content={<CmtPieTooltip />} />
+        </PieChart>
+        <div className="flex-1 min-w-0 space-y-0.5 max-h-[124px] overflow-y-auto pr-1">
+          {data.map((d) => (
+            <div key={d.id} className="flex items-center gap-1.5 text-[11px]">
+              <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: cmtColor(d.id) }} />
+              <span className="truncate" title={d.label}>{d.label}</span>
+              <span className="ml-auto tabular-nums text-muted-foreground shrink-0">{d.members}명 · {fmtMoney(d.amount)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- ticker detail ----------
 function TickerDetail({ agg, quarters, ctx }: { agg: TickerAgg; quarters: string[]; ctx: Ctx }) {
   const nameOf = (slug: string) => ctx.polBySlug.get(slug)?.name ?? slug;
@@ -198,6 +273,15 @@ function TickerDetail({ agg, quarters, ctx }: { agg: TickerAgg; quarters: string
         <Kpi label="순매수" value={`${agg.net >= 0 ? "+" : "−"}${fmtMoney(Math.abs(agg.net))}`} color={agg.net >= 0 ? BUY : SELL} />
         <Kpi label="거래 의원" value={`${tradersOf(agg)}명`} />
       </div>
+      {(agg.buyers.size > 0 || agg.sellers.size > 0) && (
+        <div className="mb-3">
+          <div className="text-[11.5px] text-muted-foreground mb-1.5">위원회 분포 <span className="text-[10.5px]">· 슬라이스=의원 수 (다중 소속은 각 위원회에 집계)</span></div>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {agg.buyers.size > 0 && <CommitteePie side="buy" entries={agg.buyers} ctx={ctx} />}
+            {agg.sellers.size > 0 && <CommitteePie side="sell" entries={agg.sellers} ctx={ctx} />}
+          </div>
+        </div>
+      )}
       <TrendChart trades={agg.trades} quarters={quarters} groupBy="member" nameOf={nameOf} />
       <div className="grid gap-3 mt-3">
         <MemberSideBox side="buy" entries={agg.buyers} ctx={ctx} />
