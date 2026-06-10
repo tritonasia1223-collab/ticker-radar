@@ -1084,12 +1084,17 @@ export class DatabaseStorage implements IStorage {
       const massPost0 = participants.filter((p) => p.sharesAfter === 0).length >= 3; // 다수 동시 전량청산 = 구조적 이벤트
       const sumSignal = participants.reduce((s, p) => s + participantSignal(p, side, massPost0), 0);
       const perCapita = sumSignal / insiderCount;
-      const score = (dir * sumSignal / Math.sqrt(insiderCount)) * (thin ? thinPenalty(perCapita) : 1);
+      // #4 윈도우 밀집도: 같은 N명이라도 짧은 창에 모이면(조율·확신) 넓게 산개한 것(우연 중첩 가능)보다 강한 신호.
+      //   density = 0.8 + 0.2·(1 − span/30): 같은날=1.0, 만창(=windowDays 30d)=0.8(최대 20% 산개 페널티). D≤1 → 점수 인플레 0(상대순위만).
+      //   캘리브레이션: 30=윈도우 캡(자연 최대), 0.8=중간 페널티(만창 클러스터의 breadth 신뢰 20% 할인). 재캘리는 script/diag-clusters.ts.
+      const spanDays = Math.round((wTo - wFrom) / 86400000);
+      const density = 0.8 + 0.2 * (1 - Math.min(1, spanDays / 30));
+      const score = (dir * sumSignal / Math.sqrt(insiderCount)) * (thin ? thinPenalty(perCapita) : 1) * density;
       participants.sort((a, b) => participantSignal(b, side, massPost0) - participantSignal(a, side, massPost0)); // 리더가 카드 상단
       clusters.push({
         symbol: r0.symbol, company: r0.company ?? null, sector: r0.sector ?? null,
         side, insiderCount, tradeCount: bestTrades.length, totalValue,
-        windowFromMs: wFrom, windowToMs: wTo, spanDays: Math.round((wTo - wFrom) / 86400000),
+        windowFromMs: wFrom, windowToMs: wTo, spanDays,
         participants, score, thin, gated: massPost0,
       });
     }

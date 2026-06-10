@@ -40,19 +40,35 @@ async function main() {
     const sumSignal = c.participants.reduce((s, p) => s + partSignal(p, c.side, massPost0), 0);
     const perCapita = sumSignal / c.insiderCount;
     const base = dir * sumSignal / Math.sqrt(c.insiderCount);
-    const scoreOld = base * (c.thin ? 0.65 : 1);     // 이전 공식
-    const scoreNew = base * (c.thin ? thinPen(perCapita) : 1); // 신규 공식 (= c.score)
+    const scoreOld = base * (c.thin ? 0.65 : 1);     // #21 이전(flat0.65)
+    const density = 0.8 + 0.2 * (1 - Math.min(1, c.spanDays / 30)); // #4 윈도우 밀집도(storage 와 동일)
+    const scoreBefore = base * (c.thin ? thinPen(perCapita) : 1);    // #4 적용 전(=#21 percap 공식)
+    const scoreNew = scoreBefore * density;                          // #4 적용 후 (= c.score)
     const maxW = Math.max(...c.participants.map((p) => ROLE_W(p.role)));
-    return { c, dir, sumSignal, perCapita, scoreOld, scoreNew, scoreNoThin: base, maxW };
+    return { c, dir, sumSignal, perCapita, scoreOld, scoreBefore, scoreNew, density, scoreNoThin: base, maxW };
   });
   const byNew = [...rows].sort((a, b) => b.scoreNew - a.scoreNew);
   const byOld = [...rows].sort((a, b) => b.scoreOld - a.scoreOld);
+  const byBefore = [...rows].sort((a, b) => b.scoreBefore - a.scoreBefore); // #4 적용 전 순위
   const newRank = new Map(byNew.map((r, i) => [r.c, i + 1]));
   const oldRank = new Map(byOld.map((r, i) => [r.c, i + 1]));
+  const beforeRank = new Map(byBefore.map((r, i) => [r.c, i + 1]));
   byNew.forEach((r, i) => ((r as any).rank = i + 1));
   rows.length = 0; rows.push(...byNew);
 
-  console.log(`\n총 클러스터: ${rows.length}  (thin n=2: ${rows.filter((r) => r.c.thin).length}, gated: ${rows.filter((r) => r.c.gated).length})\n`);
+  console.log(`\n총 클러스터: ${rows.length}  (thin n=2: ${rows.filter((r) => r.c.thin).length}, gated: ${rows.filter((r) => r.c.gated).length})`);
+
+  // 드리프트 체크: 복제 scoreNew 가 실제 c.score(density 포함)와 일치해야
+  const drift = rows.filter((r) => Math.abs(r.scoreNew - r.c.score) > 0.01);
+  console.log(drift.length ? `⚠ 드리프트 ${drift.length}건 (복제≠c.score) — 둘 다 의심` : "✓ 복제=c.score 일치(density 포함)");
+
+  // #4 밀집도 효과: 적용 전(percap)→후(×density) 순위 변동 큰 순. tight↑/spread↓ 가 의도, 하단 노이즈 불변.
+  console.log("\n=== #4 밀집도 효과 — 순위 변동 큰 순 (before→after) ===");
+  const movers = rows.map((r) => ({ r, d: beforeRank.get(r.c)! - newRank.get(r.c)! }))
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 14);
+  for (const { r, d } of movers)
+    console.log(`  ${d > 0 ? "▲" : d < 0 ? "▼" : "="}${String(Math.abs(d)).padStart(2)} #${beforeRank.get(r.c)}→#${newRank.get(r.c)} ${r.c.symbol}/${r.c.side} n=${r.c.insiderCount} span=${String(r.c.spanDays).padStart(2)}d ×${r.density.toFixed(2)} (${r.scoreBefore.toFixed(2)}→${r.scoreNew.toFixed(2)})`);
+
 
   // 1) thin n=2 중 고티어(maxW>=0.9) — old(flat0.65) → new(percap비례) 순위 변화
   console.log("=== ① 고티어 n=2 — old순위(flat0.65) → new순위(percap비례) ===");
@@ -83,13 +99,12 @@ async function main() {
 
   // 4) 특정 종목 추적 (WIT/AVT/JKHY/BLK)
   console.log("\n=== ④ 지목 종목 추적 (old→new 순위) ===");
-  for (const sym of ["WIT", "AVT", "JKHY", "BLK", "NRG", "LGN", "ESLT", "MDLN", "DELL", "SYM"]) {
+  for (const sym of ["NCLH", "TKO", "AMRZ", "MDLN", "JKHY", "BLK", "ESLT", "DELL"]) {
     const found = rows.filter((r) => r.c.symbol === sym);
     if (!found.length) { console.log(`  ${sym}: 클러스터 없음`); continue; }
     for (const r of found) {
-      const factor = r.c.thin ? thinPen(r.perCapita) : 1;
       const comp = r.c.participants.map((p) => `${p.name.split(" ")[0]}(${tierName(ROLE_W(p.role))},${p.pctOfHoldings == null ? "?" : (p.pctOfHoldings * 100).toFixed(0) + "%"},$${(p.value / 1e6).toFixed(1)}M)`).join(" + ");
-      console.log(`  ${sym}/${r.c.side} #${oldRank.get(r.c)}→#${newRank.get(r.c)} percap=${r.perCapita.toFixed(2)} ×${factor.toFixed(2)} new=${r.scoreNew.toFixed(2)} | ${comp}`);
+      console.log(`  ${sym}/${r.c.side} #${beforeRank.get(r.c)}→#${newRank.get(r.c)} n=${r.c.insiderCount} span=${r.c.spanDays}d ×dens${r.density.toFixed(2)} (${r.scoreBefore.toFixed(2)}→${r.scoreNew.toFixed(2)}) | ${comp}`);
     }
   }
   process.exit(0);
