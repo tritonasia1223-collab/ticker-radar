@@ -293,6 +293,10 @@ const mdDate = (ms: number) => { const d = new Date(ms); return `${d.getUTCMonth
 function pctSemantic(pct: number | null, side: string, isNew: boolean): { label: string; cls: string } {
   if (side === "buy" && isNew) return { label: "신규 매수", cls: "text-amber-700 font-bold dark:text-amber-300" };
   if (pct == null) return { label: "—", cls: "text-muted-foreground/50" };
+  // #1: 보유 기저가 ~0(신규선임 이사 등)이면 qty/pre 가 무의미하게 폭증(예 NCLH Pagliuca 15485%) → '보유 대비'로
+  //   실제 CEO(16%)보다 컨빅션 높아 보이는 왜곡. pct>9(매수가 직전보유의 >10배=포지션 대부분 신규)면 '신규 대량'으로
+  //   표기하고 절대금액($25M)이 신호를 끌게 함. 표시 전용 — 점수(holdingsMultiplier 는 >0.5면 ×1.5로 이미 saturate)는 불변.
+  if (side === "buy" && pct > 9) return { label: "신규 대량", cls: "text-amber-700 font-bold dark:text-amber-300" };
   const cls = pct > 0.5 ? "text-amber-700 font-bold dark:text-amber-300" : pct >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50";
   const label = side === "buy"
     ? `${Math.round(pct * 100)}% 추가` // pre>0 이면 보유 대비 추가매집(대량이면 337% 추가 등)
