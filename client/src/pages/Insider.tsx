@@ -32,6 +32,7 @@ interface Cluster {
   side: "buy" | "sell"; insiderCount: number; tradeCount: number; totalValue: number;
   windowFromMs: number; windowToMs: number; spanDays: number;
   participants: ClusterParticipant[]; score: number; thin: boolean; gated: boolean;
+  opposingSellValue?: number; // #3 매수클러스터 동기간 반대매도액
 }
 
 const SIDE_KO: Record<string, string> = { buy: "매수", sell: "매도", award: "보상", exercise: "옵션행사", tax: "세금", gift: "증여", conversion: "전환", other: "기타" };
@@ -337,6 +338,10 @@ function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (s
       <div className="flex flex-wrap items-center gap-1 mt-1.5">
         <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
         <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
+        {/* #3 동기간 반대매도(falsification): 매수클러스터인데 같은 창에 유의미한 재량 매도가 있으면 경고 — 매수≥0.5배 & ≥$1M */}
+        {c.side === "buy" && (c.opposingSellValue ?? 0) >= Math.max(1e6, 0.5 * c.totalValue) && (
+          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold" title="같은 윈도우에 같은 종목 인사이더의 재량 매도(10b5 플랜 제외)가 있습니다. 매수 신호가 net 관점에서 희석될 수 있어요.">⚠ 동기간 반대매도 {fmtMoney(c.opposingSellValue!)}</span>
+        )}
       </div>
       {/* 컬럼 헤더 */}
       <div className="flex items-center text-[9px] text-muted-foreground/70 mt-2 mb-0.5 px-0.5">

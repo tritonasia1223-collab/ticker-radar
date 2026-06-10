@@ -259,6 +259,7 @@ export interface InsiderCluster {
   participants: ClusterParticipant[]; score: number;
   thin: boolean;  // n=2 (합의 증거 약함, percap 비례 페널티 ×0.65~0.90)
   gated: boolean; // post=0 ≥3명 (구조적 일괄청산 의심, ×0.5 게이트)
+  opposingSellValue?: number; // #3 매수클러스터: 동기간 같은 종목 재량 매도액(10b5 플랜 제외). falsification 표시용(점수 무관).
 }
 
 // 직책 → 시그널 티어 가중(정보 접근도). 클라이언트 classifyRole 의 우선순위와 동일.
@@ -1091,11 +1092,18 @@ export class DatabaseStorage implements IStorage {
       const density = 0.8 + 0.2 * (1 - Math.min(1, spanDays / 30));
       const score = (dir * sumSignal / Math.sqrt(insiderCount)) * (thin ? thinPenalty(perCapita) : 1) * density;
       participants.sort((a, b) => participantSignal(b, side, massPost0) - participantSignal(a, side, massPost0)); // 리더가 카드 상단
+      // #3 매수클러스터: 동기간(윈도우 내) 같은 종목 재량 매도액 — 이미 fetch 된 sell 그룹에서(10b5 플랜 제외, 추가쿼리 0).
+      //   매수가 강세 신호로 보여도 같은 창에 큰 매도가 있으면 net 으로 희석 → 카드에 falsification 단서로 노출(점수엔 무관).
+      let opposingSellValue = 0;
+      if (side === "buy") for (const s of (groups.get(r0.symbol + "|sell") || [])) {
+        const td = Number(s.txnDate);
+        if (td >= wFrom && td <= wTo) opposingSellValue += Math.abs(cleanValue(s));
+      }
       clusters.push({
         symbol: r0.symbol, company: r0.company ?? null, sector: r0.sector ?? null,
         side, insiderCount, tradeCount: bestTrades.length, totalValue,
         windowFromMs: wFrom, windowToMs: wTo, spanDays,
-        participants, score, thin, gated: massPost0,
+        participants, score, thin, gated: massPost0, opposingSellValue,
       });
     }
     clusters.sort((a, b) => b.score - a.score);
