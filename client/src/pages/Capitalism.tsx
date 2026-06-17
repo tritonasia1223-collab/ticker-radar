@@ -5,7 +5,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, History } from "lucide-react";
+import { Plus } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta } from "@/components/CapFlow";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
@@ -191,11 +191,7 @@ export default function Capitalism() {
 
   return (
     <div className="p-5 max-w-[1500px] mx-auto">
-      {/* 상단 헤더 = 아이콘만 (메인 타이틀·상단 버튼 제거 — 사건 추가는 타임라인 맨 오른쪽 빈 칸으로 이동) */}
-      <div className="flex items-center gap-2 mb-3">
-        <History className="h-4 w-4 text-primary shrink-0" />
-        <span className="text-xs text-muted-foreground">타임라인 오른쪽 끝 “+ 사건 추가” 칸으로 새 사건을 만드세요</span>
-      </div>
+      {/* 상단 안내 헤더 제거 — 세로 공간 최대 확보. 사건 추가는 타임라인 맨 오른쪽 빈 칸으로. */}
 
       {/* ── 상단: 연도 그룹 → 사건 플로우 보드 ── */}
       <section className="mb-4">

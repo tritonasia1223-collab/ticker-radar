@@ -130,36 +130,102 @@ export function CapRichEditor({
     return () => document.removeEventListener("selectionchange", handler);
   }, [updateToolbar]);
 
-  // 선택 구간에 표식 적용/해제. key=null 이면 표식 제거.
+  // 에디터 내부에서 선택 구간의 plain-text 오프셋(시작/끝)을 구한다.
+  // 마크 span/텍스트/BR(\n) 을 순서대로 훑으면서 anchor/focus 노드 위치를 누적 길이로 환산.
+  function selectionOffsets(el: HTMLElement): { start: number; end: number } | null {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.startContainer) || !el.contains(range.endContainer)) return null;
+
+    // 특정 (node, offset) 까지의 plain-text 길이.
+    const lenUntil = (target: Node, targetOffset: number): number => {
+      let len = 0;
+      let done = false;
+      const walk = (n: Node) => {
+        if (done) return;
+        if (n.nodeType === Node.TEXT_NODE) {
+          if (n === target) { len += targetOffset; done = true; return; }
+          len += (n.textContent || "").length;
+          return;
+        }
+        if (n.nodeType === Node.ELEMENT_NODE) {
+          const e = n as HTMLElement;
+          if (e.tagName === "BR") {
+            if (n === target) { done = true; return; }
+            len += 1; // \n
+            return;
+          }
+          // 요소 컨테이너에 대한 offset = 자식 인덱스. 해당 자식 전까지 누적.
+          if (n === target) {
+            for (let i = 0; i < targetOffset && i < e.childNodes.length; i++) walk(e.childNodes[i]);
+            done = true;
+            return;
+          }
+          e.childNodes.forEach(walk);
+        }
+      };
+      walk(el);
+      return len;
+    };
+
+    const a = lenUntil(range.startContainer, range.startOffset);
+    const b = lenUntil(range.endContainer, range.endOffset);
+    const start = Math.min(a, b);
+    const end = Math.max(a, b);
+    if (start === end) return null;
+    return { start, end };
+  }
+
+  // 선택 구간 [start,end) 에 표식 적용/해제. key=null 이면 표식 제거.
+  // 현재 DOM을 평문+마크 세그먼트로 환산 → 선택 구간만 마크 재계산 → 마커 문자열로 직렬화 후 재렌더.
+  // 이렇게 하면 이미 색/하이라이트가 입혀진 구간도 덮어쓰기·변경·해제가 모두 정확히 동작한다.
   function applyMark(key: string | null) {
     const el = ref.current;
-    const sel = window.getSelection();
-    if (!el || !sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-    const range = sel.getRangeAt(0);
-    if (!el.contains(range.commonAncestorContainer)) return;
-    const text = range.toString();
-    if (!text) return;
+    if (!el) return;
+    const off = selectionOffsets(el);
+    if (!off) return;
+    const { start, end } = off;
 
-    // 선택 영역 삭제 후, 표식 span(또는 평문)으로 치환.
-    range.deleteContents();
-    let inserted: Node;
-    if (key && MARK_BY_KEY[key]) {
-      const span = document.createElement("span");
-      span.setAttribute("data-mark", key);
-      Object.assign(span.style, MARK_BY_KEY[key].style as Record<string, string | number>);
-      span.textContent = text;
-      inserted = span;
-    } else {
-      inserted = document.createTextNode(text);
+    // 현재 내용 → 글자 단위 (char, mark) 배열로 평탄화.
+    const raw = serializeEl(el);
+    const segs = parseRich(raw);
+    // 오프셋이 UTF-16 코드유닛 기준(selectionOffsets와 일치)이므로 코드유닛 단위로 분해.
+    const chars: { ch: string; mark?: string }[] = [];
+    for (const s of segs) {
+      for (let k = 0; k < s.text.length; k++) chars.push({ ch: s.text[k], mark: s.mark });
     }
-    range.insertNode(inserted);
+    // 선택 구간에 새 마크 적용(또는 해제).
+    for (let i = start; i < end && i < chars.length; i++) {
+      chars[i].mark = key && MARK_BY_KEY[key] ? key : undefined;
+    }
+    // 글자 배열 → 마커 문자열 재직렬화(연속 동일 마크 묶음).
+    let out = "";
+    let i = 0;
+    while (i < chars.length) {
+      const mk = chars[i].mark;
+      let j = i;
+      let buf = "";
+      while (j < chars.length && chars[j].mark === mk) { buf += chars[j].ch; j++; }
+      out += mk && MARK_BY_KEY[mk] ? `[[${mk}|${buf}]]` : buf;
+      i = j;
+    }
 
-    // 인접 평문 노드 병합 정리(중첩 span 방지 위해 normalize).
-    el.normalize();
-    // 선택 해제 + 반영
-    sel.removeAllRanges();
+    renderToEl(el, out);
+    window.getSelection()?.removeAllRanges();
     setToolbar(null);
-    emit();
+    onChange(out);
+  }
+
+  // 에디터 전체 표식 초기화(평문화). 선택 없이도 동작.
+  function clearAllMarks() {
+    const el = ref.current;
+    if (!el) return;
+    const plain = parseRich(serializeEl(el)).map((s) => s.text).join("");
+    renderToEl(el, plain);
+    window.getSelection()?.removeAllRanges();
+    setToolbar(null);
+    onChange(plain);
   }
 
   const isEmpty = !value || parseRich(value).every((s) => !s.text);
@@ -211,11 +277,21 @@ export function CapRichEditor({
           <span className="mx-0.5 h-4 w-px bg-border" />
           <button
             type="button"
-            title="표식 제거"
+            title="선택 구간 표식 제거"
             className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted"
             onClick={() => applyMark(null)}
+            data-testid="mark-clear-selection"
           >
             지움
+          </button>
+          <button
+            type="button"
+            title="이 칸 전체 표식 초기화"
+            className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-destructive hover:bg-muted"
+            onClick={() => clearAllMarks()}
+            data-testid="mark-clear-all"
+          >
+            전체초기화
           </button>
         </div>
       ) : null}
