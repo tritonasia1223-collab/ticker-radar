@@ -57,3 +57,13 @@ export function toFracYear(dateStr: string): number {
   const t = Date.UTC(y, (m || 1) - 1, d || 1);
   return y + (t - yearStart) / (yearEnd - yearStart);
 }
+
+// 소수 연도(1972.5) → 'YYYY년 M월' 사람이 읽는 표기.
+// 소수부를 12개월로 환산(0=1월 … 11=12월). 10진법 오해 방지용.
+export function fracYearToLabel(frac: number): string {
+  const year = Math.floor(frac);
+  let month = Math.floor((frac - year) * 12) + 1; // 1~12
+  if (month < 1) month = 1;
+  if (month > 12) month = 12;
+  return `${year}년 ${month}월`;
+}

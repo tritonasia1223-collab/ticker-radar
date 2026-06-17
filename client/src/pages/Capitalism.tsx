@@ -9,7 +9,7 @@ import { Plus, History } from "lucide-react";
 import { FlowColumn, type NodeAddReq } from "@/components/CapFlow";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { CapFlowEditor, type PendingAdd } from "@/components/CapFlowEditor";
-import { PANELS, CATEGORIES, toFracYear } from "@/lib/capitalism-config";
+import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
@@ -109,10 +109,50 @@ export default function Capitalism() {
             {groups.map((g) => (
               <div key={g.year} className="flex flex-col shrink-0">
                 {/* 연도 대분류 헤더 */}
-                <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="flex items-center gap-2 mb-1.5 px-1">
                   <span className="text-base font-bold tabular-nums text-primary">{g.year}</span>
                   <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
                 </div>
+
+                {/* 가로 레일(타임라인 선) + 사건별 원 마커 */}
+                <div className="relative px-2 pt-1 pb-2">
+                  {/* 레일 선: 첫 마커 ~ 마지막 마커 사이를 가로지름 */}
+                  <div
+                    className="absolute top-[10px] h-[2px] bg-border"
+                    style={{ left: `calc(8px + 140px)`, right: `calc(8px + 140px)` }}
+                  />
+                  <div className="flex gap-2">
+                    {g.items.map((f) => {
+                      const isActive = f.slug === activeSlug;
+                      return (
+                        <button
+                          key={f.slug}
+                          type="button"
+                          onClick={() => setPlayYear(toFracYear(f.date))}
+                          className="relative flex w-[280px] shrink-0 flex-col items-center"
+                          title={fracYearToLabel(toFracYear(f.date))}
+                          data-testid={`marker-${f.slug}`}
+                        >
+                          <span
+                            className={`block rounded-full transition-all ${
+                              isActive
+                                ? "h-4 w-4 bg-primary ring-4 ring-primary/25"
+                                : "h-2.5 w-2.5 bg-muted-foreground/40 hover:bg-primary/60"
+                            }`}
+                          />
+                          <span
+                            className={`mt-1 text-[10px] tabular-nums transition-colors ${
+                              isActive ? "font-semibold text-primary" : "text-muted-foreground/70"
+                            }`}
+                          >
+                            {fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* 같은 연도 사건들 = 소분류(가로로 인접, 그룹 배경으로 묶음) */}
                 <div className="flex gap-2 rounded-xl bg-muted/30 p-2">
                   {g.items.map((f) => (
@@ -135,15 +175,30 @@ export default function Capitalism() {
 
       {/* ── 슬라이더 (연도 스크럽) ── */}
       <section className="mb-5 rounded-lg border border-border bg-card/40 p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">연도</span>
-          <span className="text-lg font-semibold tabular-nums text-primary">{playYear.toFixed(1)}</span>
+        <div className="mb-2 text-sm font-medium">연도</div>
+        {/* 현재값 라벨 — 핸들(현재 지점) 바로 위에 따라감 */}
+        <div className="relative h-6">
+          {(() => {
+            const pct = toY > fromY ? ((playYear - fromY) / (toY - fromY)) * 100 : 0;
+            // 핸들 중심은 트랙 양 끝에서 안쪽으로 thumb 반지름만큼 들어감 → 보정.
+            // 라벨이 컨테이너 밖으로 잘리지 않도록 6~94% 범위로 클램프.
+            const clamped = Math.min(94, Math.max(6, pct));
+            return (
+              <div
+                className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[12px] font-semibold tabular-nums text-primary-foreground shadow"
+                style={{ left: `${clamped}%`, bottom: 0 }}
+                data-testid="text-playyear"
+              >
+                {fracYearToLabel(playYear)}
+              </div>
+            );
+          })()}
         </div>
         <input
           type="range"
           min={fromY}
           max={toY}
-          step={0.1}
+          step={1 / 12}
           value={playYear}
           onChange={(e) => setPlayYear(Number(e.target.value))}
           className="w-full accent-primary"
