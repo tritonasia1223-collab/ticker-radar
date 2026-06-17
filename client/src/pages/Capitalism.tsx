@@ -1,16 +1,15 @@
-// 자본주의 경제사 타임라인 — 상단 인과 플로우(마인드맵형) + 하단 FRED 그래프 스택.
-// 슬라이더로 연도를 움직이면 현재 지점이 모든 그래프에 강조선으로 표시되고,
-// 가장 가까운 사건 플로우가 하이라이트된다. 우측 카드 없음 — 플로우가 상단에 가로로 정렬.
+// 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
+// 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, History } from "lucide-react";
-import { FlowColumn } from "@/components/CapFlow";
+import { FlowColumn, type NodeAddReq } from "@/components/CapFlow";
 import { CapChartPanel } from "@/components/CapChartPanel";
-import { CapFlowEditor } from "@/components/CapFlowEditor";
-import { PANELS, CATEGORIES, CAT_COLORS, toFracYear } from "@/lib/capitalism-config";
+import { CapFlowEditor, type PendingAdd } from "@/components/CapFlowEditor";
+import { PANELS, CATEGORIES, toFracYear } from "@/lib/capitalism-config";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
@@ -30,17 +29,16 @@ export default function Capitalism() {
   const [playYear, setPlayYear] = useState(1973.8);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<FlowDTO | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
 
   const flowRowRef = useRef<HTMLDivElement>(null);
 
-  // 슬라이더 범위: 데이터가 있으면 그 범위, 없으면 기본 1971~1980.
   const [fromY, toY] = useMemo(() => {
     if (!flows || flows.length === 0) return [YEAR_MIN, YEAR_MAX];
     const years = flows.map((f) => toFracYear(f.date));
     return [Math.floor(Math.min(...years, YEAR_MIN)), Math.ceil(Math.max(...years, YEAR_MAX))];
   }, [flows]);
 
-  // 현재 playYear 에 가장 가까운 플로우 = 활성.
   const activeSlug = useMemo(() => {
     if (!flows || flows.length === 0) return null;
     let best = flows[0], bestD = Infinity;
@@ -51,22 +49,40 @@ export default function Capitalism() {
     return best.slug;
   }, [flows, playYear]);
 
-  // 활성 플로우로 가로 스크롤 이동.
   useEffect(() => {
     if (!activeSlug || !flowRowRef.current) return;
     const el = flowRowRef.current.querySelector(`[data-testid="flow-${activeSlug}"]`) as HTMLElement | null;
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [activeSlug]);
 
+  // 연도(대분류) → 사건(소분류) 그룹핑. flows 는 서버에서 날짜순 정렬되어 옴.
+  const groups = useMemo(() => {
+    if (!flows) return [] as { year: number; items: FlowDTO[] }[];
+    const map = new Map<number, FlowDTO[]>();
+    for (const f of flows) {
+      const y = f.year || Number(f.date.slice(0, 4));
+      (map.get(y) ?? map.set(y, []).get(y)!).push(f);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, items]) => ({ year, items }));
+  }, [flows]);
+
   const onPanels = PANELS.filter((p) => enabled[p.id]);
 
-  function openNew() { setEditing(null); setEditorOpen(true); }
-  function openEdit(f: FlowDTO) { setEditing(f); setEditorOpen(true); }
+  function openNew() { setEditing(null); setPendingAdd(null); setEditorOpen(true); }
+  function openEdit(f: FlowDTO) { setEditing(f); setPendingAdd(null); setEditorOpen(true); }
   function onSaved() { qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }); }
+
+  // 호버 +버튼: 해당 플로우 편집기를 열되, 기준 노드 뒤에 빈 블록을 추가한 상태로 시작.
+  function onAddNode(req: NodeAddReq) {
+    setEditing(req.flow);
+    setPendingAdd({ afterKey: req.afterKey, dir: req.dir });
+    setEditorOpen(true);
+  }
 
   return (
     <div className="p-5 max-w-[1500px] mx-auto">
-      {/* header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <History className="h-5 w-5 text-primary" />
@@ -78,7 +94,7 @@ export default function Capitalism() {
         <Button onClick={openNew} data-testid="button-new-flow"><Plus className="h-4 w-4 mr-1" /> 플로우 추가</Button>
       </div>
 
-      {/* ── 상단: 인과 플로우 보드 (가로 정렬) ── */}
+      {/* ── 상단: 연도 그룹 → 사건 플로우 보드 ── */}
       <section className="mb-5">
         {isLoading ? (
           <div className="flex gap-3">
@@ -89,15 +105,29 @@ export default function Capitalism() {
             아직 플로우가 없습니다. 오른쪽 위 “플로우 추가”로 첫 사건을 만들어 보세요.
           </div>
         ) : (
-          <div ref={flowRowRef} className="flex gap-3 overflow-x-auto pb-2 items-start">
-            {flows.map((f) => (
-              <FlowColumn
-                key={f.slug}
-                flow={f}
-                active={f.slug === activeSlug}
-                onSelect={(ff) => setPlayYear(toFracYear(ff.date))}
-                onEdit={openEdit}
-              />
+          <div ref={flowRowRef} className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
+            {groups.map((g) => (
+              <div key={g.year} className="flex flex-col shrink-0">
+                {/* 연도 대분류 헤더 */}
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="text-base font-bold tabular-nums text-primary">{g.year}</span>
+                  <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
+                </div>
+                {/* 같은 연도 사건들 = 소분류(가로로 인접, 그룹 배경으로 묶음) */}
+                <div className="flex gap-2 rounded-xl bg-muted/30 p-2">
+                  {g.items.map((f) => (
+                    <FlowColumn
+                      key={f.slug}
+                      flow={f}
+                      active={f.slug === activeSlug}
+                      onSelect={(ff) => setPlayYear(toFracYear(ff.date))}
+                      onEdit={openEdit}
+                      onAddNode={onAddNode}
+                      editable
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -147,7 +177,7 @@ export default function Capitalism() {
         </div>
       </section>
 
-      {/* ── 하단: 그래프 스택 (small multiples) ── */}
+      {/* ── 하단: 그래프 스택 ── */}
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {onPanels.length === 0 ? (
           <div className="col-span-full text-center text-sm text-muted-foreground py-8">
@@ -167,7 +197,13 @@ export default function Capitalism() {
         )}
       </section>
 
-      <CapFlowEditor open={editorOpen} onOpenChange={setEditorOpen} initial={editing} onSaved={onSaved} />
+      <CapFlowEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        initial={editing}
+        pendingAdd={pendingAdd}
+        onSaved={onSaved}
+      />
     </div>
   );
 }

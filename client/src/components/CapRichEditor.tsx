@@ -1,0 +1,176 @@
+// 인라인 리치텍스트 에디터: 텍스트를 드래그 선택하면 색상/하이라이트 팝업 툴바가 떠서
+// 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
+// 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
+import { useRef, useEffect, useState, useCallback } from "react";
+import { MARK_STYLES, MARK_BY_KEY, parseRich } from "@/lib/capitalism-richtext";
+
+// 마커 문자열 → contentEditable 안에 넣을 DOM(span) 생성.
+function renderToEl(el: HTMLElement, raw: string) {
+  el.innerHTML = "";
+  for (const seg of parseRich(raw)) {
+    if (seg.mark && MARK_BY_KEY[seg.mark]) {
+      const span = document.createElement("span");
+      span.setAttribute("data-mark", seg.mark);
+      const st = MARK_BY_KEY[seg.mark].style as Record<string, string | number>;
+      Object.assign(span.style, st);
+      span.textContent = seg.text;
+      el.appendChild(span);
+    } else {
+      el.appendChild(document.createTextNode(seg.text));
+    }
+  }
+  if (!el.childNodes.length) el.appendChild(document.createTextNode(""));
+}
+
+// contentEditable DOM → 마커 문자열 직렬화.
+function serializeEl(el: HTMLElement): string {
+  let out = "";
+  el.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.textContent || "";
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const e = node as HTMLElement;
+      const mark = e.getAttribute("data-mark");
+      const txt = e.textContent || "";
+      if (mark && MARK_BY_KEY[mark]) out += `[[${mark}|${txt}]]`;
+      else out += txt;
+    }
+  });
+  return out;
+}
+
+export function CapRichEditor({
+  value, onChange, placeholder, rows = 2,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [toolbar, setToolbar] = useState<{ x: number; y: number } | null>(null);
+  const composingRef = useRef(false);
+
+  // value(외부) → DOM 초기화 (포커스 없을 때만 재렌더하여 커서 튐 방지).
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (document.activeElement === el) return;
+    renderToEl(el, value || "");
+  }, [value]);
+
+  const emit = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    onChange(serializeEl(el));
+  }, [onChange]);
+
+  // 선택이 비어있지 않고 에디터 내부면 툴바 위치 계산(뷰포트 좌표 = fixed).
+  const updateToolbar = useCallback(() => {
+    const el = ref.current;
+    const sel = window.getSelection();
+    if (!el || !sel || sel.rangeCount === 0 || sel.isCollapsed) { setToolbar(null); return; }
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.commonAncestorContainer)) { setToolbar(null); return; }
+    const rect = range.getBoundingClientRect();
+    setToolbar({ x: rect.left + rect.width / 2, y: rect.bottom });
+  }, []);
+
+  useEffect(() => {
+    const handler = () => updateToolbar();
+    document.addEventListener("selectionchange", handler);
+    return () => document.removeEventListener("selectionchange", handler);
+  }, [updateToolbar]);
+
+  // 선택 구간에 표식 적용/해제. key=null 이면 표식 제거.
+  function applyMark(key: string | null) {
+    const el = ref.current;
+    const sel = window.getSelection();
+    if (!el || !sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.commonAncestorContainer)) return;
+    const text = range.toString();
+    if (!text) return;
+
+    // 선택 영역 삭제 후, 표식 span(또는 평문)으로 치환.
+    range.deleteContents();
+    let inserted: Node;
+    if (key && MARK_BY_KEY[key]) {
+      const span = document.createElement("span");
+      span.setAttribute("data-mark", key);
+      Object.assign(span.style, MARK_BY_KEY[key].style as Record<string, string | number>);
+      span.textContent = text;
+      inserted = span;
+    } else {
+      inserted = document.createTextNode(text);
+    }
+    range.insertNode(inserted);
+
+    // 인접 평문 노드 병합 정리(중첩 span 방지 위해 normalize).
+    el.normalize();
+    // 선택 해제 + 반영
+    sel.removeAllRanges();
+    setToolbar(null);
+    emit();
+  }
+
+  const isEmpty = !value || parseRich(value).every((s) => !s.text);
+
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words"
+        style={{ minHeight: `${rows * 1.4 + 1}rem` }}
+        onInput={() => { if (!composingRef.current) emit(); }}
+        onCompositionStart={() => { composingRef.current = true; }}
+        onCompositionEnd={() => { composingRef.current = false; emit(); }}
+        onBlur={emit}
+        data-richeditor
+      />
+      {isEmpty && placeholder ? (
+        <span className="pointer-events-none absolute left-2.5 top-2 text-xs text-muted-foreground">
+          {placeholder}
+        </span>
+      ) : null}
+
+      {toolbar ? (
+        <div
+          className="fixed z-[100] flex items-center gap-1 rounded-md border border-border bg-popover px-1.5 py-1 shadow-lg"
+          style={{ left: toolbar.x, top: toolbar.y + 6, transform: "translate(-50%, 0)" }}
+          onMouseDown={(e) => e.preventDefault() /* 선택 유지 */}
+        >
+          {MARK_STYLES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              title={m.label}
+              className="h-5 w-5 rounded-sm border border-border/60 hover:scale-110 transition-transform"
+              style={
+                m.kind === "hl"
+                  ? { background: m.swatch }
+                  : { background: "transparent", color: m.swatch, fontWeight: 700, fontSize: 11, lineHeight: "1" }
+              }
+              onClick={() => applyMark(m.key)}
+            >
+              {m.kind === "c" ? "A" : ""}
+            </button>
+          ))}
+          <span className="mx-0.5 h-4 w-px bg-border" />
+          <button
+            type="button"
+            title="표식 제거"
+            className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted"
+            onClick={() => applyMark(null)}
+          >
+            지움
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}

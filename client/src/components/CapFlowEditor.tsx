@@ -1,4 +1,5 @@
 // 인과 플로우 에디터 (폼 기반). 블록 추가/삭제/순서변경, 분기(col) 지정, DB 저장.
+// 텍스트는 드래그 색상 툴바가 달린 리치 에디터로 입력(마커 직렬화).
 // 엣지는 레이아웃 규칙으로 자동 생성:
 //   - stack: 위→아래 선형 체인
 //   - branch: center[0](source) → left/right 각 컬럼 체인 → center[last](merge)로 합류
@@ -8,27 +9,31 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { CapRichEditor } from "@/components/CapRichEditor";
 import type { FlowDTO, FlowInputDTO } from "@/lib/capitalism-types";
-import { KIND_STYLE } from "@/lib/capitalism-config";
+
+// 호버 +버튼에서 넘어오는 추가 지시.
+export interface PendingAdd {
+  afterKey: string;
+  dir: "down" | "branch";
+}
 
 interface EditNode {
   nodeKey: string;
   kind: string;
   inLabel: string;
   text: string;
-  ref: string;
   col: string; // center | left | right (branch 전용)
 }
 
-const BLANK_NODE = (i: number): EditNode => ({
-  nodeKey: `k${Date.now().toString(36)}${i}`,
-  kind: "effect", inLabel: "", text: "", ref: "", col: "center",
+const BLANK_NODE = (i: number, col = "center"): EditNode => ({
+  nodeKey: `k${Date.now().toString(36)}${i}${Math.floor(Math.random() * 1000)}`,
+  kind: "effect", inLabel: "", text: "", col,
 });
 
 function buildEdges(nodes: EditNode[], layout: string): { from: string; to: string }[] {
@@ -52,11 +57,12 @@ function buildEdges(nodes: EditNode[], layout: string): { from: string; to: stri
 }
 
 export function CapFlowEditor({
-  open, onOpenChange, initial, onSaved,
+  open, onOpenChange, initial, pendingAdd, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial: FlowDTO | null; // null = 새 플로우
+  pendingAdd?: PendingAdd | null;
   onSaved: () => void;
 }) {
   const [slug, setSlug] = useState("");
@@ -68,6 +74,7 @@ export function CapFlowEditor({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -76,17 +83,46 @@ export function CapFlowEditor({
       setTitle(initial.title);
       setDate(initial.date);
       setCategory(initial.category);
-      setLayout(initial.layout);
-      setNodes(initial.nodes.map((n) => ({
+      let nextLayout = initial.layout;
+      let base: EditNode[] = initial.nodes.map((n) => ({
         nodeKey: n.id, kind: n.kind, inLabel: n.inLabel ?? "",
-        text: n.text, ref: n.ref ?? "", col: n.col || "center",
-      })));
+        text: n.text, col: n.col || "center",
+      }));
+
+      // 호버 +버튼으로 진입: 기준 노드 뒤에 빈 블록 삽입.
+      if (pendingAdd) {
+        const idx = base.findIndex((n) => n.nodeKey === pendingAdd.afterKey);
+        if (pendingAdd.dir === "branch") {
+          // 분기: 레이아웃을 branch로 전환하고, 기준 노드를 center로, 새 블록을 비어있는 쪽 컬럼에 배치.
+          nextLayout = "branch";
+          base = base.map((n) => ({ ...n, col: n.col || "center" }));
+          const baseNode = idx >= 0 ? base[idx] : base[base.length - 1];
+          if (baseNode) baseNode.col = "center";
+          // 어느 컬럼이 비었는지 확인
+          const hasLeft = base.some((n) => n.col === "left");
+          const newCol = hasLeft ? "right" : "left";
+          const nn = BLANK_NODE(base.length, newCol);
+          setHighlightKey(nn.nodeKey);
+          base.push(nn);
+        } else {
+          // 아래 스택: 기준 노드 바로 뒤에 같은 컬럼으로 삽입.
+          const baseNode = idx >= 0 ? base[idx] : base[base.length - 1];
+          const nn = BLANK_NODE(base.length, baseNode?.col || "center");
+          setHighlightKey(nn.nodeKey);
+          base.splice(idx >= 0 ? idx + 1 : base.length, 0, nn);
+        }
+      } else {
+        setHighlightKey(null);
+      }
+      setLayout(nextLayout);
+      setNodes(base);
     } else {
       setSlug(""); setTitle(""); setDate(""); setCategory("경제"); setLayout("stack");
       setNodes([BLANK_NODE(0), BLANK_NODE(1)]);
+      setHighlightKey(null);
     }
     setErr(null);
-  }, [open, initial]);
+  }, [open, initial, pendingAdd]);
 
   function setNode(i: number, patch: Partial<EditNode>) {
     setNodes((prev) => prev.map((n, idx) => (idx === i ? { ...n, ...patch } : n)));
@@ -146,8 +182,8 @@ export function CapFlowEditor({
       nodes: cleanNodes.map((n) => ({
         nodeKey: n.nodeKey, kind: n.kind,
         inLabel: n.inLabel.trim() || null,
-        text: n.text.trim(),
-        ref: n.ref.trim() || null,
+        text: n.text,
+        ref: null,
         col: layout === "branch" ? (n.col || "center") : null,
       })),
       edges: buildEdges(cleanNodes, layout),
@@ -221,6 +257,10 @@ export function CapFlowEditor({
           </p>
         ) : null}
 
+        <p className="text-[11px] text-muted-foreground">
+          텍스트를 드래그하면 색상·형광펜 툴바가 떠서 중요한 단어를 강조할 수 있습니다.
+        </p>
+
         <div className="space-y-2 mt-1">
           <div className="flex items-center justify-between">
             <Label className="text-xs">블록</Label>
@@ -229,42 +269,38 @@ export function CapFlowEditor({
             </Button>
           </div>
 
-          {nodes.map((n, i) => {
-            const ks = KIND_STYLE[n.kind] ?? KIND_STYLE.effect;
-            return (
-              <div key={n.nodeKey} className="rounded-md border border-border p-2.5" style={{ borderLeft: `3px solid ${ks.c}` }} data-testid={`node-edit-${i}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Select value={n.kind} onValueChange={(v) => setNode(i, { kind: v })}>
-                    <SelectTrigger className="h-8 w-[110px] text-xs" data-testid={`select-kind-${i}`}><SelectValue /></SelectTrigger>
+          {nodes.map((n, i) => (
+            <div
+              key={n.nodeKey}
+              className={`rounded-md border p-2.5 ${n.nodeKey === highlightKey ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
+              data-testid={`node-edit-${i}`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Input className="h-8 text-xs flex-1" value={n.inLabel} onChange={(e) => setNode(i, { inLabel: e.target.value })} placeholder="라벨(선택) — 예: 배경, 사건, 결과" data-testid={`input-label-${i}`} />
+                {layout === "branch" ? (
+                  <Select value={n.col} onValueChange={(v) => setNode(i, { col: v })}>
+                    <SelectTrigger className="h-8 w-[90px] text-xs" data-testid={`select-col-${i}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cause">원인</SelectItem>
-                      <SelectItem value="event">사건</SelectItem>
-                      <SelectItem value="effect">영향</SelectItem>
-                      <SelectItem value="result">결과</SelectItem>
+                      <SelectItem value="center">center</SelectItem>
+                      <SelectItem value="left">left</SelectItem>
+                      <SelectItem value="right">right</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input className="h-8 text-xs flex-1" value={n.inLabel} onChange={(e) => setNode(i, { inLabel: e.target.value })} placeholder="라벨(선택) — 비우면 종류 표시" data-testid={`input-label-${i}`} />
-                  {layout === "branch" ? (
-                    <Select value={n.col} onValueChange={(v) => setNode(i, { col: v })}>
-                      <SelectTrigger className="h-8 w-[90px] text-xs" data-testid={`select-col-${i}`}><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="center">center</SelectItem>
-                        <SelectItem value="left">left</SelectItem>
-                        <SelectItem value="right">right</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : null}
-                  <div className="flex">
-                    <Button size="icon" variant="ghost" className="h-8 w-7" onClick={() => move(i, -1)} data-testid={`up-${i}`}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-7" onClick={() => move(i, 1)} data-testid={`down-${i}`}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-7 text-destructive" onClick={() => setNodes((p) => p.filter((_, idx) => idx !== i))} data-testid={`del-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
+                ) : null}
+                <div className="flex">
+                  <Button size="icon" variant="ghost" className="h-8 w-7" onClick={() => move(i, -1)} data-testid={`up-${i}`}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-7" onClick={() => move(i, 1)} data-testid={`down-${i}`}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-7 text-destructive" onClick={() => setNodes((p) => p.filter((_, idx) => idx !== i))} data-testid={`del-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
-                <Textarea value={n.text} onChange={(e) => setNode(i, { text: e.target.value })} placeholder="블록 내용" rows={2} className="text-xs mb-1.5" data-testid={`input-text-${i}`} />
-                <Input className="h-8 text-xs" value={n.ref} onChange={(e) => setNode(i, { ref: e.target.value })} placeholder="참고/출처 (선택)" data-testid={`input-ref-${i}`} />
               </div>
-            );
-          })}
+              <CapRichEditor
+                value={n.text}
+                onChange={(v) => setNode(i, { text: v })}
+                placeholder="블록 내용 (드래그하여 강조)"
+                rows={2}
+              />
+            </div>
+          ))}
         </div>
 
         {err ? <p className="text-xs text-destructive">{err}</p> : null}
