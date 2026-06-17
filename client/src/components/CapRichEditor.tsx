@@ -40,12 +40,14 @@ function serializeEl(el: HTMLElement): string {
 }
 
 export function CapRichEditor({
-  value, onChange, placeholder, rows = 2,
+  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   rows?: number;
+  autoFocus?: boolean;
+  onBlur?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [toolbar, setToolbar] = useState<{ x: number; y: number } | null>(null);
@@ -58,6 +60,21 @@ export function CapRichEditor({
     if (document.activeElement === el) return;
     renderToEl(el, value || "");
   }, [value]);
+
+  // 자동 포커스: 인라인 편집 진입 시 바로 커서를 끝으로.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const emit = useCallback(() => {
     const el = ref.current;
@@ -129,7 +146,7 @@ export function CapRichEditor({
         onInput={() => { if (!composingRef.current) emit(); }}
         onCompositionStart={() => { composingRef.current = true; }}
         onCompositionEnd={() => { composingRef.current = false; emit(); }}
-        onBlur={emit}
+        onBlur={() => { emit(); onBlur?.(); }}
         data-richeditor
       />
       {isEmpty && placeholder ? (

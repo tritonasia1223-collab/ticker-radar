@@ -1,16 +1,18 @@
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
-import { useMemo, useState, useRef, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+// 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, History } from "lucide-react";
-import { FlowColumn, type NodeAddReq } from "@/components/CapFlow";
+import { FlowColumn, type MutateNodes } from "@/components/CapFlow";
 import { CapChartPanel } from "@/components/CapChartPanel";
-import { CapFlowEditor, type PendingAdd } from "@/components/CapFlowEditor";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
-import type { FlowDTO } from "@/lib/capitalism-types";
+import { persistNodes, newNodeKey } from "@/lib/capitalism-flowops";
+import { apiRequest } from "@/lib/queryClient";
+import type { FlowDTO, FlowNodeDTO, FlowInputDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 type SeriesMap = Record<string, [string, number][]>;
@@ -18,6 +20,15 @@ const SERIES = seriesData as unknown as SeriesMap;
 
 const YEAR_MIN = 1971;
 const YEAR_MAX = 1980;
+
+// 소수 연도 → YYYY-MM-DD (월 1일). 새 사건 기본 날짜 산출용.
+function fracYearToDate(frac: number): string {
+  const year = Math.floor(frac);
+  let month = Math.floor((frac - year) * 12) + 1;
+  if (month < 1) month = 1;
+  if (month > 12) month = 12;
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}
 
 export default function Capitalism() {
   const qc = useQueryClient();
@@ -27,11 +38,8 @@ export default function Capitalism() {
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))
   );
   const [playYear, setPlayYear] = useState(1973.8);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editing, setEditing] = useState<FlowDTO | null>(null);
-  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
-
-  const flowRowRef = useRef<HTMLDivElement>(null);
+  // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [fromY, toY] = useMemo(() => {
     if (!flows || flows.length === 0) return [YEAR_MIN, YEAR_MAX];
@@ -49,12 +57,6 @@ export default function Capitalism() {
     return best.slug;
   }, [flows, playYear]);
 
-  useEffect(() => {
-    if (!activeSlug || !flowRowRef.current) return;
-    const el = flowRowRef.current.querySelector(`[data-testid="flow-${activeSlug}"]`) as HTMLElement | null;
-    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [activeSlug]);
-
   // 연도(대분류) → 사건(소분류) 그룹핑. flows 는 서버에서 날짜순 정렬되어 옴.
   const groups = useMemo(() => {
     if (!flows) return [] as { year: number; items: FlowDTO[] }[];
@@ -70,16 +72,55 @@ export default function Capitalism() {
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
 
-  function openNew() { setEditing(null); setPendingAdd(null); setEditorOpen(true); }
-  function openEdit(f: FlowDTO) { setEditing(f); setPendingAdd(null); setEditorOpen(true); }
-  function onSaved() { qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }); }
+  // 노드 배열 통째 저장(빈 칸 정리, 전부 비면 플로우 삭제). 낙관적 캐시 갱신.
+  const mutate = useMutation({
+    mutationFn: ({ flow, nodes }: { flow: FlowDTO; nodes: FlowNodeDTO[] }) =>
+      persistNodes(flow, nodes),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }),
+  });
 
-  // 호버 +버튼: 해당 플로우 편집기를 열되, 기준 노드 뒤에 빈 블록을 추가한 상태로 시작.
-  function onAddNode(req: NodeAddReq) {
-    setEditing(req.flow);
-    setPendingAdd({ afterKey: req.afterKey, dir: req.dir });
-    setEditorOpen(true);
-  }
+  // 카드 안에서 칸을 추가만 할 때(빈 칸) — 캐시에만 반영, 서버 저장은 입력 완료(commit) 시.
+  const onAddLocal: MutateNodes = (flow, nextNodes) => {
+    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
+      prev ? prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: nextNodes } : f)) : prev
+    );
+  };
+
+  // 칸 내용 확정/삭제 — 캐시 즉시 반영 + 서버 저장(빈 칸 정리, 전부 비면 플로우 삭제).
+  const onMutateNodes: MutateNodes = (flow, nextNodes) => {
+    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
+      if (!prev) return prev;
+      const clean = nextNodes.filter((n) => n.text.trim());
+      if (clean.length === 0) return prev.filter((f) => f.slug !== flow.slug);
+      return prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: clean } : f));
+    });
+    mutate.mutate({ flow, nodes: nextNodes });
+  };
+
+  // 새 사건(플로우) 추가 — 팝업 없이 기본값으로 생성하고 첫 칸을 편집 모드로.
+  const addFlow = useMutation({
+    mutationFn: async () => {
+      const date = fracYearToDate(playYear);
+      const slug = `flow-${Date.now().toString(36)}`;
+      const firstKey = newNodeKey();
+      const payload: FlowInputDTO = {
+        slug,
+        title: "새 사건",
+        date,
+        year: Number(date.slice(0, 4)),
+        category: "경제",
+        layout: "stack",
+        nodes: [{ nodeKey: firstKey, kind: "effect", inLabel: null, text: "새 사건", ref: null, col: null }],
+        edges: [],
+      };
+      await apiRequest("POST", "/api/capitalism/flows", payload);
+      return { slug, firstKey };
+    },
+    onSuccess: async ({ firstKey }) => {
+      await qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
+      setEditingId(firstKey);
+    },
+  });
 
   return (
     <div className="p-5 max-w-[1500px] mx-auto">
@@ -91,7 +132,9 @@ export default function Capitalism() {
             <p className="text-xs text-muted-foreground">사건의 인과 흐름과 거시지표를 한 화면에서</p>
           </div>
         </div>
-        <Button onClick={openNew} data-testid="button-new-flow"><Plus className="h-4 w-4 mr-1" /> 플로우 추가</Button>
+        <Button onClick={() => addFlow.mutate()} disabled={addFlow.isPending} data-testid="button-new-flow">
+          <Plus className="h-4 w-4 mr-1" /> 사건 추가
+        </Button>
       </div>
 
       {/* ── 상단: 연도 그룹 → 사건 플로우 보드 ── */}
@@ -102,10 +145,10 @@ export default function Capitalism() {
           </div>
         ) : !flows || flows.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-            아직 플로우가 없습니다. 오른쪽 위 “플로우 추가”로 첫 사건을 만들어 보세요.
+            아직 사건이 없습니다. 오른쪽 위 “사건 추가”로 첫 사건을 만들어 보세요.
           </div>
         ) : (
-          <div ref={flowRowRef} className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
+          <div className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
             {groups.map((g) => (
               <div key={g.year} className="flex flex-col shrink-0">
                 {/* 연도 대분류 헤더 */}
@@ -161,8 +204,10 @@ export default function Capitalism() {
                       flow={f}
                       active={f.slug === activeSlug}
                       onSelect={(ff) => setPlayYear(toFracYear(ff.date))}
-                      onEdit={openEdit}
-                      onAddNode={onAddNode}
+                      onMutateNodes={onMutateNodes}
+                      onAddLocal={onAddLocal}
+                      editingId={editingId}
+                      setEditingId={setEditingId}
                       editable
                     />
                   ))}
@@ -251,14 +296,6 @@ export default function Capitalism() {
           ))
         )}
       </section>
-
-      <CapFlowEditor
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        initial={editing}
-        pendingAdd={pendingAdd}
-        onSaved={onSaved}
-      />
     </div>
   );
 }
