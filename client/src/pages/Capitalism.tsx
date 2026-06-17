@@ -157,11 +157,11 @@ export default function Capitalism() {
                   <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
                 </div>
 
-                {/* 가로 레일(타임라인 선) + 사건별 원 마커 */}
+                {/* 가로 레일(타임라인 선) + 사건별 원 마커 — 마커 영역 높이 고정(active여도 카드가 안 밀림) */}
                 <div className="relative px-2 pt-1 pb-2">
                   {/* 레일 선: 첫 마커 ~ 마지막 마커 사이를 가로지름 */}
                   <div
-                    className="absolute top-[10px] h-[2px] bg-border"
+                    className="absolute top-[12px] h-[2px] bg-border"
                     style={{ left: `calc(8px + 140px)`, right: `calc(8px + 140px)` }}
                   />
                   <div className="flex gap-2">
@@ -176,15 +176,18 @@ export default function Capitalism() {
                           title={fracYearToLabel(toFracYear(f.date))}
                           data-testid={`marker-${f.slug}`}
                         >
+                          {/* 고정 높이 슬롯 안에서 점만 커짐 → 레이아웃 흔들림 없음 */}
+                          <span className="flex h-6 w-6 items-center justify-center">
+                            <span
+                              className={`block rounded-full transition-all ${
+                                isActive
+                                  ? "h-4 w-4 bg-primary ring-4 ring-primary/25"
+                                  : "h-2.5 w-2.5 bg-muted-foreground/40 hover:bg-primary/60"
+                              }`}
+                            />
+                          </span>
                           <span
-                            className={`block rounded-full transition-all ${
-                              isActive
-                                ? "h-4 w-4 bg-primary ring-4 ring-primary/25"
-                                : "h-2.5 w-2.5 bg-muted-foreground/40 hover:bg-primary/60"
-                            }`}
-                          />
-                          <span
-                            className={`mt-1 text-[10px] tabular-nums transition-colors ${
+                            className={`mt-0.5 text-[10px] tabular-nums transition-colors ${
                               isActive ? "font-semibold text-primary" : "text-muted-foreground/70"
                             }`}
                           >
@@ -254,8 +257,28 @@ export default function Capitalism() {
         </div>
       </section>
 
-      {/* ── 체크박스 (카테고리별) ── */}
-      <section className="mb-4 rounded-lg border border-border bg-card/40 p-3">
+      {/* ── 그래프 스택 (체크박스보다 위) ── */}
+      <section className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {onPanels.length === 0 ? (
+          <div className="col-span-full text-center text-sm text-muted-foreground py-8">
+            표시할 지표를 아래에서 선택하세요.
+          </div>
+        ) : (
+          onPanels.map((p) => (
+            <CapChartPanel
+              key={p.id}
+              panel={p}
+              series={SERIES[p.series]}
+              fromYear={fromY}
+              toYear={toY}
+              playYear={playYear}
+            />
+          ))
+        )}
+      </section>
+
+      {/* ── 하단: 체크박스 (카테고리별) ── */}
+      <section className="rounded-lg border border-border bg-card/40 p-3">
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {Object.entries(CATEGORIES).map(([catKey, cat]) => (
             <div key={catKey} className="flex flex-col gap-1.5">
@@ -275,26 +298,6 @@ export default function Capitalism() {
             </div>
           ))}
         </div>
-      </section>
-
-      {/* ── 하단: 그래프 스택 ── */}
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {onPanels.length === 0 ? (
-          <div className="col-span-full text-center text-sm text-muted-foreground py-8">
-            표시할 지표를 위에서 선택하세요.
-          </div>
-        ) : (
-          onPanels.map((p) => (
-            <CapChartPanel
-              key={p.id}
-              panel={p}
-              series={SERIES[p.series]}
-              fromYear={fromY}
-              toYear={toY}
-              playYear={playYear}
-            />
-          ))
-        )}
       </section>
     </div>
   );
