@@ -95,6 +95,25 @@ export default function Capitalism() {
       .map(([year, items]) => ({ year, items }));
   }, [flows]);
 
+  // 시대(decade) 네비 — 데이터에 존재하는 연대만 자동 생성. 각 연대의 첫 사건(slug/연도) 보관.
+  // 80년대 이후 사건을 추가하면 자동으로 1980s 칩이 생긴다.
+  const decades = useMemo(() => {
+    if (!flows || flows.length === 0) return [] as { decade: number; label: string; firstFrac: number; firstSlug: string }[];
+    const map = new Map<number, { firstFrac: number; firstSlug: string }>();
+    for (const f of flows) {
+      const frac = toFracYear(f.date);
+      const decade = Math.floor(frac / 10) * 10;
+      const cur = map.get(decade);
+      if (!cur || frac < cur.firstFrac) map.set(decade, { firstFrac: frac, firstSlug: f.slug });
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([decade, v]) => ({ decade, label: `${decade}s`, firstFrac: v.firstFrac, firstSlug: v.firstSlug }));
+  }, [flows]);
+
+  // 현재 active 사건이 속한 연대(칩 하이라이트용).
+  const activeDecade = useMemo(() => Math.floor(playYear / 10) * 10, [playYear]);
+
   const onPanels = PANELS.filter((p) => enabled[p.id]);
 
   // 노드 배열 통째 저장(빈 칸 정리, 전부 비면 플로우 삭제). 낙관적 캐시 갱신.
@@ -161,6 +180,30 @@ export default function Capitalism() {
           <Plus className="h-4 w-4 mr-1" /> 사건 추가
         </Button>
       </div>
+
+      {/* ── 시대(decade) 네비 칩 — 클릭 시 해당 연대 첫 사건으로 가로 점프(세로 X) ── */}
+      {decades.length > 1 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" data-testid="decade-nav">
+          {decades.map((d) => {
+            const isActive = d.decade === activeDecade;
+            return (
+              <button
+                key={d.decade}
+                type="button"
+                onClick={() => setPlayYear(d.firstFrac)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+                data-testid={`decade-${d.decade}`}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* ── 상단: 연도 그룹 → 사건 플로우 보드 ── */}
       <section className="mb-5">
