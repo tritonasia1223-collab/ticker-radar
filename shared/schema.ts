@@ -361,8 +361,27 @@ export const capEdges = pgTable(
   (t) => ({ byFlow: index("idx_cap_edges_flow").on(t.flowId) })
 );
 
+// --- 보드 전역 사용자 화살표(카드 내/간 모두) ---
+// cap_edges 와 달리 flow_id 에 묶이지 않고, 노드를 (slug, node_key) 로 전역 식별한다.
+// 따라서 카드 경계를 넘는 드래그앤드롭 연결을 저장할 수 있다.
+export const capLinks = pgTable(
+  "cap_links",
+  {
+    id: serial("id").primaryKey(),
+    fromSlug: text("from_slug").notNull(),
+    fromKey: text("from_key").notNull(),
+    toSlug: text("to_slug").notNull(),
+    toKey: text("to_key").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (t) => ({
+    uniqLink: uniqueIndex("uniq_cap_link").on(t.fromSlug, t.fromKey, t.toSlug, t.toKey),
+  })
+);
+
 export const insertCapFlowSchema = createInsertSchema(capFlows).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCapFlow = z.infer<typeof insertCapFlowSchema>;
 export type CapFlow = typeof capFlows.$inferSelect;
 export type CapNode = typeof capNodes.$inferSelect;
 export type CapEdge = typeof capEdges.$inferSelect;
+export type CapLink = typeof capLinks.$inferSelect;

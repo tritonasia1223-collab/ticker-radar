@@ -3,7 +3,7 @@ import { storage } from "./storage.js";
 import { collectAll } from "./apify.js";
 import { seedDummy } from "./seed.js";
 import { insertAccountSchema } from "../shared/schema.js";
-import { listFlows, upsertFlow, deleteFlow, type FlowInput } from "./capitalism.js";
+import { listFlows, upsertFlow, deleteFlow, listLinks, addLink, deleteLink, type FlowInput } from "./capitalism.js";
 import { z } from "zod";
 
 // Writes that hit Apify (and run for a long time) must not run on Vercel's
@@ -263,6 +263,29 @@ export function registerRoutes(app: Express) {
   });
   app.delete("/api/capitalism/flows/:slug", async (req, res) => {
     await deleteFlow(req.params.slug);
+    res.status(204).end();
+  });
+
+  // ---- 보드 전역 화살표(링크): 카드 내/간 드래그앤드롭 연결 ----
+  const capLinkInputSchema = z.object({
+    fromSlug: z.string().min(1),
+    fromKey: z.string().min(1),
+    toSlug: z.string().min(1),
+    toKey: z.string().min(1),
+  });
+  app.get("/api/capitalism/links", async (_req, res) => {
+    res.json(await listLinks());
+  });
+  app.post("/api/capitalism/links", async (req, res) => {
+    try {
+      const parsed = capLinkInputSchema.parse(req.body);
+      res.json(await addLink(parsed));
+    } catch (e: any) {
+      res.status(400).json({ error: e?.errors ?? String(e?.message || e) });
+    }
+  });
+  app.delete("/api/capitalism/links/:id", async (req, res) => {
+    await deleteLink(Number(req.params.id));
     res.status(204).end();
   });
 

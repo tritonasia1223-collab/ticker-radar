@@ -1,17 +1,20 @@
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, Fragment } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus } from "lucide-react";
-import { FlowColumn, type MutateNodes, type MutateMeta } from "@/components/CapFlow";
+import { Plus, Undo2 } from "lucide-react";
+import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
+import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
 import { persistNodes, toInput, newNodeKey } from "@/lib/capitalism-flowops";
 import { apiRequest } from "@/lib/queryClient";
-import type { FlowDTO, FlowNodeDTO, FlowInputDTO } from "@/lib/capitalism-types";
+import { useToast } from "@/hooks/use-toast";
+import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
+import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 type SeriesMap = Record<string, [string, number][]>;
@@ -32,6 +35,8 @@ function fracYearToDate(frac: number): string {
 export default function Capitalism() {
   const qc = useQueryClient();
   const { data: flows, isLoading } = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
+  // 보드 전역 화살표(카드 내/간 드래그앤드롭 연결).
+  const { data: links } = useQuery<LinkDTO[]>({ queryKey: ["/api/capitalism/links"] });
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))
@@ -41,6 +46,57 @@ export default function Capitalism() {
   const [editingId, setEditingId] = useState<string | null>(null);
   // 가로 보드 컨테이너 ref — active 카드 가로 추적용(세로는 절대 안 건드림).
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const { toast } = useToast();
+
+  // ── 되돌리기(Undo) 스택 ── 텍스트 글자 편집 제외, 구조 변경만.
+  // ref 로 보관(렌더와 무관). 최대 50개까지 유지.
+  const undoStack = useRef<UndoEntry[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const pushUndo = (entry: UndoEntry) => {
+    undoStack.current.push(entry);
+    if (undoStack.current.length > 50) undoStack.current.shift();
+    setCanUndo(true);
+  };
+  const doUndo = async () => {
+    if (undoBusy) return;
+    const entry = undoStack.current.pop();
+    setCanUndo(undoStack.current.length > 0);
+    if (!entry) return;
+    setUndoBusy(true);
+    try {
+      await applyUndo(entry);
+      await qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
+      await qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] });
+      toast({ description: `되돌림: ${entry.label}` });
+    } catch {
+      toast({ description: "되돌리기에 실패했어요.", variant: "destructive" });
+    } finally {
+      setUndoBusy(false);
+    }
+  };
+
+  // 최신 doUndo 를 ref 에 담아 키 핸들러 effect 가 매번 재등록되지 않게 한다.
+  const doUndoRef = useRef(doUndo);
+  doUndoRef.current = doUndo;
+
+  // Ctrl+Z(⌘Z) → 되돌리기. 단, 입력창/편집창 포커시엔 무시(편집기 글자 단위 Undo 는 브라우저 기본 동작에 맡긴다).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+      if (e.key !== "z" && e.key !== "Z") return;
+      // 입력/편집 중이면 브라우저 기본 Undo 가 처리하도록 건드리지 않음.
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || t.isContentEditable) return;
+      }
+      e.preventDefault();
+      void doUndoRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const [fromY, toY] = useMemo(() => {
     if (!flows || flows.length === 0) return [YEAR_MIN, YEAR_MAX];
@@ -132,6 +188,8 @@ export default function Capitalism() {
 
   // 칸 내용 확정/삭제 — 캐시 즉시 반영 + 서버 저장(빈 칸 정리, 전부 비면 플로우 삭제).
   const onMutateNodes: MutateNodes = (flow, nextNodes) => {
+    // 변경 직전 flow 스냅샷을 쌓아둔다(노드 추가/삭제·카드 삭제를 되돌릴 수 있게).
+    pushUndo(makeFlowEntry("사건 수정", flow.slug, flows));
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
       if (!prev) return prev;
       const clean = nextNodes.filter((n) => n.text.trim());
@@ -169,6 +227,8 @@ export default function Capitalism() {
     mutationFn: async () => {
       const date = fracYearToDate(playYear);
       const slug = `flow-${Date.now().toString(36)}`;
+      // 신규 생성이므로 prev=null → Undo 는 이 카드 삭제가 된다.
+      pushUndo(makeFlowEntry("사건 추가", slug, flows));
       const firstKey = newNodeKey();
       const payload: FlowInputDTO = {
         slug,
@@ -189,6 +249,60 @@ export default function Capitalism() {
     },
   });
 
+  // 중간 삽입: 두 연도 그룹 사이(또는 맨 앞/뒤)에 새 사건 생성. 대상 연도(targetYear)를 받아 그 년도로 생성.
+  const addFlowAt = useMutation({
+    mutationFn: async (targetYear: number) => {
+      const date = `${targetYear}-01-01`;
+      const slug = `flow-${Date.now().toString(36)}`;
+      // 신규 생성 → Undo 는 삭제.
+      pushUndo(makeFlowEntry("사건 추가", slug, flows));
+      const firstKey = newNodeKey();
+      const payload: FlowInputDTO = {
+        slug, title: "새 사건", date, year: targetYear,
+        category: "경제", layout: "stack",
+        nodes: [{ nodeKey: firstKey, kind: "effect", inLabel: null, text: "새 사건", ref: null, col: null }],
+        edges: [],
+      };
+      await apiRequest("POST", "/api/capitalism/flows", payload);
+      return { firstKey, targetYear };
+    },
+    onSuccess: async ({ firstKey, targetYear }) => {
+      await qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
+      setPlayYear(targetYear);
+      setEditingId(firstKey);
+    },
+  });
+
+  // 드래그앤드롭 화살표 연결 — 낙관적 캐시 추가 후 서버 저장.
+  const onLink: LinkNodes = (from, to) => {
+    // 화살표 추가 직전의 전체 링크 스냅샷을 쌓아둔다.
+    pushUndo(makeLinksEntry("화살표 추가", links));
+    qc.setQueryData<LinkDTO[]>(["/api/capitalism/links"], (prev) => {
+      const list = prev ?? [];
+      // 이미 있으면 그대로.
+      if (list.some((l) => l.fromSlug === from.slug && l.fromKey === from.key && l.toSlug === to.slug && l.toKey === to.key)) return list;
+      // 역방향은 제거(방향 전환).
+      const filtered = list.filter((l) => !(l.fromSlug === to.slug && l.fromKey === to.key && l.toSlug === from.slug && l.toKey === from.key));
+      return [...filtered, { id: -Date.now(), fromSlug: from.slug, fromKey: from.key, toSlug: to.slug, toKey: to.key }];
+    });
+    apiRequest("POST", "/api/capitalism/links", {
+      fromSlug: from.slug, fromKey: from.key, toSlug: to.slug, toKey: to.key,
+    })
+      .then(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] }))
+      .catch(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] }));
+  };
+
+  // 화살표 삭제(오버레이에서 클릭).
+  const onDeleteLink = (id: number) => {
+    // 삭제 직전 스냅샷 → Undo 는 복원.
+    pushUndo(makeLinksEntry("화살표 삭제", links));
+    qc.setQueryData<LinkDTO[]>(["/api/capitalism/links"], (prev) => (prev ? prev.filter((l) => l.id !== id) : prev));
+    if (id < 0) return; // 낙관적 임시 id 는 서버 호출 불필요
+    apiRequest("DELETE", `/api/capitalism/links/${id}`)
+      .then(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] }))
+      .catch(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] }));
+  };
+
   return (
     <div className="p-5 max-w-[1500px] mx-auto">
       {/* 상단 안내 헤더 제거 — 세로 공간 최대 확보. 사건 추가는 타임라인 맨 오른쪽 빈 칸으로. */}
@@ -200,9 +314,20 @@ export default function Capitalism() {
             {[0, 1, 2].map((i) => <Skeleton key={i} className="h-64 w-[300px] rounded-lg" />)}
           </div>
         ) : (
-          <div ref={boardRef} className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
-            {groups.map((g) => (
-              <div key={g.year} className="flex flex-col shrink-0">
+          <div ref={boardRef} className="cap-noscrollbar relative flex gap-5 overflow-x-auto pb-2 items-stretch">
+            {/* 중간 삽입: 맨 앞(첫 그룹 앞)에 + 존 */}
+            {groups.length > 0 ? (
+              <InsertZone
+                onInsert={() => addFlowAt.mutate(groups[0].year - 1)}
+                disabled={addFlowAt.isPending}
+                label={`${groups[0].year - 1}년에 사건 추가`}
+                testid="insert-before-first"
+              />
+            ) : null}
+
+            {groups.map((g, gi) => (
+              <Fragment key={g.year}>
+              <div className="flex flex-col shrink-0">
                 {/* 연도 대분류 헤더 */}
                 <div className="flex items-center gap-2 mb-1.5 px-1">
                   <span className="text-base font-bold tabular-nums text-primary">{g.year}</span>
@@ -263,6 +388,7 @@ export default function Capitalism() {
                       onMutateNodes={onMutateNodes}
                       onAddLocal={onAddLocal}
                       onMutateMeta={onMutateMeta}
+                      onLink={onLink}
                       editingId={editingId}
                       setEditingId={setEditingId}
                       editable
@@ -270,7 +396,27 @@ export default function Capitalism() {
                   ))}
                 </div>
               </div>
+
+              {/* 중간 삽입: 현재 그룹과 다음 그룹 사이에 + 존. 두 연도의 중간값으로 생성. */}
+              {gi < groups.length - 1 ? (() => {
+                const nextYear = groups[gi + 1].year;
+                const mid = Math.floor((g.year + nextYear) / 2);
+                // 두 연도가 인접(간격 1)이면 앞 연도에 생성(중간값이 앞 연도와 같아짐).
+                const target = mid > g.year && mid < nextYear ? mid : g.year;
+                return (
+                  <InsertZone
+                    onInsert={() => addFlowAt.mutate(target)}
+                    disabled={addFlowAt.isPending}
+                    label={`${target}년에 사건 추가`}
+                    testid={`insert-${g.year}-${nextYear}`}
+                  />
+                );
+              })() : null}
+              </Fragment>
             ))}
+
+            {/* 곱선 화살표 오버레이 — 노드 DOM 좌표를 측정해 그린다. 보드 전체를 덮는 절대 레이어. */}
+            <CapLinkOverlay boardRef={boardRef} links={links ?? []} flows={flows ?? []} onDeleteLink={onDeleteLink} />
 
             {/* ── 타임라인 맨 오른쪽 “+ 사건 추가” 빈 칸 — 클릭 시 현재 연도에 새 사건 생성 ── */}
             <div className="flex flex-col shrink-0">
@@ -304,8 +450,20 @@ export default function Capitalism() {
 
       {/* ── 연도 슬라이더 (좌: 연도·시대칩 / 우: 슬라이더) — 한 줄로 압축해 세로 공간 확보 ── */}
       <section className="mb-3 flex items-center gap-4 rounded-lg border border-border bg-card/40 px-4 py-2.5">
-        {/* 좌측: “연도” 라벨 + 10년 단위 시대 네비 칩 */}
+        {/* 좌측: 되돌리기 버튼 + “연도” 라벨 + 10년 단위 시대 네비 칩 */}
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void doUndo()}
+            disabled={!canUndo || undoBusy}
+            title="되돌리기 (Ctrl+Z)"
+            aria-label="되돌리기"
+            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid="button-undo"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            되돌리기
+          </button>
           <span className="text-sm font-medium">연도</span>
           {decades.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1" data-testid="decade-nav">
@@ -408,6 +566,39 @@ export default function Capitalism() {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+// 연도 그룹 사이의 세로로 얇은 호버 존 — 호버 시 + 버튼 등장, 클릭하면 그 위치 연도에 새 사건 삽입.
+function InsertZone({ onInsert, disabled, label, testid }: { onInsert: () => void; disabled?: boolean; label: string; testid: string }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      className="relative flex shrink-0 items-stretch"
+      style={{ width: hover ? 40 : 16 }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      data-testid={`insertzone-${testid}`}
+    >
+      {/* 호버 시 세로 구분선 + 추가 버튼 */}
+      {hover ? (
+        <button
+          type="button"
+          onClick={onInsert}
+          disabled={disabled}
+          title={label}
+          aria-label={label}
+          className="group flex w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          data-testid={`button-insert-${testid}`}
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-current">
+            <Plus className="h-4 w-4" />
+          </span>
+        </button>
+      ) : (
+        <div className="mx-auto my-auto h-3/5 w-px bg-transparent transition-colors hover:bg-primary/30" />
+      )}
     </div>
   );
 }

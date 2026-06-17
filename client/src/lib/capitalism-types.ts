@@ -21,6 +21,15 @@ export interface FlowDTO {
   edges: FlowEdgeDTO[];
 }
 
+// 보드 전역 화살표(링크) — 카드 내/간 드래그앤드롭 연결
+export interface LinkDTO {
+  id: number;
+  fromSlug: string;
+  fromKey: string;
+  toSlug: string;
+  toKey: string;
+}
+
 // 에디터 입력 (POST /api/capitalism/flows)
 export interface FlowInputDTO {
   slug: string;

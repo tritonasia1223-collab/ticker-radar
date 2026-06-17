@@ -44,12 +44,24 @@ const statements = [
      to_key TEXT NOT NULL
    )`,
   `CREATE INDEX IF NOT EXISTS idx_cap_edges_flow ON cap_edges (flow_id)`,
+
+  // 보드 전역 사용자 화살표(카드 내/간 모두). 노드는 (slug, node_key) 로 전역 식별.
+  // cap_edges 와 달리 flow_id 에 묶이지 않으므로 카드 경계를 넘는 연결을 저장할 수 있다.
+  `CREATE TABLE IF NOT EXISTS cap_links (
+     id SERIAL PRIMARY KEY,
+     from_slug TEXT NOT NULL,
+     from_key TEXT NOT NULL,
+     to_slug TEXT NOT NULL,
+     to_key TEXT NOT NULL,
+     created_at BIGINT NOT NULL
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uniq_cap_link ON cap_links (from_slug, from_key, to_slug, to_key)`,
 ];
 
 async function main() {
   console.log("자본주의 타임라인 테이블 생성(IF NOT EXISTS)…");
   for (const s of statements) await sql.unsafe(s);
-  console.log("✅ 완료 — cap_flows, cap_nodes, cap_edges");
+  console.log("✅ 완료 — cap_flows, cap_nodes, cap_edges, cap_links");
   await sql.end();
   process.exit(0);
 }

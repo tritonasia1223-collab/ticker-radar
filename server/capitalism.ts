@@ -1,9 +1,9 @@
 // 자본주의 경제사 타임라인 — 격리된 인과 플로우 CRUD.
 // 기존 storage.ts(DatabaseStorage/IStorage) 비침습: 같은 lazy db만 재사용한다.
 import { db } from "./storage.js";
-import { capFlows, capNodes, capEdges } from "../shared/schema.js";
-import type { CapFlow, CapNode, CapEdge } from "../shared/schema.js";
-import { eq, asc, desc } from "drizzle-orm";
+import { capFlows, capNodes, capEdges, capLinks } from "../shared/schema.js";
+import type { CapFlow, CapNode, CapEdge, CapLink } from "../shared/schema.js";
+import { eq, asc, desc, and } from "drizzle-orm";
 
 // 프론트가 그대로 쓰는 합본 플로우 형태(노드/엣지 임베드).
 export interface FlowNodeDTO {
@@ -122,4 +122,63 @@ export async function deleteFlow(slug: string): Promise<void> {
   const existing = (await db.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
   if (!existing) return;
   await db.delete(capFlows).where(eq(capFlows.id, existing.id)); // cascade nodes/edges
+  // 고아 링크(카드 간 화살표) 수동 정리 — 이 slug 가 관여한 링크 제거.
+  for (const l of await db.select().from(capLinks)) {
+    if (l.fromSlug === slug || l.toSlug === slug) {
+      await db.delete(capLinks).where(eq(capLinks.id, l.id));
+    }
+  }
+}
+
+// ============================================================================
+// 보드 전역 화살표(링크) — 카드 내/간 드래그앤드롭 연결
+// ============================================================================
+export interface LinkDTO {
+  id: number;
+  fromSlug: string;
+  fromKey: string;
+  toSlug: string;
+  toKey: string;
+}
+
+function assembleLink(l: CapLink): LinkDTO {
+  return { id: l.id, fromSlug: l.fromSlug, fromKey: l.fromKey, toSlug: l.toSlug, toKey: l.toKey };
+}
+
+export async function listLinks(): Promise<LinkDTO[]> {
+  const rows = await db.select().from(capLinks).orderBy(asc(capLinks.id));
+  return rows.map(assembleLink);
+}
+
+export async function addLink(input: { fromSlug: string; fromKey: string; toSlug: string; toKey: string }): Promise<LinkDTO> {
+  // 자기 자신 연결 금지.
+  if (input.fromSlug === input.toSlug && input.fromKey === input.toKey) {
+    throw new Error("같은 노드끼리는 연결할 수 없습니다.");
+  }
+  // 이미 존재하는 연결이면 그대로 반환(멱등).
+  const dup = (await db.select().from(capLinks).where(and(
+    eq(capLinks.fromSlug, input.fromSlug),
+    eq(capLinks.fromKey, input.fromKey),
+    eq(capLinks.toSlug, input.toSlug),
+    eq(capLinks.toKey, input.toKey),
+  ))).at(0);
+  if (dup) return assembleLink(dup);
+  // 역방향 연결이 있으면 제거(방향 변경 = 역방향으로 다시 드래그).
+  const reverse = (await db.select().from(capLinks).where(and(
+    eq(capLinks.fromSlug, input.toSlug),
+    eq(capLinks.fromKey, input.toKey),
+    eq(capLinks.toSlug, input.fromSlug),
+    eq(capLinks.toKey, input.fromKey),
+  ))).at(0);
+  if (reverse) await db.delete(capLinks).where(eq(capLinks.id, reverse.id));
+
+  const inserted = await db.insert(capLinks).values({
+    fromSlug: input.fromSlug, fromKey: input.fromKey,
+    toSlug: input.toSlug, toKey: input.toKey, createdAt: Date.now(),
+  }).returning();
+  return assembleLink(inserted[0]);
+}
+
+export async function deleteLink(id: number): Promise<void> {
+  await db.delete(capLinks).where(eq(capLinks.id, id));
 }

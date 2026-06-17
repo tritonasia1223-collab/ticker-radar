@@ -14,13 +14,18 @@ import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 export type MutateNodes = (flow: FlowDTO, nextNodes: FlowNodeDTO[]) => void;
 // 카드 메타(날짜/제목/레이아웃) 변경 저장 콜백.
 export type MutateMeta = (flow: FlowDTO, patch: { date?: string; title?: string; layout?: string }) => void;
+// 드래그앤드롭 화살표 연결 콜백 — from 노드 → to 노드(카드 내/간 모두).
+export type LinkNodes = (from: { slug: string; key: string }, to: { slug: string; key: string }) => void;
+
+// 드래그 중인 소스 노드(전역) — dataTransfer 가 제한적인 환경 대비해 모듈 변수로도 보관.
+let DRAG_SRC: { slug: string; key: string } | null = null;
 
 function blankNode(col = "center"): FlowNodeDTO {
   return { id: newNodeKey(), kind: "effect", inLabel: null, text: "", ref: null, col };
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd,
+  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onLink,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -30,16 +35,59 @@ function Node({
   onCommit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
+  onLink?: LinkNodes;
 }) {
   const [hover, setHover] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
+  // 드래그는 편집 모드(editable)이고 텍스트 편집 중이 아닐 때만 허용.
+  const canDrag = editable && !editing && !!onLink;
 
   return (
     <div
-      className="group relative px-2 py-1.5"
+      className={`group relative px-2 py-1.5 transition-shadow ${
+        dragOver ? "rounded ring-2 ring-rose-400 ring-offset-1" : ""
+      }`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       data-testid={`fnode-${node.id}`}
+      // 보드 오버레이가 좌표를 측정할 수 있도록 전역 식별자 부여(slug::nodeKey).
+      data-node-id={`${flow.slug}::${node.id}`}
+      draggable={canDrag}
+      onDragStart={(e) => {
+        if (!canDrag) return;
+        DRAG_SRC = { slug: flow.slug, key: node.id };
+        try {
+          e.dataTransfer.setData("text/plain", `${flow.slug}::${node.id}`);
+          e.dataTransfer.effectAllowed = "link";
+        } catch {}
+      }}
+      onDragEnd={() => { DRAG_SRC = null; setDragOver(false); }}
+      onDragOver={(e) => {
+        if (!canDrag || !DRAG_SRC) return;
+        // 자기 자신 위로는 드롭 표시 안 함.
+        if (DRAG_SRC.slug === flow.slug && DRAG_SRC.key === node.id) return;
+        e.preventDefault();
+        try { e.dataTransfer.dropEffect = "link"; } catch {}
+        if (!dragOver) setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        if (!canDrag) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOver(false);
+        let src = DRAG_SRC;
+        if (!src) {
+          const raw = e.dataTransfer.getData("text/plain");
+          const [s, k] = raw.split("::");
+          if (s && k) src = { slug: s, key: k };
+        }
+        DRAG_SRC = null;
+        if (!src) return;
+        if (src.slug === flow.slug && src.key === node.id) return; // 자기 연결 금지
+        onLink?.(src, { slug: flow.slug, key: node.id });
+      }}
     >
       {editing ? (
         <CapRichEditor
@@ -69,6 +117,17 @@ function Node({
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
       {editable && !editing ? (
         <>
+          {/* 좌측 상단 드래그 그립 — 이 점을 잡아 다른 칸으로 끌면 화살표가 연결됨 */}
+          {hover && onLink ? (
+            <span
+              title="끌어서 다른 칸과 화살표 연결"
+              className="absolute -left-1.5 -top-1.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-white shadow cursor-grab active:cursor-grabbing"
+              data-testid={`drag-grip-${node.id}`}
+            >
+              <svg width="7" height="7" viewBox="0 0 6 6"><circle cx="1.5" cy="1.5" r="0.9" fill="currentColor"/><circle cx="4.5" cy="1.5" r="0.9" fill="currentColor"/><circle cx="1.5" cy="4.5" r="0.9" fill="currentColor"/><circle cx="4.5" cy="4.5" r="0.9" fill="currentColor"/></svg>
+            </span>
+          ) : null}
+
           {/* 우측 상단 X = 이 칸 삭제 */}
           {hover ? (
             <button
@@ -138,7 +197,7 @@ function VArrow() {
 }
 
 export function FlowColumn({
-  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, editingId, setEditingId, editable = false,
+  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, onLink, editingId, setEditingId, editable = false,
 }: {
   flow: FlowDTO;
   active: boolean;
@@ -146,6 +205,7 @@ export function FlowColumn({
   onMutateNodes?: MutateNodes;
   onAddLocal?: MutateNodes;
   onMutateMeta?: MutateMeta;
+  onLink?: LinkNodes;
   editingId: string | null;
   setEditingId: (id: string | null) => void;
   editable?: boolean;
@@ -159,6 +219,9 @@ export function FlowColumn({
     setEditingId(null);
     if (!onMutateNodes) return;
     const trimmed = text.trim();
+    // 내용이 실제로 바뀌지 않았으면(=기존 텍스트 그대로 빠져나감) 서버 저장·Undo 푸시 없이 종료.
+    const cur = flow.nodes.find((n) => n.id === id);
+    if (cur && cur.text === text) return;
     let next: FlowNodeDTO[];
     if (!trimmed) {
       next = flow.nodes.filter((n) => n.id !== id); // 내용 미입력 → 삭제
@@ -232,6 +295,7 @@ export function FlowColumn({
     onCommit: commit,
     onDelete: deleteNode,
     onAdd: addNode,
+    onLink,
   };
 
   function renderStack(list: FlowNodeDTO[]) {
@@ -245,39 +309,18 @@ export function FlowColumn({
 
   let body: JSX.Element;
   if (flow.layout === "branch") {
+    // 분기 곡선·합류 박스 없이, 좌/중앙/우 칼럼을 그냥 나란히 배치한다.
+    // 각 칼럼은 독립적인 세로 스택(위→아래 화살표만). 곡선/merge 화살표 없음.
     const byCol: Record<string, FlowNodeDTO[]> = { center: [], left: [], right: [] };
     flow.nodes.forEach((n) => byCol[n.col || "center"].push(n));
-    const source = byCol.center[0];
-    const merge = byCol.center.length > 1 ? byCol.center[byCol.center.length - 1] : undefined;
-    const stroke = "rgba(140,140,160,0.4)";
-    const head = "rgba(160,160,180,0.55)";
+    const cols = [byCol.left, byCol.center, byCol.right].filter((c) => c.length > 0);
     body = (
-      <div className="flex flex-col">
-        {source ? <Node {...nodeProps} node={source} editing={editingId === source.id} /> : null}
-        <div className="flex justify-center">
-          <svg width="220" height="22" viewBox="0 0 220 22" preserveAspectRatio="none">
-            <path d="M110 0 C110 11, 56 5, 56 20" fill="none" stroke={stroke} strokeWidth="1.4" />
-            <path d="M52 14 L56 21 L60 14" fill="none" stroke={head} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M110 0 C110 11, 164 5, 164 20" fill="none" stroke={stroke} strokeWidth="1.4" />
-            <path d="M160 14 L164 21 L168 14" fill="none" stroke={head} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col">{renderStack(byCol.left)}</div>
-          <div className="flex flex-col">{renderStack(byCol.right)}</div>
-        </div>
-        {merge ? (
-          <>
-            <div className="flex justify-center">
-              <svg width="220" height="22" viewBox="0 0 220 22" preserveAspectRatio="none">
-                <path d="M56 0 C56 13, 110 7, 110 21" fill="none" stroke={stroke} strokeWidth="1.4" />
-                <path d="M164 0 C164 13, 110 7, 110 21" fill="none" stroke={stroke} strokeWidth="1.4" />
-                <path d="M106 15 L110 22 L114 15" fill="none" stroke={head} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <Node {...nodeProps} node={merge} editing={editingId === merge.id} />
-          </>
-        ) : null}
+      <div className="flex items-start justify-center gap-3">
+        {cols.map((col, ci) => (
+          <div key={ci} className="flex min-w-0 flex-1 flex-col">
+            {renderStack(col)}
+          </div>
+        ))}
       </div>
     );
   } else {
