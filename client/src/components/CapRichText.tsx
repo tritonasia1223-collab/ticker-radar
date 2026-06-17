@@ -4,7 +4,7 @@ import { parseRich, MARK_BY_KEY } from "@/lib/capitalism-richtext";
 export function CapRichText({ text, className }: { text: string; className?: string }) {
   const segs = parseRich(text);
   return (
-    <span className={className}>
+    <span className={className} style={{ whiteSpace: "pre-wrap" }}>
       {segs.map((s, i) =>
         s.mark && MARK_BY_KEY[s.mark] ? (
           <span key={i} style={MARK_BY_KEY[s.mark].style}>{s.text}</span>

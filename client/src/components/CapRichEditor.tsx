@@ -4,7 +4,16 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { MARK_STYLES, MARK_BY_KEY, parseRich } from "@/lib/capitalism-richtext";
 
-// 마커 문자열 → contentEditable 안에 넣을 DOM(span) 생성.
+// \n 가 들어간 텍스트를 텍스트노드+<br> 조합으로 target에 추가.
+function appendTextWithBreaks(target: HTMLElement, text: string) {
+  const parts = text.split("\n");
+  parts.forEach((part, i) => {
+    if (i > 0) target.appendChild(document.createElement("br"));
+    if (part) target.appendChild(document.createTextNode(part));
+  });
+}
+
+// 마커 문자열 → contentEditable 안에 넣을 DOM(span/br) 생성.
 function renderToEl(el: HTMLElement, raw: string) {
   el.innerHTML = "";
   for (const seg of parseRich(raw)) {
@@ -13,29 +22,51 @@ function renderToEl(el: HTMLElement, raw: string) {
       span.setAttribute("data-mark", seg.mark);
       const st = MARK_BY_KEY[seg.mark].style as Record<string, string | number>;
       Object.assign(span.style, st);
-      span.textContent = seg.text;
+      // 마크 내부에도 줄바꿈이 있을 수 있음.
+      appendTextWithBreaks(span, seg.text);
       el.appendChild(span);
     } else {
-      el.appendChild(document.createTextNode(seg.text));
+      appendTextWithBreaks(el, seg.text);
     }
   }
   if (!el.childNodes.length) el.appendChild(document.createTextNode(""));
 }
 
 // contentEditable DOM → 마커 문자열 직렬화.
+// 줄바꿈 처리: contentEditable은 Enter를 <div>/<br> 로 만들므로
+//   - BR(data-mark 없는) → \n
+//   - 블록 요소(DIV/P) → 앞 내용과 사이에 \n 삽입 후 내부 재귀 직렬화
 function serializeEl(el: HTMLElement): string {
   let out = "";
-  el.childNodes.forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      out += node.textContent || "";
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
+  const walk = (parent: Node, topLevel: boolean) => {
+    parent.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        out += node.textContent || "";
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
       const e = node as HTMLElement;
+      const tag = e.tagName;
       const mark = e.getAttribute("data-mark");
-      const txt = e.textContent || "";
-      if (mark && MARK_BY_KEY[mark]) out += `[[${mark}|${txt}]]`;
-      else out += txt;
-    }
-  });
+      if (mark && MARK_BY_KEY[mark]) {
+        out += `[[${mark}|${e.textContent || ""}]]`;
+        return;
+      }
+      if (tag === "BR") {
+        out += "\n";
+        return;
+      }
+      // 블록 요소(DIV/P)는 새 줄을 의미 — 앞에 내용이 있으면 \n 선행.
+      if (tag === "DIV" || tag === "P") {
+        if (out.length > 0 && !out.endsWith("\n")) out += "\n";
+        walk(e, false);
+        return;
+      }
+      // 그 외 인라인 요소(SPAN 등, 마크 아님) → 내부 재귀.
+      walk(e, false);
+    });
+  };
+  walk(el, true);
   return out;
 }
 
@@ -141,7 +172,7 @@ export function CapRichEditor({
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
-        className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words"
+        className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed text-center outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words"
         style={{ minHeight: `${rows * 1.4 + 1}rem` }}
         onInput={() => { if (!composingRef.current) emit(); }}
         onCompositionStart={() => { composingRef.current = true; }}
@@ -150,7 +181,7 @@ export function CapRichEditor({
         data-richeditor
       />
       {isEmpty && placeholder ? (
-        <span className="pointer-events-none absolute left-2.5 top-2 text-xs text-muted-foreground">
+        <span className="pointer-events-none absolute inset-x-2.5 top-2 text-center text-xs text-muted-foreground">
           {placeholder}
         </span>
       ) : null}

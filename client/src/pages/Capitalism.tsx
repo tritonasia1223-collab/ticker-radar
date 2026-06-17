@@ -3,7 +3,6 @@
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, History } from "lucide-react";
@@ -192,52 +191,17 @@ export default function Capitalism() {
 
   return (
     <div className="p-5 max-w-[1500px] mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <History className="h-5 w-5 text-primary" />
-          <div>
-            <h1 className="text-xl font-semibold leading-tight">미국 자본주의 경제사</h1>
-            <p className="text-xs text-muted-foreground">사건의 인과 흐름과 거시지표를 한 화면에서</p>
-          </div>
-        </div>
-        <Button onClick={() => addFlow.mutate()} disabled={addFlow.isPending} data-testid="button-new-flow">
-          <Plus className="h-4 w-4 mr-1" /> 사건 추가
-        </Button>
+      {/* 상단 헤더 = 아이콘만 (메인 타이틀·상단 버튼 제거 — 사건 추가는 타임라인 맨 오른쪽 빈 칸으로 이동) */}
+      <div className="flex items-center gap-2 mb-3">
+        <History className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-xs text-muted-foreground">타임라인 오른쪽 끝 “+ 사건 추가” 칸으로 새 사건을 만드세요</span>
       </div>
 
-      {/* ── 시대(decade) 네비 칩 — 클릭 시 해당 연대 첫 사건으로 가로 점프(세로 X) ── */}
-      {decades.length > 1 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5" data-testid="decade-nav">
-          {decades.map((d) => {
-            const isActive = d.decade === activeDecade;
-            return (
-              <button
-                key={d.decade}
-                type="button"
-                onClick={() => setPlayYear(d.firstFrac)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                }`}
-                data-testid={`decade-${d.decade}`}
-              >
-                {d.label}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
       {/* ── 상단: 연도 그룹 → 사건 플로우 보드 ── */}
-      <section className="mb-5">
+      <section className="mb-4">
         {isLoading ? (
           <div className="flex gap-3">
             {[0, 1, 2].map((i) => <Skeleton key={i} className="h-64 w-[300px] rounded-lg" />)}
-          </div>
-        ) : !flows || flows.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-            아직 사건이 없습니다. 오른쪽 위 “사건 추가”로 첫 사건을 만들어 보세요.
           </div>
         ) : (
           <div ref={boardRef} className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
@@ -311,43 +275,98 @@ export default function Capitalism() {
                 </div>
               </div>
             ))}
+
+            {/* ── 타임라인 맨 오른쪽 “+ 사건 추가” 빈 칸 — 클릭 시 현재 연도에 새 사건 생성 ── */}
+            <div className="flex flex-col shrink-0">
+              {/* 연도 헤더 자리 — 높이 정렬용 빈 공간 */}
+              <div className="flex items-center gap-2 mb-1.5 px-1">
+                <span className="text-base font-bold tabular-nums text-transparent select-none">+</span>
+              </div>
+              {/* 마커 레일 자리 — 높이 정렬용 빈 공간 */}
+              <div className="relative px-2 pt-1 pb-2">
+                <span className="flex h-6 w-6 items-center justify-center" />
+                <span className="mt-0.5 block text-[10px]">&nbsp;</span>
+              </div>
+              {/* 본문 자리 — 점선 추가 버튼(그룹 높이만큼 세로로 채움) */}
+              <button
+                type="button"
+                onClick={() => addFlow.mutate()}
+                disabled={addFlow.isPending}
+                className="flex w-[180px] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/70 bg-muted/10 p-4 text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
+                data-testid="button-new-flow"
+                title="현재 연도에 새 사건 추가"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-current">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <span className="text-xs font-medium">사건 추가</span>
+              </button>
+            </div>
           </div>
         )}
       </section>
 
-      {/* ── 슬라이더 (연도 스크럽) ── */}
-      <section className="mb-5 rounded-lg border border-border bg-card/40 p-4">
-        <div className="mb-2 text-sm font-medium">연도</div>
-        {/* 현재값 라벨 — 핸들(현재 지점) 바로 위에 따라감 */}
-        <div className="relative h-6">
-          {(() => {
-            const pct = toY > fromY ? ((playYear - fromY) / (toY - fromY)) * 100 : 0;
-            // 핸들 중심은 트랙 양 끝에서 안쪽으로 thumb 반지름만큼 들어감 → 보정.
-            // 라벨이 컨테이너 밖으로 잘리지 않도록 6~94% 범위로 클램프.
-            const clamped = Math.min(94, Math.max(6, pct));
-            return (
-              <div
-                className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[12px] font-semibold tabular-nums text-primary-foreground shadow"
-                style={{ left: `${clamped}%`, bottom: 0 }}
-                data-testid="text-playyear"
-              >
-                {fracYearToLabel(playYear)}
-              </div>
-            );
-          })()}
+      {/* ── 연도 슬라이더 (좌: 연도·시대칩 / 우: 슬라이더) — 한 줄로 압축해 세로 공간 확보 ── */}
+      <section className="mb-3 flex items-center gap-4 rounded-lg border border-border bg-card/40 px-4 py-2.5">
+        {/* 좌측: “연도” 라벨 + 10년 단위 시대 네비 칩 */}
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-sm font-medium">연도</span>
+          {decades.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1" data-testid="decade-nav">
+              {decades.map((d) => {
+                const isActive = d.decade === activeDecade;
+                return (
+                  <button
+                    key={d.decade}
+                    type="button"
+                    onClick={() => setPlayYear(d.firstFrac)}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums transition-colors ${
+                      isActive
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    }`}
+                    data-testid={`decade-${d.decade}`}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
-        <input
-          type="range"
-          min={fromY}
-          max={toY}
-          step={1 / 12}
-          value={playYear}
-          onChange={(e) => setPlayYear(Number(e.target.value))}
-          className="w-full accent-primary"
-          data-testid="slider-year"
-        />
-        <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums mt-1">
-          <span>{fromY}</span><span>{toY}</span>
+
+        {/* 우측: 현재값 라벨 + 슬라이더 트랙 + 범위 */}
+        <div className="min-w-0 flex-1">
+          {/* 현재값 라벨 — 핸들(현재 지점) 바로 위에 따라감 */}
+          <div className="relative h-5">
+            {(() => {
+              const pct = toY > fromY ? ((playYear - fromY) / (toY - fromY)) * 100 : 0;
+              // 라벨이 컨테이너 밖으로 잘리지 않도록 6~94% 범위로 클램프.
+              const clamped = Math.min(94, Math.max(6, pct));
+              return (
+                <div
+                  className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground shadow"
+                  style={{ left: `${clamped}%`, bottom: 0 }}
+                  data-testid="text-playyear"
+                >
+                  {fracYearToLabel(playYear)}
+                </div>
+              );
+            })()}
+          </div>
+          <input
+            type="range"
+            min={fromY}
+            max={toY}
+            step={1 / 12}
+            value={playYear}
+            onChange={(e) => setPlayYear(Number(e.target.value))}
+            className="w-full accent-primary"
+            data-testid="slider-year"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+            <span>{fromY}</span><span>{toY}</span>
+          </div>
         </div>
       </section>
 

@@ -57,9 +57,9 @@ function Node({
           data-testid={`fnode-text-${node.id}`}
         >
           {node.text.trim() ? (
-            <CapRichText text={node.text} className="block text-[12.5px] leading-snug text-foreground" />
+            <CapRichText text={node.text} className="block text-center text-[12.5px] leading-snug text-foreground" />
           ) : (
-            <span className="block text-[12.5px] italic leading-snug text-muted-foreground/50">
+            <span className="block text-center text-[12.5px] italic leading-snug text-muted-foreground/50">
               (빈 칸 — 클릭해 입력)
             </span>
           )}
