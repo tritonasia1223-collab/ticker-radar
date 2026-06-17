@@ -236,7 +236,7 @@ export function FlowColumn({
 
   return (
     <div
-      className={`w-[280px] shrink-0 rounded-lg border bg-transparent p-3 transition-colors ${
+      className={`h-full w-[280px] shrink-0 rounded-lg border bg-transparent p-3 transition-colors ${
         active ? "border-primary/70 ring-1 ring-primary/30" : "border-border/60 hover:border-primary/40"
       }`}
       onClick={() => onSelect(flow)}

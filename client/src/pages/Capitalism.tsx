@@ -1,7 +1,7 @@
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,6 +40,8 @@ export default function Capitalism() {
   const [playYear, setPlayYear] = useState(1973.8);
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // 가로 보드 컨테이너 ref — active 카드 가로 추적용(세로는 절대 안 건드림).
+  const boardRef = useRef<HTMLDivElement | null>(null);
 
   const [fromY, toY] = useMemo(() => {
     if (!flows || flows.length === 0) return [YEAR_MIN, YEAR_MAX];
@@ -56,6 +58,29 @@ export default function Capitalism() {
     }
     return best.slug;
   }, [flows, playYear]);
+
+  // active 카드가 보드 뷰포트 밖이면 가로로만 부드럽게 스크롤(세로는 절대 안 건드림).
+  // scrollIntoView 는 세로까지 움직이므로 쓰지 않고 scrollLeft 만 직접 조정.
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board || !activeSlug) return;
+    const card = board.querySelector<HTMLElement>(`[data-testid="flow-${activeSlug}"]`);
+    if (!card) return;
+    // 보드 컴테이너 기준 카드의 좌/우 위치(현재 스크롤 포함).
+    const boardBox = board.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    const cardLeft = cardBox.left - boardBox.left + board.scrollLeft;
+    const cardRight = cardLeft + cardBox.width;
+    const viewLeft = board.scrollLeft;
+    const viewRight = viewLeft + board.clientWidth;
+    const pad = 24; // 가장자리 여백
+    let next = viewLeft;
+    if (cardLeft < viewLeft + pad) next = cardLeft - pad;            // 왼쪽 밖 → 당겨오기
+    else if (cardRight > viewRight - pad) next = cardRight - board.clientWidth + pad; // 오른쪽 밖 → 밀어주기
+    if (Math.abs(next - viewLeft) > 1) {
+      board.scrollTo({ left: Math.max(0, next), behavior: "smooth" });
+    }
+  }, [activeSlug]);
 
   // 연도(대분류) → 사건(소분류) 그룹핑. flows 는 서버에서 날짜순 정렬되어 옴.
   const groups = useMemo(() => {
@@ -148,7 +173,7 @@ export default function Capitalism() {
             아직 사건이 없습니다. 오른쪽 위 “사건 추가”로 첫 사건을 만들어 보세요.
           </div>
         ) : (
-          <div className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
+          <div ref={boardRef} className="cap-noscrollbar flex gap-5 overflow-x-auto pb-2 items-stretch">
             {groups.map((g) => (
               <div key={g.year} className="flex flex-col shrink-0">
                 {/* 연도 대분류 헤더 */}
@@ -199,8 +224,9 @@ export default function Capitalism() {
                   </div>
                 </div>
 
-                {/* 같은 연도 사건들 = 소분류(가로로 인접, 그룹 배경으로 묶음) */}
-                <div className="flex gap-2 rounded-xl bg-muted/30 p-2">
+                {/* 같은 연도 사건들 = 소분류. flex-1 + items-stretch 로 그룹 높이를 채워
+                    연도 그룹끼리(1971 vs 1973) 카드 높이가 동일하게 맞춰짐. */}
+                <div className="flex flex-1 items-stretch gap-2 rounded-xl bg-muted/30 p-2">
                   {g.items.map((f) => (
                     <FlowColumn
                       key={f.slug}
