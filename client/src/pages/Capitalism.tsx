@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, History } from "lucide-react";
-import { FlowColumn, type MutateNodes } from "@/components/CapFlow";
+import { FlowColumn, type MutateNodes, type MutateMeta } from "@/components/CapFlow";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
-import { persistNodes, newNodeKey } from "@/lib/capitalism-flowops";
+import { persistNodes, toInput, newNodeKey } from "@/lib/capitalism-flowops";
 import { apiRequest } from "@/lib/queryClient";
 import type { FlowDTO, FlowNodeDTO, FlowInputDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
@@ -124,9 +124,10 @@ export default function Capitalism() {
   });
 
   // 카드 안에서 칸을 추가만 할 때(빈 칸) — 캐시에만 반영, 서버 저장은 입력 완료(commit) 시.
+  // 전달된 flow의 layout도 함께 동기화(stack→branch 자동 전환 시 캐시 layout 갱신).
   const onAddLocal: MutateNodes = (flow, nextNodes) => {
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
-      prev ? prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: nextNodes } : f)) : prev
+      prev ? prev.map((f) => (f.slug === flow.slug ? { ...f, layout: flow.layout, nodes: nextNodes } : f)) : prev
     );
   };
 
@@ -139,6 +140,29 @@ export default function Capitalism() {
       return prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: clean } : f));
     });
     mutate.mutate({ flow, nodes: nextNodes });
+  };
+
+  // 카드 메타(날짜/제목/레이아웃) 변경 — year 자동 재산출, 날짜순 재정렬, 서버 upsert 저장.
+  // 날짜를 바꾸면 그룹/슬라이더 범위가 자동으로 갱신되어 다른 연도로 카드가 이동한다.
+  const onMutateMeta: MutateMeta = (flow, patch) => {
+    const nextDate = patch.date ?? flow.date;
+    const nextYear = patch.date ? Number(patch.date.slice(0, 4)) : flow.year;
+    const merged: FlowDTO = {
+      ...flow,
+      date: nextDate,
+      year: nextYear,
+      title: patch.title ?? flow.title,
+      layout: patch.layout ?? flow.layout,
+    };
+    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
+      if (!prev) return prev;
+      const updated = prev.map((f) => (f.slug === flow.slug ? merged : f));
+      return [...updated].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sortOrder - b.sortOrder));
+    });
+    const cleanNodes = merged.nodes.filter((n) => n.text.trim());
+    apiRequest("POST", "/api/capitalism/flows", toInput(merged, cleanNodes.length ? cleanNodes : merged.nodes))
+      .then(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }))
+      .catch(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }));
   };
 
   // 새 사건(플로우) 추가 — 팝업 없이 기본값으로 생성하고 첫 칸을 편집 모드로.
@@ -278,6 +302,7 @@ export default function Capitalism() {
                       onSelect={(ff) => setPlayYear(toFracYear(ff.date))}
                       onMutateNodes={onMutateNodes}
                       onAddLocal={onAddLocal}
+                      onMutateMeta={onMutateMeta}
                       editingId={editingId}
                       setEditingId={setEditingId}
                       editable

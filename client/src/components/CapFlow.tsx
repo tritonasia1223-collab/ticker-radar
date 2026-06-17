@@ -12,6 +12,8 @@ import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
 export type MutateNodes = (flow: FlowDTO, nextNodes: FlowNodeDTO[]) => void;
+// 카드 메타(날짜/제목/레이아웃) 변경 저장 콜백.
+export type MutateMeta = (flow: FlowDTO, patch: { date?: string; title?: string; layout?: string }) => void;
 
 function blankNode(col = "center"): FlowNodeDTO {
   return { id: newNodeKey(), kind: "effect", inLabel: null, text: "", ref: null, col };
@@ -27,7 +29,7 @@ function Node({
   onStartEdit: (id: string) => void;
   onCommit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
-  onAdd: (afterId: string, dir: "down" | "branch") => void;
+  onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
 }) {
   const [hover, setHover] = useState(false);
   const [draft, setDraft] = useState(node.text);
@@ -93,14 +95,27 @@ function Node({
             </button>
           ) : null}
 
-          {/* 우측 +버튼 = 가로 분기 추가 */}
+          {/* 좌측 +버튼 = 왼쪽 방향 분기 */}
           {hover ? (
             <button
               type="button"
-              title="옆으로 분기 추가"
+              title="왼쪽으로 분기 추가"
+              className="absolute -left-2 top-1/2 z-20 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background text-[11px] leading-none shadow hover:scale-110 transition-transform"
+              onClick={(e) => { e.stopPropagation(); onAdd(node.id, "branch-left"); }}
+              data-testid={`add-branch-left-${node.id}`}
+            >
+              +
+            </button>
+          ) : null}
+
+          {/* 우측 +버튼 = 오른쪽 방향 분기 */}
+          {hover ? (
+            <button
+              type="button"
+              title="오른쪽으로 분기 추가"
               className="absolute -right-2 top-1/2 z-20 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background text-[11px] leading-none shadow hover:scale-110 transition-transform"
-              onClick={(e) => { e.stopPropagation(); onAdd(node.id, "branch"); }}
-              data-testid={`add-branch-${node.id}`}
+              onClick={(e) => { e.stopPropagation(); onAdd(node.id, "branch-right"); }}
+              data-testid={`add-branch-right-${node.id}`}
             >
               +
             </button>
@@ -123,17 +138,22 @@ function VArrow() {
 }
 
 export function FlowColumn({
-  flow, active, onSelect, onMutateNodes, onAddLocal, editingId, setEditingId, editable = false,
+  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, editingId, setEditingId, editable = false,
 }: {
   flow: FlowDTO;
   active: boolean;
   onSelect: (f: FlowDTO) => void;
   onMutateNodes?: MutateNodes;
   onAddLocal?: MutateNodes;
+  onMutateMeta?: MutateMeta;
   editingId: string | null;
   setEditingId: (id: string | null) => void;
   editable?: boolean;
 }) {
+  // 카드 헤더 인라인 편집 상태: "date" | "title" | null
+  const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
+  const [dateDraft, setDateDraft] = useState(flow.date);
+  const [titleDraft, setTitleDraft] = useState(flow.title);
   // 노드 텍스트 커밋: 빈 칸이면 제거, 아니면 갱신. 그리고 서버 반영.
   function commit(id: string, text: string) {
     setEditingId(null);
@@ -154,26 +174,56 @@ export function FlowColumn({
     onMutateNodes(flow, flow.nodes.filter((n) => n.id !== id));
   }
 
-  function addNode(afterId: string, dir: "down" | "branch") {
+  function addNode(afterId: string, dir: "down" | "branch-left" | "branch-right") {
     const add = onAddLocal ?? onMutateNodes;
     if (!add) return;
     const idx = flow.nodes.findIndex((n) => n.id === afterId);
     const nodes = [...flow.nodes];
-    if (dir === "branch" && flow.layout === "branch") {
-      // 분기 레이아웃에서: 비어있는 컬럼에 새 칸.
-      const hasLeft = nodes.some((n) => n.col === "left");
-      const nn = blankNode(hasLeft ? "right" : "left");
+
+    // ── 아래 스택 추가: 같은 컬럼으로 바로 아래 삽입 ──
+    if (dir === "down") {
+      const base = idx >= 0 ? nodes[idx] : nodes[nodes.length - 1];
+      const nn = blankNode(base?.col || "center");
+      nodes.splice(idx >= 0 ? idx + 1 : nodes.length, 0, nn);
+      add(flow, nodes);
+      setEditingId(nn.id);
+      return;
+    }
+
+    // ── 좌/우 분기 추가: 선택한 방향 컬럼에 새 칸 ──
+    const targetCol = dir === "branch-left" ? "left" : "right";
+    const nn = blankNode(targetCol);
+
+    if (flow.layout === "branch") {
+      // 이미 branch 레이아웃: 해당 방향 컬럼 끝에 추가.
       nodes.push(nn);
       add(flow, nodes);
       setEditingId(nn.id);
       return;
     }
-    // 그 외(아래 스택, 혹은 stack에서 분기 시도)는 같은 컬럼으로 바로 아래 삽입.
-    const base = idx >= 0 ? nodes[idx] : nodes[nodes.length - 1];
-    const nn = blankNode(base?.col || "center");
-    nodes.splice(idx >= 0 ? idx + 1 : nodes.length, 0, nn);
-    add(flow, nodes);
+
+    // ── stack → branch 자동 전환 ──
+    // 기존 stack 노드들은 center(출발 줄기)로 두고, 새 칸을 선택 방향에 추가.
+    // layout 전환과 노드 추가를 한 번에 처리(이중 POST 레이스 방지). 서버 저장은 새 칸의 텍스트를
+    // 입력해 commit할 때 이뤄지며, 그때 캐시의 branch 레이아웃으로 저장된다.
+    const converted: FlowNodeDTO[] = nodes.map((n) => ({ ...n, col: "center" }));
+    converted.push(nn);
+    add({ ...flow, layout: "branch" }, converted);
     setEditingId(nn.id);
+  }
+
+  // 메타(날짜/제목) 커밋.
+  function commitDate() {
+    setMetaEdit(null);
+    const v = dateDraft.trim();
+    if (!onMutateMeta || !v || v === flow.date) return;
+    onMutateMeta(flow, { date: v });
+  }
+  function commitTitle() {
+    setMetaEdit(null);
+    const v = titleDraft.trim();
+    if (!onMutateMeta || !v || v === flow.title) return;
+    onMutateMeta(flow, { title: v });
   }
 
   const nodeProps = {
@@ -243,8 +293,52 @@ export function FlowColumn({
       data-testid={`flow-${flow.slug}`}
     >
       <div className="mb-2.5 border-b border-border/50 pb-2">
-        <div className="text-[10.5px] tabular-nums text-muted-foreground">{flow.date}</div>
-        <div className="text-sm font-semibold leading-tight">{flow.title}</div>
+        {/* 날짜 — 클릭 시 date 입력으로 전환(날짜 변경 시 다른 연도 그룹으로 자동 이동) */}
+        {editable && metaEdit === "date" ? (
+          <input
+            type="date"
+            autoFocus
+            value={dateDraft}
+            onChange={(e) => setDateDraft(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={commitDate}
+            onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setMetaEdit(null); } }}
+            className="w-full rounded border border-border bg-background px-1 py-0.5 text-[10.5px] tabular-nums text-foreground"
+            data-testid={`edit-date-${flow.slug}`}
+          />
+        ) : (
+          <div
+            className={`text-[10.5px] tabular-nums text-muted-foreground ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
+            onClick={(e) => { if (editable) { e.stopPropagation(); setDateDraft(flow.date); setMetaEdit("date"); } }}
+            title={editable ? "클릭해 날짜 수정" : undefined}
+            data-testid={`text-date-${flow.slug}`}
+          >
+            {flow.date}
+          </div>
+        )}
+        {/* 제목 — 클릭 시 입력으로 전환 */}
+        {editable && metaEdit === "title" ? (
+          <input
+            type="text"
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={commitTitle}
+            onKeyDown={(e) => { if (e.key === "Enter") commitTitle(); if (e.key === "Escape") { setTitleDraft(flow.title); setMetaEdit(null); } }}
+            className="mt-0.5 w-full rounded border border-border bg-background px-1 py-0.5 text-sm font-semibold leading-tight text-foreground"
+            data-testid={`edit-title-${flow.slug}`}
+          />
+        ) : (
+          <div
+            className={`text-sm font-semibold leading-tight ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
+            onClick={(e) => { if (editable) { e.stopPropagation(); setTitleDraft(flow.title); setMetaEdit("title"); } }}
+            title={editable ? "클릭해 제목 수정" : undefined}
+            data-testid={`text-title-${flow.slug}`}
+          >
+            {flow.title}
+          </div>
+        )}
       </div>
       {body}
     </div>
