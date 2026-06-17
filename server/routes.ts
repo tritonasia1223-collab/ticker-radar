@@ -3,6 +3,7 @@ import { storage } from "./storage.js";
 import { collectAll } from "./apify.js";
 import { seedDummy } from "./seed.js";
 import { insertAccountSchema } from "../shared/schema.js";
+import { listFlows, upsertFlow, deleteFlow, type FlowInput } from "./capitalism.js";
 import { z } from "zod";
 
 // Writes that hit Apify (and run for a long time) must not run on Vercel's
@@ -227,6 +228,43 @@ export function registerRoutes(app: Express) {
     res.json(await storage.insiderClusters({ fromMs: from, toMs: to, windowDays }));
   });
   app.get("/api/insider/sectors", async (_req, res) => res.json(await storage.listTickerSectors()));
+
+  // ---- 자본주의 경제사 타임라인 (격리 도메인) ----
+  const capNodeSchema = z.object({
+    nodeKey: z.string().min(1),
+    kind: z.enum(["cause", "event", "effect", "result"]),
+    inLabel: z.string().nullable().optional(),
+    text: z.string().min(1),
+    ref: z.string().nullable().optional(),
+    col: z.enum(["center", "left", "right"]).nullable().optional(),
+  });
+  const capFlowInputSchema = z.object({
+    slug: z.string().min(1),
+    date: z.string().min(1),
+    year: z.number().int(),
+    title: z.string().min(1),
+    category: z.enum(["정치", "경제", "사회"]).default("경제"),
+    layout: z.enum(["stack", "branch"]).default("stack"),
+    sortOrder: z.number().int().optional(),
+    nodes: z.array(capNodeSchema),
+    edges: z.array(z.object({ from: z.string(), to: z.string() })),
+  });
+
+  app.get("/api/capitalism/flows", async (_req, res) => {
+    res.json(await listFlows());
+  });
+  app.post("/api/capitalism/flows", async (req, res) => {
+    try {
+      const parsed = capFlowInputSchema.parse(req.body) as FlowInput;
+      res.json(await upsertFlow(parsed));
+    } catch (e: any) {
+      res.status(400).json({ error: e?.errors ?? String(e?.message || e) });
+    }
+  });
+  app.delete("/api/capitalism/flows/:slug", async (req, res) => {
+    await deleteFlow(req.params.slug);
+    res.status(204).end();
+  });
 
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {

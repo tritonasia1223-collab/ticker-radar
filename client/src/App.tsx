@@ -12,6 +12,7 @@ import Feed from "@/pages/Feed";
 import Congress from "@/pages/Congress";
 import Insider from "@/pages/Insider";
 import Interest from "@/pages/Interest";
+import Capitalism from "@/pages/Capitalism";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
@@ -24,6 +25,7 @@ function AppRouter() {
       <Route path="/congress" component={Congress} />
       <Route path="/insider" component={Insider} />
       <Route path="/interest" component={Interest} />
+      <Route path="/capitalism" component={Capitalism} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

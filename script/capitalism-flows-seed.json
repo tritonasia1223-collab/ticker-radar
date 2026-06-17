@@ -1,0 +1,151 @@
+{
+  "flows": [
+    {
+      "id": "nixon",
+      "date": "1971-08-15",
+      "year": 1971,
+      "title": "닉슨 쇼크",
+      "category": "정치",
+      "layout": "stack",
+      "nodes": [
+        { "id": "n1", "kind": "cause", "inLabel": "배경", "text": "베트남전·복지지출로 재정·무역 적자 누적, 해외 달러가 금 보유고 초과", "ref": null },
+        { "id": "n2", "kind": "event", "inLabel": "사건", "text": "닉슨, 달러 금태환 정지 선언 (브레튼우즈 사실상 종료)", "ref": "Federal Reserve History — Nixon Ends Convertibility" },
+        { "id": "n3", "kind": "effect", "inLabel": "영향", "text": "전 세계가 달러 가치 하락에 대비(헤지), 금이라는 닻이 풀림", "ref": null },
+        { "id": "n4", "kind": "result", "inLabel": "결과", "text": "신용화폐(fiat) 시대 개막 → 1970년대 만성 인플레의 토대", "ref": null }
+      ],
+      "edges": [
+        { "from": "n1", "to": "n2" },
+        { "from": "n2", "to": "n3" },
+        { "from": "n3", "to": "n4" }
+      ]
+    },
+    {
+      "id": "smithsonian",
+      "date": "1971-12-18",
+      "year": 1971,
+      "title": "스미소니언 협정 (1차 평가절하)",
+      "category": "경제",
+      "layout": "stack",
+      "nodes": [
+        { "id": "s1", "kind": "event", "inLabel": "사건", "text": "G10 합의, 금 $35 → $38 평가절하하며 금태환 재개 시도", "ref": "Smithsonian Agreement 1971 — Federal Reserve Bulletin" },
+        { "id": "s2", "kind": "cause", "inLabel": "문제", "text": "고정환율보다 달러 많이 찍었음", "ref": null },
+        { "id": "s3", "kind": "result", "inLabel": "결과", "text": "근본 적자는 그대로 → 1년여 만에 붕괴", "ref": null }
+      ],
+      "edges": [
+        { "from": "s1", "to": "s2" },
+        { "from": "s2", "to": "s3" }
+      ]
+    },
+    {
+      "id": "devalue2",
+      "date": "1973-02-12",
+      "year": 1973,
+      "title": "2차 평가절하 · 달러 신뢰 붕괴",
+      "category": "경제",
+      "layout": "stack",
+      "nodes": [
+        { "id": "d1", "kind": "event", "inLabel": "사건", "text": "추가 평가절하 ($38 → $42), 달러 신뢰 계속 하락", "ref": null },
+        { "id": "d2", "kind": "effect", "inLabel": "쏠림", "text": "안전자산 마르크·엔으로 매수세 폭주", "ref": null },
+        { "id": "d3", "kind": "result", "inLabel": "결과", "text": "독일·일본은 매수세 감당 X → 외환시장 폐쇄", "ref": "BIS Annual Report 1973" }
+      ],
+      "edges": [
+        { "from": "d1", "to": "d2" },
+        { "from": "d2", "to": "d3" }
+      ]
+    },
+    {
+      "id": "float",
+      "date": "1973-03-19",
+      "year": 1973,
+      "title": "변동환율제 전환",
+      "category": "정치",
+      "layout": "stack",
+      "nodes": [
+        { "id": "f1", "kind": "event", "inLabel": "사건", "text": "G10, 고정환율 포기·변동환율제 채택 (브레튼우즈 완전 종료)", "ref": "Federal Reserve History — The End of Bretton Woods" },
+        { "id": "f2", "kind": "effect", "inLabel": "영향", "text": "달러로 받는 석유대금 실질가치 하락 → 산유국 반발", "ref": null },
+        { "id": "f3", "kind": "result", "inLabel": "결과", "text": "OPEC 유가 인상 요구 → 가을 오일쇼크의 불씨", "ref": null }
+      ],
+      "edges": [
+        { "from": "f1", "to": "f2" },
+        { "from": "f2", "to": "f3" }
+      ]
+    },
+    {
+      "id": "yomkippur",
+      "date": "1973-10-06",
+      "year": 1973,
+      "title": "4차 중동전쟁 (욤키푸르)",
+      "category": "정치",
+      "layout": "stack",
+      "nodes": [
+        { "id": "y1", "kind": "cause", "inLabel": "발발", "text": "이집트·시리아가 이스라엘 기습 공격", "ref": null },
+        { "id": "y2", "kind": "event", "inLabel": "전개", "text": "근데 미국이 이스라엘 돕겠다 선언", "ref": "why? 이집트 뒤에는 소련 있었기 때문" },
+        { "id": "y3", "kind": "effect", "inLabel": "반발", "text": "OPEC, 이스라엘 우방국에 석유 수출금지·유가 무기화", "ref": "Office of the Historian — Oil Embargo 1973–74" }
+      ],
+      "edges": [
+        { "from": "y1", "to": "y2" },
+        { "from": "y2", "to": "y3" }
+      ]
+    },
+    {
+      "id": "oilshock",
+      "date": "1973-10-17",
+      "year": 1973,
+      "title": "1차 오일쇼크",
+      "category": "경제",
+      "layout": "branch",
+      "nodes": [
+        { "id": "o0", "kind": "event", "inLabel": "사건", "text": "OPEC 금수·감산으로 유가 $2.9 → $11.65 (4배 폭등)", "ref": null, "col": "center" },
+        { "id": "oA1", "kind": "effect", "inLabel": "영향", "text": "에너지 가격 급등 → 전 상품 가격 상승", "ref": null, "col": "left" },
+        { "id": "oA2", "kind": "effect", "inLabel": "", "text": "인플레이션 두 자릿수 진입 (1974~75)", "ref": "FRED CPIAUCSL", "col": "left" },
+        { "id": "oB1", "kind": "effect", "inLabel": "영향", "text": "생산비 상승 → 경기 침체", "ref": null, "col": "right" },
+        { "id": "oB2", "kind": "effect", "inLabel": "", "text": "1974년 실질 GDP -3.4% 마이너스 성장", "ref": "FRED A191RL1Q225SBEA", "col": "right" },
+        { "id": "oM", "kind": "result", "inLabel": "합류", "text": "스태그플레이션 — 침체+인플레 공존. 케인스주의 한계 노출", "ref": null, "col": "center" }
+      ],
+      "edges": [
+        { "from": "o0", "to": "oA1" },
+        { "from": "o0", "to": "oB1" },
+        { "from": "oA1", "to": "oA2" },
+        { "from": "oB1", "to": "oB2" },
+        { "from": "oA2", "to": "oM" },
+        { "from": "oB2", "to": "oM" }
+      ]
+    },
+    {
+      "id": "petrodollar",
+      "date": "1974-06-01",
+      "year": 1974,
+      "title": "페트로달러 체제 탄생",
+      "category": "경제",
+      "layout": "stack",
+      "nodes": [
+        { "id": "p1", "kind": "event", "inLabel": "사건", "text": "미국이 사우디 회유 → 원유는 오직 달러로만 결제", "ref": "US Treasury — Saudi Arabia and US Treasury Securities" },
+        { "id": "p2", "kind": "cause", "inLabel": "대가", "text": "미국이 사우디에 약속: ①군사 안보 ②미국채 매입 비밀창구", "ref": null },
+        { "id": "p3", "kind": "effect", "inLabel": "순환", "text": "달러 발행 → 석유 결제 → 오일머니 → 미국채 매입 → 달러 환류", "ref": null },
+        { "id": "p4", "kind": "result", "inLabel": "거대한 순환 시스템", "text": "미국이 돈 많이 찍어 생긴 인플레를 전 세계 달러 사용자들이 나눠가짐", "ref": null }
+      ],
+      "edges": [
+        { "from": "p1", "to": "p2" },
+        { "from": "p2", "to": "p3" },
+        { "from": "p3", "to": "p4" }
+      ]
+    },
+    {
+      "id": "oilshock2",
+      "date": "1979-01-01",
+      "year": 1979,
+      "title": "2차 오일쇼크 (이란 혁명)",
+      "category": "정치",
+      "layout": "stack",
+      "nodes": [
+        { "id": "i1", "kind": "cause", "inLabel": "원인", "text": "이란 혁명으로 친미 팔레비 왕정 붕괴", "ref": null },
+        { "id": "i2", "kind": "effect", "inLabel": "심리", "text": "실제 공급은 4~5%만 감소, 하지만 공포·사재기로 유가 3배 폭등", "ref": "Office of the Historian — Oil Crisis 1979" },
+        { "id": "i3", "kind": "result", "inLabel": "결과", "text": "인플레 재차 두 자릿수 → 볼커의 초고금리(볼커 쇼크) 예고", "ref": "FRED FEDFUNDS" }
+      ],
+      "edges": [
+        { "from": "i1", "to": "i2" },
+        { "from": "i2", "to": "i3" }
+      ]
+    }
+  ]
+}

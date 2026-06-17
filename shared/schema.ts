@@ -303,3 +303,66 @@ export type Insider = typeof insiders.$inferSelect;
 export const insertInsiderTradeSchema = createInsertSchema(insiderTrades).omit({ id: true });
 export type InsertInsiderTrade = z.infer<typeof insertInsiderTradeSchema>;
 export type InsiderTrade = typeof insiderTrades.$inferSelect;
+
+// ============================================================================
+// 자본주의 경제사 타임라인 (US Capitalism Economic History)
+// 완전 격리된 새 도메인 — 기존 테이블/라우트 비침습. 사용자가 직접 큐레이팅하는
+// 인과 플로우(마인드맵형) 블록·분기와, 전구간 FRED 거시지표를 담는다.
+// 모든 테이블 prefix = `cap_` 로 네임스페이스 분리.
+// ============================================================================
+
+// --- 하나의 사건 = 하나의 인과 플로우(세로 스택 또는 분기/합류) ---
+export const capFlows = pgTable(
+  "cap_flows",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull().unique(), // 안정 키 (nixon, oilshock ...)
+    date: text("date").notNull(),          // 'YYYY-MM-DD'
+    year: integer("year").notNull(),
+    title: text("title").notNull(),
+    category: text("category").notNull().default("경제"), // 정치 | 경제 | 사회
+    layout: text("layout").notNull().default("stack"),   // stack | branch
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  },
+  (t) => ({ byYear: index("idx_cap_flows_year").on(t.year) })
+);
+
+// --- 플로우 안의 블록(노드): 원인/사건/영향/결과 ---
+export const capNodes = pgTable(
+  "cap_nodes",
+  {
+    id: serial("id").primaryKey(),
+    flowId: integer("flow_id").notNull().references(() => capFlows.id, { onDelete: "cascade" }),
+    nodeKey: text("node_key").notNull(),   // 플로우 내 고유 키 (n1, oA1 ...) — edge 연결용
+    kind: text("kind").notNull().default("effect"), // cause | event | effect | result
+    inLabel: text("in_label"),             // 블록 위 라벨(배경/사건/영향/결과 등). 빈 문자열 허용
+    text: text("text").notNull(),
+    ref: text("ref"),                      // 참고 메모/출처 (없으면 null)
+    col: text("col"),                      // branch 레이아웃: center | left | right
+    pos: integer("pos").notNull().default(0), // 표시 순서
+  },
+  (t) => ({
+    byFlow: index("idx_cap_nodes_flow").on(t.flowId),
+    uniqKey: uniqueIndex("uniq_cap_node").on(t.flowId, t.nodeKey),
+  })
+);
+
+// --- 블록 간 화살표(엣지) ---
+export const capEdges = pgTable(
+  "cap_edges",
+  {
+    id: serial("id").primaryKey(),
+    flowId: integer("flow_id").notNull().references(() => capFlows.id, { onDelete: "cascade" }),
+    fromKey: text("from_key").notNull(),   // capNodes.nodeKey
+    toKey: text("to_key").notNull(),
+  },
+  (t) => ({ byFlow: index("idx_cap_edges_flow").on(t.flowId) })
+);
+
+export const insertCapFlowSchema = createInsertSchema(capFlows).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCapFlow = z.infer<typeof insertCapFlowSchema>;
+export type CapFlow = typeof capFlows.$inferSelect;
+export type CapNode = typeof capNodes.$inferSelect;
+export type CapEdge = typeof capEdges.$inferSelect;
