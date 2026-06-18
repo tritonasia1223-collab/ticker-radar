@@ -363,7 +363,7 @@ export default function Capitalism() {
                         data-testid={`text-leaders-${g.year}`}
                         title={`당시 미국 대통령 / 연준 의장`}
                       >
-                        🇺🇸 {L.president} · Fed {L.fed}
+                        {L.president} 대통령, {L.fed} 연준의장
                       </span>
                     );
                   })()}
