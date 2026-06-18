@@ -56,8 +56,11 @@ export function CapChartPanel({
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return ["auto", "auto"];
     if (lo === hi) { const p = Math.abs(lo) * 0.05 || 1; return [lo - p, hi + p]; }
     const pad = (hi - lo) * 0.08;
-    const niceLo = Math.floor((lo - pad) / 5) * 5;
-    const niceHi = Math.ceil((hi + pad) / 5) * 5;
+    // 스냅 단위를 범위에 비례해 키워(작은 구간면 5, 큰 구간면 10·20...) 창 이동 시 Y축 끝값이 잠깐에 튀는 것을 줄인다.
+    const range = hi - lo + pad * 2;
+    const step = range > 60 ? 20 : range > 30 ? 10 : 5;
+    const niceLo = Math.floor((lo - pad) / step) * step;
+    const niceHi = Math.ceil((hi + pad) / step) * step;
     return [niceLo, niceHi];
   }, [data, panel.zeroLine, fromYear, toYear]);
 
@@ -91,16 +94,12 @@ export function CapChartPanel({
               formatter={(val: any) => [`${Number(val).toFixed(2)} ${panel.unit}`, panel.label]}
             />
             {panel.zeroLine ? <ReferenceLine y={0} stroke="currentColor" className="text-muted-foreground" strokeWidth={1} opacity={0.5} /> : null}
+            {/* 기간 사건이면 시작~종료 구간 음영(그 구간을 지날 때만 색칠로 보임). 단일 사건이면 음영 없음. */}
             {band ? (
-              <>
-                {/* 기간 음영 띠 (시작~종료) */}
-                <ReferenceArea x1={band.start} x2={band.end} fill={panel.color} fillOpacity={0.12} stroke="none" />
-                {/* 중앙값 점선 */}
-                <ReferenceLine x={band.mid} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
-              </>
-            ) : (
-              <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
-            )}
+              <ReferenceArea x1={band.start} x2={band.end} fill={panel.color} fillOpacity={0.12} stroke="none" />
+            ) : null}
+            {/* 점선은 기간/단일 구분 없이 항상 현재 재생 시점(playYear)에 = 그래프 정가운데에 고정. */}
+            <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
             {panel.kind === "area" ? (
               <Area type="monotone" dataKey="v" stroke={panel.color} fill={panel.color} fillOpacity={0.18} strokeWidth={1.5} dot={false} isAnimationActive={false} />
             ) : (

@@ -26,7 +26,7 @@ function blankNode(col = "center"): FlowNodeDTO {
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemo, onLink, linkTargets, onJump,
+  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemoClick, onLink, linkTargets, onJump,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -36,7 +36,8 @@ function Node({
   onCommit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
-  onMemo?: (id: string, memo: string) => void;
+  // 메모 버튼 클릭 — 우측 메모 컬럼에서 이 노드의 메모를 추가/편집 시작.
+  onMemoClick?: (id: string) => void;
   onLink?: LinkNodes;
   // 내부 링크용 — 카드 목록(편집) + 점프 콜백(클릭).
   linkTargets?: LinkTarget[];
@@ -45,7 +46,7 @@ function Node({
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
-  // 메모 팝오버 제거됨 — 메모는 카드 우측 MemoColumn에 상시 표시(노션식).
+  const hasMemo = !!(node.ref && node.ref.trim());
   // 드래그앤드롭 화살표 그리기 기능 — 현재 비활성(주석처리). 필요 시 아래 줄 복구.
   // const canDrag = editable && !editing && !!onLink;
   const canDrag = false;
@@ -125,7 +126,23 @@ function Node({
         </div>
       )}
 
-      {/* 메모는 카드 우측 메모 컬럼(MemoColumn)에 상시 표시한다(노션식). 기존 팝오버 트리거 제거. */}
+      {/* 메모 버튼 — 노드 우측 하단에 상시 표시. 메모 있으면 노란색, 없으면 흐린 회색.
+          클릭 시 우측 메모 컬럼에 이 노드의 메모 카드가 뜨며 바로 편집한다. */}
+      {!editing ? (
+        <button
+          type="button"
+          title={hasMemo ? "메모 보기/편집" : "메모 추가"}
+          onClick={(e) => { e.stopPropagation(); onMemoClick?.(node.id); }}
+          className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+            hasMemo
+              ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
+              : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
+          }`}
+          data-testid={`memo-btn-${node.id}`}
+        >
+          <MessageSquare className="h-2.5 w-2.5" strokeWidth={2.5} />
+        </button>
+      ) : null}
 
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
       {editable && !editing ? (
@@ -168,20 +185,7 @@ function Node({
             </button>
           ) : null}
 
-          {/* 좌측 +버튼 = 왼쪽 방향 분기 */}
-          {hover ? (
-            <button
-              type="button"
-              title="왼쪽으로 분기 추가"
-              className="absolute -left-2 top-1/2 z-20 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background text-[11px] leading-none shadow hover:scale-110 transition-transform"
-              onClick={(e) => { e.stopPropagation(); onAdd(node.id, "branch-left"); }}
-              data-testid={`add-branch-left-${node.id}`}
-            >
-              +
-            </button>
-          ) : null}
-
-          {/* 우측 +버튼 = 오른쪽 방향 분기 */}
+          {/* 우측 +버튼 = 오른쪽 방향 분기 (왼쪽 분기는 사용하지 않아 버튼 제거) */}
           {hover ? (
             <button
               type="button"
@@ -211,24 +215,28 @@ function VArrow() {
 }
 
 // 메모 컬럼 너비(px). 카드 우측 여백을 채워 노션식 코멘트를 상시 표시한다.
-const MEMO_COL_W = 208;
+const MEMO_COL_W = 240;
 
 // 노드 텍스트에서 미리보기용 평문 추출(리치텍스트 [[...]] 마크업 제거 + 줄바꿈 정리).
 function nodePlain(text: string): string {
   return plainText(text).replace(/\s+/g, " ").trim();
 }
 
-// 노션식 "상시 표시" 코멘트 1개. 읽기 모드는 항상 보이고, 편집 모드는 클릭 시 인라인 textarea.
+// 노션식 메모 카드 1개. 작성된 메모만 표시하며, 노드 버튼으로 추가한 경우(autoEdit) 자동으로 편집 상태.
 function MemoCard({
-  node, editable, onMemo, onFocusNode,
+  node, editable, autoEdit, onMemo, onFocusNode, onEditDone,
 }: {
   node: FlowNodeDTO;
   editable: boolean;
+  // 노드 메모 버튼으로 막 추가된 메모 — 자동으로 편집 모드로 시작.
+  autoEdit?: boolean;
   onMemo?: (id: string, memo: string) => void;
   onFocusNode?: (id: string | null) => void;
+  // 편집 종료 신호(취소 포함) — 부모가 autoEdit 대상을 해제하도록.
+  onEditDone?: (id: string) => void;
 }) {
   const hasMemo = !!(node.ref && node.ref.trim());
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(!!autoEdit);
   const [draft, setDraft] = useState(node.ref ?? "");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const grow = (el: HTMLTextAreaElement | null) => {
@@ -247,6 +255,13 @@ function MemoCard({
     setEditing(false);
     onFocusNode?.(null);
     onMemo?.(node.id, draft);
+    onEditDone?.(node.id);
+  };
+  const cancel = () => {
+    setDraft(node.ref ?? "");
+    setEditing(false);
+    onFocusNode?.(null);
+    onEditDone?.(node.id);
   };
   const anchor = nodePlain(node.text) || "(빈 칸)";
 
@@ -273,55 +288,56 @@ function MemoCard({
           onChange={(e) => { setDraft(e.target.value); grow(e.target); }}
           onBlur={finish}
           onKeyDown={(e) => {
-            if (e.key === "Escape") { setDraft(node.ref ?? ""); setEditing(false); onFocusNode?.(null); }
+            if (e.key === "Escape") { cancel(); }
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
           }}
-          placeholder="메모 입력 (Esc 취소 · ⌘/Ctrl+Enter 저장)"
-          className="block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border border-amber-300/60 bg-background px-1.5 py-1 text-[11px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          placeholder="메모 입력 (Esc 취소 · ⌘/Ctrl+Enter 저장 · 비워서 저장하면 삭제)"
+          className="block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border border-amber-300/60 bg-background px-1.5 py-1 text-[12.5px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-amber-400"
           data-testid={`memo-input-${node.id}`}
         />
-      ) : hasMemo ? (
+      ) : (
         <p
-          className={`whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90 ${editable ? "cursor-text rounded hover:bg-amber-100/50 dark:hover:bg-amber-400/10" : ""}`}
+          className={`whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground/90 ${editable ? "cursor-text rounded hover:bg-amber-100/50 dark:hover:bg-amber-400/10" : ""}`}
           onClick={startEdit}
           title={editable ? "클릭해 메모 수정" : undefined}
           data-testid={`memo-text-${node.id}`}
         >
           {node.ref}
         </p>
-      ) : (
-        <button
-          type="button"
-          className="w-full rounded px-1 py-0.5 text-left text-[10.5px] text-muted-foreground/60 hover:bg-amber-100/50 dark:hover:bg-amber-400/10"
-          onClick={startEdit}
-          data-testid={`memo-add-${node.id}`}
-        >
-          + 메모 추가
-        </button>
       )}
     </div>
   );
 }
 
-// 카드 우측 메모 컬럼. 메모가 있는 노드(읽기) 또는 모든 노드(편집)를 위→아래 순서로 쌓는다.
-function MemoColumn({
-  nodes, editable, onMemo, onFocusNode,
+// 한 행(row)에 대응하는 메모 슬롯. 해당 행의 노드 중 메모(node.ref)가 있거나 편집 중(autoEdit)인
+// 노드만 메모 카드를 렌더한다. 해당 행에 표시할 메모가 없으면 빈 슬롯(높이 0).
+// 메모를 노드 행과 같은 flex 행에 두므로, 위쪽 행의 메모가 사라져도 아래 행 메모가 위로 끌려올라가지 않는다.
+function MemoSlot({
+  rowNodes, editable, autoEditId, onMemo, onFocusNode, onEditDone,
 }: {
-  nodes: FlowNodeDTO[];
+  rowNodes: FlowNodeDTO[];
   editable: boolean;
+  autoEditId: string | null;
   onMemo?: (id: string, memo: string) => void;
   onFocusNode?: (id: string | null) => void;
+  onEditDone?: (id: string) => void;
 }) {
-  const list = editable ? nodes : nodes.filter((n) => n.ref && n.ref.trim());
-  if (list.length === 0) return null;
+  // 한 행에서 메모를 표시할 노드: 작성된 메모가 있거나 지금 막 추가되어 편집 중인 노드.
+  const memoNodes = rowNodes.filter(
+    (n) => (n.ref && n.ref.trim()) || n.id === autoEditId,
+  );
   return (
-    <div
-      style={{ width: MEMO_COL_W }}
-      className="flex shrink-0 flex-col gap-1.5 self-stretch border-l border-border/40 pl-2.5"
-      data-testid="memo-col"
-    >
-      {list.map((n) => (
-        <MemoCard key={n.id} node={n} editable={editable} onMemo={onMemo} onFocusNode={onFocusNode} />
+    <div style={{ width: MEMO_COL_W }} className="flex shrink-0 flex-col gap-1.5">
+      {memoNodes.map((n) => (
+        <MemoCard
+          key={n.id}
+          node={n}
+          editable={editable}
+          autoEdit={n.id === autoEditId}
+          onMemo={onMemo}
+          onFocusNode={onFocusNode}
+          onEditDone={onEditDone}
+        />
       ))}
     </div>
   );
@@ -346,6 +362,8 @@ export function FlowColumn({
 }) {
   // 카드 헤더 인라인 편집 상태: "date" | "title" | null
   const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
+  // 노드 메모 버튼으로 막 추가/편집을 시작한 노드 id. 해당 메모 카드를 강제 표시 + 자동 편집.
+  const [autoEditMemoId, setAutoEditMemoId] = useState<string | null>(null);
   const [dateDraft, setDateDraft] = useState(flow.date);
   const [endDateDraft, setEndDateDraft] = useState(flow.endDate ?? "");
   const [titleDraft, setTitleDraft] = useState(flow.title);
@@ -442,26 +460,38 @@ export function FlowColumn({
     onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, ref: next } : n)));
   }
 
+  // 노드 메모 버튼 클릭 — 우측 메모 컬럼에 이 노드 메모 카드를 띄우고 바로 편집 상태로 만든다.
+  function onMemoClick(id: string) {
+    setAutoEditMemoId(id);
+  }
+  // 메모 편집 종료(저장/취소) — autoEdit 대상 해제. 빈 메모였으면 카드가 자연스레 사라진다.
+  function onMemoEditDone(id: string) {
+    setAutoEditMemoId((cur) => (cur === id ? null : cur));
+  }
+
   const nodeProps = {
     flow, editable,
     onStartEdit: setEditingId,
     onCommit: commit,
     onDelete: deleteNode,
     onAdd: addNode,
-    onMemo: commitMemo,
+    onMemoClick,
     onLink,
     linkTargets,
     onJump,
   };
 
-  function renderStack(list: FlowNodeDTO[]) {
-    return list.map((n, i) => (
-      <div key={n.id}>
-        {i > 0 ? <VArrow /> : null}
-        <Node {...nodeProps} node={n} editing={editingId === n.id} />
-      </div>
-    ));
-  }
+  const memoSlotProps = {
+    editable,
+    autoEditId: autoEditMemoId,
+    onMemo: commitMemo,
+    onEditDone: onMemoEditDone,
+  };
+
+  // 본문을 "행" 배열로 만든다. 각 행은 본문 노드(JSX)와 그 행에 속한 노드 목록(메모 대응용)을 갖는다.
+  // 행 단위로 [본문행 | 메모슬롯]을 나란히 두므로, 메모가 자기 노드 행 높이에 대략 정렬되고
+  // 위쪽 메모가 사라져도 아래 메모가 위로 끌려올라가지 않는다.
+  type BodyRow = { content: JSX.Element; nodes: FlowNodeDTO[] };
 
   // 어떤 컬럼이 실제로 쓰이는지 판단(빈 컬럼은 렌더하지 않음).
   const usedCols = (() => {
@@ -470,32 +500,44 @@ export function FlowColumn({
     return ["left", "center", "right"].filter((c) => set.has(c));
   })();
 
-  let body: JSX.Element;
+  // 본문 행 배열 구성(branch=행 그리드, stack=세로 1열).
+  const bodyRows: BodyRow[] = [];
   if (flow.layout === "branch") {
     // 행(row) 기반 그리드: 배열 순서대로 순회하며 center 노드는 새 행을 시작하고,
     // left/right(분기) 노드는 가장 최근 행의 해당 컬럼 셀에 배치한다.
-    // → 분기 칸이 출발(center) 노드와 같은 행에 가로로 정렬된다(버그1).
     type Row = Record<string, FlowNodeDTO | undefined>;
     const rows: Row[] = [];
     let cur: Row | null = null;
     for (const n of flow.nodes) {
       const col = n.col || "center";
-      // 새 행을 시작해야 하는 경우:
-      //  (1) 아직 행이 없음
-      //  (2) center 노드 — center 는 항상 새 줄기 행을 시작
-      //  (3) 현재 행의 해당 컬럼 셀이 이미 차 있음 — 덮어쓰기 방지(같은 컬럼 노드가
-      //      연속될 때 한 셀에 겹쳐 한 개만 보이던 버그 수정. 예: 모든 노드가 left 인 카드)
       if (cur === null || col === "center" || cur[col] !== undefined) {
         cur = {};
         rows.push(cur);
       }
       cur[col] = n;
     }
-    body = (
-      <div className="flex flex-col">
-        {rows.map((row, ri) => (
-          <div key={ri}>
-            {ri > 0 ? <VArrow /> : null}
+    rows.forEach((row, ri) => {
+      const rowNodes = usedCols
+        .map((col) => row[col])
+        .filter((n): n is FlowNodeDTO => !!n);
+      // 화살표는 "같은 열에서 위·아래에 실제 노드가 연속될 때"만 긋는다.
+      // (현재 행에 그 열 노드가 있고 + 이전 행들 중 같은 열에 노드가 있었던 경우)
+      const hasArrow = (col: string) =>
+        !!row[col] && rows.slice(0, ri).some((r) => !!r[col]);
+      const anyArrow = usedCols.some(hasArrow);
+      bodyRows.push({
+        nodes: rowNodes,
+        content: (
+          <div>
+            {anyArrow ? (
+              <div className="flex items-start justify-center gap-3">
+                {usedCols.map((col) => (
+                  <div key={col} className="w-[240px] shrink-0">
+                    {hasArrow(col) ? <VArrow /> : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="flex items-start justify-center gap-3">
               {usedCols.map((col) => (
                 <div key={col} className="w-[240px] shrink-0">
@@ -506,11 +548,21 @@ export function FlowColumn({
               ))}
             </div>
           </div>
-        ))}
-      </div>
-    );
+        ),
+      });
+    });
   } else {
-    body = <div className="flex flex-col">{renderStack(flow.nodes)}</div>;
+    flow.nodes.forEach((n, i) => {
+      bodyRows.push({
+        nodes: [n],
+        content: (
+          <div>
+            {i > 0 ? <VArrow /> : null}
+            <Node {...nodeProps} node={n} editing={editingId === n.id} />
+          </div>
+        ),
+      });
+    });
   }
 
   // 본문(이벤트 흐름) 너비: 단일 컬럼(기본/스택)은 296px(약간 넓힘). 분기로 컬럼이 늘면
@@ -520,9 +572,10 @@ export function FlowColumn({
       ? usedCols.length * 240 + (usedCols.length - 1) * 12
       : 296;
 
-  // 메모 컬럼 표시 여부 — 읽기 모드는 메모가 하나라도 있을 때, 편집 모드는 항상.
+  // 메모 컬럼 표시 여부 — 작성된 메모가 하나라도 있거나, 지금 막 메모를 추가/편집 중일 때만.
+  // (빈 메모 카드는 더이상 띄우지 않으므로, 메모가 없는 카드는 우측 컬럼 공간을 차지하지 않는다.)
   const hasAnyMemo = flow.nodes.some((n) => n.ref && n.ref.trim());
-  const showMemoCol = editable || hasAnyMemo;
+  const showMemoCol = hasAnyMemo || autoEditMemoId !== null;
 
   // 카드 전체 너비 = 좌우 패딩(24px) + 본문 + (메모 컬럼: 컬럼폭 + 좌측 여백/구분선 약 12px).
   const cardWidth = 24 + bodyWidth + (showMemoCol ? MEMO_COL_W + 12 : 0);
@@ -615,14 +668,20 @@ export function FlowColumn({
           </div>
         )}
       </div>
-      {/* 본문 + 우측 메모 컬럼을 가로로 배치(노션식 상시 표시) */}
-      <div className="flex items-start">
-        <div style={{ width: bodyWidth }} className="shrink-0">
-          {body}
-        </div>
-        {showMemoCol ? (
-          <MemoColumn nodes={flow.nodes} editable={editable} onMemo={commitMemo} />
-        ) : null}
+      {/* 본문 + 우측 메모 컬럼. 각 행마다 [본문행 | 메모슬롯]을 나란히 두어 메모가 노드 행에 대략 정렬된다. */}
+      <div className="flex flex-col">
+        {bodyRows.map((row, ri) => (
+          <div key={ri} className="flex items-start">
+            <div style={{ width: bodyWidth }} className="shrink-0">
+              {row.content}
+            </div>
+            {showMemoCol ? (
+              <div className="shrink-0 self-stretch border-l border-border/40 pl-2.5">
+                <MemoSlot rowNodes={row.nodes} {...memoSlotProps} />
+              </div>
+            ) : null}
+          </div>
+        ))}
       </div>
     </div>
   );

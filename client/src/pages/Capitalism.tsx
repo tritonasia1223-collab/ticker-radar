@@ -107,20 +107,13 @@ export default function Capitalism() {
     return [Math.floor(Math.min(...years, YEAR_MIN)), Math.ceil(Math.max(...years, YEAR_MAX))];
   }, [flows]);
 
-  // 그래프 X축은 현재 위치(playYear) 기준 ±HALF_WINDOW 년의 이동 창.
-  // playYear가 연속값이라 창도 연속으로 미끄러져 부드럽게 스크롤된다.
-  // 데이터 전체 경계(fromY~toY) 안에서 창 폭(10년)을 유지하도록 양끝에서 밀어준다.
+  // 그래프 X축은 현재 위치(playYear)를 "항상 정가운데"에 두는 ±HALF_WINDOW 년의 이동 창.
+  // 경계에서 창을 밀지 않는다 → playYear가 늘 창 중앙이라 점선이 정가운데에 고정된다.
+  // 데이터가 없는 쪽(예: 데이터 시작 이전·미래)은 그냥 비워둔다(라인은 데이터 구간에만 그려짐).
   const HALF_WINDOW = 5;
   const [viewFrom, viewTo] = useMemo(() => {
-    const span = HALF_WINDOW * 2;
-    // 전체 데이터가 창보다 좁으면 그냥 전체를 보여준다.
-    if (toY - fromY <= span) return [fromY, toY];
-    let lo = playYear - HALF_WINDOW;
-    let hi = playYear + HALF_WINDOW;
-    if (lo < fromY) { lo = fromY; hi = fromY + span; }
-    if (hi > toY) { hi = toY; lo = toY - span; }
-    return [lo, hi];
-  }, [playYear, fromY, toY]);
+    return [playYear - HALF_WINDOW, playYear + HALF_WINDOW];
+  }, [playYear]);
 
   const activeSlug = useMemo(() => {
     if (!flows || flows.length === 0) return null;
@@ -409,11 +402,12 @@ export default function Capitalism() {
   };
 
   return (
-    <div className="p-4 max-w-[1600px] mx-auto">
+    <div className="p-4 max-w-[1900px] mx-auto">
       {/* ── 세로 2단 레이아웃: 좌측 세로 타임라인(위=과거→아래=미래) + 우측 sticky 그래프 패널 ── */}
       <div className="flex gap-5 items-start">
         {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
-        <section className="min-w-0 flex-1">
+        {/* 카드 콘텐츠 폭만큼만 차지(플렉스 아님) — 남는 우측 공간은 그래프 패널이 흡수한다. */}
+        <section className="min-w-0 shrink-0">
           {isLoading ? (
             <div className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
@@ -555,7 +549,7 @@ export default function Capitalism() {
 
         {/* ════════ 우측: sticky 패널 (슬라이더 + 연대 네비 + 그래프 스택 + 체크박스) ════════ */}
         <aside
-          className="w-[480px] shrink-0 sticky top-4 flex flex-col gap-3 overflow-y-auto cap-noscrollbar"
+          className="min-w-[480px] flex-1 sticky top-4 flex flex-col gap-3 overflow-y-auto cap-noscrollbar"
           style={{ maxHeight: "calc(100vh - 32px)" }}
         >
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
@@ -629,8 +623,8 @@ export default function Capitalism() {
             </div>
           </section>
 
-          {/* ── 그래프 스택 — 세로로 적층, 시점(playYear) 동기화 유지 ── */}
-          <section className="grid grid-cols-1 gap-3">
+          {/* ── 그래프 스택 — 4개 이하면 1열(넓게), 5개 이상이면 2열. 시점(playYear) 동기화 유지 ── */}
+          <section className={`grid gap-3 ${onPanels.length >= 5 ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
             {onPanels.length === 0 ? (
               <div className="text-center text-sm text-muted-foreground py-8">
                 표시할 지표를 아래에서 선택하세요.
