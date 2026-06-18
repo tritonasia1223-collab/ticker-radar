@@ -67,3 +67,24 @@ export function fracYearToLabel(frac: number): string {
   if (month > 12) month = 12;
   return `${year}년 ${month}월`;
 }
+
+// 연도 → 당시 미국 대통령 / 연준(Fed) 의장 (1971~1980 타임라인 범위).
+// 한 해 안에서 교체된 경우 병기. 출처: 백악관/연준 공식 재임 기록.
+// 대통령: 닉슨(~1974.8) → 포드(1974.8~1977.1) → 카터(1977.1~1981.1)
+// Fed: 번스(~1978.1) → 밀러(1978.3~1979.8) → 볼커(1979.8~)
+export function leadersForYear(year: number): { president: string; fed: string } | null {
+  let president: string;
+  if (year <= 1973) president = "닉슨";
+  else if (year === 1974) president = "닉슨→포드";
+  else if (year <= 1976) president = "포드";
+  else president = "카터"; // 1977~
+
+  let fed: string;
+  if (year <= 1977) fed = "번스";
+  else if (year === 1978) fed = "번스→밀러";
+  else if (year === 1979) fed = "밀러→볼커";
+  else fed = "볼커"; // 1980~
+
+  if (!president || !fed) return null;
+  return { president, fed };
+}

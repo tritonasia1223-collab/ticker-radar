@@ -9,7 +9,7 @@ import { Plus, Undo2 } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
-import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
+import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
 import { persistNodes, toInput, newNodeKey } from "@/lib/capitalism-flowops";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -350,10 +350,23 @@ export default function Capitalism() {
             {groups.map((g, gi) => (
               <Fragment key={g.year}>
               <div className="flex flex-col shrink-0">
-                {/* 연도 대분류 헤더 */}
-                <div className="flex items-center gap-2 mb-1.5 px-1">
+                {/* 연도 대분류 헤더 — 연도 · 건수 · 당시 대통령/연준 의장 */}
+                <div className="flex items-baseline gap-2 mb-1.5 px-1">
                   <span className="text-base font-bold tabular-nums text-primary">{g.year}</span>
                   <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
+                  {(() => {
+                    const L = leadersForYear(g.year);
+                    if (!L) return null;
+                    return (
+                      <span
+                        className="text-[10px] leading-tight text-muted-foreground/70 whitespace-nowrap"
+                        data-testid={`text-leaders-${g.year}`}
+                        title={`당시 미국 대통령 / 연준 의장`}
+                      >
+                        🇺🇸 {L.president} · Fed {L.fed}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* 가로 레일(타임라인 선) + 사건별 원 마커 — 마커 영역 높이 고정(active여도 카드가 안 밀림) */}
