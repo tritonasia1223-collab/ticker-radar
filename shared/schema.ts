@@ -317,7 +317,8 @@ export const capFlows = pgTable(
   {
     id: serial("id").primaryKey(),
     slug: text("slug").notNull().unique(), // 안정 키 (nixon, oilshock ...)
-    date: text("date").notNull(),          // 'YYYY-MM-DD'
+    date: text("date").notNull(),          // 'YYYY-MM-DD' (시작일 또는 단일 시점)
+    endDate: text("end_date"),             // nullable: 있으면 기간 이벤트(date~endDate), 없으면 단일 시점
     year: integer("year").notNull(),
     title: text("title").notNull(),
     category: text("category").notNull().default("경제"), // 정치 | 경제 | 사회

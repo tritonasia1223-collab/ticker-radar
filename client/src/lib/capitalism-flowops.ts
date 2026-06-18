@@ -35,6 +35,7 @@ export function toInput(flow: FlowDTO, nodes: FlowNodeDTO[]): FlowInputDTO {
     slug: flow.slug,
     title: flow.title,
     date: flow.date,
+    endDate: flow.endDate ?? null,
     year: flow.year,
     category: flow.category,
     layout: flow.layout,

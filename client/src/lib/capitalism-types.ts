@@ -12,6 +12,7 @@ export interface FlowDTO {
   id: number;
   slug: string;
   date: string;
+  endDate?: string | null; // 있으면 기간 이벤트(date~endDate), 없으면 단일 시점
   year: number;
   title: string;
   category: "정치" | "경제" | "사회" | string;
@@ -34,6 +35,7 @@ export interface LinkDTO {
 export interface FlowInputDTO {
   slug: string;
   date: string;
+  endDate?: string | null;
   year: number;
   title: string;
   category: string;

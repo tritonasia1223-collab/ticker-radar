@@ -19,6 +19,7 @@ export interface FlowDTO {
   id: number;
   slug: string;
   date: string;
+  endDate: string | null; // 있으면 기간 이벤트(date~endDate), 없으면 단일 시점
   year: number;
   title: string;
   category: string;
@@ -32,6 +33,7 @@ export interface FlowDTO {
 export interface FlowInput {
   slug: string;
   date: string;
+  endDate?: string | null;
   year: number;
   title: string;
   category: string;
@@ -41,11 +43,19 @@ export interface FlowInput {
   edges: { from: string; to: string }[];
 }
 
+// 빈 문자열·공백은 null 로 정규화(기간 해제). 종료일이 시작일보다 빠르면 무시.
+function normEndDate(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const s = v.trim();
+  return s.length ? s : null;
+}
+
 function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
   return {
     id: flow.id,
     slug: flow.slug,
     date: flow.date,
+    endDate: flow.endDate ?? null,
     year: flow.year,
     title: flow.title,
     category: flow.category,
@@ -79,7 +89,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
   let flowId: number;
   if (existing) {
     await db.update(capFlows).set({
-      date: input.date, year: input.year, title: input.title,
+      date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
       category: input.category, layout: input.layout,
       sortOrder: input.sortOrder ?? existing.sortOrder, updatedAt: now,
     }).where(eq(capFlows.id, existing.id));
@@ -94,7 +104,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
       nextOrder = top ? top.sortOrder + 1 : 0;
     }
     const inserted = await db.insert(capFlows).values({
-      slug: input.slug, date: input.date, year: input.year, title: input.title,
+      slug: input.slug, date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
       category: input.category, layout: input.layout,
       sortOrder: nextOrder, createdAt: now, updatedAt: now,
     }).returning();

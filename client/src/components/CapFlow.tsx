@@ -13,7 +13,7 @@ import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
 export type MutateNodes = (flow: FlowDTO, nextNodes: FlowNodeDTO[]) => void;
 // 카드 메타(날짜/제목/레이아웃) 변경 저장 콜백.
-export type MutateMeta = (flow: FlowDTO, patch: { date?: string; title?: string; layout?: string }) => void;
+export type MutateMeta = (flow: FlowDTO, patch: { date?: string; endDate?: string | null; title?: string; layout?: string }) => void;
 // 드래그앤드롭 화살표 연결 콜백 — from 노드 → to 노드(카드 내/간 모두).
 export type LinkNodes = (from: { slug: string; key: string }, to: { slug: string; key: string }) => void;
 
@@ -218,6 +218,7 @@ export function FlowColumn({
   // 카드 헤더 인라인 편집 상태: "date" | "title" | null
   const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
   const [dateDraft, setDateDraft] = useState(flow.date);
+  const [endDateDraft, setEndDateDraft] = useState(flow.endDate ?? "");
   const [titleDraft, setTitleDraft] = useState(flow.title);
   // 노드 텍스트 커밋: 빈 칸이면 제거, 아니면 갱신. 그리고 서버 반영.
   function commit(id: string, text: string) {
@@ -283,12 +284,18 @@ export function FlowColumn({
     setEditingId(nn.id);
   }
 
-  // 메타(날짜/제목) 커밋.
+  // 메타(날짜/제목) 커밋. 시작일 + (선택)종료일을 함께 반영.
+  // 종료일이 비었거나 시작일보다 빠르면 null(기간 해제)로 정규화.
   function commitDate() {
     setMetaEdit(null);
-    const v = dateDraft.trim();
-    if (!onMutateMeta || !v || v === flow.date) return;
-    onMutateMeta(flow, { date: v });
+    if (!onMutateMeta) return;
+    const start = dateDraft.trim();
+    if (!start) return;
+    let end: string | null = endDateDraft.trim() || null;
+    if (end && end < start) end = null; // 잘못된 범위는 무시
+    const curEnd = flow.endDate ?? null;
+    if (start === flow.date && end === curEnd) return; // 변경 없음
+    onMutateMeta(flow, { date: start, endDate: end });
   }
   function commitTitle() {
     setMetaEdit(null);
@@ -383,27 +390,58 @@ export function FlowColumn({
       data-testid={`flow-${flow.slug}`}
     >
       <div className="mb-2.5 border-b border-border/50 pb-2">
-        {/* 날짜 — 클릭 시 date 입력으로 전환(날짜 변경 시 다른 연도 그룹으로 자동 이동) */}
+        {/* 날짜 — 클릭 시 시작일 + (선택)종료일 입력으로 전환. 종료일을 넣으면 기간 이벤트가 된다. */}
         {editable && metaEdit === "date" ? (
-          <input
-            type="date"
-            autoFocus
-            value={dateDraft}
-            onChange={(e) => setDateDraft(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onBlur={commitDate}
-            onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setMetaEdit(null); } }}
-            className="w-full rounded border border-border bg-background px-1 py-0.5 text-[10.5px] tabular-nums text-foreground"
-            data-testid={`edit-date-${flow.slug}`}
-          />
+          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                autoFocus
+                value={dateDraft}
+                onChange={(e) => setDateDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit(null); } }}
+                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10.5px] tabular-nums text-foreground"
+                data-testid={`edit-date-${flow.slug}`}
+              />
+              <span className="text-[10.5px] text-muted-foreground">~</span>
+              <input
+                type="date"
+                value={endDateDraft}
+                min={dateDraft || undefined}
+                onChange={(e) => setEndDateDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit(null); } }}
+                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10.5px] tabular-nums text-foreground"
+                data-testid={`edit-enddate-${flow.slug}`}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground/70">종료일 입력 시 기간으로 표시</span>
+              <div className="flex gap-1">
+                {endDateDraft ? (
+                  <button
+                    type="button"
+                    className="rounded px-1 py-0.5 text-[9px] text-muted-foreground hover:bg-muted/60"
+                    onClick={() => setEndDateDraft("")}
+                    data-testid={`clear-enddate-${flow.slug}`}
+                  >기간 해제</button>
+                ) : null}
+                <button
+                  type="button"
+                  className="rounded px-1 py-0.5 text-[9px] font-medium text-primary hover:bg-muted/60"
+                  onClick={commitDate}
+                  data-testid={`save-date-${flow.slug}`}
+                >저장</button>
+              </div>
+            </div>
+          </div>
         ) : (
           <div
             className={`text-[10.5px] tabular-nums text-muted-foreground ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
-            onClick={(e) => { if (editable) { e.stopPropagation(); setDateDraft(flow.date); setMetaEdit("date"); } }}
-            title={editable ? "클릭해 날짜 수정" : undefined}
+            onClick={(e) => { if (editable) { e.stopPropagation(); setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit("date"); } }}
+            title={editable ? "클릭해 날짜/기간 수정" : undefined}
             data-testid={`text-date-${flow.slug}`}
           >
-            {flow.date}
+            {flow.endDate ? `${flow.date} ~ ${flow.endDate}` : flow.date}
           </div>
         )}
         {/* 제목 — 클릭 시 입력으로 전환 */}

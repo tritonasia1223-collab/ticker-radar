@@ -114,6 +114,17 @@ export default function Capitalism() {
     return best.slug;
   }, [flows, playYear]);
 
+  // active 사건이 기간 이벤트면 [시작, 종료] 소수연도 밴드를 산출(그래프 음영·중앙값용). 단일 이벤트면 null.
+  const activeBand = useMemo(() => {
+    if (!flows || !activeSlug) return null;
+    const f = flows.find((x) => x.slug === activeSlug);
+    if (!f || !f.endDate) return null;
+    const start = toFracYear(f.date);
+    const end = toFracYear(f.endDate);
+    if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null;
+    return { start, end, mid: (start + end) / 2 };
+  }, [flows, activeSlug]);
+
   // active 카드가 보드 뷰포트 밖이면 가로로만 부드럽게 스크롤(세로는 절대 안 건드림).
   // scrollIntoView 는 세로까지 움직이므로 쓰지 않고 scrollLeft 만 직접 조정.
   useEffect(() => {
@@ -212,9 +223,12 @@ export default function Capitalism() {
   const onMutateMeta: MutateMeta = (flow, patch) => {
     const nextDate = patch.date ?? flow.date;
     const nextYear = patch.date ? Number(patch.date.slice(0, 4)) : flow.year;
+    // endDate: patch에 키가 있으면(설정/해제) 그 값을, 없으면 기존값 유지.
+    const nextEndDate = "endDate" in patch ? (patch.endDate ?? null) : (flow.endDate ?? null);
     const merged: FlowDTO = {
       ...flow,
       date: nextDate,
+      endDate: nextEndDate,
       year: nextYear,
       title: patch.title ?? flow.title,
       layout: patch.layout ?? flow.layout,
@@ -352,31 +366,44 @@ export default function Capitalism() {
                   <div className="flex gap-2">
                     {g.items.map((f) => {
                       const isActive = f.slug === activeSlug;
+                      const isPeriod = !!f.endDate;
+                      const rangeLabel = isPeriod
+                        ? `${fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")} ~ ${fracYearToLabel(toFracYear(f.endDate!)).replace(/^\d+년 /, "")}`
+                        : fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "");
                       return (
                         <button
                           key={f.slug}
                           type="button"
                           onClick={() => setPlayYear(toFracYear(f.date))}
                           className="relative flex w-[280px] shrink-0 flex-col items-center"
-                          title={fracYearToLabel(toFracYear(f.date))}
+                          title={isPeriod ? `${f.date} ~ ${f.endDate}` : fracYearToLabel(toFracYear(f.date))}
                           data-testid={`marker-${f.slug}`}
                         >
-                          {/* 고정 높이 슬롯 안에서 점만 커짐 → 레이아웃 흔들림 없음 */}
-                          <span className="flex h-6 w-6 items-center justify-center">
-                            <span
-                              className={`block rounded-full transition-all ${
-                                isActive
-                                  ? "h-4 w-4 bg-primary ring-4 ring-primary/25"
-                                  : "h-2.5 w-2.5 bg-muted-foreground/40 hover:bg-primary/60"
-                              }`}
-                            />
+                          {/* 고정 높이 슬롯 안에서 점/막대만 변함 → 레이아웃 흔들림 없음 */}
+                          <span className="flex h-6 items-center justify-center">
+                            {isPeriod ? (
+                              // 기간 이벤트: 양 끝 점 + 중간 캅슐 막대
+                              <span className="flex items-center" data-testid={`marker-bar-${f.slug}`}>
+                                <span className={`block h-2 w-2 rounded-full transition-all ${isActive ? "bg-primary" : "bg-muted-foreground/40"}`} />
+                                <span className={`block h-[5px] w-16 transition-all ${isActive ? "bg-primary/35 ring-1 ring-primary/40" : "bg-muted-foreground/25 group-hover:bg-primary/30"}`} />
+                                <span className={`block h-2 w-2 rounded-full transition-all ${isActive ? "bg-primary" : "bg-muted-foreground/40"}`} />
+                              </span>
+                            ) : (
+                              <span
+                                className={`block rounded-full transition-all ${
+                                  isActive
+                                    ? "h-4 w-4 bg-primary ring-4 ring-primary/25"
+                                    : "h-2.5 w-2.5 bg-muted-foreground/40 hover:bg-primary/60"
+                                }`}
+                              />
+                            )}
                           </span>
                           <span
                             className={`mt-0.5 text-[10px] tabular-nums transition-colors ${
                               isActive ? "font-semibold text-primary" : "text-muted-foreground/70"
                             }`}
                           >
-                            {fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")}
+                            {rangeLabel}
                           </span>
                         </button>
                       );
@@ -547,6 +574,7 @@ export default function Capitalism() {
               fromYear={fromY}
               toYear={toY}
               playYear={playYear}
+              band={activeBand}
             />
           ))
         )}

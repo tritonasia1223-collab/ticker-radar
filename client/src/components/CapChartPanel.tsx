@@ -2,20 +2,22 @@
 import { useMemo } from "react";
 import {
   ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis,
-  Tooltip, ReferenceLine, CartesianGrid,
+  Tooltip, ReferenceLine, ReferenceArea, CartesianGrid,
 } from "recharts";
 import type { PanelDef } from "@/lib/capitalism-config";
 
 type Point = [string, number]; // [date, value]
 
 export function CapChartPanel({
-  panel, series, fromYear, toYear, playYear,
+  panel, series, fromYear, toYear, playYear, band,
 }: {
   panel: PanelDef;
   series: Point[] | undefined;
   fromYear: number;
   toYear: number;
   playYear: number;
+  // active 사건이 기간 이벤트일 때 음영 밴드(시작~종료) + 중앙값. 단일 이벤트면 null.
+  band?: { start: number; end: number; mid: number } | null;
 }) {
   const data = useMemo(() => {
     if (!series) return [];
@@ -59,7 +61,16 @@ export function CapChartPanel({
               formatter={(val: any) => [`${Number(val).toFixed(2)} ${panel.unit}`, panel.label]}
             />
             {panel.zeroLine ? <ReferenceLine y={0} stroke="currentColor" className="text-muted-foreground" strokeWidth={1} opacity={0.5} /> : null}
-            <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
+            {band ? (
+              <>
+                {/* 기간 음영 띠 (시작~종료) */}
+                <ReferenceArea x1={band.start} x2={band.end} fill={panel.color} fillOpacity={0.12} stroke="none" />
+                {/* 중앙값 점선 */}
+                <ReferenceLine x={band.mid} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
+              </>
+            ) : (
+              <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
+            )}
             {panel.kind === "area" ? (
               <Area type="monotone" dataKey="v" stroke={panel.color} fill={panel.color} fillOpacity={0.18} strokeWidth={1.5} dot={false} />
             ) : (

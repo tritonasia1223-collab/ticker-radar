@@ -241,6 +241,7 @@ export function registerRoutes(app: Express) {
   const capFlowInputSchema = z.object({
     slug: z.string().min(1),
     date: z.string().min(1),
+    endDate: z.string().nullable().optional(), // 있으면 기간 이벤트
     year: z.number().int(),
     title: z.string().min(1),
     category: z.enum(["정치", "경제", "사회"]).default("경제"),
