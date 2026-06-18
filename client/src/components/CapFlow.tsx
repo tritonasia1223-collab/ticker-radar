@@ -509,7 +509,7 @@ export function FlowColumn({
   return (
     <div
       style={{ width: cardWidth }}
-      className={`h-full shrink-0 rounded-lg border bg-transparent p-3 transition-colors ${
+      className={`shrink-0 self-start rounded-lg border bg-transparent p-3 transition-colors ${
         active ? "border-primary/70 ring-1 ring-primary/30" : "border-border/60 hover:border-primary/40"
       }`}
       onClick={() => onSelect(flow)}

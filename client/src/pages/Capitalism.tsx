@@ -44,8 +44,11 @@ export default function Capitalism() {
   const [playYear, setPlayYear] = useState(1973.8);
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
-  // 가로 보드 컨테이너 ref — active 카드 가로 추적용(세로는 절대 안 건드림).
+  // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
   const boardRef = useRef<HTMLDivElement | null>(null);
+  // 프로그램이 스크롤을 움직이는 동안엔 스크롤→playYear 역동기화를 잠가 피드백 루프를 막는다.
+  const programScrollRef = useRef(false);
+  const programScrollTimer = useRef<number | null>(null);
   const { toast } = useToast();
 
   // ── 되돌리기(Undo) 스택 ── 텍스트 글자 편집 제외, 구조 변경만.
@@ -138,11 +141,40 @@ export default function Capitalism() {
   }, [flows]);
 
   // 내부 링크 클릭 → 대상 카드(slug)의 시점으로 재생 위치 이동(부드러운 슬라이드 → activeSlug 변경).
+  // 특정 연도(소수)로 이동: playYear 갱신 + 세로 타임라인을 해당 연도 그룹으로 부드럽게 스크롤.
+  // 슬라이더/연대칩/마커/링크점프가 모두 이걸 호출 → "슬라이더 조정 = 스크롤 이동" 일관성 확보.
+  const seekToYear = useCallback((frac: number) => {
+    const clamped = Math.max(fromY, Math.min(toY, frac));
+    setPlayYear(clamped);
+    const board = boardRef.current;
+    if (!board) return;
+    // 목표 연도에 가장 가까운 연도 그룹 엘리먼트를 찾아 컨테이너 상단 근처로 스크롤.
+    const els = Array.from(board.querySelectorAll<HTMLElement>("[data-group-year]"));
+    if (els.length === 0) return;
+    let best = els[0], bestD = Infinity;
+    for (const el of els) {
+      const gy = Number(el.dataset.groupYear);
+      const d = Math.abs(gy - clamped);
+      if (d < bestD) { bestD = d; best = el; }
+    }
+    const boardBox = board.getBoundingClientRect();
+    const elBox = best.getBoundingClientRect();
+    // 그룹 상단을 컨테이너 상단에서 약간 아래(앵커 오프셋)에 맞춘다.
+    const anchor = Math.min(120, board.clientHeight * 0.25);
+    const target = elBox.top - boardBox.top + board.scrollTop - anchor;
+    // 프로그램 스크롤 잠금 → 스크롤→playYear 역동기화 피드백 루프 차단.
+    programScrollRef.current = true;
+    if (programScrollTimer.current) window.clearTimeout(programScrollTimer.current);
+    programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
+    board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+  }, [fromY, toY]);
+
+  // 내부 링크 클릭 → 대상 카드 시점으로 이동(스크롤 + playYear).
   const jumpToSlug = useCallback((slug: string) => {
     const f = flows?.find((x) => x.slug === slug);
     if (!f) return; // 삭제되었거나 아직 없는 카드면 무시
-    setPlayYear(toFracYear(f.date));
-  }, [flows]);
+    seekToYear(toFracYear(f.date));
+  }, [flows, seekToYear]);
 
   // active 사건이 기간 이벤트면 [시작, 종료] 소수연도 밴드를 산출(그래프 음영·중앙값용). 단일 이벤트면 null.
   const activeBand = useMemo(() => {
@@ -155,36 +187,56 @@ export default function Capitalism() {
     return { start, end, mid: (start + end) / 2 };
   }, [flows, activeSlug]);
 
-  // active 카드가 보드 뷰포트 밖이면 가로로만 부드럽게 스크롤(세로는 절대 안 건드림).
-  // scrollIntoView 는 세로까지 움직이므로 쓰지 않고 scrollLeft 만 직접 조정.
+  // 세로 스크롤 = 시간 이동. 사용자가 마우스로 스크롤하면 뷰포트 상단 앵커에 가장 가까운
+  // 연도 그룹들 사이를 보간해 playYear 를 갱신한다(스크롤→playYear 역동기화).
+  // programScrollRef 가 켜진 동안(=seekToYear 가 프로그램 스크롤 중)에는 건너뛴다.
   useEffect(() => {
     const board = boardRef.current;
-    if (!board || !activeSlug) return;
-    const card = board.querySelector<HTMLElement>(`[data-testid="flow-${activeSlug}"]`);
-    if (!card) return;
-    // 보드 컴테이너 기준 카드의 좌/우 위치(현재 스크롤 포함).
-    const boardBox = board.getBoundingClientRect();
-    const cardBox = card.getBoundingClientRect();
-    const cardLeft = cardBox.left - boardBox.left + board.scrollLeft;
-    const cardRight = cardLeft + cardBox.width;
-    const viewLeft = board.scrollLeft;
-    const viewRight = viewLeft + board.clientWidth;
-    const pad = 24; // 가장자리 여백
-    // 마지막 카드(가장 오른쪽 flow)가 active 면, 그 뒤에 붙은 "사건 추가" 칸까지 보이도록
-    // 카드 오른쪽이 아니라 보드 끝(scrollWidth)까지 스크롤한다.
-    const isLastCard = !!flows && flows.length > 0 && activeSlug === flows[flows.length - 1].slug;
-    let next = viewLeft;
-    if (isLastCard) {
-      next = board.scrollWidth - board.clientWidth; // 맨 끝까지 → "사건 추가" 칸 노출
-    } else if (cardLeft < viewLeft + pad) {
-      next = cardLeft - pad;            // 왼쪽 밖 → 당겨오기
-    } else if (cardRight > viewRight - pad) {
-      next = cardRight - board.clientWidth + pad; // 오른쪽 밖 → 밀어주기
-    }
-    if (Math.abs(next - viewLeft) > 1) {
-      board.scrollTo({ left: Math.max(0, next), behavior: "smooth" });
-    }
-  }, [activeSlug, flows]);
+    if (!board) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        if (programScrollRef.current) return;
+        const els = Array.from(board.querySelectorAll<HTMLElement>("[data-group-year]"));
+        if (els.length === 0) return;
+        const boardBox = board.getBoundingClientRect();
+        // 뷰포트 상단에서 약간 아래 지점을 "현재 보는 시점" 앵커로 삼는다.
+        const anchor = Math.min(120, board.clientHeight * 0.25);
+        const anchorY = boardBox.top + anchor;
+        // 앵커보다 위에 있는(=이미 지난) 마지막 그룹과 그 다음 그룹 사이를 보간.
+        const sorted = els
+          .map((el) => ({ year: Number(el.dataset.groupYear), top: el.getBoundingClientRect().top }))
+          .sort((a, b) => a.top - b.top);
+        let frac: number;
+        if (anchorY <= sorted[0].top) {
+          frac = sorted[0].year; // 첫 그룹보다 위 → 첫 연도
+        } else if (anchorY >= sorted[sorted.length - 1].top) {
+          frac = sorted[sorted.length - 1].year; // 마지막 그룹보다 아래 → 마지막 연도
+        } else {
+          // anchorY 가 끼인 두 그룹을 찾아 선형 보간.
+          let lo = sorted[0], hi = sorted[sorted.length - 1];
+          for (let i = 0; i < sorted.length - 1; i++) {
+            if (anchorY >= sorted[i].top && anchorY < sorted[i + 1].top) {
+              lo = sorted[i]; hi = sorted[i + 1]; break;
+            }
+          }
+          const span = hi.top - lo.top;
+          const t = span > 0 ? (anchorY - lo.top) / span : 0;
+          frac = lo.year + t * (hi.year - lo.year);
+        }
+        const clamped = Math.max(fromY, Math.min(toY, frac));
+        setPlayYear((prev) => (Math.abs(prev - clamped) > 0.01 ? clamped : prev));
+      });
+    };
+    board.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      board.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+    // isLoading 을 넣어 보드(ref) 가 렌더된 직후 effect 가 재실행되며 리스너를 등록하도록 한다.
+  }, [fromY, toY, isLoading]);
 
   // 연도(대분류) → 사건(소분류) 그룹핑. flows 는 서버에서 날짜순 정렬되어 옴.
   const groups = useMemo(() => {
@@ -320,8 +372,9 @@ export default function Capitalism() {
     },
     onSuccess: async ({ firstKey, targetYear }) => {
       await qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
-      setPlayYear(targetYear);
       setEditingId(firstKey);
+      // 새 그룹 DOM 이 렌더된 뒤 해당 연도로 스크롤.
+      window.setTimeout(() => seekToYear(targetYear), 80);
     },
   });
 
@@ -356,313 +409,287 @@ export default function Capitalism() {
   };
 
   return (
-    <div className="p-5 max-w-[1500px] mx-auto">
-      {/* 상단 안내 헤더 제거 — 세로 공간 최대 확보. 사건 추가는 타임라인 맨 오른쪽 빈 칸으로. */}
+    <div className="p-4 max-w-[1600px] mx-auto">
+      {/* ── 세로 2단 레이아웃: 좌측 세로 타임라인(위=과거→아래=미래) + 우측 sticky 그래프 패널 ── */}
+      <div className="flex gap-5 items-start">
+        {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
+        <section className="min-w-0 flex-1">
+          {isLoading ? (
+            <div className="flex flex-col gap-3">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
+            </div>
+          ) : (
+            <div
+              ref={boardRef}
+              className="cap-noscrollbar relative overflow-y-auto overflow-x-hidden pr-1"
+              style={{ height: "calc(100vh - 110px)" }}
+            >
+              {/* 세로 중심 레일 — 위에서 아래로 시간 흐름 */}
+              <div className="absolute left-[18px] top-2 bottom-2 w-[2px] bg-border" aria-hidden />
 
-      {/* ── 상단: 연도 그룹 → 사건 플로우 보드 ── */}
-      <section className="mb-4">
-        {isLoading ? (
-          <div className="flex gap-3">
-            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-64 w-[300px] rounded-lg" />)}
-          </div>
-        ) : (
-          <div ref={boardRef} className="cap-noscrollbar relative flex gap-5 overflow-x-auto pb-2 items-stretch">
-            {/* 중간 삽입: 맨 앞(첫 그룹 앞)에 + 존 */}
-            {groups.length > 0 ? (
-              <InsertZone
-                onInsert={() => addFlowAt.mutate(groups[0].year - 1)}
-                disabled={addFlowAt.isPending}
-                label={`${groups[0].year - 1}년에 사건 추가`}
-                testid="insert-before-first"
-              />
-            ) : null}
+              {/* 중간 삽입: 맨 앞(첫 그룹 위)에 + 존 */}
+              {groups.length > 0 ? (
+                <InsertZone
+                  onInsert={() => addFlowAt.mutate(groups[0].year - 1)}
+                  disabled={addFlowAt.isPending}
+                  label={`${groups[0].year - 1}년에 사건 추가`}
+                  testid="insert-before-first"
+                />
+              ) : null}
 
-            {groups.map((g, gi) => (
-              <Fragment key={g.year}>
-              <div className="flex flex-col shrink-0">
-                {/* 연도 대분류 헤더 — 연도 · 건수 · 당시 대통령/연준 의장 */}
-                <div className="flex items-baseline gap-2 mb-1.5 px-1">
-                  <span className="text-base font-bold tabular-nums text-primary">{g.year}</span>
-                  <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
-                  {(() => {
-                    const L = leadersForYear(g.year);
-                    if (!L) return null;
-                    return (
-                      <span
-                        className="text-[10px] leading-tight text-muted-foreground/70 whitespace-nowrap"
-                        data-testid={`text-leaders-${g.year}`}
-                        title={`당시 미국 대통령 / 연준 의장`}
-                      >
-                        {L.president} 대통령, {L.fed} 연준의장
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {/* 가로 레일(타임라인 선) + 사건별 원 마커 — 마커 영역 높이 고정(active여도 카드가 안 밀림) */}
-                <div className="relative px-2 pt-1 pb-2">
-                  {/* 레일 선: 첫 마커 ~ 마지막 마커 사이를 가로지름 */}
-                  <div
-                    className="absolute top-[12px] h-[2px] bg-border"
-                    style={{ left: `calc(8px + 140px)`, right: `calc(8px + 140px)` }}
-                  />
-                  <div className="flex gap-2">
-                    {g.items.map((f) => {
-                      const isActive = f.slug === activeSlug;
-                      const isPeriod = !!f.endDate;
-                      const rangeLabel = isPeriod
-                        ? `${fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")} ~ ${fracYearToLabel(toFracYear(f.endDate!)).replace(/^\d+년 /, "")}`
-                        : fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "");
-                      return (
-                        <button
-                          key={f.slug}
-                          type="button"
-                          onClick={() => setPlayYear(toFracYear(f.date))}
-                          className="relative flex w-[280px] shrink-0 flex-col items-center"
-                          title={isPeriod ? `${f.date} ~ ${f.endDate}` : fracYearToLabel(toFracYear(f.date))}
-                          data-testid={`marker-${f.slug}`}
-                        >
-                          {/* 고정 높이 슬롯 안에서 점/막대만 변함 → 레이아웃 흔들림 없음 */}
-                          <span className="flex h-6 items-center justify-center">
-                            {isPeriod ? (
-                              // 기간 이벤트: 양 끝 점 + 중간 캅슐 막대
-                              <span className="flex items-center" data-testid={`marker-bar-${f.slug}`}>
-                                <span className={`block h-2 w-2 rounded-full transition-all ${isActive ? "bg-primary" : "bg-muted-foreground/40"}`} />
-                                <span className={`block h-[5px] w-16 transition-all ${isActive ? "bg-primary/35 ring-1 ring-primary/40" : "bg-muted-foreground/25 group-hover:bg-primary/30"}`} />
-                                <span className={`block h-2 w-2 rounded-full transition-all ${isActive ? "bg-primary" : "bg-muted-foreground/40"}`} />
-                              </span>
-                            ) : (
-                              <span
-                                className={`block rounded-full transition-all ${
-                                  isActive
-                                    ? "h-4 w-4 bg-primary ring-4 ring-primary/25"
-                                    : "h-2.5 w-2.5 bg-muted-foreground/40 hover:bg-primary/60"
-                                }`}
-                              />
-                            )}
-                          </span>
-                          <span
-                            className={`mt-0.5 text-[10px] tabular-nums transition-colors ${
-                              isActive ? "font-semibold text-primary" : "text-muted-foreground/70"
-                            }`}
-                          >
-                            {rangeLabel}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 같은 연도 사건들 = 소분류. flex-1 + items-stretch 로 그룹 높이를 채워
-                    연도 그룹끼리(1971 vs 1973) 카드 높이가 동일하게 맞춰짐. */}
-                <div className="flex flex-1 items-stretch gap-2 rounded-xl bg-muted/30 p-2">
-                  {g.items.map((f) => (
-                    <FlowColumn
-                      key={f.slug}
-                      flow={f}
-                      active={f.slug === activeSlug}
-                      onSelect={(ff) => setPlayYear(toFracYear(ff.date))}
-                      onMutateNodes={onMutateNodes}
-                      onAddLocal={onAddLocal}
-                      onMutateMeta={onMutateMeta}
-                      onLink={onLink}
-                      editingId={editingId}
-                      setEditingId={setEditingId}
-                      editable
-                      linkTargets={linkTargets}
-                      onJump={jumpToSlug}
+              {groups.map((g, gi) => (
+                <Fragment key={g.year}>
+                  {/* 연도 그룹 — data-group-year 로 스크롤 동기화 기준 제공 */}
+                  <div className="relative pl-12 pr-2" data-group-year={g.year}>
+                    {/* 세로 레일 위의 연도 노드(원) */}
+                    <span
+                      className={`absolute left-[12px] top-1 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full ring-4 transition-all ${
+                        Math.floor(playYear) === g.year
+                          ? "bg-primary ring-primary/25"
+                          : "bg-muted-foreground/40 ring-background"
+                      }`}
+                      aria-hidden
                     />
-                  ))}
-                </div>
+
+                    {/* 연도 대분류 헤더 — 연도 · 건수 · 당시 대통령/연준 의장 */}
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="text-lg font-bold tabular-nums text-primary">{g.year}</span>
+                      <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
+                      {(() => {
+                        const L = leadersForYear(g.year);
+                        if (!L) return null;
+                        return (
+                          <span
+                            className="text-[10px] leading-tight text-muted-foreground/70 whitespace-nowrap"
+                            data-testid={`text-leaders-${g.year}`}
+                            title={`당시 미국 대통령 / 연준 의장`}
+                          >
+                            {L.president} 대통령, {L.fed} 연준의장
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {/* 같은 연도 사건들 = 소분류. 세로로 쌓아(월 순) 잘림 없이 모두 노출. 단일 사건의 분기(branch) 카드는 자체 폭을 유지(해당 행만 가로 스크롤 가능) */}
+                    <div className="cap-noscrollbar flex flex-col items-start gap-3 overflow-x-auto rounded-xl bg-muted/30 p-2 pb-3">
+                      {g.items.map((f) => {
+                        const isActive = f.slug === activeSlug;
+                        const isPeriod = !!f.endDate;
+                        const rangeLabel = isPeriod
+                          ? `${fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")} ~ ${fracYearToLabel(toFracYear(f.endDate!)).replace(/^\d+년 /, "")}`
+                          : fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "");
+                        return (
+                          <div key={f.slug} className="flex flex-col">
+                            {/* 사건 시점 라벨(월) — 클릭 시 그 시점으로 이동 */}
+                            <button
+                              type="button"
+                              onClick={() => seekToYear(toFracYear(f.date))}
+                              className={`mb-1 self-start rounded px-1 text-[10px] tabular-nums transition-colors ${
+                                isActive ? "font-semibold text-primary" : "text-muted-foreground/70 hover:text-primary"
+                              }`}
+                              title={isPeriod ? `${f.date} ~ ${f.endDate}` : fracYearToLabel(toFracYear(f.date))}
+                              data-testid={`marker-${f.slug}`}
+                            >
+                              {rangeLabel}
+                            </button>
+                            <FlowColumn
+                              flow={f}
+                              active={isActive}
+                              onSelect={(ff) => seekToYear(toFracYear(ff.date))}
+                              onMutateNodes={onMutateNodes}
+                              onAddLocal={onAddLocal}
+                              onMutateMeta={onMutateMeta}
+                              onLink={onLink}
+                              editingId={editingId}
+                              setEditingId={setEditingId}
+                              editable
+                              linkTargets={linkTargets}
+                              onJump={jumpToSlug}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 중간 삽입: 현재 그룹과 다음 그룹 사이에 + 존. 두 연도의 중간값으로 생성. */}
+                  {gi < groups.length - 1 ? (() => {
+                    const nextYear = groups[gi + 1].year;
+                    const mid = Math.floor((g.year + nextYear) / 2);
+                    const target = mid > g.year && mid < nextYear ? mid : g.year;
+                    return (
+                      <InsertZone
+                        onInsert={() => addFlowAt.mutate(target)}
+                        disabled={addFlowAt.isPending}
+                        label={`${target}년에 사건 추가`}
+                        testid={`insert-${g.year}-${nextYear}`}
+                      />
+                    );
+                  })() : null}
+                </Fragment>
+              ))}
+
+              {/* ── 맨 아래 “+ 사건 추가” — 클릭 시 현재 연도에 새 사건 생성 ── */}
+              <div className="relative pl-12 pr-2 pb-4">
+                <button
+                  type="button"
+                  onClick={() => addFlow.mutate()}
+                  disabled={addFlow.isPending}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/70 bg-muted/10 p-4 text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
+                  data-testid="button-new-flow"
+                  title="현재 연도에 새 사건 추가"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-current">
+                    <Plus className="h-5 w-5" />
+                  </span>
+                  <span className="text-xs font-medium">사건 추가</span>
+                </button>
               </div>
 
-              {/* 중간 삽입: 현재 그룹과 다음 그룹 사이에 + 존. 두 연도의 중간값으로 생성. */}
-              {gi < groups.length - 1 ? (() => {
-                const nextYear = groups[gi + 1].year;
-                const mid = Math.floor((g.year + nextYear) / 2);
-                // 두 연도가 인접(간격 1)이면 앞 연도에 생성(중간값이 앞 연도와 같아짐).
-                const target = mid > g.year && mid < nextYear ? mid : g.year;
-                return (
-                  <InsertZone
-                    onInsert={() => addFlowAt.mutate(target)}
-                    disabled={addFlowAt.isPending}
-                    label={`${target}년에 사건 추가`}
-                    testid={`insert-${g.year}-${nextYear}`}
-                  />
-                );
-              })() : null}
-              </Fragment>
-            ))}
+              {/* 곡선 화살표 오버레이 — 노드 DOM 좌표를 측정해 그린다. 보드 전체를 덮는 절대 레이어. */}
+              <CapLinkOverlay boardRef={boardRef} links={links ?? []} flows={flows ?? []} onDeleteLink={onDeleteLink} />
+            </div>
+          )}
+        </section>
 
-            {/* 곱선 화살표 오버레이 — 노드 DOM 좌표를 측정해 그린다. 보드 전체를 덮는 절대 레이어. */}
-            <CapLinkOverlay boardRef={boardRef} links={links ?? []} flows={flows ?? []} onDeleteLink={onDeleteLink} />
-
-            {/* ── 타임라인 맨 오른쪽 “+ 사건 추가” 빈 칸 — 클릭 시 현재 연도에 새 사건 생성 ── */}
-            <div className="flex flex-col shrink-0">
-              {/* 연도 헤더 자리 — 높이 정렬용 빈 공간 */}
-              <div className="flex items-center gap-2 mb-1.5 px-1">
-                <span className="text-base font-bold tabular-nums text-transparent select-none">+</span>
-              </div>
-              {/* 마커 레일 자리 — 높이 정렬용 빈 공간 */}
-              <div className="relative px-2 pt-1 pb-2">
-                <span className="flex h-6 w-6 items-center justify-center" />
-                <span className="mt-0.5 block text-[10px]">&nbsp;</span>
-              </div>
-              {/* 본문 자리 — 점선 추가 버튼(그룹 높이만큼 세로로 채움) */}
+        {/* ════════ 우측: sticky 패널 (슬라이더 + 연대 네비 + 그래프 스택 + 체크박스) ════════ */}
+        <aside
+          className="w-[480px] shrink-0 sticky top-4 flex flex-col gap-3 overflow-y-auto cap-noscrollbar"
+          style={{ maxHeight: "calc(100vh - 32px)" }}
+        >
+          {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
+          <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
+            <div className="mb-2 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => addFlow.mutate()}
-                disabled={addFlow.isPending}
-                className="flex w-[180px] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/70 bg-muted/10 p-4 text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
-                data-testid="button-new-flow"
-                title="현재 연도에 새 사건 추가"
+                onClick={() => void doUndo()}
+                disabled={!canUndo || undoBusy}
+                title="되돌리기 (Ctrl+Z)"
+                aria-label="되돌리기"
+                className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                data-testid="button-undo"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-current">
-                  <Plus className="h-5 w-5" />
-                </span>
-                <span className="text-xs font-medium">사건 추가</span>
+                <Undo2 className="h-3.5 w-3.5" />
+                되돌리기
               </button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* ── 연도 슬라이더 (좌: 연도·시대칩 / 우: 슬라이더) — 한 줄로 압축해 세로 공간 확보 ── */}
-      <section className="mb-3 flex items-center gap-4 rounded-lg border border-border bg-card/40 px-4 py-2.5">
-        {/* 좌측: 되돌리기 버튼 + “연도” 라벨 + 10년 단위 시대 네비 칩 */}
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void doUndo()}
-            disabled={!canUndo || undoBusy}
-            title="되돌리기 (Ctrl+Z)"
-            aria-label="되돌리기"
-            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-            data-testid="button-undo"
-          >
-            <Undo2 className="h-3.5 w-3.5" />
-            되돌리기
-          </button>
-          <span className="text-sm font-medium">연도</span>
-          {decades.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1" data-testid="decade-nav">
-              {decades.map((d) => {
-                const isActive = d.decade === activeDecade;
-                return (
-                  <button
-                    key={d.decade}
-                    type="button"
-                    onClick={() => setPlayYear(d.firstFrac)}
-                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums transition-colors ${
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                    }`}
-                    data-testid={`decade-${d.decade}`}
-                  >
-                    {d.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-
-        {/* 우측: 현재값 라벨 + 슬라이더 트랙 + 범위 */}
-        <div className="min-w-0 flex-1">
-          {/* 현재값 라벨 — 핸들(현재 지점) 바로 위에 따라감 */}
-          <div className="relative h-5">
-            {(() => {
-              const pct = toY > fromY ? ((playYear - fromY) / (toY - fromY)) * 100 : 0;
-              // 라벨이 컨테이너 밖으로 잘리지 않도록 6~94% 범위로 클램프.
-              const clamped = Math.min(94, Math.max(6, pct));
-              return (
-                <div
-                  className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground shadow"
-                  style={{ left: `${clamped}%`, bottom: 0 }}
-                  data-testid="text-playyear"
-                >
-                  {fracYearToLabel(playYear)}
+              <span className="text-sm font-medium">연도</span>
+              {decades.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1" data-testid="decade-nav">
+                  {decades.map((d) => {
+                    const isActive = d.decade === activeDecade;
+                    return (
+                      <button
+                        key={d.decade}
+                        type="button"
+                        onClick={() => seekToYear(d.firstFrac)}
+                        className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums transition-colors ${
+                          isActive
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                        data-testid={`decade-${d.decade}`}
+                      >
+                        {d.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })()}
-          </div>
-          <input
-            type="range"
-            min={fromY}
-            max={toY}
-            step={1 / 12}
-            value={playYear}
-            onChange={(e) => setPlayYear(Number(e.target.value))}
-            className="w-full accent-primary"
-            data-testid="slider-year"
-          />
-          <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
-            <span>{fromY}</span><span>{toY}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 그래프 스택 (체크박스보다 위) ── */}
-      <section className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {onPanels.length === 0 ? (
-          <div className="col-span-full text-center text-sm text-muted-foreground py-8">
-            표시할 지표를 아래에서 선택하세요.
-          </div>
-        ) : (
-          onPanels.map((p) => (
-            <CapChartPanel
-              key={p.id}
-              panel={p}
-              series={SERIES[p.series]}
-              fromYear={viewFrom}
-              toYear={viewTo}
-              playYear={playYear}
-              band={activeBand}
-            />
-          ))
-        )}
-      </section>
-
-      {/* ── 하단: 체크박스 (카테고리별) ── */}
-      <section className="rounded-lg border border-border bg-card/40 p-3">
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          {Object.entries(CATEGORIES).map(([catKey, cat]) => (
-            <div key={catKey} className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-semibold" style={{ color: cat.color }}>{cat.label}</span>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {PANELS.filter((p) => p.cat === catKey).map((p) => (
-                  <label key={p.id} className="flex items-center gap-1.5 text-[12px] cursor-pointer" data-testid={`toggle-${p.id}`}>
-                    <Checkbox
-                      checked={enabled[p.id]}
-                      onCheckedChange={(v) => setEnabled((prev) => ({ ...prev, [p.id]: !!v }))}
-                    />
-                    <span className="h-2 w-2 rounded-sm" style={{ background: p.color }} />
-                    {p.label}
-                  </label>
-                ))}
-              </div>
+              ) : null}
             </div>
-          ))}
-        </div>
-      </section>
+
+            {/* 현재값 라벨 — 핸들(현재 지점) 바로 위에 따라감 */}
+            <div className="relative h-5">
+              {(() => {
+                const pct = toY > fromY ? ((playYear - fromY) / (toY - fromY)) * 100 : 0;
+                const clamped = Math.min(94, Math.max(6, pct));
+                return (
+                  <div
+                    className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground shadow"
+                    style={{ left: `${clamped}%`, bottom: 0 }}
+                    data-testid="text-playyear"
+                  >
+                    {fracYearToLabel(playYear)}
+                  </div>
+                );
+              })()}
+            </div>
+            <input
+              type="range"
+              min={fromY}
+              max={toY}
+              step={1 / 12}
+              value={playYear}
+              onChange={(e) => seekToYear(Number(e.target.value))}
+              className="w-full accent-primary"
+              data-testid="slider-year"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+              <span>{fromY}</span><span>{toY}</span>
+            </div>
+          </section>
+
+          {/* ── 그래프 스택 — 세로로 적층, 시점(playYear) 동기화 유지 ── */}
+          <section className="grid grid-cols-1 gap-3">
+            {onPanels.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-8">
+                표시할 지표를 아래에서 선택하세요.
+              </div>
+            ) : (
+              onPanels.map((p) => (
+                <CapChartPanel
+                  key={p.id}
+                  panel={p}
+                  series={SERIES[p.series]}
+                  fromYear={viewFrom}
+                  toYear={viewTo}
+                  playYear={playYear}
+                  band={activeBand}
+                />
+              ))
+            )}
+          </section>
+
+          {/* ── 체크박스 (카테고리별) ── */}
+          <section className="rounded-lg border border-border bg-card/40 p-3">
+            <div className="flex flex-col gap-3">
+              {Object.entries(CATEGORIES).map(([catKey, cat]) => (
+                <div key={catKey} className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-semibold" style={{ color: cat.color }}>{cat.label}</span>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                    {PANELS.filter((p) => p.cat === catKey).map((p) => (
+                      <label key={p.id} className="flex items-center gap-1.5 text-[12px] cursor-pointer" data-testid={`toggle-${p.id}`}>
+                        <Checkbox
+                          checked={enabled[p.id]}
+                          onCheckedChange={(v) => setEnabled((prev) => ({ ...prev, [p.id]: !!v }))}
+                        />
+                        <span className="h-2 w-2 rounded-sm" style={{ background: p.color }} />
+                        {p.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
 
-// 연도 그룹 사이의 세로로 얇은 호버 존 — 호버 시 + 버튼 등장, 클릭하면 그 위치 연도에 새 사건 삽입.
+// 연도 그룹 사이의 가로로 얇은 호버 존 — 호버 시 + 버튼 등장, 클릭하면 그 위치 연도에 새 사건 삽입.
+// 세로 타임라인용: 그룹 사이에 가로로 눌히는 얇은 행.
 function InsertZone({ onInsert, disabled, label, testid }: { onInsert: () => void; disabled?: boolean; label: string; testid: string }) {
   const [hover, setHover] = useState(false);
   return (
     <div
-      className="relative flex shrink-0 items-stretch"
-      style={{ width: hover ? 40 : 16 }}
+      className="relative pl-12 pr-2 transition-all"
+      style={{ height: hover ? 44 : 14 }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       data-testid={`insertzone-${testid}`}
     >
-      {/* 호버 시 세로 구분선 + 추가 버튼 */}
+      {/* 호버 시 가로 구분선 + 추가 버튼 */}
       {hover ? (
         <button
           type="button"
@@ -670,15 +697,16 @@ function InsertZone({ onInsert, disabled, label, testid }: { onInsert: () => voi
           disabled={disabled}
           title={label}
           aria-label={label}
-          className="group flex w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          className="group flex h-full w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
           data-testid={`button-insert-${testid}`}
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-current">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-current">
             <Plus className="h-4 w-4" />
           </span>
+          <span className="text-[11px] font-medium">{label}</span>
         </button>
       ) : (
-        <div className="mx-auto my-auto h-3/5 w-px bg-transparent transition-colors hover:bg-primary/30" />
+        <div className="mx-auto my-auto h-px w-3/5 bg-transparent transition-colors hover:bg-primary/30" />
       )}
     </div>
   );
