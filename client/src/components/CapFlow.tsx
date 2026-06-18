@@ -3,10 +3,10 @@
 //  - 칸 클릭 → 그 자리에서 리치텍스트 편집(드래그 색상 툴바). 포커스 해제 시 저장.
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 그 칸 삭제(내용 비워도 자동 삭제). 마지막 칸이면 플로우 삭제.
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef } from "react";
 import { X, MessageSquare } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CapRichText } from "@/components/CapRichText";
+import { plainText } from "@/lib/capitalism-richtext";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { newNodeKey } from "@/lib/capitalism-flowops";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
@@ -45,32 +45,7 @@ function Node({
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
-  // 메모 팝오버 상태 + 편집 초안
-  const [memoOpen, setMemoOpen] = useState(false);
-  const [memoDraft, setMemoDraft] = useState(node.ref ?? "");
-  const hasMemo = !!(node.ref && node.ref.trim());
-  // 메모 textarea 자동 높이 조절 — 내용 분량만큼 늘어나고(최소 4줄), 너무 길면 그때만 스크롤.
-  const memoRef = useRef<HTMLTextAreaElement | null>(null);
-  const autoGrow = (el: HTMLTextAreaElement | null) => {
-    if (!el) return;
-    el.style.height = "auto";              // 먼저 줄여야 줄어드는 경우도 반영됨
-    const max = 360;                      // 최대 높이(px) 넘으면 스크롤
-    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
-    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
-  };
-  // textarea 마운트 즉시 높이 맞춤(콜백 ref) — 팝오버가 Portal로 늦게 마운트되어도
-  // 저장된 메모를 '열기만' 했을 때 높이가 동작하도록 보장한다(useLayoutEffect 타이밍 어꺋남 보완).
-  const setMemoRef = (el: HTMLTextAreaElement | null) => {
-    memoRef.current = el;
-    if (el) {
-      autoGrow(el);                                   // 마운트 즉시 1차
-      requestAnimationFrame(() => autoGrow(el));      // 레이아웃/폰트 확정 후 1차 더(정확도 보강)
-    }
-  };
-  // 초안이 바뀔 때도 높이 동기화(프로그래마틱 변경 대비).
-  useLayoutEffect(() => {
-    if (memoOpen) autoGrow(memoRef.current);
-  }, [memoOpen, memoDraft]);
+  // 메모 팝오버 제거됨 — 메모는 카드 우측 MemoColumn에 상시 표시(노션식).
   // 드래그앤드롭 화살표 그리기 기능 — 현재 비활성(주석처리). 필요 시 아래 줄 복구.
   // const canDrag = editable && !editing && !!onLink;
   const canDrag = false;
@@ -150,84 +125,7 @@ function Node({
         </div>
       )}
 
-      {/* 메모(보충 설명) 버튼 — 상시 표시(편집모드 제외). 메모가 있으면 채운 색, 없으면 흐림.
-          구글 시트/슬라이드 코멘트처럼 클릭 시 말풍선(Popover)으로 읽기·편집. */}
-      {!editing ? (
-        <Popover
-          open={memoOpen}
-          onOpenChange={(o) => {
-            setMemoOpen(o);
-            if (o) setMemoDraft(node.ref ?? "");           // 열 때 최신값 동기화
-            else if (editable && onMemo) onMemo(node.id, memoDraft); // 닫을 때 저장
-          }}
-        >
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              title={hasMemo ? "메모 보기/편집" : "메모 추가"}
-              onClick={(e) => e.stopPropagation()}
-              className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
-                hasMemo
-                  ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
-                  : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
-              }`}
-              data-testid={`memo-btn-${node.id}`}
-            >
-              <MessageSquare className="h-2.5 w-2.5" strokeWidth={2.5} />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            side="right"
-            align="start"
-            className="w-64 p-3"
-            onClick={(e) => e.stopPropagation()}
-            data-testid={`memo-pop-${node.id}`}
-          >
-            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              <MessageSquare className="h-3 w-3" /> 보충 메모
-            </div>
-            {editable ? (
-              <>
-                <textarea
-                  ref={setMemoRef}
-                  value={memoDraft}
-                  onChange={(e) => { setMemoDraft(e.target.value); autoGrow(e.target); }}
-                  placeholder="이 칸에 대한 보충 설명·출처를 적으세요"
-                  rows={4}
-                  autoFocus
-                  className="block max-h-[360px] min-h-[88px] w-full resize-y overflow-hidden rounded border border-border bg-background px-2 py-1.5 text-[12px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                  data-testid={`memo-input-${node.id}`}
-                />
-                <div className="mt-2 flex items-center justify-between">
-                  <button
-                    type="button"
-                    className="text-[11px] text-muted-foreground hover:text-destructive disabled:opacity-40"
-                    disabled={!hasMemo && !memoDraft.trim()}
-                    onClick={() => { setMemoDraft(""); onMemo?.(node.id, ""); setMemoOpen(false); }}
-                    data-testid={`memo-clear-${node.id}`}
-                  >
-                    메모 삭제
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90"
-                    onClick={() => { onMemo?.(node.id, memoDraft); setMemoOpen(false); }}
-                    data-testid={`memo-save-${node.id}`}
-                  >
-                    저장
-                  </button>
-                </div>
-              </>
-            ) : hasMemo ? (
-              <p className="max-h-[360px] overflow-y-auto whitespace-pre-wrap text-[12px] leading-relaxed text-foreground" data-testid={`memo-text-${node.id}`}>
-                {node.ref}
-              </p>
-            ) : (
-              <p className="text-[12px] text-muted-foreground/60">메모가 없습니다.</p>
-            )}
-          </PopoverContent>
-        </Popover>
-      ) : null}
+      {/* 메모는 카드 우측 메모 컬럼(MemoColumn)에 상시 표시한다(노션식). 기존 팝오버 트리거 제거. */}
 
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
       {editable && !editing ? (
@@ -308,6 +206,123 @@ function VArrow() {
         <line x1="7" y1="0" x2="7" y2="10" stroke="currentColor" strokeWidth="1.3" className="text-muted-foreground/40" />
         <path d="M3.5 9 L7 14 L10.5 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/50" />
       </svg>
+    </div>
+  );
+}
+
+// 메모 컬럼 너비(px). 카드 우측 여백을 채워 노션식 코멘트를 상시 표시한다.
+const MEMO_COL_W = 208;
+
+// 노드 텍스트에서 미리보기용 평문 추출(리치텍스트 [[...]] 마크업 제거 + 줄바꿈 정리).
+function nodePlain(text: string): string {
+  return plainText(text).replace(/\s+/g, " ").trim();
+}
+
+// 노션식 "상시 표시" 코멘트 1개. 읽기 모드는 항상 보이고, 편집 모드는 클릭 시 인라인 textarea.
+function MemoCard({
+  node, editable, onMemo, onFocusNode,
+}: {
+  node: FlowNodeDTO;
+  editable: boolean;
+  onMemo?: (id: string, memo: string) => void;
+  onFocusNode?: (id: string | null) => void;
+}) {
+  const hasMemo = !!(node.ref && node.ref.trim());
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(node.ref ?? "");
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const grow = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+    el.style.overflowY = el.scrollHeight > 320 ? "auto" : "hidden";
+  };
+  const startEdit = () => {
+    if (!editable) return;
+    setDraft(node.ref ?? "");
+    setEditing(true);
+    onFocusNode?.(node.id);
+  };
+  const finish = () => {
+    setEditing(false);
+    onFocusNode?.(null);
+    onMemo?.(node.id, draft);
+  };
+  const anchor = nodePlain(node.text) || "(빈 칸)";
+
+  return (
+    <div
+      className="rounded-md border border-amber-300/50 bg-amber-50/70 px-2 py-1.5 shadow-sm dark:border-amber-400/25 dark:bg-amber-400/10"
+      onClick={(e) => e.stopPropagation()}
+      onMouseEnter={() => onFocusNode?.(node.id)}
+      onMouseLeave={() => { if (!editing) onFocusNode?.(null); }}
+      data-testid={`memo-card-${node.id}`}
+    >
+      <div className="mb-1 flex items-center gap-1 border-l-2 border-amber-400/70 pl-1.5">
+        <MessageSquare className="h-2.5 w-2.5 shrink-0 text-amber-600/80 dark:text-amber-400/80" strokeWidth={2.5} />
+        <span className="truncate text-[9.5px] font-medium text-amber-700/90 dark:text-amber-300/80" title={anchor}>
+          {anchor}
+        </span>
+      </div>
+      {editing ? (
+        <textarea
+          ref={(el) => { taRef.current = el; if (el) { grow(el); requestAnimationFrame(() => grow(el)); } }}
+          value={draft}
+          autoFocus
+          rows={3}
+          onChange={(e) => { setDraft(e.target.value); grow(e.target); }}
+          onBlur={finish}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") { setDraft(node.ref ?? ""); setEditing(false); onFocusNode?.(null); }
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
+          }}
+          placeholder="메모 입력 (Esc 취소 · ⌘/Ctrl+Enter 저장)"
+          className="block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border border-amber-300/60 bg-background px-1.5 py-1 text-[11px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          data-testid={`memo-input-${node.id}`}
+        />
+      ) : hasMemo ? (
+        <p
+          className={`whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90 ${editable ? "cursor-text rounded hover:bg-amber-100/50 dark:hover:bg-amber-400/10" : ""}`}
+          onClick={startEdit}
+          title={editable ? "클릭해 메모 수정" : undefined}
+          data-testid={`memo-text-${node.id}`}
+        >
+          {node.ref}
+        </p>
+      ) : (
+        <button
+          type="button"
+          className="w-full rounded px-1 py-0.5 text-left text-[10.5px] text-muted-foreground/60 hover:bg-amber-100/50 dark:hover:bg-amber-400/10"
+          onClick={startEdit}
+          data-testid={`memo-add-${node.id}`}
+        >
+          + 메모 추가
+        </button>
+      )}
+    </div>
+  );
+}
+
+// 카드 우측 메모 컬럼. 메모가 있는 노드(읽기) 또는 모든 노드(편집)를 위→아래 순서로 쌓는다.
+function MemoColumn({
+  nodes, editable, onMemo, onFocusNode,
+}: {
+  nodes: FlowNodeDTO[];
+  editable: boolean;
+  onMemo?: (id: string, memo: string) => void;
+  onFocusNode?: (id: string | null) => void;
+}) {
+  const list = editable ? nodes : nodes.filter((n) => n.ref && n.ref.trim());
+  if (list.length === 0) return null;
+  return (
+    <div
+      style={{ width: MEMO_COL_W }}
+      className="flex shrink-0 flex-col gap-1.5 self-stretch border-l border-border/40 pl-2.5"
+      data-testid="memo-col"
+    >
+      {list.map((n) => (
+        <MemoCard key={n.id} node={n} editable={editable} onMemo={onMemo} onFocusNode={onFocusNode} />
+      ))}
     </div>
   );
 }
@@ -498,13 +513,19 @@ export function FlowColumn({
     body = <div className="flex flex-col">{renderStack(flow.nodes)}</div>;
   }
 
-  // 카드 너비: 단일 컬럼(기본/스택)은 280px 고정. 분기로 컬럼이 늘면
-  // 컬럼 수 × (240px + gap 12px) + 좌우 패딩(24px) 만큼 카드 자체가 넓어진다(버그3).
-  // 컬럼 너비(240px)는 shrink-0 이므로 줄지 않고, 카드가 확장된다.
-  const cardWidth =
+  // 본문(이벤트 흐름) 너비: 단일 컬럼(기본/스택)은 296px(약간 넓힘). 분기로 컬럼이 늘면
+  // 컬럼 수 × (240px + gap 12px) 만큼 본문이 넓어진다.
+  const bodyWidth =
     flow.layout === "branch" && usedCols.length > 1
-      ? usedCols.length * 240 + (usedCols.length - 1) * 12 + 24
-      : 280;
+      ? usedCols.length * 240 + (usedCols.length - 1) * 12
+      : 296;
+
+  // 메모 컬럼 표시 여부 — 읽기 모드는 메모가 하나라도 있을 때, 편집 모드는 항상.
+  const hasAnyMemo = flow.nodes.some((n) => n.ref && n.ref.trim());
+  const showMemoCol = editable || hasAnyMemo;
+
+  // 카드 전체 너비 = 좌우 패딩(24px) + 본문 + (메모 컬럼: 컬럼폭 + 좌측 여백/구분선 약 12px).
+  const cardWidth = 24 + bodyWidth + (showMemoCol ? MEMO_COL_W + 12 : 0);
 
   return (
     <div
@@ -594,7 +615,15 @@ export function FlowColumn({
           </div>
         )}
       </div>
-      {body}
+      {/* 본문 + 우측 메모 컬럼을 가로로 배치(노션식 상시 표시) */}
+      <div className="flex items-start">
+        <div style={{ width: bodyWidth }} className="shrink-0">
+          {body}
+        </div>
+        {showMemoCol ? (
+          <MemoColumn nodes={flow.nodes} editable={editable} onMemo={commitMemo} />
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -424,8 +424,7 @@ export default function Capitalism() {
               className="cap-noscrollbar relative overflow-y-auto overflow-x-hidden pr-1"
               style={{ height: "calc(100vh - 110px)" }}
             >
-              {/* 세로 중심 레일 — 위에서 아래로 시간 흐름 */}
-              <div className="absolute left-[18px] top-2 bottom-2 w-[2px] bg-border" aria-hidden />
+              {/* 세로 중심 레일은 각 연도 그룹 내부에서 세그먼트로 그려 콘텐츠 전체 높이를 끊김 없이 관통한다(아래 그룹 div 참고) */}
 
               {/* 중간 삽입: 맨 앞(첫 그룹 위)에 + 존 */}
               {groups.length > 0 ? (
@@ -439,20 +438,22 @@ export default function Capitalism() {
 
               {groups.map((g, gi) => (
                 <Fragment key={g.year}>
-                  {/* 연도 그룹 — data-group-year 로 스크롤 동기화 기준 제공 */}
+                  {/* 연도 그룹 — data-group-year 로 스크롤 동기화 기준 제공. relative 안에서 레일 선 세그먼트를 그려 그룹끼리 이으면 선이 끊김 없이 이어진다 */}
                   <div className="relative pl-12 pr-2" data-group-year={g.year}>
-                    {/* 세로 레일 위의 연도 노드(원) */}
-                    <span
-                      className={`absolute left-[12px] top-1 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full ring-4 transition-all ${
-                        Math.floor(playYear) === g.year
-                          ? "bg-primary ring-primary/25"
-                          : "bg-muted-foreground/40 ring-background"
-                      }`}
-                      aria-hidden
-                    />
+                    {/* 세로 레일 선 세그먼트 — 그룹 전체 높이를 덮어 아래 그룹과 맞닿아 연속적으로 보임. 원(left-[19px])과 동일한 x기준을 공유해 선이 원 중심을 관통 */}
+                    <div className="absolute left-[19px] top-0 bottom-0 w-[2px] -translate-x-1/2 bg-border" aria-hidden />
 
-                    {/* 연도 대분류 헤더 — 연도 · 건수 · 당시 대통령/연준 의장 */}
-                    <div className="flex items-baseline gap-2 mb-2">
+                    {/* 연도 대분류 헤더 — 연도 · 건수 · 당시 대통령/연준 의장. sticky top-0 으로 스크롤 시 상단 고정(현재 연도만 표시, 다음 연도 진입 시 교체) */}
+                    <div className="sticky top-0 z-20 -ml-12 mb-2 flex items-baseline gap-2 bg-background/95 py-1.5 pl-12 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                      {/* 세로 레일 위의 연도 노드(원) — 선(left-[19px])과 동일 x기준, 선이 원 중심을 관통 */}
+                      <span
+                        className={`absolute left-[19px] top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full ring-4 transition-all ${
+                          Math.floor(playYear) === g.year
+                            ? "bg-primary ring-primary/25"
+                            : "bg-muted-foreground/40 ring-background"
+                        }`}
+                        aria-hidden
+                      />
                       <span className="text-lg font-bold tabular-nums text-primary">{g.year}</span>
                       <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
                       {(() => {
