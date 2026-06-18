@@ -332,7 +332,12 @@ export function FlowColumn({
     let cur: Row | null = null;
     for (const n of flow.nodes) {
       const col = n.col || "center";
-      if (col === "center" || cur === null) {
+      // 새 행을 시작해야 하는 경우:
+      //  (1) 아직 행이 없음
+      //  (2) center 노드 — center 는 항상 새 줄기 행을 시작
+      //  (3) 현재 행의 해당 컬럼 셀이 이미 차 있음 — 덮어쓰기 방지(같은 컬럼 노드가
+      //      연속될 때 한 셀에 겹쳐 한 개만 보이던 버그 수정. 예: 모든 노드가 left 인 카드)
+      if (cur === null || col === "center" || cur[col] !== undefined) {
         cur = {};
         rows.push(cur);
       }
