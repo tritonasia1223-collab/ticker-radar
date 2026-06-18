@@ -40,8 +40,9 @@ function Node({
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
-  // 드래그는 편집 모드(editable)이고 텍스트 편집 중이 아닐 때만 허용.
-  const canDrag = editable && !editing && !!onLink;
+  // 드래그앤드롭 화살표 그리기 기능 — 현재 비활성(주석처리). 필요 시 아래 줄 복구.
+  // const canDrag = editable && !editing && !!onLink;
+  const canDrag = false;
 
   return (
     <div
@@ -53,6 +54,8 @@ function Node({
       data-testid={`fnode-${node.id}`}
       // 보드 오버레이가 좌표를 측정할 수 있도록 전역 식별자 부여(slug::nodeKey).
       data-node-id={`${flow.slug}::${node.id}`}
+      // [비활성] 드래그앤드롭 화살표 그리기 — 당장 필요 없어 주석처리. 복구 시 아래 블록 해제.
+      /*
       draggable={canDrag}
       onDragStart={(e) => {
         if (!canDrag) return;
@@ -88,6 +91,7 @@ function Node({
         if (src.slug === flow.slug && src.key === node.id) return; // 자기 연결 금지
         onLink?.(src, { slug: flow.slug, key: node.id });
       }}
+      */
     >
       {editing ? (
         <CapRichEditor
@@ -117,7 +121,7 @@ function Node({
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
       {editable && !editing ? (
         <>
-          {/* 좌측 상단 드래그 그립 — 이 점을 잡아 다른 칸으로 끌면 화살표가 연결됨 */}
+          {/* [비활성] 드래그 그립 — 드래그앤드롭 화살표 기능과 함께 주석처리. 복구 시 해제.
           {hover && onLink ? (
             <span
               title="끌어서 다른 칸과 화살표 연결"
@@ -127,6 +131,7 @@ function Node({
               <svg width="7" height="7" viewBox="0 0 6 6"><circle cx="1.5" cy="1.5" r="0.9" fill="currentColor"/><circle cx="4.5" cy="1.5" r="0.9" fill="currentColor"/><circle cx="1.5" cy="4.5" r="0.9" fill="currentColor"/><circle cx="4.5" cy="4.5" r="0.9" fill="currentColor"/></svg>
             </span>
           ) : null}
+          */}
 
           {/* 우측 상단 X = 이 칸 삭제 */}
           {hover ? (
@@ -254,12 +259,14 @@ export function FlowColumn({
     }
 
     // ── 좌/우 분기 추가: 선택한 방향 컬럼에 새 칸 ──
+    // 새 칸은 "출발 노드 바로 뒤" 인덱스에 삽입한다. 배열 순서가 곧 행(row) 순서이므로,
+    // 이렇게 하면 렌더 시 새 분기 칸이 출발 노드와 같은 행에 정렬된다(버그1).
     const targetCol = dir === "branch-left" ? "left" : "right";
     const nn = blankNode(targetCol);
 
     if (flow.layout === "branch") {
-      // 이미 branch 레이아웃: 해당 방향 컬럼 끝에 추가.
-      nodes.push(nn);
+      // 이미 branch 레이아웃: 출발 노드 바로 뒤에 삽입.
+      nodes.splice(idx >= 0 ? idx + 1 : nodes.length, 0, nn);
       add(flow, nodes);
       setEditingId(nn.id);
       return;
@@ -269,8 +276,9 @@ export function FlowColumn({
     // 기존 stack 노드들은 center(출발 줄기)로 두고, 새 칸을 선택 방향에 추가.
     // layout 전환과 노드 추가를 한 번에 처리(이중 POST 레이스 방지). 서버 저장은 새 칸의 텍스트를
     // 입력해 commit할 때 이뤄지며, 그때 캐시의 branch 레이아웃으로 저장된다.
+    // 새 분기 칸을 출발 노드 바로 뒤에 삽입해 같은 행에 정렬되도록 한다(버그1).
     const converted: FlowNodeDTO[] = nodes.map((n) => ({ ...n, col: "center" }));
-    converted.push(nn);
+    converted.splice(idx >= 0 ? idx + 1 : converted.length, 0, nn);
     add({ ...flow, layout: "branch" }, converted);
     setEditingId(nn.id);
   }
@@ -307,18 +315,43 @@ export function FlowColumn({
     ));
   }
 
+  // 어떤 컬럼이 실제로 쓰이는지 판단(빈 컬럼은 렌더하지 않음).
+  const usedCols = (() => {
+    const set = new Set<string>();
+    flow.nodes.forEach((n) => set.add(n.col || "center"));
+    return ["left", "center", "right"].filter((c) => set.has(c));
+  })();
+
   let body: JSX.Element;
   if (flow.layout === "branch") {
-    // 분기 곡선·합류 박스 없이, 좌/중앙/우 칼럼을 그냥 나란히 배치한다.
-    // 각 칼럼은 독립적인 세로 스택(위→아래 화살표만). 곡선/merge 화살표 없음.
-    const byCol: Record<string, FlowNodeDTO[]> = { center: [], left: [], right: [] };
-    flow.nodes.forEach((n) => byCol[n.col || "center"].push(n));
-    const cols = [byCol.left, byCol.center, byCol.right].filter((c) => c.length > 0);
+    // 행(row) 기반 그리드: 배열 순서대로 순회하며 center 노드는 새 행을 시작하고,
+    // left/right(분기) 노드는 가장 최근 행의 해당 컬럼 셀에 배치한다.
+    // → 분기 칸이 출발(center) 노드와 같은 행에 가로로 정렬된다(버그1).
+    type Row = Record<string, FlowNodeDTO | undefined>;
+    const rows: Row[] = [];
+    let cur: Row | null = null;
+    for (const n of flow.nodes) {
+      const col = n.col || "center";
+      if (col === "center" || cur === null) {
+        cur = {};
+        rows.push(cur);
+      }
+      cur[col] = n;
+    }
     body = (
-      <div className="flex items-start justify-center gap-3">
-        {cols.map((col, ci) => (
-          <div key={ci} className="flex min-w-0 flex-1 flex-col">
-            {renderStack(col)}
+      <div className="flex flex-col">
+        {rows.map((row, ri) => (
+          <div key={ri}>
+            {ri > 0 ? <VArrow /> : null}
+            <div className="flex items-start justify-center gap-3">
+              {usedCols.map((col) => (
+                <div key={col} className="w-[240px] shrink-0">
+                  {row[col] ? (
+                    <Node {...nodeProps} node={row[col]!} editing={editingId === row[col]!.id} />
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -327,9 +360,18 @@ export function FlowColumn({
     body = <div className="flex flex-col">{renderStack(flow.nodes)}</div>;
   }
 
+  // 카드 너비: 단일 컬럼(기본/스택)은 280px 고정. 분기로 컬럼이 늘면
+  // 컬럼 수 × (240px + gap 12px) + 좌우 패딩(24px) 만큼 카드 자체가 넓어진다(버그3).
+  // 컬럼 너비(240px)는 shrink-0 이므로 줄지 않고, 카드가 확장된다.
+  const cardWidth =
+    flow.layout === "branch" && usedCols.length > 1
+      ? usedCols.length * 240 + (usedCols.length - 1) * 12 + 24
+      : 280;
+
   return (
     <div
-      className={`h-full w-[280px] shrink-0 rounded-lg border bg-transparent p-3 transition-colors ${
+      style={{ width: cardWidth }}
+      className={`h-full shrink-0 rounded-lg border bg-transparent p-3 transition-colors ${
         active ? "border-primary/70 ring-1 ring-primary/30" : "border-border/60 hover:border-primary/40"
       }`}
       onClick={() => onSelect(flow)}

@@ -8,15 +8,22 @@ interface Props {
   onDeleteLink: (id: number) => void;
 }
 
-interface Segment {
-  id: number;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+interface NodeRect {
+  cx: number; // 중심 x
+  cy: number; // 중심 y
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
 }
 
-const ROSE = "#f43f5e";
+interface Segment {
+  id: number;
+  d: string; // 직각선 경로 (둘레고 도달)
+}
+
+// 카드 사이의 흰/muted 세로 화살표(VArrow)와 동일한 결을 쓰기 위해 muted-foreground 계열 색을 사용.
+// currentColor + text-muted-foreground 클래스로 테마(다크/라이트)에 자동 적응.
 
 /** 보드 전역 화살표 오버레이.
  * 각 노드의 위치를 boardRef 기준 좌표로 측정해 링크별로 곡선 화살표를 그린다.
@@ -34,30 +41,113 @@ export function CapLinkOverlay({ boardRef, links, flows, onDeleteLink }: Props) 
     const scrollLeft = board.scrollLeft;
     const scrollTop = board.scrollTop;
 
-    const centerOf = (slug: string, key: string): { x: number; y: number } | null => {
+    // 노드 DOM 의 사각형을 보드 좌표계(스크롤 포함)로 변환.
+    const rectOf = (slug: string, key: string): NodeRect | null => {
       const el = board.querySelector<HTMLElement>(
         `[data-node-id="${CSS.escape(`${slug}::${key}`)}"]`,
       );
       if (!el) return null;
       const r = el.getBoundingClientRect();
+      const left = r.left - boardRect.left + scrollLeft;
+      const top = r.top - boardRect.top + scrollTop;
       return {
-        x: r.left - boardRect.left + scrollLeft + r.width / 2,
-        y: r.top - boardRect.top + scrollTop + r.height / 2,
+        left,
+        top,
+        right: left + r.width,
+        bottom: top + r.height,
+        cx: left + r.width / 2,
+        cy: top + r.height / 2,
       };
+    };
+
+    // 카드(플로)의 좌/우 경계 x — 카드 사이 "안쪽 통로" 계산에 사용.
+    const cardEdgesOf = (slug: string): { left: number; right: number } | null => {
+      const card = board.querySelector<HTMLElement>(
+        `[data-testid="${CSS.escape(`flow-${slug}`)}"]`,
+      );
+      if (!card) return null;
+      const r = card.getBoundingClientRect();
+      return {
+        left: r.left - boardRect.left + scrollLeft,
+        right: r.right - boardRect.left + scrollLeft,
+      };
+    };
+
+    // 직각선 경로 생성: 출발 노드 → 두 카드 사이 "안쪽 세로 통로" → 도달 노드.
+    // 통로 X 는 출발 카드 우측과 도달 카드 좌측 사이 빈 공간 중앙으로 둔다.
+    // (바깥 경계로 돌지 않으므로 아래에 노드를 추가해도 걸리지 않음)
+    const R = 8; // 모서리 둥근 반경
+    // exitSide: 출발 노드가 통로 쪽으로 나가는 변(left=좌측, right=우측)
+    // enterSide: 도달 노드가 통로에서 들어오는 변
+    const orthPath = (
+      a: NodeRect,
+      b: NodeRect,
+      corridorX: number,
+      exitSide: "left" | "right",
+      enterSide: "left" | "right",
+    ): string => {
+      const ax = exitSide === "right" ? a.right : a.left;
+      const ay = a.cy;
+      const bx = enterSide === "left" ? b.left : b.right;
+      const by = b.cy;
+      const cx = corridorX;
+      const goingDown = by >= ay;
+      const r1 = Math.min(R, Math.abs(cx - ax) / 2 || R, Math.abs(by - ay) / 2 || R);
+      const r2 = Math.min(R, Math.abs(cx - bx) / 2 || R, Math.abs(by - ay) / 2 || R);
+      const dir1 = cx >= ax ? 1 : -1; // 통로가 출발 노드 기준 오른쪽인가
+      const dir2 = bx >= cx ? 1 : -1; // 도달 노드가 통로 기준 오른쪽인가
+      const sweep1 = goingDown ? (dir1 > 0 ? 0 : 1) : (dir1 > 0 ? 1 : 0);
+      const sweep2 = goingDown ? (dir2 > 0 ? 1 : 0) : (dir2 > 0 ? 0 : 1);
+      const vy1 = goingDown ? ay + r1 : ay - r1;
+      const vy2 = goingDown ? by - r2 : by + r2;
+      return [
+        `M ${ax} ${ay}`,
+        `H ${cx - dir1 * r1}`,
+        `A ${r1} ${r1} 0 0 ${sweep1} ${cx} ${vy1}`,
+        `V ${vy2}`,
+        `A ${r2} ${r2} 0 0 ${sweep2} ${cx + dir2 * r2} ${by}`,
+        `H ${bx}`,
+      ].join(" ");
     };
 
     const next: Segment[] = [];
     for (const link of links) {
-      const a = centerOf(link.fromSlug, link.fromKey);
-      const b = centerOf(link.toSlug, link.toKey);
+      const a = rectOf(link.fromSlug, link.fromKey);
+      const b = rectOf(link.toSlug, link.toKey);
       if (!a || !b) continue; // DOM 에 없는 엔드포인트는 건너뜀
-      next.push({ id: link.id, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+      const fc = cardEdgesOf(link.fromSlug);
+      const tc = cardEdgesOf(link.toSlug);
+
+      let corridorX: number;
+      let exitSide: "left" | "right";
+      let enterSide: "left" | "right";
+
+      if (fc && tc && link.fromSlug !== link.toSlug && tc.left > fc.right) {
+        // 도달 카드가 출발 카드 오른쪽: 두 카드 사이 빈 통로 중앙으로 라우팅.
+        corridorX = (fc.right + tc.left) / 2;
+        exitSide = "right";   // 출발 노드 우측으로 빠져나와
+        enterSide = "left";   // 도달 노드 좌측으로 진입(화살촉 오른쪽 향함)
+      } else if (fc && tc && link.fromSlug !== link.toSlug && fc.left > tc.right) {
+        // 도달 카드가 출발 카드 왼쪽: 통로를 두 카드 사이에 두고 방향 반전.
+        corridorX = (tc.right + fc.left) / 2;
+        exitSide = "left";
+        enterSide = "right";
+      } else {
+        // 같은 카드 내부(또는 카드 경계 못 구함): 노드 우측 바로 옆 좁은 안쪽 여백 통로.
+        const innerGap = 16;
+        corridorX = Math.max(a.right, b.right) + innerGap;
+        exitSide = "right";
+        enterSide = "right";
+      }
+
+      const d = orthPath(a, b, corridorX, exitSide, enterSide);
+      if (d.includes("undefined") || d.includes("NaN")) continue; // 좌표 이상 경로는 그리지 않음
+      next.push({ id: link.id, d });
     }
     // 동일한 결과면 setState 생략 → 프레임 재측정 루프에서 불필요한 리렌더 방지.
     setSegments((prev) => {
       if (prev.length === next.length && prev.every((p, i) =>
-        p.id === next[i].id && p.x1 === next[i].x1 && p.y1 === next[i].y1 &&
-        p.x2 === next[i].x2 && p.y2 === next[i].y2)) return prev;
+        p.id === next[i].id && p.d === next[i].d)) return prev;
       return next;
     });
     const w = board.scrollWidth;
@@ -136,37 +226,26 @@ export function CapLinkOverlay({ boardRef, links, flows, onDeleteLink }: Props) 
           markerHeight="7"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={ROSE} />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" className="text-muted-foreground/60" />
         </marker>
       </defs>
       {segments.map((s) => {
-        // 부드러운 곡선: 두 점의 중간을 제어점 기준으로 살짝 휘게
-        const dx = s.x2 - s.x1;
-        const dy = s.y2 - s.y1;
-        const dist = Math.hypot(dx, dy) || 1;
-        // 진행 방향에 수직으로 휘는 정도 (거리에 비례, 최대 60px)
-        const bend = Math.min(60, dist * 0.25);
-        const mx = (s.x1 + s.x2) / 2;
-        const my = (s.y1 + s.y2) / 2;
-        const nx = -dy / dist;
-        const ny = dx / dist;
-        const cx = mx + nx * bend;
-        const cy = my + ny * bend;
-        const d = `M ${s.x1} ${s.y1} Q ${cx} ${cy} ${s.x2} ${s.y2}`;
         return (
           <g key={s.id}>
             {/* 보이는 곡선 */}
             <path
-              d={d}
+              d={s.d}
               fill="none"
-              stroke={ROSE}
-              strokeWidth={2.5}
+              stroke="currentColor"
+              strokeWidth={1.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               markerEnd="url(#cap-arrowhead)"
-              className="pointer-events-none"
+              className="pointer-events-none text-muted-foreground/55"
             />
             {/* 클릭 히트영역(투명, 두꺼움) → 삭제 */}
             <path
-              d={d}
+              d={s.d}
               fill="none"
               stroke="transparent"
               strokeWidth={14}
