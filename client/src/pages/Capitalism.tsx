@@ -1,7 +1,7 @@
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
-import { useMemo, useState, useRef, useEffect, Fragment } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -128,6 +128,21 @@ export default function Capitalism() {
     }
     return best.slug;
   }, [flows, playYear]);
+
+  // 내부 링크 대상 카드 목록(편집기 링크 패널용) — 연도순 정렬.
+  const linkTargets = useMemo(() => {
+    if (!flows) return [];
+    return flows
+      .map((f) => ({ slug: f.slug, year: f.year || Number(f.date.slice(0, 4)), title: f.title }))
+      .sort((a, b) => a.year - b.year);
+  }, [flows]);
+
+  // 내부 링크 클릭 → 대상 카드(slug)의 시점으로 재생 위치 이동(부드러운 슬라이드 → activeSlug 변경).
+  const jumpToSlug = useCallback((slug: string) => {
+    const f = flows?.find((x) => x.slug === slug);
+    if (!f) return; // 삭제되었거나 아직 없는 카드면 무시
+    setPlayYear(toFracYear(f.date));
+  }, [flows]);
 
   // active 사건이 기간 이벤트면 [시작, 종료] 소수연도 밴드를 산출(그래프 음영·중앙값용). 단일 이벤트면 null.
   const activeBand = useMemo(() => {
@@ -455,6 +470,8 @@ export default function Capitalism() {
                       editingId={editingId}
                       setEditingId={setEditingId}
                       editable
+                      linkTargets={linkTargets}
+                      onJump={jumpToSlug}
                     />
                   ))}
                 </div>

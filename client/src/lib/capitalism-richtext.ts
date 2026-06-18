@@ -1,9 +1,11 @@
-// 자본주의 타임라인 — 인라인 리치텍스트(단어 색상/하이라이트).
+// 자본주의 타임라인 — 인라인 리치텍스트(단어 색상/하이라이트/내부링크).
 // DB 스키마 변경 없이 text 필드 안에 마커를 직렬화한다.
 //   형식: [[키|텍스트]]   예) [[hl-y|중요]] , [[c-r|폭락]]
 // 키 종류:
-//   hl-*  : 형광펜(배경 하이라이트)   hl-y(노랑) hl-g(초록) hl-b(파랑) hl-p(분홍)
-//   c-*   : 글자색                    c-r(빨강) c-b(파랑) c-g(초록) c-o(주황)
+//   hl-*       : 형광펜(배경 하이라이트)   hl-y(노랑) hl-g(초록) hl-b(파랑) hl-p(분홍)
+//   c-*        : 글자색                    c-r(빨강) c-b(파랑) c-g(초록) c-o(주황)
+//   link:<slug>: 내부 링크 — 클릭 시 해당 카드(slug)의 시점으로 점프. 위키 스타일 파란 밑줄.
+//                예) [[link:1975-eurodollar|유로달러 폭발 시기]]
 // 알 수 없는 키는 무시(원문 텍스트만 표시)하여 안전하게 폴백.
 
 export interface MarkStyle {
@@ -33,10 +35,14 @@ export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(
 
 export interface RichSeg {
   text: string;
-  mark?: string; // MARK_STYLES key
+  mark?: string;     // MARK_STYLES key (hl-*/c-*) 또는 "link"
+  linkSlug?: string; // mark==="link" 일 때 점프 대상 카드 slug
 }
 
-const TOKEN = /\[\[([a-z-]+)\|([^\]]*)\]\]/g;
+// 링크 접두사. slug 에는 영숫자/하이픈/언더스코어만 허용(파이프·대괄호 충돌 방지).
+export const LINK_PREFIX = "link:";
+// 키: hl-y, c-r 같은 고정키 또는 link:<slug>(slug는 a-z0-9-_ 만).
+const TOKEN = /\[\[((?:link:[A-Za-z0-9_-]+)|[a-z-]+)\|([^\]]*)\]\]/g;
 
 // 마커 문자열 → 세그먼트 배열 (렌더용).
 export function parseRich(raw: string): RichSeg[] {
@@ -49,8 +55,14 @@ export function parseRich(raw: string): RichSeg[] {
     if (m.index > last) segs.push({ text: raw.slice(last, m.index) });
     const key = m[1];
     const inner = m[2];
-    if (MARK_BY_KEY[key]) segs.push({ text: inner, mark: key });
-    else segs.push({ text: inner }); // 알 수 없는 키는 표식 없이 텍스트만
+    if (key.startsWith(LINK_PREFIX)) {
+      const slug = key.slice(LINK_PREFIX.length);
+      segs.push({ text: inner, mark: "link", linkSlug: slug });
+    } else if (MARK_BY_KEY[key]) {
+      segs.push({ text: inner, mark: key });
+    } else {
+      segs.push({ text: inner }); // 알 수 없는 키는 표식 없이 텍스트만
+    }
     last = m.index + m[0].length;
   }
   if (last < raw.length) segs.push({ text: raw.slice(last) });
@@ -61,7 +73,11 @@ export function parseRich(raw: string): RichSeg[] {
 // 세그먼트 배열 → 마커 문자열 (저장용).
 export function serializeRich(segs: RichSeg[]): string {
   return segs
-    .map((s) => (s.mark && MARK_BY_KEY[s.mark] ? `[[${s.mark}|${s.text}]]` : s.text))
+    .map((s) => {
+      if (s.mark === "link" && s.linkSlug) return `[[${LINK_PREFIX}${s.linkSlug}|${s.text}]]`;
+      if (s.mark && MARK_BY_KEY[s.mark]) return `[[${s.mark}|${s.text}]]`;
+      return s.text;
+    })
     .join("");
 }
 

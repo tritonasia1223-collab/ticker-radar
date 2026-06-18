@@ -7,7 +7,7 @@ import { useState, useRef, useLayoutEffect } from "react";
 import { X, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CapRichText } from "@/components/CapRichText";
-import { CapRichEditor } from "@/components/CapRichEditor";
+import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { newNodeKey } from "@/lib/capitalism-flowops";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 
@@ -26,7 +26,7 @@ function blankNode(col = "center"): FlowNodeDTO {
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemo, onLink,
+  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemo, onLink, linkTargets, onJump,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -38,6 +38,9 @@ function Node({
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
   onMemo?: (id: string, memo: string) => void;
   onLink?: LinkNodes;
+  // 내부 링크용 — 카드 목록(편집) + 점프 콜백(클릭).
+  linkTargets?: LinkTarget[];
+  onJump?: (slug: string) => void;
 }) {
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -55,7 +58,16 @@ function Node({
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
     el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
   };
-  // 팝오버가 열리거나 초안이 바뀔 때 높이 동기화(렌더 직후 측정).
+  // textarea 마운트 즉시 높이 맞춤(콜백 ref) — 팝오버가 Portal로 늦게 마운트되어도
+  // 저장된 메모를 '열기만' 했을 때 높이가 동작하도록 보장한다(useLayoutEffect 타이밍 어꺋남 보완).
+  const setMemoRef = (el: HTMLTextAreaElement | null) => {
+    memoRef.current = el;
+    if (el) {
+      autoGrow(el);                                   // 마운트 즉시 1차
+      requestAnimationFrame(() => autoGrow(el));      // 레이아웃/폰트 확정 후 1차 더(정확도 보강)
+    }
+  };
+  // 초안이 바뀔 때도 높이 동기화(프로그래마틱 변경 대비).
   useLayoutEffect(() => {
     if (memoOpen) autoGrow(memoRef.current);
   }, [memoOpen, memoDraft]);
@@ -120,6 +132,7 @@ function Node({
           placeholder="내용 입력 (드래그하여 강조 · 비우면 삭제)"
           rows={2}
           onBlur={() => onCommit(node.id, draft)}
+          linkTargets={linkTargets}
         />
       ) : (
         <div
@@ -128,7 +141,7 @@ function Node({
           data-testid={`fnode-text-${node.id}`}
         >
           {node.text.trim() ? (
-            <CapRichText text={node.text} className="block text-center text-[12.5px] leading-snug text-foreground" />
+            <CapRichText text={node.text} className="block text-center text-[12.5px] leading-snug text-foreground" onJump={onJump} />
           ) : (
             <span className="block text-center text-[12.5px] italic leading-snug text-muted-foreground/50">
               (빈 칸 — 클릭해 입력)
@@ -176,7 +189,7 @@ function Node({
             {editable ? (
               <>
                 <textarea
-                  ref={memoRef}
+                  ref={setMemoRef}
                   value={memoDraft}
                   onChange={(e) => { setMemoDraft(e.target.value); autoGrow(e.target); }}
                   placeholder="이 칸에 대한 보충 설명·출처를 적으세요"
@@ -300,7 +313,7 @@ function VArrow() {
 }
 
 export function FlowColumn({
-  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, onLink, editingId, setEditingId, editable = false,
+  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, onLink, editingId, setEditingId, editable = false, linkTargets, onJump,
 }: {
   flow: FlowDTO;
   active: boolean;
@@ -312,6 +325,9 @@ export function FlowColumn({
   editingId: string | null;
   setEditingId: (id: string | null) => void;
   editable?: boolean;
+  // 내부 링크 — 편집 시 카드 목록, 클릭 시 점프 콜백.
+  linkTargets?: LinkTarget[];
+  onJump?: (slug: string) => void;
 }) {
   // 카드 헤더 인라인 편집 상태: "date" | "title" | null
   const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
@@ -419,6 +435,8 @@ export function FlowColumn({
     onAdd: addNode,
     onMemo: commitMemo,
     onLink,
+    linkTargets,
+    onJump,
   };
 
   function renderStack(list: FlowNodeDTO[]) {

@@ -2,7 +2,20 @@
 // 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
 // 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
 import { useRef, useEffect, useState, useCallback } from "react";
-import { MARK_STYLES, MARK_BY_KEY, parseRich } from "@/lib/capitalism-richtext";
+import { MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX } from "@/lib/capitalism-richtext";
+
+// 주어진 마크 키가 적용 가능한가? 고정키(hl-*/c-*) 또는 link:<slug>.
+function isKnownKey(key: string | null | undefined): key is string {
+  return !!key && (key.startsWith(LINK_PREFIX) || !!MARK_BY_KEY[key]);
+}
+// 링크 span 스타일(편집기 내 미리보기 — 렌더러와 동일한 파란 밑줄).
+const LINK_STYLE: Record<string, string> = {
+  color: "#60a5fa",
+  textDecoration: "underline",
+  textDecorationColor: "rgba(96,165,250,0.6)",
+  textUnderlineOffset: "2px",
+  fontWeight: "600",
+};
 
 // \n 가 들어간 텍스트를 텍스트노드+<br> 조합으로 target에 추가.
 function appendTextWithBreaks(target: HTMLElement, text: string) {
@@ -17,7 +30,14 @@ function appendTextWithBreaks(target: HTMLElement, text: string) {
 function renderToEl(el: HTMLElement, raw: string) {
   el.innerHTML = "";
   for (const seg of parseRich(raw)) {
-    if (seg.mark && MARK_BY_KEY[seg.mark]) {
+    if (seg.mark === "link" && seg.linkSlug) {
+      // 내부 링크 — data-mark="link:<slug>" 로 저장해 직렬화 시 복원.
+      const span = document.createElement("span");
+      span.setAttribute("data-mark", `${LINK_PREFIX}${seg.linkSlug}`);
+      Object.assign(span.style, LINK_STYLE);
+      appendTextWithBreaks(span, seg.text);
+      el.appendChild(span);
+    } else if (seg.mark && MARK_BY_KEY[seg.mark]) {
       const span = document.createElement("span");
       span.setAttribute("data-mark", seg.mark);
       const st = MARK_BY_KEY[seg.mark].style as Record<string, string | number>;
@@ -48,7 +68,7 @@ function serializeEl(el: HTMLElement): string {
       const e = node as HTMLElement;
       const tag = e.tagName;
       const mark = e.getAttribute("data-mark");
-      if (mark && MARK_BY_KEY[mark]) {
+      if (isKnownKey(mark)) {
         out += `[[${mark}|${e.textContent || ""}]]`;
         return;
       }
@@ -70,8 +90,11 @@ function serializeEl(el: HTMLElement): string {
   return out;
 }
 
+// 링크 대상 후보 카드 — 상위(페이지)에서 전달. slug/라벨(연도+제목)만 필요.
+export interface LinkTarget { slug: string; year: number; title: string; }
+
 export function CapRichEditor({
-  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur,
+  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, linkTargets,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -79,10 +102,19 @@ export function CapRichEditor({
   rows?: number;
   autoFocus?: boolean;
   onBlur?: () => void;
+  // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
+  linkTargets?: LinkTarget[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [toolbar, setToolbar] = useState<{ x: number; y: number } | null>(null);
   const composingRef = useRef(false);
+  // 링크 카드 선택 패널 열림 여부 + 선택 구간 오프셋 보관(패널 조작 중 선택이 풀려도 복원).
+  const [linkPanel, setLinkPanel] = useState(false);
+  const [linkQuery, setLinkQuery] = useState("");
+  const savedRangeRef = useRef<{ start: number; end: number } | null>(null);
+  // onBlur 클로저가 최신 linkPanel 값을 읽도록 ref 동기화.
+  const linkPanelRef = useRef(false);
+  useEffect(() => { linkPanelRef.current = linkPanel; }, [linkPanel]);
 
   // value(외부) → DOM 초기화 (포커스 없을 때만 재렌더하여 커서 튐 방지).
   useEffect(() => {
@@ -180,10 +212,10 @@ export function CapRichEditor({
   // 선택 구간 [start,end) 에 표식 적용/해제. key=null 이면 표식 제거.
   // 현재 DOM을 평문+마크 세그먼트로 환산 → 선택 구간만 마크 재계산 → 마커 문자열로 직렬화 후 재렌더.
   // 이렇게 하면 이미 색/하이라이트가 입혀진 구간도 덮어쓰기·변경·해제가 모두 정확히 동작한다.
-  function applyMark(key: string | null) {
+  function applyMark(key: string | null, forcedOff?: { start: number; end: number }) {
     const el = ref.current;
     if (!el) return;
-    const off = selectionOffsets(el);
+    const off = forcedOff ?? selectionOffsets(el);
     if (!off) return;
     const { start, end } = off;
 
@@ -193,11 +225,13 @@ export function CapRichEditor({
     // 오프셋이 UTF-16 코드유닛 기준(selectionOffsets와 일치)이므로 코드유닛 단위로 분해.
     const chars: { ch: string; mark?: string }[] = [];
     for (const s of segs) {
-      for (let k = 0; k < s.text.length; k++) chars.push({ ch: s.text[k], mark: s.mark });
+      // link 세그먼트는 slug 를 포함한 직렬화 키(link:<slug>)로 보관해야 재편집 시 slug 유지됨.
+      const mk = s.mark === "link" && s.linkSlug ? `${LINK_PREFIX}${s.linkSlug}` : s.mark;
+      for (let k = 0; k < s.text.length; k++) chars.push({ ch: s.text[k], mark: mk });
     }
-    // 선택 구간에 새 마크 적용(또는 해제).
+    // 선택 구간에 새 마크 적용(또는 해제). key 는 hl-*/c-* 고정키 또는 link:<slug>.
     for (let i = start; i < end && i < chars.length; i++) {
-      chars[i].mark = key && MARK_BY_KEY[key] ? key : undefined;
+      chars[i].mark = isKnownKey(key) ? key : undefined;
     }
     // 글자 배열 → 마커 문자열 재직렬화(연속 동일 마크 묶음).
     let out = "";
@@ -207,7 +241,7 @@ export function CapRichEditor({
       let j = i;
       let buf = "";
       while (j < chars.length && chars[j].mark === mk) { buf += chars[j].ch; j++; }
-      out += mk && MARK_BY_KEY[mk] ? `[[${mk}|${buf}]]` : buf;
+      out += isKnownKey(mk) ? `[[${mk}|${buf}]]` : buf;
       i = j;
     }
 
@@ -228,7 +262,49 @@ export function CapRichEditor({
     onChange(plain);
   }
 
+  // 링크 버튼 클릭 → 현재 선택 구간을 보관하고 카드 선택 패널 열기.
+  function openLinkPanel() {
+    const el = ref.current;
+    if (!el) return;
+    const off = selectionOffsets(el);
+    if (!off) return;
+    savedRangeRef.current = off;
+    setLinkQuery("");
+    // ref 를 먼저 동기화: 패널 input의 autoFocus 가 유발하는 에디터 blur 가
+    // 이 렌더 사이클 안에서 일어나도 onBlur 가 linkPanelRef.current===true 를 보고 커밋을 건너뛰도록 한다.
+    linkPanelRef.current = true;
+    setLinkPanel(true);
+  }
+
+  // 카드 선택 → 보관한 구간에 link:<slug> 마크 적용.
+  function chooseLink(slug: string) {
+    const off = savedRangeRef.current;
+    linkPanelRef.current = false; // 포커스 복원 시 onBlur 커밋이 정상 동작하도록 먼저 해제
+    setLinkPanel(false);
+    setToolbar(null);
+    if (off) applyMark(`${LINK_PREFIX}${slug}`, off);
+    savedRangeRef.current = null;
+    // 적용 후 에디터로 포커스 복원 — 이어서 편집하거나 밖을 클릭하면 정상 커밋됨.
+    ref.current?.focus();
+  }
+
+  // 링크 패널 닫기(취소) — 포커스 복원.
+  function closeLinkPanel() {
+    linkPanelRef.current = false;
+    setLinkPanel(false);
+    savedRangeRef.current = null;
+    ref.current?.focus();
+  }
+
   const isEmpty = !value || parseRich(value).every((s) => !s.text);
+  const hasLinkTargets = !!(linkTargets && linkTargets.length);
+  const filteredTargets = hasLinkTargets
+    ? linkTargets!.filter((t) => {
+        const q = linkQuery.trim().toLowerCase();
+        if (!q) return true;
+        return t.title.toLowerCase().includes(q) || String(t.year).includes(q);
+      })
+    : [];
 
   return (
     <div className="relative">
@@ -243,7 +319,12 @@ export function CapRichEditor({
         onInput={() => { if (!composingRef.current) emit(); }}
         onCompositionStart={() => { composingRef.current = true; }}
         onCompositionEnd={() => { composingRef.current = false; emit(); }}
-        onBlur={() => { emit(); onBlur?.(); }}
+        onBlur={() => {
+          emit();
+          // 링크 패널 조작 중에는 편집 종료(커밋)를 미루다 — 패널 input 포커스로 인한 의도치 않은 blur 방지.
+          if (linkPanelRef.current) return;
+          onBlur?.();
+        }}
         data-richeditor
       />
       {isEmpty && placeholder ? (
@@ -274,10 +355,24 @@ export function CapRichEditor({
               {m.kind === "c" ? "A" : ""}
             </button>
           ))}
+          {hasLinkTargets ? (
+            <>
+              <span className="mx-0.5 h-4 w-px bg-border" />
+              <button
+                type="button"
+                title="선택 단어에 다른 카드로 가는 링크 걸기"
+                className="flex h-5 items-center gap-0.5 rounded-sm px-1 text-[10px] text-sky-400 hover:bg-muted hover:text-sky-300"
+                onClick={() => openLinkPanel()}
+                data-testid="mark-link"
+              >
+                🔗 링크
+              </button>
+            </>
+          ) : null}
           <span className="mx-0.5 h-4 w-px bg-border" />
           <button
             type="button"
-            title="선택 구간 표식 제거"
+            title="선택 구간 표식 제거(링크 포함)"
             className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted"
             onClick={() => applyMark(null)}
             data-testid="mark-clear-selection"
@@ -293,6 +388,54 @@ export function CapRichEditor({
           >
             전체초기화
           </button>
+        </div>
+      ) : null}
+
+      {/* 카드 선택 패널 — 링크 버튼 클릭 시 표시. 점프할 카드를 고른다. */}
+      {linkPanel && hasLinkTargets ? (
+        <div
+          className="fixed z-[110] flex w-64 flex-col rounded-md border border-border bg-popover p-2 shadow-xl"
+          style={{ left: toolbar ? toolbar.x : 200, top: (toolbar ? toolbar.y : 200) + 40, transform: "translate(-50%, 0)" }}
+          onMouseDown={(e) => e.preventDefault() /* 선택 유지 */}
+          data-testid="link-panel"
+        >
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground">어떤 카드로 연결?</span>
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={() => closeLinkPanel()}
+            >
+              ✕
+            </button>
+          </div>
+          <input
+            type="text"
+            autoFocus
+            value={linkQuery}
+            onChange={(e) => setLinkQuery(e.target.value)}
+            placeholder="연도·제목 검색"
+            className="mb-1.5 w-full rounded border border-border bg-background px-2 py-1 text-[12px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+            data-testid="link-search"
+          />
+          <div className="max-h-44 overflow-y-auto">
+            {filteredTargets.length === 0 ? (
+              <div className="px-1 py-2 text-center text-[11px] text-muted-foreground/60">일치하는 카드 없음</div>
+            ) : (
+              filteredTargets.map((t) => (
+                <button
+                  key={t.slug}
+                  type="button"
+                  className="flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left hover:bg-muted"
+                  onClick={() => chooseLink(t.slug)}
+                  data-testid={`link-opt-${t.slug}`}
+                >
+                  <span className="shrink-0 text-[11px] font-semibold text-sky-400">{t.year}</span>
+                  <span className="truncate text-[12px] text-foreground">{t.title}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       ) : null}
     </div>
