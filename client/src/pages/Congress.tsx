@@ -360,6 +360,50 @@ function CommitteeDetail({ committee, trades, quarters, periodLabel, ctx, onBack
   );
 }
 
+// ---------- member search/list view ----------
+// 위원회별과 같은 패턴: 의원 검색 → 거래 있는 의원 카드(거래수·매수/매도) → 클릭 시 의원 상세.
+function MemberCards({ politicians, trades, ctx, onPick, search }: {
+  politicians: Politician[]; trades: Trade[]; ctx: Ctx; onPick: (slug: string) => void; search: string;
+}) {
+  const q = search.trim().toLowerCase();
+  const stat = new Map<string, { buy: number; sell: number; n: number }>();
+  for (const t of trades) {
+    const e = stat.get(t.slug) || { buy: 0, sell: 0, n: 0 };
+    const v = t.amountLow == null ? 0 : Math.round((t.amountLow + (t.amountHigh ?? t.amountLow)) / 2);
+    if (t.side === "sell") e.sell += v; else e.buy += v;
+    e.n++; stat.set(t.slug, e);
+  }
+  const list = politicians
+    .map((p) => ({ p, s: stat.get(p.slug) || { buy: 0, sell: 0, n: 0 } }))
+    .filter((x) => x.s.n > 0) // 거래 있는 의원만
+    .filter((x) => {
+      if (!q) return true;
+      const cmtKo = x.p.committees.map((c) => ctx.cmtById.get(c)?.ko ?? "").join(" ");
+      return `${x.p.name} ${x.p.party ?? ""} ${x.p.state ?? ""} ${x.p.chamber} ${cmtKo}`.toLowerCase().includes(q);
+    })
+    .sort((a, b) => b.s.n - a.s.n || (b.s.buy + b.s.sell) - (a.s.buy + a.s.sell));
+  if (!list.length) return <div className="text-sm text-muted-foreground py-8 text-center">검색 결과가 없습니다</div>;
+  return (
+    <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+      {list.map(({ p, s }) => (
+        <Card key={p.slug} className="p-4 cursor-pointer hover:border-primary transition-colors" onClick={() => onPick(p.slug)}>
+          <div className="flex items-center gap-1.5 font-semibold text-sm mb-1">
+            <span className="h-2 w-2 rounded-full shrink-0" style={{ background: partyColor(p.party) }} />
+            <span className="truncate">{p.name}</span><PartyPill p={p.party} state={p.state} />
+            <ChevronRight className="h-3 w-3 text-primary ml-auto shrink-0" />
+          </div>
+          <div className="text-[11px] text-muted-foreground mb-1.5">{p.chamber === "senate" ? "상원" : "하원"}{p.committees.length ? ` · 위원회 ${p.committees.length}` : ""}</div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px]">
+            <span>거래 <b className="text-foreground">{s.n}</b></span>
+            <span style={{ color: BUY }}>매수 {fmtMoney(s.buy)}</span>
+            <span style={{ color: SELL }}>매도 {fmtMoney(s.sell)}</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // ---------- member detail ----------
 function MemberDetail({ slug, trades, quarters, periodLabel, ctx, onBack }: {
   slug: string; trades: Trade[]; quarters: string[]; periodLabel: string; ctx: Ctx; onBack: () => void;
@@ -437,13 +481,15 @@ export default function Congress() {
   });
   const { data: sectors } = useQuery<{ symbol: string; sector: string | null }[]>({ queryKey: ["/api/congress/sectors"] });
 
-  const [view, setView] = useState<"tickers" | "committees" | "member">("tickers");
+  const [view, setView] = useState<"tickers" | "committees" | "members" | "member">("tickers");
   const [selTicker, setSelTicker] = useState<string | null>(null);
   const [selCommittee, setSelCommittee] = useState<string | null>(null);
   const [selMember, setSelMember] = useState<string | null>(null);
   const [returnToMember, setReturnToMember] = useState<string | null>(null);
   const [returnToCommittee, setReturnToCommittee] = useState<string | null>(null);
+  const [memberOrigin, setMemberOrigin] = useState<"members" | null>(null); // 의원 상세를 '의원별' 목록에서 열었나(뒤로가기용)
   const [cmtSearch, setCmtSearch] = useState<string>("");
+  const [memberSearch, setMemberSearch] = useState<string>("");
   const [sort, setSort] = useState<SortMetric>("vol");
   const [committeeFilter, setCommitteeFilter] = useState<string>("all");
   const [freshFilter, setFreshFilter] = useState<"all" | "21" | "7">("all"); // 거래일→공시일 gap 필터
@@ -477,7 +523,7 @@ export default function Congress() {
 
   const periodTrades = useMemo(() => { const set = new Set(AQ); return trades.filter((t) => set.has(quarterOf(t.txnDate))); }, [trades, AQ]);
 
-  const openMember = (slug: string) => { setReturnToMember(null); setReturnToCommittee(null); setSelMember(slug); setView("member"); };
+  const openMember = (slug: string) => { setReturnToMember(null); setReturnToCommittee(null); setMemberOrigin(null); setSelMember(slug); setView("member"); };
   const openTicker = (sym: string) => {
     // 어디서 종목으로 들어왔는지 기억 → 종목 화면에 복귀 버튼 표시
     setReturnToMember(view === "member" ? selMember : null);
@@ -514,6 +560,7 @@ export default function Congress() {
         <div className="flex gap-1 ml-2">
           <Button variant={view === "tickers" ? "secondary" : "ghost"} size="sm" onClick={() => { setView("tickers"); setReturnToMember(null); setReturnToCommittee(null); }}>📊 종목 랭킹</Button>
           <Button variant={view === "committees" ? "secondary" : "ghost"} size="sm" onClick={() => { setView("committees"); setSelCommittee(null); }}>🏛️ 위원회별</Button>
+          <Button variant={view === "members" ? "secondary" : "ghost"} size="sm" onClick={() => { setView("members"); }}>👤 의원별</Button>
         </div>
         <div className="ml-auto flex items-end gap-3 flex-wrap">
           <div>
@@ -613,9 +660,19 @@ export default function Congress() {
           )
       )}
 
+      {view === "members" && (
+        <div>
+          <div className="mb-4 max-w-sm">
+            <Input value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} placeholder="의원 검색 (이름·정당·주·위원회 …)" className="h-9" />
+          </div>
+          <MemberCards politicians={pols} trades={periodTrades} ctx={ctx} search={memberSearch}
+            onPick={(slug) => { setMemberOrigin("members"); setReturnToMember(null); setReturnToCommittee(null); setSelMember(slug); setView("member"); }} />
+        </div>
+      )}
+
       {view === "member" && selMember && (
         <MemberDetail slug={selMember} trades={periodTrades} quarters={AQ} periodLabel={periodLabel} ctx={ctx}
-          onBack={() => { if (returnToMember) { /* came from ticker */ } setView(selCommittee ? "committees" : "tickers"); }} />
+          onBack={() => setView(memberOrigin === "members" ? "members" : selCommittee ? "committees" : "tickers")} />
       )}
     </div>
   );
