@@ -129,13 +129,21 @@ export default function Capitalism() {
     const viewLeft = board.scrollLeft;
     const viewRight = viewLeft + board.clientWidth;
     const pad = 24; // 가장자리 여백
+    // 마지막 카드(가장 오른쪽 flow)가 active 면, 그 뒤에 붙은 "사건 추가" 칸까지 보이도록
+    // 카드 오른쪽이 아니라 보드 끝(scrollWidth)까지 스크롤한다.
+    const isLastCard = !!flows && flows.length > 0 && activeSlug === flows[flows.length - 1].slug;
     let next = viewLeft;
-    if (cardLeft < viewLeft + pad) next = cardLeft - pad;            // 왼쪽 밖 → 당겨오기
-    else if (cardRight > viewRight - pad) next = cardRight - board.clientWidth + pad; // 오른쪽 밖 → 밀어주기
+    if (isLastCard) {
+      next = board.scrollWidth - board.clientWidth; // 맨 끝까지 → "사건 추가" 칸 노출
+    } else if (cardLeft < viewLeft + pad) {
+      next = cardLeft - pad;            // 왼쪽 밖 → 당겨오기
+    } else if (cardRight > viewRight - pad) {
+      next = cardRight - board.clientWidth + pad; // 오른쪽 밖 → 밀어주기
+    }
     if (Math.abs(next - viewLeft) > 1) {
       board.scrollTo({ left: Math.max(0, next), behavior: "smooth" });
     }
-  }, [activeSlug]);
+  }, [activeSlug, flows]);
 
   // 연도(대분류) → 사건(소분류) 그룹핑. flows 는 서버에서 날짜순 정렬되어 옴.
   const groups = useMemo(() => {
