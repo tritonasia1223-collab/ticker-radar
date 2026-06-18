@@ -21,12 +21,19 @@ export function CapChartPanel({
 }) {
   const data = useMemo(() => {
     if (!series) return [];
-    return series
+    const all = series
       .map(([date, value]) => {
         const y = Number(date.slice(0, 4)) + (Number(date.slice(5, 7)) - 1) / 12;
         return { t: y, v: value };
       })
-      .filter((d) => d.t >= fromYear && d.t <= toYear && d.v != null && !Number.isNaN(d.v));
+      .filter((d) => d.v != null && !Number.isNaN(d.v));
+    // 창 경계 바깥 한 점씩 포함해 라인이 창 끝까지 자연스럽게 이어지게 한다(잘림 방지).
+    const inFrom = all.findIndex((d) => d.t >= fromYear);
+    if (inFrom === -1) return [];
+    let lo = inFrom > 0 ? inFrom - 1 : 0;
+    let hi = all.length - 1;
+    for (let i = all.length - 1; i >= 0; i--) { if (all[i].t <= toYear) { hi = i < all.length - 1 ? i + 1 : i; break; } }
+    return all.slice(lo, hi + 1);
   }, [series, fromYear, toYear]);
 
   const empty = data.length === 0;
@@ -36,20 +43,23 @@ export function CapChartPanel({
   const yDomain = useMemo<[number | string, number | string]>(() => {
     if (data.length === 0) return ["auto", "auto"];
     // zeroLine 지표: 0을 반드시 포함(음/양 구분·영역 채우기 기준선 유지)
+    // 현재 창(fromYear~toYear) 안의 점만 Y범위에 반영 → 스크롤 시 Y축도 보이는 구간에 맞춰 자연스럽게 조정됨.
+    const vis = data.filter((d) => d.t >= fromYear && d.t <= toYear);
+    const pts = vis.length > 0 ? vis : data;
     if (panel.zeroLine) {
       let mn = 0, mx = 0;
-      for (const d of data) { if (d.v < mn) mn = d.v; if (d.v > mx) mx = d.v; }
+      for (const d of pts) { if (d.v < mn) mn = d.v; if (d.v > mx) mx = d.v; }
       return [mn, "auto"];
     }
     let lo = Infinity, hi = -Infinity;
-    for (const d of data) { if (d.v < lo) lo = d.v; if (d.v > hi) hi = d.v; }
+    for (const d of pts) { if (d.v < lo) lo = d.v; if (d.v > hi) hi = d.v; }
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return ["auto", "auto"];
     if (lo === hi) { const p = Math.abs(lo) * 0.05 || 1; return [lo - p, hi + p]; }
     const pad = (hi - lo) * 0.08;
     const niceLo = Math.floor((lo - pad) / 5) * 5;
     const niceHi = Math.ceil((hi + pad) / 5) * 5;
     return [niceLo, niceHi];
-  }, [data, panel.zeroLine]);
+  }, [data, panel.zeroLine, fromYear, toYear]);
 
   return (
     <div className="rounded-lg border border-border bg-card/40 p-3" data-testid={`panel-${panel.id}`}>
@@ -69,7 +79,7 @@ export function CapChartPanel({
           <ComposedChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -16 }}>
             <CartesianGrid strokeDasharray="2 4" stroke="currentColor" className="text-border" opacity={0.4} />
             <XAxis
-              dataKey="t" type="number" domain={[fromYear, toYear]}
+              dataKey="t" type="number" domain={[fromYear, toYear]} allowDataOverflow
               tickFormatter={(v) => String(Math.round(v))}
               tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground"
               tickCount={6}
@@ -92,9 +102,9 @@ export function CapChartPanel({
               <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
             )}
             {panel.kind === "area" ? (
-              <Area type="monotone" dataKey="v" stroke={panel.color} fill={panel.color} fillOpacity={0.18} strokeWidth={1.5} dot={false} />
+              <Area type="monotone" dataKey="v" stroke={panel.color} fill={panel.color} fillOpacity={0.18} strokeWidth={1.5} dot={false} isAnimationActive={false} />
             ) : (
-              <Line type="monotone" dataKey="v" stroke={panel.color} strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="v" stroke={panel.color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
             )}
           </ComposedChart>
         </ResponsiveContainer>

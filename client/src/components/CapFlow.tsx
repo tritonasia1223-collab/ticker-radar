@@ -3,7 +3,7 @@
 //  - 칸 클릭 → 그 자리에서 리치텍스트 편집(드래그 색상 툴바). 포커스 해제 시 저장.
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 그 칸 삭제(내용 비워도 자동 삭제). 마지막 칸이면 플로우 삭제.
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { X, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CapRichText } from "@/components/CapRichText";
@@ -46,6 +46,19 @@ function Node({
   const [memoOpen, setMemoOpen] = useState(false);
   const [memoDraft, setMemoDraft] = useState(node.ref ?? "");
   const hasMemo = !!(node.ref && node.ref.trim());
+  // 메모 textarea 자동 높이 조절 — 내용 분량만큼 늘어나고(최소 4줄), 너무 길면 그때만 스크롤.
+  const memoRef = useRef<HTMLTextAreaElement | null>(null);
+  const autoGrow = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";              // 먼저 줄여야 줄어드는 경우도 반영됨
+    const max = 360;                      // 최대 높이(px) 넘으면 스크롤
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  };
+  // 팝오버가 열리거나 초안이 바뀔 때 높이 동기화(렌더 직후 측정).
+  useLayoutEffect(() => {
+    if (memoOpen) autoGrow(memoRef.current);
+  }, [memoOpen, memoDraft]);
   // 드래그앤드롭 화살표 그리기 기능 — 현재 비활성(주석처리). 필요 시 아래 줄 복구.
   // const canDrag = editable && !editing && !!onLink;
   const canDrag = false;
@@ -163,12 +176,13 @@ function Node({
             {editable ? (
               <>
                 <textarea
+                  ref={memoRef}
                   value={memoDraft}
-                  onChange={(e) => setMemoDraft(e.target.value)}
+                  onChange={(e) => { setMemoDraft(e.target.value); autoGrow(e.target); }}
                   placeholder="이 칸에 대한 보충 설명·출처를 적으세요"
                   rows={4}
                   autoFocus
-                  className="w-full resize-y rounded border border-border bg-background px-2 py-1.5 text-[12px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="block max-h-[360px] min-h-[88px] w-full resize-y overflow-hidden rounded border border-border bg-background px-2 py-1.5 text-[12px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
                   data-testid={`memo-input-${node.id}`}
                 />
                 <div className="mt-2 flex items-center justify-between">
@@ -192,7 +206,7 @@ function Node({
                 </div>
               </>
             ) : hasMemo ? (
-              <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-foreground" data-testid={`memo-text-${node.id}`}>
+              <p className="max-h-[360px] overflow-y-auto whitespace-pre-wrap text-[12px] leading-relaxed text-foreground" data-testid={`memo-text-${node.id}`}>
                 {node.ref}
               </p>
             ) : (

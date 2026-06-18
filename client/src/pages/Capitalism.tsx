@@ -104,6 +104,21 @@ export default function Capitalism() {
     return [Math.floor(Math.min(...years, YEAR_MIN)), Math.ceil(Math.max(...years, YEAR_MAX))];
   }, [flows]);
 
+  // 그래프 X축은 현재 위치(playYear) 기준 ±HALF_WINDOW 년의 이동 창.
+  // playYear가 연속값이라 창도 연속으로 미끄러져 부드럽게 스크롤된다.
+  // 데이터 전체 경계(fromY~toY) 안에서 창 폭(10년)을 유지하도록 양끝에서 밀어준다.
+  const HALF_WINDOW = 5;
+  const [viewFrom, viewTo] = useMemo(() => {
+    const span = HALF_WINDOW * 2;
+    // 전체 데이터가 창보다 좁으면 그냥 전체를 보여준다.
+    if (toY - fromY <= span) return [fromY, toY];
+    let lo = playYear - HALF_WINDOW;
+    let hi = playYear + HALF_WINDOW;
+    if (lo < fromY) { lo = fromY; hi = fromY + span; }
+    if (hi > toY) { hi = toY; lo = toY - span; }
+    return [lo, hi];
+  }, [playYear, fromY, toY]);
+
   const activeSlug = useMemo(() => {
     if (!flows || flows.length === 0) return null;
     let best = flows[0], bestD = Infinity;
@@ -584,8 +599,8 @@ export default function Capitalism() {
               key={p.id}
               panel={p}
               series={SERIES[p.series]}
-              fromYear={fromY}
-              toYear={toY}
+              fromYear={viewFrom}
+              toYear={viewTo}
               playYear={playYear}
               band={activeBand}
             />
