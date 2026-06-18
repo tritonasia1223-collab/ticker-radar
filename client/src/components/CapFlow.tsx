@@ -4,7 +4,8 @@
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 그 칸 삭제(내용 비워도 자동 삭제). 마지막 칸이면 플로우 삭제.
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, MessageSquare } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor } from "@/components/CapRichEditor";
 import { newNodeKey } from "@/lib/capitalism-flowops";
@@ -25,7 +26,7 @@ function blankNode(col = "center"): FlowNodeDTO {
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onLink,
+  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemo, onLink,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -35,11 +36,16 @@ function Node({
   onCommit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
+  onMemo?: (id: string, memo: string) => void;
   onLink?: LinkNodes;
 }) {
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
+  // 메모 팝오버 상태 + 편집 초안
+  const [memoOpen, setMemoOpen] = useState(false);
+  const [memoDraft, setMemoDraft] = useState(node.ref ?? "");
+  const hasMemo = !!(node.ref && node.ref.trim());
   // 드래그앤드롭 화살표 그리기 기능 — 현재 비활성(주석처리). 필요 시 아래 줄 복구.
   // const canDrag = editable && !editing && !!onLink;
   const canDrag = false;
@@ -117,6 +123,84 @@ function Node({
           )}
         </div>
       )}
+
+      {/* 메모(보충 설명) 버튼 — 상시 표시(편집모드 제외). 메모가 있으면 채운 색, 없으면 흐림.
+          구글 시트/슬라이드 코멘트처럼 클릭 시 말풍선(Popover)으로 읽기·편집. */}
+      {!editing ? (
+        <Popover
+          open={memoOpen}
+          onOpenChange={(o) => {
+            setMemoOpen(o);
+            if (o) setMemoDraft(node.ref ?? "");           // 열 때 최신값 동기화
+            else if (editable && onMemo) onMemo(node.id, memoDraft); // 닫을 때 저장
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              title={hasMemo ? "메모 보기/편집" : "메모 추가"}
+              onClick={(e) => e.stopPropagation()}
+              className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+                hasMemo
+                  ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
+                  : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
+              }`}
+              data-testid={`memo-btn-${node.id}`}
+            >
+              <MessageSquare className="h-2.5 w-2.5" strokeWidth={2.5} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="right"
+            align="start"
+            className="w-64 p-3"
+            onClick={(e) => e.stopPropagation()}
+            data-testid={`memo-pop-${node.id}`}
+          >
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              <MessageSquare className="h-3 w-3" /> 보충 메모
+            </div>
+            {editable ? (
+              <>
+                <textarea
+                  value={memoDraft}
+                  onChange={(e) => setMemoDraft(e.target.value)}
+                  placeholder="이 칸에 대한 보충 설명·출처를 적으세요"
+                  rows={4}
+                  autoFocus
+                  className="w-full resize-y rounded border border-border bg-background px-2 py-1.5 text-[12px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                  data-testid={`memo-input-${node.id}`}
+                />
+                <div className="mt-2 flex items-center justify-between">
+                  <button
+                    type="button"
+                    className="text-[11px] text-muted-foreground hover:text-destructive disabled:opacity-40"
+                    disabled={!hasMemo && !memoDraft.trim()}
+                    onClick={() => { setMemoDraft(""); onMemo?.(node.id, ""); setMemoOpen(false); }}
+                    data-testid={`memo-clear-${node.id}`}
+                  >
+                    메모 삭제
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90"
+                    onClick={() => { onMemo?.(node.id, memoDraft); setMemoOpen(false); }}
+                    data-testid={`memo-save-${node.id}`}
+                  >
+                    저장
+                  </button>
+                </div>
+              </>
+            ) : hasMemo ? (
+              <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-foreground" data-testid={`memo-text-${node.id}`}>
+                {node.ref}
+              </p>
+            ) : (
+              <p className="text-[12px] text-muted-foreground/60">메모가 없습니다.</p>
+            )}
+          </PopoverContent>
+        </Popover>
+      ) : null}
 
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
       {editable && !editing ? (
@@ -304,12 +388,22 @@ export function FlowColumn({
     onMutateMeta(flow, { title: v });
   }
 
+  // 노드 메모(보충 설명) 커밋. ref 컬럼에 저장. 빈 문자열 → null(메모 삭제).
+  function commitMemo(id: string, memo: string) {
+    if (!onMutateNodes) return;
+    const next: string | null = memo.trim() || null;
+    const cur = flow.nodes.find((n) => n.id === id);
+    if (!cur || (cur.ref ?? null) === next) return; // 변경 없음
+    onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, ref: next } : n)));
+  }
+
   const nodeProps = {
     flow, editable,
     onStartEdit: setEditingId,
     onCommit: commit,
     onDelete: deleteNode,
     onAdd: addNode,
+    onMemo: commitMemo,
     onLink,
   };
 

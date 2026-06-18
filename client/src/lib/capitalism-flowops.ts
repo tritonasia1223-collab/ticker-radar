@@ -45,7 +45,7 @@ export function toInput(flow: FlowDTO, nodes: FlowNodeDTO[]): FlowInputDTO {
       kind: n.kind,
       inLabel: n.inLabel ?? null,
       text: n.text,
-      ref: null,
+      ref: n.ref ?? null,   // 노드 보충 메모(있으면 유지, 없으면 null)
       col: flow.layout === "branch" ? (n.col || "center") : null,
     })),
     edges: rebuildEdges(nodes, flow.layout),

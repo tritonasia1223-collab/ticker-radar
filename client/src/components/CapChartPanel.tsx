@@ -31,6 +31,26 @@ export function CapChartPanel({
 
   const empty = data.length === 0;
 
+  // Y축 도메인: zeroLine 지표(GDP·CPI·무역수지 등 0이 기준인 것)는 0 포함 자동,
+  // 그 외(달러지수·금리·통화량 등 0과 멀리 떨어진 지표)는 보이는 구간 min~max에 여백을 준 자동 범위.
+  const yDomain = useMemo<[number | string, number | string]>(() => {
+    if (data.length === 0) return ["auto", "auto"];
+    // zeroLine 지표: 0을 반드시 포함(음/양 구분·영역 채우기 기준선 유지)
+    if (panel.zeroLine) {
+      let mn = 0, mx = 0;
+      for (const d of data) { if (d.v < mn) mn = d.v; if (d.v > mx) mx = d.v; }
+      return [mn, "auto"];
+    }
+    let lo = Infinity, hi = -Infinity;
+    for (const d of data) { if (d.v < lo) lo = d.v; if (d.v > hi) hi = d.v; }
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) return ["auto", "auto"];
+    if (lo === hi) { const p = Math.abs(lo) * 0.05 || 1; return [lo - p, hi + p]; }
+    const pad = (hi - lo) * 0.08;
+    const niceLo = Math.floor((lo - pad) / 5) * 5;
+    const niceHi = Math.ceil((hi + pad) / 5) * 5;
+    return [niceLo, niceHi];
+  }, [data, panel.zeroLine]);
+
   return (
     <div className="rounded-lg border border-border bg-card/40 p-3" data-testid={`panel-${panel.id}`}>
       <div className="flex items-center justify-between mb-1">
@@ -54,7 +74,7 @@ export function CapChartPanel({
               tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground"
               tickCount={6}
             />
-            <YAxis tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground" width={40} />
+            <YAxis domain={yDomain} allowDataOverflow tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground" width={40} />
             <Tooltip
               contentStyle={{ fontSize: 11, borderRadius: 6 }}
               labelFormatter={(v) => `${Number(v).toFixed(1)}년`}
