@@ -455,8 +455,6 @@ export function FlowColumn({
   const [autoEditMemoId, setAutoEditMemoId] = useState<string | null>(null);
   // 노드 표 버튼으로 막 추가/편집을 시작한 노드 id. 첫 셀 자동 포커스용.
   const [autoEditTableId, setAutoEditTableId] = useState<string | null>(null);
-  // 분기열(left/right) 시작 오프셋(px) — 그 열이 갈라져 나온 기준열 노드의 세로 위치. 측정으로 채운다.
-  const [branchTops, setBranchTops] = useState<Record<string, number>>({});
   // 노션식 양방향 호버 하이라이트 — 현재 호버 중인 노드 id. 노드↔메모 양쪽을 동시에 강조한다.
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   // 본문 스택 DOM 참조(메모 컬럼이 노드 세로 위치를 측정하는 좌표 기준). callback ref로 세팅해 최초 마운트 시점에도 메모 앵커링이 동작하게 한다.
@@ -623,41 +621,6 @@ export function FlowColumn({
     focusedId: focusedNodeId,
   };
 
-  // 분기열 시작 위치 측정 — 각 분기열(left/right)이 갈라져 나온 기준열 노드의 세로 위치를
-  // 읽어 그 열의 margin-top 으로 쓴다. 분기 기준점 = 배열에서 그 열 첫 노드 바로 앞의 center 노드.
-  // (기준열은 분기열 margin 의 영향을 받지 않으므로 측정값이 안정 → 무한 루프 없음.)
-  const measureBranch = useRef<() => void>(() => {});
-  measureBranch.current = () => {
-    if (flow.layout !== "branch" || !bodyEl) return;
-    const bodyRect = bodyEl.getBoundingClientRect();
-    const next: Record<string, number> = {};
-    for (const col of ["left", "right"]) {
-      const firstIdx = flow.nodes.findIndex((n) => (n.col || "center") === col);
-      if (firstIdx < 0) continue;
-      let anchorId: string | null = null;
-      for (let i = firstIdx - 1; i >= 0; i--) {
-        if ((flow.nodes[i].col || "center") === "center") { anchorId = flow.nodes[i].id; break; }
-      }
-      if (!anchorId) continue;
-      const el = bodyEl.querySelector<HTMLElement>(`[data-node-id="${flow.slug}::${anchorId}"]`);
-      if (!el) continue;
-      next[col] = Math.max(0, el.getBoundingClientRect().top - bodyRect.top);
-    }
-    setBranchTops((prev) => {
-      const keys = Object.keys(next);
-      if (keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k])) return prev;
-      return next;
-    });
-  };
-  useLayoutEffect(() => { measureBranch.current(); });
-  useLayoutEffect(() => {
-    if (!bodyEl || typeof ResizeObserver === "undefined") return;
-    // 노드 내용 높이가 바뀌면(편집 등) 기준점 위치도 바뀌므로 본문 크기 변화를 관찰해 재측정.
-    const ro = new ResizeObserver(() => measureBranch.current());
-    ro.observe(bodyEl);
-    return () => ro.disconnect();
-  }, [bodyEl]);
-
   // 본문을 "행" 배열로 만든다. 각 행은 본문 노드(JSX)와 그 행에 속한 노드 목록(메모 대응용)을 갖는다.
   // 행 단위로 [본문행 | 메모슬롯]을 나란히 두므로, 메모가 자기 노드 행 높이에 대략 정렬되고
   // 위쪽 메모가 사라져도 아래 메모가 위로 끌려올라가지 않는다.
@@ -673,33 +636,58 @@ export function FlowColumn({
   // 본문 행 배열 구성(branch=행 그리드, stack=세로 1열).
   const bodyRows: BodyRow[] = [];
   if (flow.layout === "branch") {
-    // 컬럼별 독립 세로 스택 — 컬럼 간 높이 결합을 끊는다. 각 열은 자기 노드만으로
-    // 높이가 정해지므로, 분기열 노드가 길어져도 기준열 노드 간격이 벌어지지 않는다.
-    // (이전엔 행 그리드라 한 행 높이=max(기준열,분기열)였고, 긴 분기 셀이 기준열을 아래로 밀었다.)
-    const colNodes: Record<string, FlowNodeDTO[]> = { left: [], center: [], right: [] };
-    flow.nodes.forEach((n) => { (colNodes[n.col || "center"] ??= []).push(n); });
-    bodyRows.push({
-      nodes: flow.nodes,
-      content: (
-        <div className="flex items-start justify-center gap-3">
-          {usedCols.map((col) => (
-            <div
-              key={col}
-              className="flex w-[240px] shrink-0 flex-col"
-              // 분기열은 갈라진 기준점(center 노드) 높이만큼 내려서 시작. 기준열은 0.
-              style={col !== "center" ? { marginTop: branchTops[col] ?? 0 } : undefined}
-            >
-              {colNodes[col].map((n, i) => (
-                // key={n.id}: 노드별 고유 키(같은 위치에 다른 노드가 와도 편집 draft 오염 방지).
-                <div key={n.id}>
-                  {i > 0 ? <VArrow /> : null}
-                  <Node {...nodeProps} node={n} editing={editingId === n.id} />
+    // 행(row) 기반 그리드: 배열 순서대로 순회하며 center 노드는 새 행을 시작하고,
+    // left/right(분기) 노드는 가장 최근 행의 해당 컬럼 셀에 배치한다.
+    type Row = Record<string, FlowNodeDTO | undefined>;
+    const rows: Row[] = [];
+    let cur: Row | null = null;
+    for (const n of flow.nodes) {
+      const col = n.col || "center";
+      if (cur === null || col === "center" || cur[col] !== undefined) {
+        cur = {};
+        rows.push(cur);
+      }
+      cur[col] = n;
+    }
+    rows.forEach((row, ri) => {
+      const rowNodes = usedCols
+        .map((col) => row[col])
+        .filter((n): n is FlowNodeDTO => !!n);
+      // 화살표는 "같은 열에서 바로 위·아래 행에 실제 노드가 연속될 때"만 긋는다.
+      // (현재 행에 그 열 노드가 있고 + 바로 직전 행의 같은 열에도 노드가 있는 경우).
+      // 중간에 빈 행이 끼면(멈춘 흐름) 화살표를 그리지 않는다.
+      const hasArrow = (col: string) =>
+        !!row[col] && ri > 0 && !!rows[ri - 1][col];
+      const anyArrow = usedCols.some(hasArrow);
+      bodyRows.push({
+        nodes: rowNodes,
+        content: (
+          <div>
+            {anyArrow ? (
+              <div className="flex items-start justify-center gap-3">
+                {usedCols.map((col) => (
+                  <div key={col} className="w-[240px] shrink-0">
+                    {hasArrow(col) ? <VArrow /> : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex items-start justify-center gap-3">
+              {usedCols.map((col) => (
+                <div key={col} className="w-[240px] shrink-0">
+                  {row[col] ? (
+                    // key={node.id}: 노드별 고유 키로 컴포넌트를 식별한다. 없으면 행/컬럼 위치
+                    // 기반으로 reconcile되어, 같은 위치에 다른 노드가 들어올 때 이전 노드의
+                    // 편집 draft가 그대로 재사용되는 버그가 생긴다(분기 추가 후 새 노드에
+                    // 옛 노드 텍스트가 채워지던 문제).
+                    <Node key={row[col]!.id} {...nodeProps} node={row[col]!} editing={editingId === row[col]!.id} />
+                  ) : null}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-      ),
+          </div>
+        ),
+      });
     });
   } else {
     flow.nodes.forEach((n, i) => {
