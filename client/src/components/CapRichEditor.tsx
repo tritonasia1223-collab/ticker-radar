@@ -20,6 +20,17 @@ const LINK_STYLE: Record<string, string> = {
   fontWeight: "600",
 };
 
+// 가장 가까운 세로 스크롤 조상(세로 타임라인 보드 등) — 포커스/캐럿 설정 시 점프 방지용 위치 보존 대상.
+function findScrollParent(el: HTMLElement | null): HTMLElement | null {
+  let node = el?.parentElement ?? null;
+  while (node) {
+    const oy = getComputedStyle(node).overflowY;
+    if ((oy === "auto" || oy === "scroll") && node.scrollHeight > node.clientHeight) return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 // 빈 불릿 본문의 캐럿 자리표시용 제로폭 공백.
 // 빈 텍스트 노드(createTextNode(""))에는 캐럿이 안정적으로 들어가지 않아
 // 입력한 글자가 본문 span 밖으로 새는 문제가 있다. \u200b 한 글자를 넣어두면
@@ -232,11 +243,14 @@ export function CapRichEditor({
   }, [value]);
 
   // 자동 포커스: 인라인 편집 진입 시 바로 커서를 끝으로.
-  // preventScroll: 포커스가 스크롤 컨테이너(세로 타임라인)를 점프시키지 않게 한다.
+  // 포커스(preventScroll)뿐 아니라 캐럿(addRange)도 스크롤을 당기므로, 스크롤 컨테이너
+  // 위치를 저장했다가 즉시 복원해 편집 진입 시 화면이 위/아래로 점프하는 것을 막는다.
   useEffect(() => {
     if (!autoFocus) return;
     const el = ref.current;
     if (!el) return;
+    const scroller = findScrollParent(el);
+    const prevTop = scroller?.scrollTop ?? 0;
     el.focus({ preventScroll: true });
     const range = document.createRange();
     range.selectNodeContents(el);
@@ -244,6 +258,7 @@ export function CapRichEditor({
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
+    if (scroller && scroller.scrollTop !== prevTop) scroller.scrollTop = prevTop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
