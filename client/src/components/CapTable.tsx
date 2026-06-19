@@ -153,11 +153,11 @@ export function TableCard({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => { editingRef.current = false; onCommit(node.id, t); }}
           placeholder="표 제목 (선택)"
-          className="mb-1 w-full rounded border-0 bg-transparent px-1 py-0.5 text-[12px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:bg-background/60"
+          className="mb-1 w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-[12px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:bg-background/60"
           data-testid={`table-title-${node.id}`}
         />
       ) : (t.title && t.title.trim() ? (
-        <div className="mb-1 px-1 text-[12px] font-semibold text-foreground" data-testid={`table-title-${node.id}`}>{t.title}</div>
+        <div className="mb-1 px-1 text-center text-[12px] font-semibold text-foreground" data-testid={`table-title-${node.id}`}>{t.title}</div>
       ) : null)}
 
       {t.cells.map((row, r) => (
