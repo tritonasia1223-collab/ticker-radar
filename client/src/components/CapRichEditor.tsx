@@ -4,7 +4,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX,
-  parseBulletLine, makeBulletLine, BULLET_GLYPH, MAX_BULLET_LEVEL, type RichSeg,
+  parseBulletLine, makeBulletLine, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, type RichSeg,
 } from "@/lib/capitalism-richtext";
 
 // 주어진 마크 키가 적용 가능한가? 고정키(hl-*/c-*) 또는 link:<slug>.
@@ -79,6 +79,8 @@ function makeLineDiv(parts: LineSeg[]): HTMLDivElement {
     div.style.alignItems = "baseline";
     div.style.gap = "0.3em";
     div.style.paddingLeft = `${lvl * 0.85}em`;
+    // 레벨이 깊을수록 줄 전체(기호+본문)을 미미하게 흐릿하게.
+    div.style.opacity = String(BULLET_OPACITY[lvl]);
     // 기호(편집 불가) — 직렬화 시 무시되도록 data-bullet-mark 부여.
     const g = document.createElement("span");
     g.setAttribute("data-bullet-mark", "");
@@ -574,15 +576,38 @@ export function CapRichEditor({
       return;
     }
 
-    if (ev.key === "Enter" && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey && info.bullet) {
-      ev.preventDefault();
-      if (parseRich(info.bodyRaw).every((s) => !s.text)) {
-        // 빈 불릿에서 Enter → 불릿 해제(빈 평문 줄).
-        replaceLine(info.index, "", info.lineStartSerialize);
+    if (ev.key === "Enter" && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey) {
+      // 불릿 줄 Enter — 같은 레벨 이어가기(빈 불릿이면 해제).
+      if (info.bullet) {
+        ev.preventDefault();
+        if (parseRich(info.bodyRaw).every((s) => !s.text)) {
+          // 빈 불릿에서 Enter → 불릿 해제(빈 평문 줄).
+          replaceLine(info.index, "", info.lineStartSerialize);
+          return;
+        }
+        const split = splitBodyAt(info.bodyRaw, info.caretInBody);
+        replaceLineThenInsert(info.index, makeBulletLine(info.level, split.before), makeBulletLine(info.level, split.after), info.level + 2);
         return;
       }
+      // 일반 줄 Enter — 브라우저 기본 동작에 맡기면 환경마다 깨지므로 직접 처리한다.
+      //   앞부분: 일반 줄. 뒷부분: 바로 위 줄이 불릿이면 그 레벨 불릿으로, 아니면 일반 줄.
+      //   (사용자 요구: "일반 줄을 나누면 뒷부분이 (직전) 불릿이 되는" 동작 유지)
+      ev.preventDefault();
+      const lines = serializeEl(el).split("\n");
+      const prevMeta = info.index > 0 ? parseBulletLine(lines[info.index - 1] ?? "") : { bullet: false, level: 0, body: "" };
       const split = splitBodyAt(info.bodyRaw, info.caretInBody);
-      replaceLineThenInsert(info.index, makeBulletLine(info.level, split.before), makeBulletLine(info.level, split.after), info.level + 2);
+      if (prevMeta.bullet) {
+        // 뒷부분을 직전 불릿 레벨의 불릿으로.
+        replaceLineThenInsert(
+          info.index,
+          split.before,
+          makeBulletLine(prevMeta.level, split.after),
+          prevMeta.level + 2,
+        );
+      } else {
+        // 둘 다 일반 줄.
+        replaceLineThenInsert(info.index, split.before, split.after, 0);
+      }
       return;
     }
   }

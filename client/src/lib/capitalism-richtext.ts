@@ -100,6 +100,8 @@ export const MAX_BULLET_LEVEL = 2; // 0,1,2 → 3단계
 export const BULLET_CHAR = "\u2022"; // • (저장용 통일 기호)
 // 화면 표시용 — 레벨별 기호(좁은 폭 고려해 3단계만).
 export const BULLET_GLYPH = ["\u2022", "\u25e6", "\u25aa"]; // • ◦ ▪
+// 레벨별 줄 전체 불투명도 — 깊을수록 미미하게 흐려진다(0=기본, 2=가장 흐림).
+export const BULLET_OPACITY = [1, 0.88, 0.78];
 // 줄 프리픽스 정규식: 선행 탭(레벨) + "• " (마커가 표식 span 안에 들어가는 일은 없음).
 const BULLET_PREFIX = /^(\t*)\u2022 /;
 
