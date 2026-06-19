@@ -7,7 +7,7 @@ import { useState, useRef, useLayoutEffect } from "react";
 import { X, MessageSquare, Table2 } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
-import { TableColumn, tableContentWidth, makeDefaultTable } from "@/components/CapTable";
+import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { newNodeKey } from "@/lib/capitalism-flowops";
 import type { FlowDTO, FlowNodeDTO, CapTableData } from "@/lib/capitalism-types";
 
@@ -334,46 +334,45 @@ function MemoCard({
 // 이렇게 하면 메모가 아무리 길어도 본문 노드 간격에는 전혀 영향을 주지 않는다(사용자 요구: 2열/3열 분리).
 // 측정: bodyEl 안에서 data-node-id가 일치하는 노드의 offsetTop을 읽어 메모 top으로 사용하고,
 // 메모끼리 겹치면 아래로 밀어 내린다(top = max(노드 top, 직전 메모 bottom + gap)).
-function MemoColumn({
-  memoNodes, slug, bodyEl, editable, autoEditId, onMemo, onFocusNode, onEditDone, focusedId, onHeight,
+// 노드별 주석 컬럼 — 메모와 표를 '한 열'에 함께 표시. 각 노드의 (메모 + 표)를 그 노드의
+// 세로 위치에 앵커링하고, 블록끼리 겹치면 아래로 밀어 내린다(본문 노드 간격에는 영향 없음).
+function SideColumn({
+  sideNodes, slug, bodyEl, editable, autoEditMemoId, autoEditTableId,
+  onMemo, onMemoEditDone, onCommitTable, onTableEditDone, onFocusNode, focusedId,
 }: {
-  memoNodes: FlowNodeDTO[];
+  sideNodes: FlowNodeDTO[];
   slug: string;
-  // 본문 스택 DOM(노드 offsetTop 측정 대상). 같은 부모(relative) 안에 있어야 좌표계가 일치한다.
   bodyEl: HTMLElement | null;
   editable: boolean;
-  autoEditId: string | null;
+  autoEditMemoId: string | null;
+  autoEditTableId: string | null;
   onMemo?: (id: string, memo: string) => void;
+  onMemoEditDone?: (id: string) => void;
+  onCommitTable: (id: string, table: CapTableData | null) => void;
+  onTableEditDone?: (id: string) => void;
   onFocusNode?: (id: string | null) => void;
-  onEditDone?: (id: string) => void;
   focusedId?: string | null;
-  // 메모 스택 전체 높이를 부모로 올려, 카드 전체 높이를 max(본문, 메모)로 잡게 한다.
-  onHeight?: (h: number) => void;
 }) {
   const colRef = useRef<HTMLDivElement | null>(null);
-  // 각 메모 카드의 계산된 top(px). id→top.
   const [tops, setTops] = useState<Record<string, number>>({});
   const [stackH, setStackH] = useState(0);
-  // memoNodes 순서를 최신으로 보지해 ResizeObserver 콜백에서 참조(클로저 스테일니스 방지).
-  const nodesRef = useRef(memoNodes);
-  nodesRef.current = memoNodes;
+  const nodesRef = useRef(sideNodes);
+  nodesRef.current = sideNodes;
 
-  // 레이아웃 측정: 노드 위치 + 메모 높이를 읽어 겹치지 않게 top을 계산.
-  // 메모 textarea 자동 높이 증가(명령형 style 변경)는 React 리렌더를 유발하지 않으므로,
-  // ResizeObserver로 카드 높이 변화를 감지해 다시 측정한다(메모 겹치는 버그 방지).
+  // 레이아웃 측정: 노드 위치 + (메모+표) 블록 높이를 읽어 겹치지 않게 top 계산.
+  // textarea 자동 높이/표 편집 등 명령형 변화는 ResizeObserver 로 감지해 재측정.
   const measure = useRef<() => void>(() => {});
   measure.current = () => {
     const col = colRef.current;
     if (!col || !bodyEl) return;
     const bodyRect = bodyEl.getBoundingClientRect();
-    const GAP = 6; // 메모 카드 사이 최소 간격(px)
+    const GAP = 6;
     const next: Record<string, number> = {};
-    let cursor = 0; // 직전 메모의 bottom
+    let cursor = 0;
     let maxBottom = 0;
     for (const n of nodesRef.current) {
-      const cardEl = col.querySelector<HTMLElement>(`[data-memo-anchor="${n.id}"]`);
+      const cardEl = col.querySelector<HTMLElement>(`[data-side-anchor="${n.id}"]`);
       if (!cardEl) continue;
-      // 대응 노드의 본문 내 세로 위치(상대 좌표).
       const nodeEl = bodyEl.querySelector<HTMLElement>(`[data-node-id="${slug}::${n.id}"]`);
       const nodeTop = nodeEl ? nodeEl.getBoundingClientRect().top - bodyRect.top : cursor;
       const top = Math.max(nodeTop, cursor);
@@ -383,51 +382,61 @@ function MemoColumn({
       maxBottom = Math.max(maxBottom, top + h);
     }
     setTops((prev) => {
-      // 변화 없으면 재렌더 방지.
       const keys = Object.keys(next);
       if (keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k])) return prev;
       return next;
     });
     setStackH((prev) => (prev === maxBottom ? prev : maxBottom));
-    onHeight?.(maxBottom);
   };
 
-  // 매 렌더 후 1차 측정(노드 위치/메모 개수 변경 반영).
-  useLayoutEffect(() => {
-    measure.current();
-  });
-
-  // 메모 카드 높이(textarea 자동성장 포함)가 바뀌면 즉시 재측정. 본문 스택 크기 변화도 관찰.
+  useLayoutEffect(() => { measure.current(); });
   useLayoutEffect(() => {
     const col = colRef.current;
     if (!col || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => measure.current());
     ro.observe(col);
-    col.querySelectorAll("[data-memo-anchor]").forEach((el) => ro.observe(el));
+    col.querySelectorAll("[data-side-anchor]").forEach((el) => ro.observe(el));
     if (bodyEl) ro.observe(bodyEl);
     return () => ro.disconnect();
-  }, [bodyEl, memoNodes.length]);
+  }, [bodyEl, sideNodes.length]);
 
   return (
     <div ref={colRef} style={{ width: MEMO_COL_W, height: stackH || undefined }} className="relative shrink-0">
-      {memoNodes.map((n) => (
-        <div
-          key={n.id}
-          data-memo-anchor={n.id}
-          className="absolute left-0 right-0"
-          style={{ top: tops[n.id] ?? 0 }}
-        >
-          <MemoCard
-            node={n}
-            editable={editable}
-            autoEdit={n.id === autoEditId}
-            onMemo={onMemo}
-            onFocusNode={onFocusNode}
-            onEditDone={onEditDone}
-            focusedId={focusedId}
-          />
-        </div>
-      ))}
+      {sideNodes.map((n) => {
+        const showMemo = !!(n.ref && n.ref.trim()) || n.id === autoEditMemoId;
+        const showTable = !!n.table || n.id === autoEditTableId;
+        return (
+          <div
+            key={n.id}
+            data-side-anchor={n.id}
+            className="absolute left-0 right-0 flex flex-col gap-1.5"
+            style={{ top: tops[n.id] ?? 0 }}
+          >
+            {showMemo ? (
+              <MemoCard
+                node={n}
+                editable={editable}
+                autoEdit={n.id === autoEditMemoId}
+                onMemo={onMemo}
+                onFocusNode={onFocusNode}
+                onEditDone={onMemoEditDone}
+                focusedId={focusedId}
+              />
+            ) : null}
+            {showTable ? (
+              <TableCard
+                node={n}
+                editable={editable}
+                autoEdit={n.id === autoEditTableId}
+                onCommit={onCommitTable}
+                onEditDone={onTableEditDone}
+                onFocusNode={onFocusNode}
+                focusedId={focusedId}
+              />
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -612,15 +621,6 @@ export function FlowColumn({
     focusedId: focusedNodeId,
   };
 
-  const memoColProps = {
-    editable,
-    autoEditId: autoEditMemoId,
-    onMemo: commitMemo,
-    onEditDone: onMemoEditDone,
-    onFocusNode: setFocusedNodeId,
-    focusedId: focusedNodeId,
-  };
-
   // 본문을 "행" 배열로 만든다. 각 행은 본문 노드(JSX)와 그 행에 속한 노드 목록(메모 대응용)을 갖는다.
   // 행 단위로 [본문행 | 메모슬롯]을 나란히 두므로, 메모가 자기 노드 행 높이에 대략 정렬되고
   // 위쪽 메모가 사라져도 아래 메모가 위로 끌려올라가지 않는다.
@@ -710,26 +710,15 @@ export function FlowColumn({
       ? usedCols.length * 240 + (usedCols.length - 1) * 12
       : 296;
 
-  // 메모 컬럼 표시 여부 — 작성된 메모가 하나라도 있거나, 지금 막 메모를 추가/편집 중일 때만.
-  // (빈 메모 카드는 더이상 띄우지 않으므로, 메모가 없는 카드는 우측 컬럼 공간을 차지하지 않는다.)
-  const hasAnyMemo = flow.nodes.some((n) => n.ref && n.ref.trim());
-  const showMemoCol = hasAnyMemo || autoEditMemoId !== null;
-
-  // 메모를 표시할 노드 목록(flow.nodes 순서 = 위→아래). 메모 컬럼이 이 순서대로 앵커링한다.
-  const orderedMemoNodes = flow.nodes.filter(
-    (n) => (n.ref && n.ref.trim()) || n.id === autoEditMemoId,
+  // 메모+표를 한 열(SideColumn)에 함께 표시. 메모/표가 하나라도 있거나 막 추가/편집 중인 노드.
+  // (flow.nodes 순서 = 위→아래. 컬럼이 이 순서대로 노드 위치에 앵커링한다.)
+  const orderedSideNodes = flow.nodes.filter(
+    (n) => (n.ref && n.ref.trim()) || n.table || n.id === autoEditMemoId || n.id === autoEditTableId,
   );
+  const showSideCol = orderedSideNodes.length > 0;
 
-  // 표를 표시할 노드 목록 + 표열 폭(가장 넓은 표 콘텐츠 기준, 카드 패딩 포함, 180~440px 클램프).
-  const orderedTableNodes = flow.nodes.filter((n) => n.table || n.id === autoEditTableId);
-  const showTableCol = orderedTableNodes.length > 0;
-  const tableColW = showTableCol
-    ? Math.max(180, Math.min(440, Math.max(...orderedTableNodes.map((n) => (n.table ? tableContentWidth(n.table) : 180))) + 16))
-    : 0;
-
-  // 카드 전체 너비 = 좌우 패딩(24px) + 본문 + (메모 컬럼: 폭 + 구분선 12px) + (표 컬럼: 폭 + 구분선 12px).
-  const cardWidth =
-    24 + bodyWidth + (showMemoCol ? MEMO_COL_W + 12 : 0) + (showTableCol ? tableColW + 12 : 0);
+  // 카드 전체 너비 = 좌우 패딩(24px) + 본문 + (주석 컬럼: 폭 + 구분선 12px).
+  const cardWidth = 24 + bodyWidth + (showSideCol ? MEMO_COL_W + 12 : 0);
 
   return (
     <div
@@ -829,27 +818,19 @@ export function FlowColumn({
             <div key={row.nodes.map((n) => n.id).join("-") || ri}>{row.content}</div>
           ))}
         </div>
-        {showMemoCol ? (
+        {showSideCol ? (
           <div className="shrink-0 self-stretch border-l border-border/40 pl-2.5">
-            <MemoColumn
-              memoNodes={orderedMemoNodes}
+            <SideColumn
+              sideNodes={orderedSideNodes}
               slug={flow.slug}
               bodyEl={bodyEl}
-              {...memoColProps}
-            />
-          </div>
-        ) : null}
-        {showTableCol ? (
-          <div className="shrink-0 self-stretch border-l border-border/40 pl-2.5">
-            <TableColumn
-              tableNodes={orderedTableNodes}
-              slug={flow.slug}
-              bodyEl={bodyEl}
-              width={tableColW}
               editable={editable}
-              autoEditId={autoEditTableId}
-              onCommit={commitTable}
-              onEditDone={onTableEditDone}
+              autoEditMemoId={autoEditMemoId}
+              autoEditTableId={autoEditTableId}
+              onMemo={commitMemo}
+              onMemoEditDone={onMemoEditDone}
+              onCommitTable={commitTable}
+              onTableEditDone={onTableEditDone}
               onFocusNode={setFocusedNodeId}
               focusedId={focusedNodeId}
             />
