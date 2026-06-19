@@ -232,11 +232,12 @@ export function CapRichEditor({
   }, [value]);
 
   // 자동 포커스: 인라인 편집 진입 시 바로 커서를 끝으로.
+  // preventScroll: 포커스가 스크롤 컨테이너(세로 타임라인)를 점프시키지 않게 한다.
   useEffect(() => {
     if (!autoFocus) return;
     const el = ref.current;
     if (!el) return;
-    el.focus();
+    el.focus({ preventScroll: true });
     const range = document.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
@@ -702,7 +703,7 @@ export function CapRichEditor({
     if (off) applyMark(`${LINK_PREFIX}${slug}`, off);
     savedRangeRef.current = null;
     // 적용 후 에디터로 포커스 복원 — 이어서 편집하거나 밖을 클릭하면 정상 커밋됨.
-    ref.current?.focus();
+    ref.current?.focus({ preventScroll: true });
   }
 
   // 링크 패널 닫기(취소) — 포커스 복원.
@@ -710,7 +711,7 @@ export function CapRichEditor({
     linkPanelRef.current = false;
     setLinkPanel(false);
     savedRangeRef.current = null;
-    ref.current?.focus();
+    ref.current?.focus({ preventScroll: true });
   }
 
   const isEmpty = !value || parseRich(value).every((s) => !s.text);
