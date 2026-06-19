@@ -4,7 +4,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX,
-  parseBulletLine, makeBulletLine, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, type RichSeg,
+  parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, type RichSeg,
 } from "@/lib/capitalism-richtext";
 
 // 주어진 마크 키가 적용 가능한가? 고정키(hl-*/c-*) 또는 link:<slug>.
@@ -291,6 +291,7 @@ export function CapRichEditor({
     const lenUntil = (target: Node, targetOffset: number): number => {
       let len = 0;
       let done = false;
+      let seenLine = false; // 최상위 줄 DIV 를 하나라도 지났는가(첫 줄 앞 \n 억제 — len>0 대신 위치 기준)
       const walk = (n: Node) => {
         if (done) return;
         if (n.nodeType === Node.TEXT_NODE) {
@@ -305,9 +306,10 @@ export function CapRichEditor({
           if (n === target) { done = true; return; }
           return;
         }
-        // 최상위 줄 DIV 진입: 앞에 이미 내용이 있으면 줄 경계 \n, 불릿이면 프리픽스 길이 가산.
+        // 최상위 줄 DIV 진입: 첫 줄 제외 줄 경계 \n(첫 줄이 빈 줄이어도 일관), 불릿이면 프리픽스 길이 가산.
         if (e.parentNode === el && (e.tagName === "DIV" || e.tagName === "P")) {
-          if (len > 0) len += 1;
+          if (seenLine) len += 1;
+          seenLine = true;
           len += prefixLenOf(e);
         }
         if (e.tagName === "BR") {
@@ -390,7 +392,7 @@ export function CapRichEditor({
         acc += lvl + 2;
       }
       const bodyHost = (div.querySelector("[data-bullet-body]") as HTMLElement) || div;
-      const bodyLen = serializeInline(bodyHost).length;
+      const bodyLen = plainText(serializeInline(bodyHost)).length; // 평문 좌표(마커 [[..]] 글자수 제외)로 통일
       if (offset - acc <= bodyLen) {
         const found = findInBody(bodyHost, offset - acc);
         if (found) { place(found.node, found.nodeOffset); return; }
@@ -426,6 +428,7 @@ export function CapRichEditor({
     };
     let len = 0;
     let done = false;
+    let seenLine = false; // 최상위 줄 DIV 를 하나라도 지났는가(첫 줄 앞 \n 억제 — len>0 대신 위치 기준)
     const walk = (n: Node) => {
       if (done) return;
       if (n.nodeType === Node.TEXT_NODE) {
@@ -437,7 +440,8 @@ export function CapRichEditor({
       const e = n as HTMLElement;
       if (e.hasAttribute("data-bullet-mark")) { if (n === target) { done = true; } return; }
       if (e.parentNode === el && (e.tagName === "DIV" || e.tagName === "P")) {
-        if (len > 0) len += 1;
+        if (seenLine) len += 1;
+        seenLine = true;
         len += prefixLenOf(e);
       }
       if (e.tagName === "BR") {
@@ -470,9 +474,10 @@ export function CapRichEditor({
     const lineRaw = lines[index] ?? "";
     const meta = parseBulletLine(lineRaw);
     let lineStart = 0;
-    for (let i = 0; i < index; i++) lineStart += lines[i].length + 1;
+    // 줄 시작 오프셋은 평문 좌표(마커 글자수 제외)로 — off(=caretSerializeOffsetOf) 와 동일 좌표계여야 caretInBody 가 맞다.
+    for (let i = 0; i < index; i++) lineStart += plainText(lines[i]).length + 1;
     const sel = window.getSelection();
-    let caretInBody = meta.body.length;
+    let caretInBody = plainText(meta.body).length; // 평문 좌표(셀렉션 없을 때 본문 끝 폴백)
     if (sel && sel.rangeCount) {
       const off = caretSerializeOffsetOf(el, sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
       const prefixLen = lineRaw.length - meta.body.length;
@@ -505,7 +510,7 @@ export function CapRichEditor({
     const out = lines.join("\n");
     renderToEl(el, out);
     let caret = 0;
-    for (let i = 0; i <= lineIndex; i++) caret += lines[i].length + 1;
+    for (let i = 0; i <= lineIndex; i++) caret += plainText(lines[i]).length + 1; // 평문 좌표
     caret += afterPrefixLen;
     setCaretAtSerializeOffset(el, caret);
     setToolbar(null);
