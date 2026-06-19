@@ -3,7 +3,8 @@
 // 노드별 표(메모와 같은 층위). 일반 텍스트 셀 + 열 너비(px).
 //   widths.length = 열 수, cells.length = 행 수, 각 cells[r].length = 열 수.
 export interface CapTableData {
-  widths: number[];      // 열별 너비(px)
+  title?: string;        // 표 제목(선택)
+  widths: number[];      // 열별 너비(flex 비율)
   cells: string[][];     // [행][열] 일반 텍스트
 }
 

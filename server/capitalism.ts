@@ -7,7 +7,8 @@ import { eq, asc, desc, and } from "drizzle-orm";
 
 // 노드별 표(메모와 같은 층위). 일반 텍스트 셀 + 열 너비(px). text 필드의 [[..]] 마커와 독립.
 export interface CapTableData {
-  widths: number[];   // 열별 너비(px)
+  title?: string;     // 표 제목(선택)
+  widths: number[];   // 열별 너비(flex 비율)
   cells: string[][];  // [행][열] 일반 텍스트
 }
 
@@ -56,7 +57,11 @@ function parseTableData(raw: string | null | undefined): CapTableData | null {
   try {
     const t = JSON.parse(raw);
     if (!t || !Array.isArray(t.widths) || !Array.isArray(t.cells)) return null;
-    return { widths: t.widths.map((w: any) => Number(w) || 0), cells: t.cells.map((row: any) => (Array.isArray(row) ? row.map((c: any) => String(c ?? "")) : [])) };
+    return {
+      title: typeof t.title === "string" ? t.title : "",
+      widths: t.widths.map((w: any) => Number(w) || 0),
+      cells: t.cells.map((row: any) => (Array.isArray(row) ? row.map((c: any) => String(c ?? "")) : [])),
+    };
   } catch { return null; }
 }
 

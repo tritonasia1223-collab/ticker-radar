@@ -11,11 +11,11 @@ const ROW_DELETE_W = 14;   // 좌측 행삭제 거터 폭
 
 // 빈 기본 표(2열 × 2행). widths 는 flex 비율(상대값) — 균등.
 export function makeDefaultTable(): CapTableData {
-  return { widths: [1, 1], cells: [["", ""], ["", ""]] };
+  return { title: "", widths: [1, 1], cells: [["", ""], ["", ""]] };
 }
 
 function cloneTable(t: CapTableData): CapTableData {
-  return { widths: [...t.widths], cells: t.cells.map((r) => [...r]) };
+  return { title: t.title, widths: [...t.widths], cells: t.cells.map((r) => [...r]) };
 }
 
 // textarea 내용에 맞춰 높이 자동 조절(열 너비만 사용자 조절, 행 높이는 자동).
@@ -60,6 +60,8 @@ export function TableCard({
   const cols = t.widths.length;
   const rows = t.cells.length;
   const commit = (next: CapTableData) => { setT(next); onCommit(node.id, next); };
+
+  const setTitle = (v: string) => setT((prev) => ({ ...cloneTable(prev), title: v }));
 
   const setCell = (r: number, c: number, v: string) => {
     setT((prev) => {
@@ -142,6 +144,22 @@ export function TableCard({
       onMouseLeave={() => onFocusNode?.(null)}
       data-testid={`table-card-${node.id}`}
     >
+      {/* 표 제목(선택) — 셀 위 한 줄. 편집 가능하면 입력란, 아니면 있을 때만 표시. */}
+      {editable ? (
+        <input
+          type="text"
+          value={t.title ?? ""}
+          onFocus={() => { editingRef.current = true; }}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => { editingRef.current = false; onCommit(node.id, t); }}
+          placeholder="표 제목 (선택)"
+          className="mb-1 w-full rounded border-0 bg-transparent px-1 py-0.5 text-[12px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:bg-background/60"
+          data-testid={`table-title-${node.id}`}
+        />
+      ) : (t.title && t.title.trim() ? (
+        <div className="mb-1 px-1 text-[12px] font-semibold text-foreground" data-testid={`table-title-${node.id}`}>{t.title}</div>
+      ) : null)}
+
       {t.cells.map((row, r) => (
         <div key={r} className="group/row flex items-stretch">
           {/* 좌측 행 삭제 거터 */}

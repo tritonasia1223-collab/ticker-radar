@@ -231,6 +231,7 @@ export function registerRoutes(app: Express) {
 
   // ---- 자본주의 경제사 타임라인 (격리 도메인) ----
   const capTableSchema = z.object({
+    title: z.string().optional(),
     widths: z.array(z.number()),
     cells: z.array(z.array(z.string())),
   });
