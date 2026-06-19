@@ -4,11 +4,12 @@
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 그 칸 삭제(내용 비워도 자동 삭제). 마지막 칸이면 플로우 삭제.
 import { useState, useRef, useLayoutEffect } from "react";
-import { X, MessageSquare } from "lucide-react";
+import { X, MessageSquare, Table2 } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
+import { TableColumn, tableContentWidth, makeDefaultTable } from "@/components/CapTable";
 import { newNodeKey } from "@/lib/capitalism-flowops";
-import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
+import type { FlowDTO, FlowNodeDTO, CapTableData } from "@/lib/capitalism-types";
 
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
 export type MutateNodes = (flow: FlowDTO, nextNodes: FlowNodeDTO[]) => void;
@@ -25,7 +26,7 @@ function blankNode(col = "center"): FlowNodeDTO {
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemoClick, onLink, linkTargets, onJump, onFocusNode, focusedId,
+  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemoClick, onTableClick, onLink, linkTargets, onJump, onFocusNode, focusedId,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -37,6 +38,8 @@ function Node({
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
   // 메모 버튼 클릭 — 우측 메모 컬럼에서 이 노드의 메모를 추가/편집 시작.
   onMemoClick?: (id: string) => void;
+  // 표 버튼 클릭 — 우측 표열에서 이 노드의 표를 생성/편집 시작.
+  onTableClick?: (id: string) => void;
   onLink?: LinkNodes;
   // 내부 링크용 — 카드 목록(편집) + 점프 콜백(클릭).
   linkTargets?: LinkTarget[];
@@ -49,6 +52,7 @@ function Node({
   const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
   const hasMemo = !!(node.ref && node.ref.trim());
+  const hasTable = !!node.table;
   // 이 노드(또는 그 메모)에 마우스가 올라가 있어 강조 대상인지.
   const focused = focusedId === node.id;
   // 드래그앤드롭 화살표 그리기 기능 — 현재 비활성(주석처리). 필요 시 아래 줄 복구.
@@ -134,22 +138,36 @@ function Node({
         </div>
       )}
 
-      {/* 메모 버튼 — 노드 우측 하단에 상시 표시. 메모 있으면 노란색, 없으면 흐린 회색.
-          클릭 시 우측 메모 컬럼에 이 노드의 메모 카드가 뜨며 바로 편집한다. */}
+      {/* 우측 하단 버튼 — 표(좌) + 메모(우). 있으면 색상, 없으면 흐린 회색. 클릭 시 우측 해당 열에서 편집. */}
       {!editing ? (
-        <button
-          type="button"
-          title={hasMemo ? "메모 보기/편집" : "메모 추가"}
-          onClick={(e) => { e.stopPropagation(); onMemoClick?.(node.id); }}
-          className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
-            hasMemo
-              ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
-              : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
-          }`}
-          data-testid={`memo-btn-${node.id}`}
-        >
-          <MessageSquare className="h-2.5 w-2.5" strokeWidth={2.5} />
-        </button>
+        <>
+          <button
+            type="button"
+            title={hasTable ? "표 편집" : "표 추가"}
+            onClick={(e) => { e.stopPropagation(); onTableClick?.(node.id); }}
+            className={`absolute right-[18px] bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+              hasTable
+                ? "bg-sky-400/90 text-sky-950 shadow-sm hover:bg-sky-400"
+                : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
+            }`}
+            data-testid={`table-btn-${node.id}`}
+          >
+            <Table2 className="h-2.5 w-2.5" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            title={hasMemo ? "메모 보기/편집" : "메모 추가"}
+            onClick={(e) => { e.stopPropagation(); onMemoClick?.(node.id); }}
+            className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+              hasMemo
+                ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
+                : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
+            }`}
+            data-testid={`memo-btn-${node.id}`}
+          >
+            <MessageSquare className="h-2.5 w-2.5" strokeWidth={2.5} />
+          </button>
+        </>
       ) : null}
 
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
@@ -435,6 +453,8 @@ export function FlowColumn({
   const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
   // 노드 메모 버튼으로 막 추가/편집을 시작한 노드 id. 해당 메모 카드를 강제 표시 + 자동 편집.
   const [autoEditMemoId, setAutoEditMemoId] = useState<string | null>(null);
+  // 노드 표 버튼으로 막 추가/편집을 시작한 노드 id. 첫 셀 자동 포커스용.
+  const [autoEditTableId, setAutoEditTableId] = useState<string | null>(null);
   // 노션식 양방향 호버 하이라이트 — 현재 호버 중인 노드 id. 노드↔메모 양쪽을 동시에 강조한다.
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   // 본문 스택 DOM 참조(메모 컬럼이 노드 세로 위치를 측정하는 좌표 기준). callback ref로 세팅해 최초 마운트 시점에도 메모 앵커링이 동작하게 한다.
@@ -555,6 +575,28 @@ export function FlowColumn({
     setAutoEditMemoId((cur) => (cur === id ? null : cur));
   }
 
+  // 노드 표 저장(메모와 같은 층위). table=null 이면 표 삭제. ref 컬럼처럼 node.table 에 보관.
+  function commitTable(id: string, table: CapTableData | null) {
+    if (!onMutateNodes) return;
+    const cur = flow.nodes.find((n) => n.id === id);
+    if (!cur) return;
+    const prevJson = cur.table ? JSON.stringify(cur.table) : null;
+    const nextJson = table ? JSON.stringify(table) : null;
+    if (prevJson === nextJson) return; // 변경 없음
+    onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, table } : n)));
+  }
+  // 표 버튼 클릭 — 표 없으면 기본 표(2×2) 생성, 그리고 첫 셀 자동 편집.
+  function onTableClick(id: string) {
+    const cur = flow.nodes.find((n) => n.id === id);
+    if (cur && !cur.table) {
+      onMutateNodes?.(flow, flow.nodes.map((n) => (n.id === id ? { ...n, table: makeDefaultTable() } : n)));
+    }
+    setAutoEditTableId(id);
+  }
+  function onTableEditDone(id: string) {
+    setAutoEditTableId((cur) => (cur === id ? null : cur));
+  }
+
   const nodeProps = {
     flow, editable,
     onStartEdit: setEditingId,
@@ -562,6 +604,7 @@ export function FlowColumn({
     onDelete: deleteNode,
     onAdd: addNode,
     onMemoClick,
+    onTableClick,
     onLink,
     linkTargets,
     onJump,
@@ -677,8 +720,16 @@ export function FlowColumn({
     (n) => (n.ref && n.ref.trim()) || n.id === autoEditMemoId,
   );
 
-  // 카드 전체 너비 = 좌우 패딩(24px) + 본문 + (메모 컬럼: 컬럼폭 + 좌측 여백/구분선 약 12px).
-  const cardWidth = 24 + bodyWidth + (showMemoCol ? MEMO_COL_W + 12 : 0);
+  // 표를 표시할 노드 목록 + 표열 폭(가장 넓은 표 콘텐츠 기준, 카드 패딩 포함, 180~440px 클램프).
+  const orderedTableNodes = flow.nodes.filter((n) => n.table || n.id === autoEditTableId);
+  const showTableCol = orderedTableNodes.length > 0;
+  const tableColW = showTableCol
+    ? Math.max(180, Math.min(440, Math.max(...orderedTableNodes.map((n) => (n.table ? tableContentWidth(n.table) : 180))) + 16))
+    : 0;
+
+  // 카드 전체 너비 = 좌우 패딩(24px) + 본문 + (메모 컬럼: 폭 + 구분선 12px) + (표 컬럼: 폭 + 구분선 12px).
+  const cardWidth =
+    24 + bodyWidth + (showMemoCol ? MEMO_COL_W + 12 : 0) + (showTableCol ? tableColW + 12 : 0);
 
   return (
     <div
@@ -785,6 +836,22 @@ export function FlowColumn({
               slug={flow.slug}
               bodyEl={bodyEl}
               {...memoColProps}
+            />
+          </div>
+        ) : null}
+        {showTableCol ? (
+          <div className="shrink-0 self-stretch border-l border-border/40 pl-2.5">
+            <TableColumn
+              tableNodes={orderedTableNodes}
+              slug={flow.slug}
+              bodyEl={bodyEl}
+              width={tableColW}
+              editable={editable}
+              autoEditId={autoEditTableId}
+              onCommit={commitTable}
+              onEditDone={onTableEditDone}
+              onFocusNode={setFocusedNodeId}
+              focusedId={focusedNodeId}
             />
           </div>
         ) : null}

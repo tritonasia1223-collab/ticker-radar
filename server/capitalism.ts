@@ -5,6 +5,12 @@ import { capFlows, capNodes, capEdges, capLinks } from "../shared/schema.js";
 import type { CapFlow, CapNode, CapEdge, CapLink } from "../shared/schema.js";
 import { eq, asc, desc, and } from "drizzle-orm";
 
+// 노드별 표(메모와 같은 층위). 일반 텍스트 셀 + 열 너비(px). text 필드의 [[..]] 마커와 독립.
+export interface CapTableData {
+  widths: number[];   // 열별 너비(px)
+  cells: string[][];  // [행][열] 일반 텍스트
+}
+
 // 프론트가 그대로 쓰는 합본 플로우 형태(노드/엣지 임베드).
 export interface FlowNodeDTO {
   id: string;        // = node_key (플로우 내 고유)
@@ -13,6 +19,7 @@ export interface FlowNodeDTO {
   text: string;
   ref: string | null;
   col?: string | null;
+  table: CapTableData | null; // 노드별 표(없으면 null)
 }
 export interface FlowEdgeDTO { from: string; to: string }
 export interface FlowDTO {
@@ -39,8 +46,18 @@ export interface FlowInput {
   category: string;
   layout: string;
   sortOrder?: number;
-  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null }[];
+  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null; table?: CapTableData | null }[];
   edges: { from: string; to: string }[];
+}
+
+// table_data(JSON 문자열) → CapTableData. 깨졌거나 형식 불일치면 null 로 안전 폴백.
+function parseTableData(raw: string | null | undefined): CapTableData | null {
+  if (!raw) return null;
+  try {
+    const t = JSON.parse(raw);
+    if (!t || !Array.isArray(t.widths) || !Array.isArray(t.cells)) return null;
+    return { widths: t.widths.map((w: any) => Number(w) || 0), cells: t.cells.map((row: any) => (Array.isArray(row) ? row.map((c: any) => String(c ?? "")) : [])) };
+  } catch { return null; }
 }
 
 // 빈 문자열·공백은 null 로 정규화(기간 해제). 종료일이 시작일보다 빠르면 무시.
@@ -63,7 +80,7 @@ function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
     sortOrder: flow.sortOrder,
     nodes: nodes
       .sort((a, b) => a.pos - b.pos)
-      .map((n) => ({ id: n.nodeKey, kind: n.kind, inLabel: n.inLabel, text: n.text, ref: n.ref, col: n.col })),
+      .map((n) => ({ id: n.nodeKey, kind: n.kind, inLabel: n.inLabel, text: n.text, ref: n.ref, col: n.col, table: parseTableData(n.tableData) })),
     edges: edges.map((e) => ({ from: e.fromKey, to: e.toKey })),
   };
 }
@@ -115,7 +132,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
     await db.insert(capNodes).values(input.nodes.map((n, i) => ({
       flowId, nodeKey: n.nodeKey, kind: n.kind,
       inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null,
-      col: n.col ?? null, pos: i,
+      col: n.col ?? null, tableData: n.table ? JSON.stringify(n.table) : null, pos: i,
     })));
   }
   if (input.edges.length) {

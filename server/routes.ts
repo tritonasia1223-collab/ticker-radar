@@ -230,6 +230,10 @@ export function registerRoutes(app: Express) {
   app.get("/api/insider/sectors", async (_req, res) => res.json(await storage.listTickerSectors()));
 
   // ---- 자본주의 경제사 타임라인 (격리 도메인) ----
+  const capTableSchema = z.object({
+    widths: z.array(z.number()),
+    cells: z.array(z.array(z.string())),
+  });
   const capNodeSchema = z.object({
     nodeKey: z.string().min(1),
     kind: z.enum(["cause", "event", "effect", "result"]),
@@ -237,6 +241,7 @@ export function registerRoutes(app: Express) {
     text: z.string().min(1),
     ref: z.string().nullable().optional(),
     col: z.enum(["center", "left", "right"]).nullable().optional(),
+    table: capTableSchema.nullable().optional(),
   });
   const capFlowInputSchema = z.object({
     slug: z.string().min(1),

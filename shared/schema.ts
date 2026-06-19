@@ -342,6 +342,7 @@ export const capNodes = pgTable(
     text: text("text").notNull(),
     ref: text("ref"),                      // 참고 메모/출처 (없으면 null)
     col: text("col"),                      // branch 레이아웃: center | left | right
+    tableData: text("table_data"),         // nullable JSON: 노드별 표(열 너비 + 셀 텍스트). 메모(ref)와 같은 층위.
     pos: integer("pos").notNull().default(0), // 표시 순서
   },
   (t) => ({

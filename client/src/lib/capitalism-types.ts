@@ -1,4 +1,12 @@
 // 자본주의 타임라인 — 공유 타입 (server/capitalism.ts 의 DTO 와 일치).
+
+// 노드별 표(메모와 같은 층위). 일반 텍스트 셀 + 열 너비(px).
+//   widths.length = 열 수, cells.length = 행 수, 각 cells[r].length = 열 수.
+export interface CapTableData {
+  widths: number[];      // 열별 너비(px)
+  cells: string[][];     // [행][열] 일반 텍스트
+}
+
 export interface FlowNodeDTO {
   id: string;
   kind: "cause" | "event" | "effect" | "result" | string;
@@ -6,6 +14,7 @@ export interface FlowNodeDTO {
   text: string;
   ref: string | null;
   col?: string | null;
+  table?: CapTableData | null; // 노드별 표(없으면 null)
 }
 export interface FlowEdgeDTO { from: string; to: string }
 export interface FlowDTO {
@@ -41,6 +50,6 @@ export interface FlowInputDTO {
   category: string;
   layout: string;
   sortOrder?: number;
-  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null }[];
+  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null; table?: CapTableData | null }[];
   edges: { from: string; to: string }[];
 }
