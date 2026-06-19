@@ -2,7 +2,10 @@
 // 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
 // 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
 import { useRef, useEffect, useState, useCallback } from "react";
-import { MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX } from "@/lib/capitalism-richtext";
+import {
+  MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX,
+  parseBulletLine, makeBulletLine, BULLET_GLYPH, MAX_BULLET_LEVEL, type RichSeg,
+} from "@/lib/capitalism-richtext";
 
 // 주어진 마크 키가 적용 가능한가? 고정키(hl-*/c-*) 또는 link:<slug>.
 function isKnownKey(key: string | null | undefined): key is string {
@@ -17,77 +20,170 @@ const LINK_STYLE: Record<string, string> = {
   fontWeight: "600",
 };
 
-// \n 가 들어간 텍스트를 텍스트노드+<br> 조합으로 target에 추가.
-function appendTextWithBreaks(target: HTMLElement, text: string) {
-  const parts = text.split("\n");
-  parts.forEach((part, i) => {
-    if (i > 0) target.appendChild(document.createElement("br"));
-    if (part) target.appendChild(document.createTextNode(part));
-  });
+// 빈 불릿 본문의 캐럿 자리표시용 제로폭 공백.
+// 빈 텍스트 노드(createTextNode(""))에는 캐럿이 안정적으로 들어가지 않아
+// 입력한 글자가 본문 span 밖으로 새는 문제가 있다. \u200b 한 글자를 넣어두면
+// 캐럿이 그 노드 안에 안착하고, 직렬화·길이 계산에서는 모두 제거한다.
+const ZWSP = "\u200b";
+const stripZW = (s: string) => s.replace(/\u200b/g, "");
+
+// 한 줄 분량의 (마크 유지) 세그먼트 조각.
+interface LineSeg { text: string; mark?: string; linkSlug?: string; }
+
+// 세그먼트 배열을 \n 기준으로 줄별 조각으로 분할(각 조각의 마크 유지).
+function segsToLines(segs: RichSeg[]): LineSeg[][] {
+  const lines: LineSeg[][] = [[]];
+  for (const s of segs) {
+    const parts = s.text.split("\n");
+    parts.forEach((part, i) => {
+      if (i > 0) lines.push([]);
+      if (part) lines[lines.length - 1].push({ text: part, mark: s.mark, linkSlug: s.linkSlug });
+    });
+  }
+  return lines;
 }
 
-// 마커 문자열 → contentEditable 안에 넣을 DOM(span/br) 생성.
-function renderToEl(el: HTMLElement, raw: string) {
-  el.innerHTML = "";
-  for (const seg of parseRich(raw)) {
-    if (seg.mark === "link" && seg.linkSlug) {
-      // 내부 링크 — data-mark="link:<slug>" 로 저장해 직렬화 시 복원.
-      const span = document.createElement("span");
-      span.setAttribute("data-mark", `${LINK_PREFIX}${seg.linkSlug}`);
-      Object.assign(span.style, LINK_STYLE);
-      appendTextWithBreaks(span, seg.text);
-      el.appendChild(span);
-    } else if (seg.mark && MARK_BY_KEY[seg.mark]) {
-      const span = document.createElement("span");
-      span.setAttribute("data-mark", seg.mark);
-      const st = MARK_BY_KEY[seg.mark].style as Record<string, string | number>;
-      Object.assign(span.style, st);
-      // 마크 내부에도 줄바꿈이 있을 수 있음.
-      appendTextWithBreaks(span, seg.text);
-      el.appendChild(span);
+// 한 조각(마크 유지) → 인라인 노드(텍스트 또는 마크 span).
+function segToNode(s: LineSeg): Node {
+  if (s.mark === "link" && s.linkSlug) {
+    const span = document.createElement("span");
+    span.setAttribute("data-mark", `${LINK_PREFIX}${s.linkSlug}`);
+    Object.assign(span.style, LINK_STYLE);
+    span.appendChild(document.createTextNode(s.text));
+    return span;
+  }
+  if (s.mark && MARK_BY_KEY[s.mark]) {
+    const span = document.createElement("span");
+    span.setAttribute("data-mark", s.mark);
+    const st = MARK_BY_KEY[s.mark].style as Record<string, string | number>;
+    Object.assign(span.style, st);
+    span.appendChild(document.createTextNode(s.text));
+    return span;
+  }
+  return document.createTextNode(s.text);
+}
+
+// 줄 컨테이너 DIV 생성. 불릿이면 data-bullet-level + 좌측정렬 + ::before 기호용 마커 span.
+// 불릿 기호는 contenteditable=false span 으로 넣어 사용자가 지우거나 커서가 끼지 않게 한다.
+function makeLineDiv(parts: LineSeg[]): HTMLDivElement {
+  const div = document.createElement("div");
+  div.setAttribute("data-cap-line", "");
+  // 줄 평문으로 불릿 프리픽스 판별(프리픽스는 첫 조각의 마크 없는 텍스트에 담김).
+  const lineText = parts.map((p) => p.text).join("");
+  const meta = parseBulletLine(lineText);
+  if (meta.bullet) {
+    const lvl = Math.min(meta.level, MAX_BULLET_LEVEL);
+    div.setAttribute("data-bullet-level", String(lvl));
+    div.style.display = "flex";
+    div.style.textAlign = "left";
+    div.style.alignItems = "baseline";
+    div.style.gap = "0.3em";
+    div.style.paddingLeft = `${lvl * 0.85}em`;
+    // 기호(편집 불가) — 직렬화 시 무시되도록 data-bullet-mark 부여.
+    const g = document.createElement("span");
+    g.setAttribute("data-bullet-mark", "");
+    g.setAttribute("contenteditable", "false");
+    g.textContent = BULLET_GLYPH[lvl];
+    g.style.flex = "none";
+    g.style.opacity = "0.8";
+    g.style.userSelect = "none";
+    div.appendChild(g);
+    // 본문 래퍼(여기 텍스트가 실제 편집 대상).
+    const bodyWrap = document.createElement("span");
+    bodyWrap.setAttribute("data-bullet-body", "");
+    bodyWrap.style.flex = "1 1 auto";
+    bodyWrap.style.minWidth = "0";
+    // 프리픽스 제거한 본문 조각으로 채움.
+    const prefixLen = lineText.length - meta.body.length;
+    let remain = prefixLen;
+    for (const p of parts) {
+      if (remain <= 0) { bodyWrap.appendChild(segToNode(p)); continue; }
+      if (p.text.length <= remain) { remain -= p.text.length; continue; }
+      bodyWrap.appendChild(segToNode({ ...p, text: p.text.slice(remain) }));
+      remain = 0;
+    }
+    if (!bodyWrap.childNodes.length) bodyWrap.appendChild(document.createTextNode(ZWSP));
+    div.appendChild(bodyWrap);
+  } else {
+    // 일반 줄: 가운데 정렬(부모 text-center). 빈 줄도 높이 유지 위해 <br>.
+    if (parts.length) {
+      for (const p of parts) div.appendChild(segToNode(p));
     } else {
-      appendTextWithBreaks(el, seg.text);
+      div.appendChild(document.createElement("br"));
     }
   }
-  if (!el.childNodes.length) el.appendChild(document.createTextNode(""));
+  return div;
+}
+
+// 마커 문자열 → contentEditable 안에 넣을 DOM(줄별 DIV) 생성.
+function renderToEl(el: HTMLElement, raw: string) {
+  el.innerHTML = "";
+  const lines = segsToLines(parseRich(raw));
+  for (const parts of lines) el.appendChild(makeLineDiv(parts));
+  if (!el.childNodes.length) el.appendChild(makeLineDiv([]));
+}
+
+// 한 요소의 인라인 내용(마크 span/텍스트/BR)만 직렬화. 불릿 기호·줄 컨테이너는 제외.
+function serializeInline(parent: Node): string {
+  let out = "";
+  parent.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) { out += stripZW(node.textContent || ""); return; }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const e = node as HTMLElement;
+    // 불릿 기호 span은 표시 전용 — 직렬화에서 제외.
+    if (e.hasAttribute("data-bullet-mark")) return;
+    const mark = e.getAttribute("data-mark");
+    if (isKnownKey(mark)) { out += `[[${mark}|${e.textContent || ""}]]`; return; }
+    if (e.tagName === "BR") { out += "\n"; return; }
+    // 그 외(본문 래퍼 span 등) → 내부 재귀.
+    out += serializeInline(e);
+  });
+  return out;
+}
+
+// 한 줄 요소(DIV 또는 기타) → 해당 줄의 마커 문자열(불릿이면 프리픽스 포함).
+function serializeLineEl(e: HTMLElement): string {
+  const lvlAttr = e.getAttribute("data-bullet-level");
+  const body = serializeInline(e);
+  if (lvlAttr !== null) {
+    const lvl = Math.max(0, Math.min(parseInt(lvlAttr, 10) || 0, MAX_BULLET_LEVEL));
+    return makeBulletLine(lvl, body);
+  }
+  return body;
 }
 
 // contentEditable DOM → 마커 문자열 직렬화.
-// 줄바꿈 처리: contentEditable은 Enter를 <div>/<br> 로 만들므로
-//   - BR(data-mark 없는) → \n
-//   - 블록 요소(DIV/P) → 앞 내용과 사이에 \n 삽입 후 내부 재귀 직렬화
+// 최상위는 줄별 DIV(data-cap-line) 구조를 원칙으로 하되, 브라우저가 Enter 시 자체
+// 생성한 DIV/BR/생텍스트도 견고하게 처리한다. 줄끼리는 \n 으로 연결.
 function serializeEl(el: HTMLElement): string {
-  let out = "";
-  const walk = (parent: Node, topLevel: boolean) => {
-    parent.childNodes.forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        out += node.textContent || "";
-        return;
-      }
-      if (node.nodeType !== Node.ELEMENT_NODE) return;
-      const e = node as HTMLElement;
-      const tag = e.tagName;
-      const mark = e.getAttribute("data-mark");
-      if (isKnownKey(mark)) {
-        out += `[[${mark}|${e.textContent || ""}]]`;
-        return;
-      }
-      if (tag === "BR") {
-        out += "\n";
-        return;
-      }
-      // 블록 요소(DIV/P)는 새 줄을 의미 — 앞에 내용이 있으면 \n 선행.
-      if (tag === "DIV" || tag === "P") {
-        if (out.length > 0 && !out.endsWith("\n")) out += "\n";
-        walk(e, false);
-        return;
-      }
-      // 그 외 인라인 요소(SPAN 등, 마크 아님) → 내부 재귀.
-      walk(e, false);
-    });
+  const lines: string[] = [];
+  let pending: Node[] | null = null; // 블록이 아닌 상위 인라인/텍스트 모아둔 임시 줄.
+  const flushPending = () => {
+    if (!pending) return;
+    const wrap = document.createElement("div");
+    pending.forEach((n) => wrap.appendChild(n.cloneNode(true)));
+    lines.push(serializeInline(wrap));
+    pending = null;
   };
-  walk(el, true);
-  return out;
+  el.childNodes.forEach((node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const e = node as HTMLElement;
+      if (e.tagName === "DIV" || e.tagName === "P") {
+        flushPending();
+        lines.push(serializeLineEl(e));
+        return;
+      }
+      if (e.tagName === "BR") {
+        flushPending();
+        lines.push("");
+        return;
+      }
+    }
+    if (!pending) pending = [];
+    pending.push(node);
+  });
+  flushPending();
+  return lines.join("\n");
 }
 
 // 링크 대상 후보 카드 — 상위(페이지)에서 전달. slug/라벨(연도+제목)만 필요.
@@ -162,40 +258,61 @@ export function CapRichEditor({
     return () => document.removeEventListener("selectionchange", handler);
   }, [updateToolbar]);
 
-  // 에디터 내부에서 선택 구간의 plain-text 오프셋(시작/끝)을 구한다.
-  // 마크 span/텍스트/BR(\n) 을 순서대로 훑으면서 anchor/focus 노드 위치를 누적 길이로 환산.
+  // 에디터 내부에서 선택 구간의 오프셋(시작/끝)을 구한다.
+  // 좌표 모델 = "본문 텍스트(불릿 프리픽스 제외) + 줄 사이 \n" — serializeEl 의 본문 좌표와 일치.
+  //   - 불릿 기호 span(data-bullet-mark) 은 길이에서 제외(탭 프리픽스는 DOM 텍스트에 없음).
+  //   - 줄 컨테이너 DIV 경계마다 \n 1개, BR 도 \n 1개.
   function selectionOffsets(el: HTMLElement): { start: number; end: number } | null {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return null;
     const range = sel.getRangeAt(0);
     if (!el.contains(range.startContainer) || !el.contains(range.endContainer)) return null;
 
-    // 특정 (node, offset) 까지의 plain-text 길이.
+    // 줄 DIV 의 불릿 프리픽스 길이(level + 2: 탭×level + "• "). 일반 줄은 0.
+    const prefixLenOf = (lineDiv: HTMLElement): number => {
+      const lv = lineDiv.getAttribute("data-bullet-level");
+      if (lv === null) return 0;
+      const n = Math.max(0, Math.min(parseInt(lv, 10) || 0, MAX_BULLET_LEVEL));
+      return n + 2;
+    };
+
+    // 특정 (node, offset) 까지의 serializeEl 좌표 길이.
     const lenUntil = (target: Node, targetOffset: number): number => {
       let len = 0;
       let done = false;
       const walk = (n: Node) => {
         if (done) return;
         if (n.nodeType === Node.TEXT_NODE) {
-          if (n === target) { len += targetOffset; done = true; return; }
-          len += (n.textContent || "").length;
+          if (n === target) { len += Math.min(targetOffset, stripZW(n.textContent || "").length); done = true; return; }
+          len += stripZW(n.textContent || "").length;
           return;
         }
-        if (n.nodeType === Node.ELEMENT_NODE) {
-          const e = n as HTMLElement;
-          if (e.tagName === "BR") {
-            if (n === target) { done = true; return; }
-            len += 1; // \n
-            return;
-          }
-          // 요소 컨테이너에 대한 offset = 자식 인덱스. 해당 자식 전까지 누적.
-          if (n === target) {
-            for (let i = 0; i < targetOffset && i < e.childNodes.length; i++) walk(e.childNodes[i]);
-            done = true;
-            return;
-          }
-          e.childNodes.forEach(walk);
+        if (n.nodeType !== Node.ELEMENT_NODE) return;
+        const e = n as HTMLElement;
+        // 불릿 기호 span 은 길이 0(프리픽스는 줄 진입 시 별도 가산).
+        if (e.hasAttribute("data-bullet-mark")) {
+          if (n === target) { done = true; return; }
+          return;
         }
+        // 최상위 줄 DIV 진입: 앞에 이미 내용이 있으면 줄 경계 \n, 불릿이면 프리픽스 길이 가산.
+        if (e.parentNode === el && (e.tagName === "DIV" || e.tagName === "P")) {
+          if (len > 0) len += 1;
+          len += prefixLenOf(e);
+        }
+        if (e.tagName === "BR") {
+          if (n === target) { done = true; return; }
+          // 빈 줄 DIV 안의 단독 BR 은 줄 자리표시일 뿐 — \n 아님(DIV 경계가 처리).
+          const parent = e.parentNode as HTMLElement | null;
+          const onlyChild = !!parent && parent.childNodes.length === 1;
+          if (!onlyChild) len += 1;
+          return;
+        }
+        if (n === target) {
+          for (let i = 0; i < targetOffset && i < e.childNodes.length; i++) walk(e.childNodes[i]);
+          done = true;
+          return;
+        }
+        e.childNodes.forEach(walk);
       };
       walk(el);
       return len;
@@ -207,6 +324,267 @@ export function CapRichEditor({
     const end = Math.max(a, b);
     if (start === end) return null;
     return { start, end };
+  }
+
+  // ──────── 말머리(불릿) 키 처리 ────────
+  // serializeEl 좌표 offset 위치에 캐럿(접은 선택) 복원. renderToEl 직후 호출.
+  function findInBody(host: HTMLElement, want: number): { node: Node; nodeOffset: number } | null {
+    if (want < 0) return null;
+    let acc = 0;
+    let res: { node: Node; nodeOffset: number } | null = null;
+    const walk = (n: Node) => {
+      if (res) return;
+      if (n.nodeType === Node.TEXT_NODE) {
+        const raw = n.textContent || "";
+        const len = stripZW(raw).length;
+        if (want <= acc + len) {
+          // ZWSP 자리표시 노드(내용이 ZWSP 뿐)면 캐럿을 노드 시작(0)에 둔다 → 입력 글자가 ZWSP 앞에 삽입.
+          const off = raw.length && stripZW(raw).length === 0 ? 0 : want - acc;
+          res = { node: n, nodeOffset: off };
+          return;
+        }
+        acc += len;
+        return;
+      }
+      if (n.nodeType !== Node.ELEMENT_NODE) return;
+      const e = n as HTMLElement;
+      if (e.hasAttribute("data-bullet-mark")) return;
+      if (e.tagName === "BR") { acc += 1; return; }
+      e.childNodes.forEach(walk);
+    };
+    host.childNodes.forEach(walk);
+    return res;
+  }
+
+  function setCaretAtSerializeOffset(el: HTMLElement, offset: number) {
+    const sel = window.getSelection();
+    if (!sel) return;
+    const place = (node: Node, nodeOffset: number) => {
+      const r = document.createRange();
+      r.setStart(node, nodeOffset);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    };
+    const lineDivs = Array.from(el.childNodes).filter(
+      (n) => n.nodeType === Node.ELEMENT_NODE && ((n as HTMLElement).tagName === "DIV" || (n as HTMLElement).tagName === "P")
+    ) as HTMLElement[];
+    let acc = 0;
+    for (let li = 0; li < lineDivs.length; li++) {
+      const div = lineDivs[li];
+      if (li > 0) acc += 1;
+      const lvAttr = div.getAttribute("data-bullet-level");
+      if (lvAttr !== null) {
+        const lvl = Math.max(0, Math.min(parseInt(lvAttr, 10) || 0, MAX_BULLET_LEVEL));
+        acc += lvl + 2;
+      }
+      const bodyHost = (div.querySelector("[data-bullet-body]") as HTMLElement) || div;
+      const bodyLen = serializeInline(bodyHost).length;
+      if (offset - acc <= bodyLen) {
+        const found = findInBody(bodyHost, offset - acc);
+        if (found) { place(found.node, found.nodeOffset); return; }
+        place(bodyHost, bodyHost.childNodes.length);
+        return;
+      }
+      acc += bodyLen;
+    }
+    const last = lineDivs[lineDivs.length - 1];
+    if (last) {
+      const host = (last.querySelector("[data-bullet-body]") as HTMLElement) || last;
+      place(host, host.childNodes.length);
+    }
+  }
+
+  // 현재 캐럿이 속한 최상위 줄 DIV 의 인덱스.
+  function currentLineIndex(el: HTMLElement): number {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return -1;
+    let node: Node | null = sel.getRangeAt(0).startContainer;
+    while (node && node.parentNode !== el) node = node.parentNode;
+    if (!node) return -1;
+    return Array.from(el.childNodes).indexOf(node as ChildNode);
+  }
+
+  // 단일 (node, offset) → serializeEl 좌표.
+  function caretSerializeOffsetOf(el: HTMLElement, target: Node, targetOffset: number): number {
+    const prefixLenOf = (lineDiv: HTMLElement): number => {
+      const lv = lineDiv.getAttribute("data-bullet-level");
+      if (lv === null) return 0;
+      const n = Math.max(0, Math.min(parseInt(lv, 10) || 0, MAX_BULLET_LEVEL));
+      return n + 2;
+    };
+    let len = 0;
+    let done = false;
+    const walk = (n: Node) => {
+      if (done) return;
+      if (n.nodeType === Node.TEXT_NODE) {
+        if (n === target) { len += Math.min(targetOffset, stripZW(n.textContent || "").length); done = true; return; }
+        len += stripZW(n.textContent || "").length;
+        return;
+      }
+      if (n.nodeType !== Node.ELEMENT_NODE) return;
+      const e = n as HTMLElement;
+      if (e.hasAttribute("data-bullet-mark")) { if (n === target) { done = true; } return; }
+      if (e.parentNode === el && (e.tagName === "DIV" || e.tagName === "P")) {
+        if (len > 0) len += 1;
+        len += prefixLenOf(e);
+      }
+      if (e.tagName === "BR") {
+        if (n === target) { done = true; return; }
+        const parent = e.parentNode as HTMLElement | null;
+        const onlyChild = !!parent && parent.childNodes.length === 1;
+        if (!onlyChild) len += 1;
+        return;
+      }
+      if (n === target) {
+        for (let i = 0; i < targetOffset && i < e.childNodes.length; i++) walk(e.childNodes[i]);
+        done = true;
+        return;
+      }
+      e.childNodes.forEach(walk);
+    };
+    walk(el);
+    return len;
+  }
+
+  // 현재 줄 정보(인덱스/레벨/불릿여부/본문마커/줄내 캐럿 본문오프셋/줄시작 serialize좌표).
+  function lineInfo(el: HTMLElement): {
+    index: number; level: number; bullet: boolean; bodyRaw: string;
+    caretInBody: number; lineStartSerialize: number;
+  } | null {
+    const index = currentLineIndex(el);
+    if (index < 0) return null;
+    const raw = serializeEl(el);
+    const lines = raw.split("\n");
+    const lineRaw = lines[index] ?? "";
+    const meta = parseBulletLine(lineRaw);
+    let lineStart = 0;
+    for (let i = 0; i < index; i++) lineStart += lines[i].length + 1;
+    const sel = window.getSelection();
+    let caretInBody = meta.body.length;
+    if (sel && sel.rangeCount) {
+      const off = caretSerializeOffsetOf(el, sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
+      const prefixLen = lineRaw.length - meta.body.length;
+      caretInBody = Math.max(0, off - lineStart - prefixLen);
+    }
+    return { index, level: meta.level, bullet: meta.bullet, bodyRaw: meta.body, caretInBody, lineStartSerialize: lineStart };
+  }
+
+  // 특정 줄 교체(null=제거) 후 재렌더 + 캐럿 복원.
+  function replaceLine(lineIndex: number, newLineRaw: string | null, caretSerializeOffset: number) {
+    const el = ref.current;
+    if (!el) return;
+    const lines = serializeEl(el).split("\n");
+    if (newLineRaw === null) lines.splice(lineIndex, 1);
+    else lines[lineIndex] = newLineRaw;
+    const out = lines.join("\n");
+    renderToEl(el, out);
+    setCaretAtSerializeOffset(el, caretSerializeOffset);
+    setToolbar(null);
+    onChange(out);
+  }
+
+  // 현재 줄을 before 로 바꾸고 다음에 after 줄 삽입. 캐럿은 새 줄 본문 시작.
+  function replaceLineThenInsert(lineIndex: number, beforeRaw: string, afterRaw: string, afterPrefixLen: number) {
+    const el = ref.current;
+    if (!el) return;
+    const lines = serializeEl(el).split("\n");
+    lines[lineIndex] = beforeRaw;
+    lines.splice(lineIndex + 1, 0, afterRaw);
+    const out = lines.join("\n");
+    renderToEl(el, out);
+    let caret = 0;
+    for (let i = 0; i <= lineIndex; i++) caret += lines[i].length + 1;
+    caret += afterPrefixLen;
+    setCaretAtSerializeOffset(el, caret);
+    setToolbar(null);
+    onChange(out);
+  }
+
+  // 본문 마커 문자열을 평문 오프셋에서 앞/뒤로 분할(마크 보존).
+  function splitBodyAt(bodyRaw: string, plainOffset: number): { before: string; after: string } {
+    const segs = parseRich(bodyRaw);
+    let acc = 0;
+    let before = "";
+    let after = "";
+    for (const s of segs) {
+      const mk = s.mark === "link" && s.linkSlug ? `${LINK_PREFIX}${s.linkSlug}` : s.mark;
+      const wrap = (t: string) => (isKnownKey(mk) ? `[[${mk}|${t}]]` : t);
+      const segLen = s.text.length;
+      if (acc + segLen <= plainOffset) {
+        if (s.text) before += wrap(s.text);
+      } else if (acc >= plainOffset) {
+        if (s.text) after += wrap(s.text);
+      } else {
+        const cut = plainOffset - acc;
+        const a = s.text.slice(0, cut);
+        const b = s.text.slice(cut);
+        if (a) before += wrap(a);
+        if (b) after += wrap(b);
+      }
+      acc += segLen;
+    }
+    return { before, after };
+  }
+
+  // 키 입력 처리: '- '+스페이스 불릿화 / Tab·Shift+Tab 들여쓰기 / Backspace 불릿 해제 / Enter 이어가기.
+  function handleKeyDown(ev: React.KeyboardEvent<HTMLDivElement>) {
+    const el = ref.current;
+    if (!el || composingRef.current) return;
+
+    // '- ' 입력 감지: 스페이스 키 직전 줄 본문이 정확히 "-" 이면 불릿화.
+    if (ev.key === " ") {
+      const info = lineInfo(el);
+      if (info && !info.bullet && info.bodyRaw === "-" && info.caretInBody === 1) {
+        ev.preventDefault();
+        // "-" 제거하고 레벨0 빈 불릿으로.
+        replaceLine(info.index, makeBulletLine(0, ""), info.lineStartSerialize + 2);
+        return;
+      }
+      return;
+    }
+
+    const info = lineInfo(el);
+    if (!info) return;
+
+    if (ev.key === "Tab") {
+      ev.preventDefault();
+      if (!info.bullet) {
+        if (info.caretInBody === 0) {
+          // 일반 줄 시작에서 Tab → 레벨0 불릿 시작(본문 유지).
+          replaceLine(info.index, makeBulletLine(0, info.bodyRaw), info.lineStartSerialize + 2 + info.caretInBody);
+        }
+        return;
+      }
+      const delta = ev.shiftKey ? -1 : 1;
+      const newLevel = Math.max(0, Math.min(info.level + delta, MAX_BULLET_LEVEL));
+      if (newLevel === info.level) return;
+      replaceLine(info.index, makeBulletLine(newLevel, info.bodyRaw), info.lineStartSerialize + (newLevel + 2) + info.caretInBody);
+      return;
+    }
+
+    if (ev.key === "Backspace" && info.bullet && info.caretInBody === 0) {
+      ev.preventDefault();
+      if (info.level > 0) {
+        const newLevel = info.level - 1;
+        replaceLine(info.index, makeBulletLine(newLevel, info.bodyRaw), info.lineStartSerialize + (newLevel + 2));
+      } else {
+        replaceLine(info.index, info.bodyRaw, info.lineStartSerialize);
+      }
+      return;
+    }
+
+    if (ev.key === "Enter" && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey && info.bullet) {
+      ev.preventDefault();
+      if (parseRich(info.bodyRaw).every((s) => !s.text)) {
+        // 빈 불릿에서 Enter → 불릿 해제(빈 평문 줄).
+        replaceLine(info.index, "", info.lineStartSerialize);
+        return;
+      }
+      const split = splitBodyAt(info.bodyRaw, info.caretInBody);
+      replaceLineThenInsert(info.index, makeBulletLine(info.level, split.before), makeBulletLine(info.level, split.after), info.level + 2);
+      return;
+    }
   }
 
   // 선택 구간 [start,end) 에 표식 적용/해제. key=null 이면 표식 제거.
@@ -316,6 +694,7 @@ export function CapRichEditor({
         aria-multiline="true"
         className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed text-center outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words"
         style={{ minHeight: `${rows * 1.4 + 1}rem` }}
+        onKeyDown={handleKeyDown}
         onInput={() => { if (!composingRef.current) emit(); }}
         onCompositionStart={() => { composingRef.current = true; }}
         onCompositionEnd={() => { composingRef.current = false; emit(); }}

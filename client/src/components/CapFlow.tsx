@@ -6,7 +6,6 @@
 import { useState, useRef, useLayoutEffect } from "react";
 import { X, MessageSquare } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
-import { plainText } from "@/lib/capitalism-richtext";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { newNodeKey } from "@/lib/capitalism-flowops";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
@@ -226,11 +225,6 @@ function VArrow() {
 // 메모 컬럼 너비(px). 카드 우측 여백을 채워 노션식 코멘트를 상시 표시한다.
 const MEMO_COL_W = 240;
 
-// 노드 텍스트에서 미리보기용 평문 추출(리치텍스트 [[...]] 마크업 제거 + 줄바꿈 정리).
-function nodePlain(text: string): string {
-  return plainText(text).replace(/\s+/g, " ").trim();
-}
-
 // 노션식 메모 카드 1개. 작성된 메모만 표시하며, 노드 버튼으로 추가한 경우(autoEdit) 자동으로 편집 상태.
 function MemoCard({
   node, editable, autoEdit, onMemo, onFocusNode, onEditDone, focusedId,
@@ -275,7 +269,6 @@ function MemoCard({
     onFocusNode?.(null);
     onEditDone?.(node.id);
   };
-  const anchor = nodePlain(node.text) || "(빈 칸)";
 
   return (
     <div
@@ -289,12 +282,6 @@ function MemoCard({
       onMouseLeave={() => { if (!editing) onFocusNode?.(null); }}
       data-testid={`memo-card-${node.id}`}
     >
-      <div className="mb-1 flex items-center gap-1 border-l-2 border-amber-400/70 pl-1.5">
-        <MessageSquare className="h-2.5 w-2.5 shrink-0 text-amber-600/80 dark:text-amber-400/80" strokeWidth={2.5} />
-        <span className="truncate text-[9.5px] font-medium text-amber-700/90 dark:text-amber-300/80" title={anchor}>
-          {anchor}
-        </span>
-      </div>
       {editing ? (
         <textarea
           ref={(el) => { taRef.current = el; if (el) { grow(el); requestAnimationFrame(() => grow(el)); } }}

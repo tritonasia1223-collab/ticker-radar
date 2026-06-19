@@ -85,3 +85,40 @@ export function serializeRich(segs: RichSeg[]): string {
 export function plainText(raw: string): string {
   return parseRich(raw).map((s) => s.text).join("");
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 말머리(불릿) — 슬랙/노션식. 줄 단위로 동작한다.
+//   저장 형식(줄 프리픽스): \t × 레벨 + "• "
+//     - 레벨 0~2 (3단계). 탭 문자는 사용자가 직접 입력할 수 없어(Tab 키는 들여쓰기로 가로챔)
+//       일반 텍스트와 충돌하지 않는다.
+//     - 불릿 기호는 항상 "• "로 저장하고, 화면 표시 시 레벨별 기호(BULLET_GLYPH)로 치환한다.
+//   이 프리픽스는 줄 시작(문자열 처음 또는 \n 직후)에만 의미를 가지며,
+//   [[마크|텍스트]] 직렬화와 독립적이라 라운드트립이 안전하다.
+// ─────────────────────────────────────────────────────────────────────
+
+export const MAX_BULLET_LEVEL = 2; // 0,1,2 → 3단계
+export const BULLET_CHAR = "\u2022"; // • (저장용 통일 기호)
+// 화면 표시용 — 레벨별 기호(좁은 폭 고려해 3단계만).
+export const BULLET_GLYPH = ["\u2022", "\u25e6", "\u25aa"]; // • ◦ ▪
+// 줄 프리픽스 정규식: 선행 탭(레벨) + "• " (마커가 표식 span 안에 들어가는 일은 없음).
+const BULLET_PREFIX = /^(\t*)\u2022 /;
+
+export interface BulletLine {
+  bullet: boolean; // 이 줄이 불릿인지
+  level: number;   // 들여쓰기 레벨(0~MAX_BULLET_LEVEL), 불릿일 때만 의미
+  body: string;    // 프리픽스 제거한 줄 본문(마크업 [[...]] 포함 가능)
+}
+
+// 한 줄(마크업 포함) → 불릿 메타 + 본문 분리.
+export function parseBulletLine(line: string): BulletLine {
+  const m = BULLET_PREFIX.exec(line);
+  if (!m) return { bullet: false, level: 0, body: line };
+  const level = Math.min(m[1].length, MAX_BULLET_LEVEL);
+  return { bullet: true, level, body: line.slice(m[0].length) };
+}
+
+// 불릿 메타 + 본문 → 줄 프리픽스 포함 직렬화 문자열.
+export function makeBulletLine(level: number, body: string): string {
+  const lv = Math.max(0, Math.min(level, MAX_BULLET_LEVEL));
+  return "\t".repeat(lv) + BULLET_CHAR + " " + body;
+}
