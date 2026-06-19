@@ -455,6 +455,8 @@ export function FlowColumn({
   const [autoEditMemoId, setAutoEditMemoId] = useState<string | null>(null);
   // 노드 표 버튼으로 막 추가/편집을 시작한 노드 id. 첫 셀 자동 포커스용.
   const [autoEditTableId, setAutoEditTableId] = useState<string | null>(null);
+  // 분기열(left/right) 시작 오프셋(px) — 그 열이 갈라져 나온 기준열 노드의 세로 위치. 측정으로 채운다.
+  const [branchTops, setBranchTops] = useState<Record<string, number>>({});
   // 노션식 양방향 호버 하이라이트 — 현재 호버 중인 노드 id. 노드↔메모 양쪽을 동시에 강조한다.
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   // 본문 스택 DOM 참조(메모 컬럼이 노드 세로 위치를 측정하는 좌표 기준). callback ref로 세팅해 최초 마운트 시점에도 메모 앵커링이 동작하게 한다.
@@ -621,6 +623,41 @@ export function FlowColumn({
     focusedId: focusedNodeId,
   };
 
+  // 분기열 시작 위치 측정 — 각 분기열(left/right)이 갈라져 나온 기준열 노드의 세로 위치를
+  // 읽어 그 열의 margin-top 으로 쓴다. 분기 기준점 = 배열에서 그 열 첫 노드 바로 앞의 center 노드.
+  // (기준열은 분기열 margin 의 영향을 받지 않으므로 측정값이 안정 → 무한 루프 없음.)
+  const measureBranch = useRef<() => void>(() => {});
+  measureBranch.current = () => {
+    if (flow.layout !== "branch" || !bodyEl) return;
+    const bodyRect = bodyEl.getBoundingClientRect();
+    const next: Record<string, number> = {};
+    for (const col of ["left", "right"]) {
+      const firstIdx = flow.nodes.findIndex((n) => (n.col || "center") === col);
+      if (firstIdx < 0) continue;
+      let anchorId: string | null = null;
+      for (let i = firstIdx - 1; i >= 0; i--) {
+        if ((flow.nodes[i].col || "center") === "center") { anchorId = flow.nodes[i].id; break; }
+      }
+      if (!anchorId) continue;
+      const el = bodyEl.querySelector<HTMLElement>(`[data-node-id="${flow.slug}::${anchorId}"]`);
+      if (!el) continue;
+      next[col] = Math.max(0, el.getBoundingClientRect().top - bodyRect.top);
+    }
+    setBranchTops((prev) => {
+      const keys = Object.keys(next);
+      if (keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k])) return prev;
+      return next;
+    });
+  };
+  useLayoutEffect(() => { measureBranch.current(); });
+  useLayoutEffect(() => {
+    if (!bodyEl || typeof ResizeObserver === "undefined") return;
+    // 노드 내용 높이가 바뀌면(편집 등) 기준점 위치도 바뀌므로 본문 크기 변화를 관찰해 재측정.
+    const ro = new ResizeObserver(() => measureBranch.current());
+    ro.observe(bodyEl);
+    return () => ro.disconnect();
+  }, [bodyEl]);
+
   // 본문을 "행" 배열로 만든다. 각 행은 본문 노드(JSX)와 그 행에 속한 노드 목록(메모 대응용)을 갖는다.
   // 행 단위로 [본문행 | 메모슬롯]을 나란히 두므로, 메모가 자기 노드 행 높이에 대략 정렬되고
   // 위쪽 메모가 사라져도 아래 메모가 위로 끌려올라가지 않는다.
@@ -646,7 +683,12 @@ export function FlowColumn({
       content: (
         <div className="flex items-start justify-center gap-3">
           {usedCols.map((col) => (
-            <div key={col} className="flex w-[240px] shrink-0 flex-col">
+            <div
+              key={col}
+              className="flex w-[240px] shrink-0 flex-col"
+              // 분기열은 갈라진 기준점(center 노드) 높이만큼 내려서 시작. 기준열은 0.
+              style={col !== "center" ? { marginTop: branchTops[col] ?? 0 } : undefined}
+            >
               {colNodes[col].map((n, i) => (
                 // key={n.id}: 노드별 고유 키(같은 위치에 다른 노드가 와도 편집 draft 오염 방지).
                 <div key={n.id}>
