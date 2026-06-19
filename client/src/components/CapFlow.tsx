@@ -653,11 +653,10 @@ export function FlowColumn({
       const rowNodes = usedCols
         .map((col) => row[col])
         .filter((n): n is FlowNodeDTO => !!n);
-      // 화살표는 "같은 열에서 바로 위·아래 행에 실제 노드가 연속될 때"만 긋는다.
-      // (현재 행에 그 열 노드가 있고 + 바로 직전 행의 같은 열에도 노드가 있는 경우).
-      // 중간에 빈 행이 끼면(멈춘 흐름) 화살표를 그리지 않는다.
+      // 화살표는 '기준열(center)'에서만 — 바로 위·아래 행에 center 노드가 연속될 때.
+      // 분기열(left/right)에는 노드 간 화살표를 그리지 않는다(기준 흐름만 화살표로 표시).
       const hasArrow = (col: string) =>
-        !!row[col] && ri > 0 && !!rows[ri - 1][col];
+        col === "center" && !!row[col] && ri > 0 && !!rows[ri - 1][col];
       const anyArrow = usedCols.some(hasArrow);
       bodyRows.push({
         nodes: rowNodes,
