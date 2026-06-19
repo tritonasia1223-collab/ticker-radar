@@ -636,58 +636,28 @@ export function FlowColumn({
   // 본문 행 배열 구성(branch=행 그리드, stack=세로 1열).
   const bodyRows: BodyRow[] = [];
   if (flow.layout === "branch") {
-    // 행(row) 기반 그리드: 배열 순서대로 순회하며 center 노드는 새 행을 시작하고,
-    // left/right(분기) 노드는 가장 최근 행의 해당 컬럼 셀에 배치한다.
-    type Row = Record<string, FlowNodeDTO | undefined>;
-    const rows: Row[] = [];
-    let cur: Row | null = null;
-    for (const n of flow.nodes) {
-      const col = n.col || "center";
-      if (cur === null || col === "center" || cur[col] !== undefined) {
-        cur = {};
-        rows.push(cur);
-      }
-      cur[col] = n;
-    }
-    rows.forEach((row, ri) => {
-      const rowNodes = usedCols
-        .map((col) => row[col])
-        .filter((n): n is FlowNodeDTO => !!n);
-      // 화살표는 "같은 열에서 바로 위·아래 행에 실제 노드가 연속될 때"만 긋는다.
-      // (현재 행에 그 열 노드가 있고 + 바로 직전 행의 같은 열에도 노드가 있는 경우).
-      // 중간에 빈 행이 끼면(멈춘 흐름) 화살표를 그리지 않는다.
-      const hasArrow = (col: string) =>
-        !!row[col] && ri > 0 && !!rows[ri - 1][col];
-      const anyArrow = usedCols.some(hasArrow);
-      bodyRows.push({
-        nodes: rowNodes,
-        content: (
-          <div>
-            {anyArrow ? (
-              <div className="flex items-start justify-center gap-3">
-                {usedCols.map((col) => (
-                  <div key={col} className="w-[240px] shrink-0">
-                    {hasArrow(col) ? <VArrow /> : null}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <div className="flex items-start justify-center gap-3">
-              {usedCols.map((col) => (
-                <div key={col} className="w-[240px] shrink-0">
-                  {row[col] ? (
-                    // key={node.id}: 노드별 고유 키로 컴포넌트를 식별한다. 없으면 행/컬럼 위치
-                    // 기반으로 reconcile되어, 같은 위치에 다른 노드가 들어올 때 이전 노드의
-                    // 편집 draft가 그대로 재사용되는 버그가 생긴다(분기 추가 후 새 노드에
-                    // 옛 노드 텍스트가 채워지던 문제).
-                    <Node key={row[col]!.id} {...nodeProps} node={row[col]!} editing={editingId === row[col]!.id} />
-                  ) : null}
+    // 컬럼별 독립 세로 스택 — 컬럼 간 높이 결합을 끊는다. 각 열은 자기 노드만으로
+    // 높이가 정해지므로, 분기열 노드가 길어져도 기준열 노드 간격이 벌어지지 않는다.
+    // (이전엔 행 그리드라 한 행 높이=max(기준열,분기열)였고, 긴 분기 셀이 기준열을 아래로 밀었다.)
+    const colNodes: Record<string, FlowNodeDTO[]> = { left: [], center: [], right: [] };
+    flow.nodes.forEach((n) => { (colNodes[n.col || "center"] ??= []).push(n); });
+    bodyRows.push({
+      nodes: flow.nodes,
+      content: (
+        <div className="flex items-start justify-center gap-3">
+          {usedCols.map((col) => (
+            <div key={col} className="flex w-[240px] shrink-0 flex-col">
+              {colNodes[col].map((n, i) => (
+                // key={n.id}: 노드별 고유 키(같은 위치에 다른 노드가 와도 편집 draft 오염 방지).
+                <div key={n.id}>
+                  {i > 0 ? <VArrow /> : null}
+                  <Node {...nodeProps} node={n} editing={editingId === n.id} />
                 </div>
               ))}
             </div>
-          </div>
-        ),
-      });
+          ))}
+        </div>
+      ),
     });
   } else {
     flow.nodes.forEach((n, i) => {
