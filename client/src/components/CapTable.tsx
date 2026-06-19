@@ -182,7 +182,10 @@ export function TableCard({
             {row.map((cell, c) => (
               <div
                 key={c}
-                className="group/col relative border border-border/60"
+                // 헤더(1행 또는 1열)는 배경을 약간 진하게 — 라이트/다크 모두에서 대비.
+                className={`group/col relative border border-border/60 ${
+                  r === 0 || c === 0 ? "bg-black/[0.06] dark:bg-white/[0.09]" : ""
+                }`}
                 style={{ flexGrow: t.widths[c] || 1, flexBasis: 0, minWidth: 0 }}
               >
                 {/* 첫 행: 열 삭제 버튼 */}
