@@ -136,7 +136,16 @@ function serializeInline(parent: Node): string {
     if (e.hasAttribute("data-bullet-mark")) return;
     const mark = e.getAttribute("data-mark");
     if (isKnownKey(mark)) { out += `[[${mark}|${e.textContent || ""}]]`; return; }
-    if (e.tagName === "BR") { out += "\n"; return; }
+    if (e.tagName === "BR") {
+      // 빈 줄 컨테이너의 단독 placeholder BR 은 줄 자리표시일 뿐 — \n 아님(줄 DIV 경계가 줄바꿈을 담당).
+      // lenUntil 의 onlyChild 처리와 대칭을 맞춰야 직렬화 좌표와 오프셋 좌표가 일치한다.
+      // (단독 BR 을 \n 으로 직렬화하면 빈 줄 1개가 라운드트립마다 2배로 불어나고,
+      //  serializeEl().split("\n") 의 줄 인덱스가 DOM div 인덱스와 어긋나 편집이 엉뚱한 줄을 덮어쓴다.)
+      const parent = e.parentNode as HTMLElement | null;
+      const onlyChild = !!parent && parent.childNodes.length === 1;
+      if (!onlyChild) out += "\n";
+      return;
+    }
     // 그 외(본문 래퍼 span 등) → 내부 재귀.
     out += serializeInline(e);
   });
