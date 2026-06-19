@@ -22,6 +22,17 @@ import seriesData from "@/data/capitalism-series.json";
 type SeriesMap = Record<string, [string, number][]>;
 const SERIES = seriesData as unknown as SeriesMap;
 
+// 각 패널(시리즈)의 데이터 시작 소수 연도. 슬라이더 현재 시점이 이보다 이르면
+// 아직 데이터가 없으므로 체크박스 라벨을 회색으로 흐리게 표시한다.
+// (예: 연준 유동성 walcl/wresbal=2002년, rrp=2003년부터 시작)
+const PANEL_START_FRAC: Record<string, number> = Object.fromEntries(
+  PANELS.map((p) => {
+    const arr = SERIES[p.series];
+    const firstDate = arr && arr.length > 0 ? arr[0][0] : null;
+    return [p.id, firstDate ? toFracYear(firstDate) : -Infinity];
+  }),
+);
+
 const YEAR_MIN = 1971;
 const YEAR_MAX = 1980;
 
@@ -673,16 +684,31 @@ export default function Capitalism() {
                 <div key={catKey} className="flex flex-col gap-1.5">
                   <span className="text-[11px] font-semibold" style={{ color: cat.color }}>{cat.label}</span>
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                    {PANELS.filter((p) => p.cat === catKey).map((p) => (
-                      <label key={p.id} className="flex items-center gap-1.5 text-[12px] cursor-pointer" data-testid={`toggle-${p.id}`}>
-                        <Checkbox
-                          checked={enabled[p.id]}
-                          onCheckedChange={(v) => setEnabled((prev) => ({ ...prev, [p.id]: !!v }))}
-                        />
-                        <span className="h-2 w-2 rounded-sm" style={{ background: p.color }} />
-                        {p.label}
-                      </label>
-                    ))}
+                    {PANELS.filter((p) => p.cat === catKey).map((p) => {
+                      // 슬라이더 현재 시점에 아직 데이터가 없는 지표는 흐리게 표시(회색 + 도트 투명도 저하).
+                      const noData = playYear < (PANEL_START_FRAC[p.id] ?? -Infinity);
+                      const startYear = Math.floor(PANEL_START_FRAC[p.id] ?? 0);
+                      return (
+                        <label
+                          key={p.id}
+                          className={`flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors ${
+                            noData ? "text-muted-foreground/50" : ""
+                          }`}
+                          data-testid={`toggle-${p.id}`}
+                          title={noData ? `${startYear}년부터 데이터 제공` : undefined}
+                        >
+                          <Checkbox
+                            checked={enabled[p.id]}
+                            onCheckedChange={(v) => setEnabled((prev) => ({ ...prev, [p.id]: !!v }))}
+                          />
+                          <span
+                            className="h-2 w-2 rounded-sm transition-opacity"
+                            style={{ background: p.color, opacity: noData ? 0.35 : 1 }}
+                          />
+                          {p.label}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
