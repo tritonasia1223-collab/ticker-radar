@@ -474,8 +474,19 @@ export function FlowColumn({
     // ── 아래 스택 추가: 같은 컬럼으로 바로 아래 삽입 ──
     if (dir === "down") {
       const base = idx >= 0 ? nodes[idx] : nodes[nodes.length - 1];
-      const nn = blankNode(base?.col || "center");
-      nodes.splice(idx >= 0 ? idx + 1 : nodes.length, 0, nn);
+      const col = base?.col || "center";
+      const nn = blankNode(col);
+      let insertAt = idx >= 0 ? idx + 1 : nodes.length;
+      // branch 레이아웃에서 기준열(center) 아래에 칸을 추가할 때는, 같은 행 블록에
+      // 딸린 분기(left/right) 노드들을 건너뛴 위치에 삽입한다. 배열 인접성으로 행을
+      // 구성하므로, 단순히 center 바로 뒤에 끼우면 기존 분기 노드들이 한 행씩 아래로
+      // 밀린다(우측 분기를 먼저 작성한 뒤 기준열 추가 시 발생하던 버그).
+      if (flow.layout === "branch" && col === "center" && idx >= 0) {
+        let j = idx + 1;
+        while (j < nodes.length && (nodes[j].col || "center") !== "center") j++;
+        insertAt = j;
+      }
+      nodes.splice(insertAt, 0, nn);
       add(flow, nodes);
       setEditingId(nn.id);
       return;
@@ -622,7 +633,11 @@ export function FlowColumn({
               {usedCols.map((col) => (
                 <div key={col} className="w-[240px] shrink-0">
                   {row[col] ? (
-                    <Node {...nodeProps} node={row[col]!} editing={editingId === row[col]!.id} />
+                    // key={node.id}: 노드별 고유 키로 컴포넌트를 식별한다. 없으면 행/컬럼 위치
+                    // 기반으로 reconcile되어, 같은 위치에 다른 노드가 들어올 때 이전 노드의
+                    // 편집 draft가 그대로 재사용되는 버그가 생긴다(분기 추가 후 새 노드에
+                    // 옛 노드 텍스트가 채워지던 문제).
+                    <Node key={row[col]!.id} {...nodeProps} node={row[col]!} editing={editingId === row[col]!.id} />
                   ) : null}
                 </div>
               ))}
@@ -638,7 +653,7 @@ export function FlowColumn({
         content: (
           <div>
             {i > 0 ? <VArrow /> : null}
-            <Node {...nodeProps} node={n} editing={editingId === n.id} />
+            <Node key={n.id} {...nodeProps} node={n} editing={editingId === n.id} />
           </div>
         ),
       });
@@ -758,7 +773,9 @@ export function FlowColumn({
         {/* 본문: 독립적 세로 스택. 노드 간격은 메모 높이와 무관하게 자신의 내용만으로 결정. */}
         <div ref={setBodyEl} style={{ width: bodyWidth }} className="flex shrink-0 flex-col">
           {bodyRows.map((row, ri) => (
-            <div key={ri}>{row.content}</div>
+            // 행 key는 행에 속한 노드 id 조합으로 안정화(인덱스 key는 행 삽입/제거 시
+            // 잘못된 reconcile를 유발한다). 빈 행은 ri로 폴백.
+            <div key={row.nodes.map((n) => n.id).join("-") || ri}>{row.content}</div>
           ))}
         </div>
         {showMemoCol ? (
