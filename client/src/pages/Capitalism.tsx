@@ -3,6 +3,8 @@
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
 import { useMemo, useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence, useReducedMotion, LayoutGroup } from "framer-motion";
+import { spring, fadeRise, reducedTransition } from "@/lib/motion-presets";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Undo2 } from "lucide-react";
@@ -264,6 +266,9 @@ export default function Capitalism() {
   const activeDecade = useMemo(() => Math.floor(playYear / 10) * 10, [playYear]);
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
+  // 동작 최소화 선호 시 스프링을 끄고 즉시 전환.
+  const reduceMotion = useReducedMotion();
+  const panelSpring = reduceMotion ? reducedTransition : spring.ios;
 
   // 노드 배열 통째 저장(빈 칸 정리, 전부 비면 플로우 삭제). 낙관적 캐시 갱신.
   const mutate = useMutation({
@@ -555,27 +560,31 @@ export default function Capitalism() {
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => void doUndo()}
                 disabled={!canUndo || undoBusy}
                 title="되돌리기 (Ctrl+Z)"
                 aria-label="되돌리기"
+                whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                transition={spring.snappy}
                 className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 data-testid="button-undo"
               >
                 <Undo2 className="h-3.5 w-3.5" />
                 되돌리기
-              </button>
+              </motion.button>
               <span className="text-sm font-medium">연도</span>
               {decades.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-1" data-testid="decade-nav">
                   {decades.map((d) => {
                     const isActive = d.decade === activeDecade;
                     return (
-                      <button
+                      <motion.button
                         key={d.decade}
                         type="button"
+                        whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+                        transition={spring.snappy}
                         onClick={() => seekToYear(d.firstFrac)}
                         className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums transition-colors ${
                           isActive
@@ -585,7 +594,7 @@ export default function Capitalism() {
                         data-testid={`decade-${d.decade}`}
                       >
                         {d.label}
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -624,25 +633,38 @@ export default function Capitalism() {
           </section>
 
           {/* ── 그래프 스택 — 4개 이하면 1열(넓게), 5개 이상이면 2열. 시점(playYear) 동기화 유지 ── */}
-          <section className={`grid gap-3 ${onPanels.length >= 5 ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
-            {onPanels.length === 0 ? (
-              <div className="text-center text-sm text-muted-foreground py-8">
-                표시할 지표를 아래에서 선택하세요.
-              </div>
-            ) : (
-              onPanels.map((p) => (
-                <CapChartPanel
-                  key={p.id}
-                  panel={p}
-                  series={SERIES[p.series]}
-                  fromYear={viewFrom}
-                  toYear={viewTo}
-                  playYear={playYear}
-                  band={activeBand}
-                />
-              ))
-            )}
-          </section>
+          {/* 1↔2열 전환 시 각 패널이 iOS 스프링으로 제자리를 찾아가고(layout), 추가/제거 시 fade+rise로 등장/퇴장. */}
+          <LayoutGroup>
+            <section className={`grid gap-3 ${onPanels.length >= 5 ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+              {onPanels.length === 0 ? (
+                <div className="text-center text-sm text-muted-foreground py-8">
+                  표시할 지표를 아래에서 선택하세요.
+                </div>
+              ) : (
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {onPanels.map((p) => (
+                    <motion.div
+                      key={p.id}
+                      layout
+                      transition={panelSpring}
+                      initial={reduceMotion ? false : fadeRise.initial}
+                      animate={fadeRise.animate}
+                      exit={reduceMotion ? undefined : fadeRise.exit}
+                    >
+                      <CapChartPanel
+                        panel={p}
+                        series={SERIES[p.series]}
+                        fromYear={viewFrom}
+                        toYear={viewTo}
+                        playYear={playYear}
+                        band={activeBand}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </section>
+          </LayoutGroup>
 
           {/* ── 체크박스 (카테고리별) ── */}
           <section className="rounded-lg border border-border bg-card/40 p-3">

@@ -41,28 +41,34 @@ export function CapChartPanel({
   // Y축 도메인: zeroLine 지표(GDP·CPI·무역수지 등 0이 기준인 것)는 0 포함 자동,
   // 그 외(달러지수·금리·통화량 등 0과 멀리 떨어진 지표)는 보이는 구간 min~max에 여백을 준 자동 범위.
   const yDomain = useMemo<[number | string, number | string]>(() => {
-    if (data.length === 0) return ["auto", "auto"];
-    // zeroLine 지표: 0을 반드시 포함(음/양 구분·영역 채우기 기준선 유지)
-    // 현재 창(fromYear~toYear) 안의 점만 Y범위에 반영 → 스크롤 시 Y축도 보이는 구간에 맞춰 자연스럽게 조정됨.
-    const vis = data.filter((d) => d.t >= fromYear && d.t <= toYear);
-    const pts = vis.length > 0 ? vis : data;
+    if (!series || series.length === 0) return ["auto", "auto"];
+    // 전체 데이터 범위 고정: 창 무관·시리즈 전체 점을 기준으로 min/max 산출.
+    // → 슬라이더로 창을 이동해도 Y축이 변하지 않아(상단값 18→24 튀는 현상 제거), 눌려보이더라도 일관된 기준.
+    const vals: number[] = [];
+    for (const [, value] of series) {
+      if (value != null && !Number.isNaN(value)) vals.push(value);
+    }
+    if (vals.length === 0) return ["auto", "auto"];
     if (panel.zeroLine) {
+      // zeroLine 지표: 0을 반드시 포함 + 전체 최대/최소를 스냅.
       let mn = 0, mx = 0;
-      for (const d of pts) { if (d.v < mn) mn = d.v; if (d.v > mx) mx = d.v; }
-      return [mn, "auto"];
+      for (const v of vals) { if (v < mn) mn = v; if (v > mx) mx = v; }
+      if (mn === 0 && mx === 0) return [0, "auto"];
+      const span = mx - mn;
+      const stepZ = span > 60 ? 20 : span > 30 ? 10 : 5;
+      return [Math.floor(mn / stepZ) * stepZ, Math.ceil(mx / stepZ) * stepZ];
     }
     let lo = Infinity, hi = -Infinity;
-    for (const d of pts) { if (d.v < lo) lo = d.v; if (d.v > hi) hi = d.v; }
+    for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return ["auto", "auto"];
     if (lo === hi) { const p = Math.abs(lo) * 0.05 || 1; return [lo - p, hi + p]; }
     const pad = (hi - lo) * 0.08;
-    // 스냅 단위를 범위에 비례해 키워(작은 구간면 5, 큰 구간면 10·20...) 창 이동 시 Y축 끝값이 잠깐에 튀는 것을 줄인다.
     const range = hi - lo + pad * 2;
     const step = range > 60 ? 20 : range > 30 ? 10 : 5;
     const niceLo = Math.floor((lo - pad) / step) * step;
     const niceHi = Math.ceil((hi + pad) / step) * step;
     return [niceLo, niceHi];
-  }, [data, panel.zeroLine, fromYear, toYear]);
+  }, [series, panel.zeroLine]);
 
   return (
     <div className="rounded-lg border border-border bg-card/40 p-3" data-testid={`panel-${panel.id}`}>
