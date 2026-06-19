@@ -21,7 +21,7 @@ const LINK_STYLE: Record<string, string> = {
 };
 
 // 가장 가까운 세로 스크롤 조상(세로 타임라인 보드 등) — 포커스/캐럿 설정 시 점프 방지용 위치 보존 대상.
-function findScrollParent(el: HTMLElement | null): HTMLElement | null {
+export function findScrollParent(el: HTMLElement | null): HTMLElement | null {
   let node = el?.parentElement ?? null;
   while (node) {
     const oy = getComputedStyle(node).overflowY;
