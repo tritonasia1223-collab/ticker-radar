@@ -55,6 +55,8 @@ export default function Capitalism() {
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))
   );
   const [playYear, setPlayYear] = useState(1973.8);
+  // Y축 범위 모드: "full"=전체 데이터 고정(기본), "window"=시점에 따라 유동 조절.
+  const [yMode, setYMode] = useState<"full" | "window">("full");
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
   // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
@@ -643,6 +645,42 @@ export default function Capitalism() {
             </div>
           </section>
 
+          {/* ── Y축 범위 모드 토글 — 전체 범위 고정 vs 시점 따라 유동 ── */}
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-medium text-muted-foreground">그래프</span>
+            <div
+              className="inline-flex items-center rounded-md border border-border bg-card/40 p-0.5"
+              role="group"
+              aria-label="Y축 범위 모드"
+              data-testid="ymode-toggle"
+            >
+              {([
+                { v: "full" as const, label: "전체 범위", title: "Y축을 전체 데이터 범위로 고정(시점 이동해도 불변)" },
+                { v: "window" as const, label: "시점 맞춤", title: "현재 보이는 구간에 맞춰 Y축을 유동 조절" },
+              ]).map((opt) => {
+                const active = yMode === opt.v;
+                return (
+                  <motion.button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setYMode(opt.v)}
+                    title={opt.title}
+                    whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                    transition={spring.snappy}
+                    className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`ymode-${opt.v}`}
+                  >
+                    {opt.label}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* ── 그래프 스택 — 4개 이하면 1열(넓게), 5개 이상이면 2열. 시점(playYear) 동기화 유지 ── */}
           {/* 1↔2열 전환 시 각 패널이 iOS 스프링으로 제자리를 찾아가고(layout), 추가/제거 시 fade+rise로 등장/퇴장. */}
           <LayoutGroup>
@@ -669,6 +707,7 @@ export default function Capitalism() {
                         toYear={viewTo}
                         playYear={playYear}
                         band={activeBand}
+                        yMode={yMode}
                       />
                     </motion.div>
                   ))}

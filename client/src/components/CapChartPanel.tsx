@@ -9,7 +9,7 @@ import type { PanelDef } from "@/lib/capitalism-config";
 type Point = [string, number]; // [date, value]
 
 export function CapChartPanel({
-  panel, series, fromYear, toYear, playYear, band,
+  panel, series, fromYear, toYear, playYear, band, yMode = "full",
 }: {
   panel: PanelDef;
   series: Point[] | undefined;
@@ -18,6 +18,8 @@ export function CapChartPanel({
   playYear: number;
   // active 사건이 기간 이벤트일 때 음영 밴드(시작~종료) + 중앙값. 단일 이벤트면 null.
   band?: { start: number; end: number; mid: number } | null;
+  // Y축 범위 모드: "full"=전체 데이터 기준 고정, "window"=보이는 구간(fromYear~toYear)에 맞춰 유동 조절.
+  yMode?: "full" | "window";
 }) {
   const data = useMemo(() => {
     if (!series) return [];
@@ -39,14 +41,23 @@ export function CapChartPanel({
   const empty = data.length === 0;
 
   // Y축 도메인: zeroLine 지표(GDP·CPI·무역수지 등 0이 기준인 것)는 0 포함 자동,
-  // 그 외(달러지수·금리·통화량 등 0과 멀리 떨어진 지표)는 보이는 구간 min~max에 여백을 준 자동 범위.
+  // 그 외(달러지수·금리·통화량 등 0과 멀리 떨어진 지표)는 min~max에 여백을 준 자동 범위.
+  // yMode="full": 전체 시리즈 기준 고정(창 이동해도 Y축 불변). "window": 보이는 구간만 기준(시점 따라 유동 조절).
   const yDomain = useMemo<[number | string, number | string]>(() => {
     if (!series || series.length === 0) return ["auto", "auto"];
-    // 전체 데이터 범위 고정: 창 무관·시리즈 전체 점을 기준으로 min/max 산출.
-    // → 슬라이더로 창을 이동해도 Y축이 변하지 않아(상단값 18→24 튀는 현상 제거), 눌려보이더라도 일관된 기준.
     const vals: number[] = [];
-    for (const [, value] of series) {
-      if (value != null && !Number.isNaN(value)) vals.push(value);
+    if (yMode === "window") {
+      // 유동 모드: 현재 보이는 창(fromYear~toYear) 안의 점만으로 min/max 산출 → 시점에 따라 Y축이 따라 움직인다.
+      for (const [date, value] of series) {
+        if (value == null || Number.isNaN(value)) continue;
+        const y = Number(date.slice(0, 4)) + (Number(date.slice(5, 7)) - 1) / 12;
+        if (y >= fromYear && y <= toYear) vals.push(value);
+      }
+    } else {
+      // 전체 범위 고정 모드: 창 무관·시리즈 전체 점을 기준으로 산출 → 창을 이동해도 Y축 불변.
+      for (const [, value] of series) {
+        if (value != null && !Number.isNaN(value)) vals.push(value);
+      }
     }
     if (vals.length === 0) return ["auto", "auto"];
     if (panel.zeroLine) {
@@ -68,7 +79,7 @@ export function CapChartPanel({
     const niceLo = Math.floor((lo - pad) / step) * step;
     const niceHi = Math.ceil((hi + pad) / step) * step;
     return [niceLo, niceHi];
-  }, [series, panel.zeroLine]);
+  }, [series, panel.zeroLine, yMode, fromYear, toYear]);
 
   return (
     <div className="rounded-lg border border-border bg-card/40 p-3" data-testid={`panel-${panel.id}`}>
