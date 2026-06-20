@@ -6,7 +6,7 @@
 import { useState, useRef, useLayoutEffect } from "react";
 import { X, MessageSquare, Table2 } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
-import { CapRichEditor, findScrollParent, type LinkTarget } from "@/components/CapRichEditor";
+import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { newNodeKey } from "@/lib/capitalism-flowops";
 import type { FlowDTO, FlowNodeDTO, CapTableData } from "@/lib/capitalism-types";
@@ -125,20 +125,7 @@ function Node({
       ) : (
         <div
           className={editable ? "cursor-text rounded hover:bg-muted/40" : ""}
-          onClick={(e) => {
-            if (!editable) return;
-            e.stopPropagation();
-            setDraft(node.text);
-            // 편집 진입 시 화면 점프 방지: 클릭 직전(편집기 마운트·포커스·캐럿 이동 전) 스크롤 위치를
-            // 잡아, 마운트/포커스가 끝난 다음 두 프레임에 복원한다. 원인(캐럿/포커스/리플로우) 무관하게 고정.
-            const scroller = findScrollParent(e.currentTarget as HTMLElement);
-            const top = scroller?.scrollTop ?? 0;
-            onStartEdit(node.id);
-            if (scroller) {
-              const restore = () => { if (scroller.scrollTop !== top) scroller.scrollTop = top; };
-              requestAnimationFrame(() => { restore(); requestAnimationFrame(restore); });
-            }
-          }}
+          onClick={(e) => { if (editable) { e.stopPropagation(); setDraft(node.text); onStartEdit(node.id); } }}
           data-testid={`fnode-text-${node.id}`}
         >
           {node.text.trim() ? (

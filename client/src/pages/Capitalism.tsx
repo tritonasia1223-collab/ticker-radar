@@ -177,6 +177,13 @@ export default function Capitalism() {
     board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
   }, [fromY, toY]);
 
+  // 카드 선택 — playYear(슬라이더/그래프)만 그 시점으로 갱신하고 '보드는 스크롤하지 않는다'.
+  // 카드를 클릭(편집 진입 포함)할 때 이미 보고 있는 카드를 또 스크롤하면 화면이 점프하므로,
+  // seekToYear 의 스크롤 부분을 빼고 시점만 맞춘다. 명시적 이동(슬라이더/연대칩/링크)만 스크롤한다.
+  const selectYear = useCallback((frac: number) => {
+    setPlayYear(Math.max(fromY, Math.min(toY, frac)));
+  }, [fromY, toY]);
+
   // 내부 링크 클릭 → 대상 카드 시점으로 이동(스크롤 + playYear).
   const jumpToSlug = useCallback((slug: string) => {
     const f = flows?.find((x) => x.slug === slug);
@@ -508,7 +515,7 @@ export default function Capitalism() {
                             <FlowColumn
                               flow={f}
                               active={isActive}
-                              onSelect={(ff) => seekToYear(toFracYear(ff.date))}
+                              onSelect={(ff) => selectYear(toFracYear(ff.date))}
                               onMutateNodes={onMutateNodes}
                               onAddLocal={onAddLocal}
                               onMutateMeta={onMutateMeta}
