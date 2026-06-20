@@ -14,6 +14,7 @@ export interface PanelDef {
 
 export const CATEGORIES: Record<string, { label: string; color: string }> = {
   macro: { label: "거시경제", color: "#5dd6a0" },
+  market: { label: "주식시장", color: "#38bdf8" },
   rates: { label: "금리", color: "#ef8a8a" },
   money: { label: "통화·대외", color: "#f0b366" },
   fed: { label: "연준 유동성", color: "#c08cf0" },
@@ -22,6 +23,9 @@ export const CATEGORIES: Record<string, { label: string; color: string }> = {
 export const PANELS: PanelDef[] = [
   { id: "gdp_growth", label: "실질 GDP 성장률", unit: "%", series: "gdp_growth", cat: "macro", color: "#5dd6a0", on: true, start: "1947", zeroLine: true, kind: "area" },
   { id: "inflation", label: "인플레이션 (CPI YoY)", unit: "%", series: "inflation", cat: "macro", color: "#e0c267", on: true, start: "1948", zeroLine: true, kind: "line" },
+  { id: "sp500", label: "미국 주가지수 (S&P500 추종)", unit: "idx", series: "sp500", cat: "market", color: "#0ea5e9", on: true, start: "1957", kind: "line" },
+  { id: "nasdaq", label: "나스닥 종합", unit: "p", series: "nasdaq", cat: "market", color: "#38bdf8", on: false, start: "1971", kind: "line" },
+  { id: "mktcap", label: "미국 시총 (기업 주식)", unit: "$B", series: "mktcap", cat: "market", color: "#2563eb", on: false, start: "1945", kind: "area" },
   { id: "unrate", label: "실업률", unit: "%", series: "unrate", cat: "macro", color: "#8fb98f", on: false, start: "1948", kind: "line" },
   { id: "debt_gdp", label: "GDP 대비 정부부채", unit: "%", series: "debt_gdp", cat: "macro", color: "#7fae7f", on: false, start: "1939", kind: "area" },
   { id: "tb3ms", label: "단기금리 (3M T-Bill)", unit: "%", series: "tb3ms", cat: "rates", color: "#ef8a8a", on: true, start: "1934", kind: "line" },
