@@ -184,12 +184,26 @@ export default function Capitalism() {
     setPlayYear(Math.max(fromY, Math.min(toY, frac)));
   }, [fromY, toY]);
 
-  // 내부 링크 클릭 → 대상 카드 시점으로 이동(스크롤 + playYear).
+  // 내부 링크 클릭 → 대상 '카드 자체'로 스크롤(+playYear).
+  // seekToYear 는 '연도 그룹'으로만 가서, 같은 연도에 이벤트가 여럿이면(예: 1985년 4건)
+  // 엉뚱한 카드(그 해 첫 이벤트)로 가거나 소수연도가 인접 연도로 반올림돼 빗나갔다.
+  // 그래서 대상 카드 DOM(data-testid=flow-<slug>)을 직접 찾아 그 위치로 스크롤한다. 못 찾으면 연도로 폴백.
   const jumpToSlug = useCallback((slug: string) => {
     const f = flows?.find((x) => x.slug === slug);
     if (!f) return; // 삭제되었거나 아직 없는 카드면 무시
-    seekToYear(toFracYear(f.date));
-  }, [flows, seekToYear]);
+    setPlayYear(Math.max(fromY, Math.min(toY, toFracYear(f.date)))); // 슬라이더/그래프도 그 시점으로
+    const board = boardRef.current;
+    const el = board?.querySelector<HTMLElement>(`[data-testid="flow-${slug}"]`);
+    if (!board || !el) { seekToYear(toFracYear(f.date)); return; } // 카드 DOM 못 찾으면 연도 그룹으로 폴백
+    const boardBox = board.getBoundingClientRect();
+    const elBox = el.getBoundingClientRect();
+    const anchor = Math.min(120, board.clientHeight * 0.25);
+    const target = elBox.top - boardBox.top + board.scrollTop - anchor;
+    programScrollRef.current = true;
+    if (programScrollTimer.current) window.clearTimeout(programScrollTimer.current);
+    programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
+    board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+  }, [flows, fromY, toY, seekToYear]);
 
   // active 사건이 기간 이벤트면 [시작, 종료] 소수연도 밴드를 산출(그래프 음영·중앙값용). 단일 이벤트면 null.
   const activeBand = useMemo(() => {
