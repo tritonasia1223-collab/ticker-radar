@@ -41,6 +41,19 @@ export const PANELS: PanelDef[] = [
   { id: "rrp", label: "역레포 (ON RRP)", unit: "$B", series: "rrp", cat: "fed", color: "#9868d0", on: false, start: "2003", kind: "area" },
 ];
 
+// 달러→원화 고정 환율(근사). 시총·무역수지 등 $ 단위 패널의 '단위 클릭 → 원화 전환'에 사용.
+// 고정 환율이라 그래프 모양은 동일하고 축·값 숫자만 원화로 바뀐다(과거 환율 변동은 미반영).
+export const USD_KRW = 1380;
+
+// $ 단위를 원화 단위로 변환하는 배율·라벨. 변환 불가 단위면 null.
+//   $B(십억$) → 조₩  (×USD_KRW/1000),  $/bbl → ₩/bbl,  $ → ₩
+export function krwConversion(unit: string): { factor: number; unit: string } | null {
+  if (unit === "$B") return { factor: USD_KRW / 1000, unit: "조₩" };
+  if (unit === "$/bbl") return { factor: USD_KRW, unit: "₩/bbl" };
+  if (unit === "$") return { factor: USD_KRW, unit: "₩" };
+  return null;
+}
+
 export const CAT_COLORS: Record<string, string> = {
   "정치": "#6ea8fe",
   "경제": "#5dd6a0",

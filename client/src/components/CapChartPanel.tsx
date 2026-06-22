@@ -8,7 +8,10 @@ import {
 } from "recharts";
 import { Maximize2, X } from "lucide-react";
 import type { PanelDef } from "@/lib/capitalism-config";
-import { fracYearToLabel } from "@/lib/capitalism-config";
+import { fracYearToLabel, krwConversion, USD_KRW } from "@/lib/capitalism-config";
+
+// 축 눈금용 한국어 축약 표기(만/억 등). 원화 큰 값도 40px 폭에 들어가게.
+const tickFmt = (v: number) => new Intl.NumberFormat("ko", { notation: "compact", maximumFractionDigits: 1 }).format(v);
 
 type Point = [string, number]; // [date, value]
 
@@ -18,7 +21,7 @@ function fracOf(date: string): number {
 
 // 차트 본체 — 작은 패널과 전체보기 모달이 공유. fromYear~toYear 창 + 높이만 다르게 받는다.
 function PanelChart({
-  panel, series, fromYear, toYear, playYear, band, yMode, height, tickCount = 6,
+  panel, series, fromYear, toYear, playYear, band, yMode, height, tickCount = 6, scale = 1, unit,
 }: {
   panel: PanelDef;
   series: Point[] | undefined;
@@ -29,11 +32,13 @@ function PanelChart({
   yMode: "full" | "window";
   height: number;
   tickCount?: number;
+  scale?: number;   // 값 배율(원화 환산 등). 1=원본.
+  unit: string;     // 표시 단위(원화 전환 시 조₩ 등).
 }) {
   const data = useMemo(() => {
     if (!series) return [];
     const all = series
-      .map(([date, value]) => ({ t: fracOf(date), v: value }))
+      .map(([date, value]) => ({ t: fracOf(date), v: value * scale }))
       .filter((d) => d.v != null && !Number.isNaN(d.v));
     // 창 경계 바깥 한 점씩 포함해 라인이 창 끝까지 자연스럽게 이어지게 한다(잘림 방지).
     const inFrom = all.findIndex((d) => d.t >= fromYear);
@@ -42,7 +47,7 @@ function PanelChart({
     let hi = all.length - 1;
     for (let i = all.length - 1; i >= 0; i--) { if (all[i].t <= toYear) { hi = i < all.length - 1 ? i + 1 : i; break; } }
     return all.slice(lo, hi + 1);
-  }, [series, fromYear, toYear]);
+  }, [series, fromYear, toYear, scale]);
 
   const empty = data.length === 0;
 
@@ -53,11 +58,11 @@ function PanelChart({
       for (const [date, value] of series) {
         if (value == null || Number.isNaN(value)) continue;
         const y = fracOf(date);
-        if (y >= fromYear && y <= toYear) vals.push(value);
+        if (y >= fromYear && y <= toYear) vals.push(value * scale);
       }
     } else {
       for (const [, value] of series) {
-        if (value != null && !Number.isNaN(value)) vals.push(value);
+        if (value != null && !Number.isNaN(value)) vals.push(value * scale);
       }
     }
     if (vals.length === 0) return ["auto", "auto"];
@@ -77,7 +82,7 @@ function PanelChart({
     const range = hi - lo + pad * 2;
     const step = range > 60 ? 20 : range > 30 ? 10 : 5;
     return [Math.floor((lo - pad) / step) * step, Math.ceil((hi + pad) / step) * step];
-  }, [series, panel.zeroLine, yMode, fromYear, toYear]);
+  }, [series, panel.zeroLine, yMode, fromYear, toYear, scale]);
 
   if (empty) {
     return (
@@ -97,7 +102,7 @@ function PanelChart({
           tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground"
           tickCount={tickCount}
         />
-        <YAxis domain={yDomain} allowDataOverflow tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground" width={40} />
+        <YAxis domain={yDomain} allowDataOverflow tick={{ fontSize: 10 }} tickFormatter={tickFmt} stroke="currentColor" className="text-muted-foreground" width={40} />
         {/* 컴팩트 툴팁 — 한 줄(연·월 + 값), 상단 고정으로 데이터 라인을 가리지 않음. 패널 이름은 헤더에 있어 생략. */}
         <Tooltip
           isAnimationActive={false}
@@ -112,8 +117,8 @@ function PanelChart({
               <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[10.5px] leading-tight text-popover-foreground shadow-sm backdrop-blur-sm">
                 <span className="text-muted-foreground tabular-nums">{fracYearToLabel(Number(label))}</span>
                 {" · "}
-                <span className="font-semibold tabular-nums" style={{ color: panel.color }}>{Number(v).toFixed(2)}</span>
-                <span className="text-muted-foreground"> {panel.unit}</span>
+                <span className="font-semibold tabular-nums" style={{ color: panel.color }}>{Number(v).toLocaleString("ko", { maximumFractionDigits: 2 })}</span>
+                <span className="text-muted-foreground"> {unit}</span>
               </div>
             );
           }}
@@ -147,6 +152,11 @@ export function CapChartPanel({
   yMode?: "full" | "window";
 }) {
   const [expanded, setExpanded] = useState(false);
+  // 원화 전환 토글(이 패널 한정). $ 단위 패널만 변환 가능.
+  const [krw, setKrw] = useState(false);
+  const conv = krwConversion(panel.unit);
+  const scale = krw && conv ? conv.factor : 1;
+  const displayUnit = krw && conv ? conv.unit : panel.unit;
 
   // 데이터가 존재하는 전체 구간(처음~끝 연도). 전체보기 모달의 X축 범위.
   const fullRange = useMemo<[number, number] | null>(() => {
@@ -181,13 +191,26 @@ export function CapChartPanel({
           <span className="text-[13px] font-medium">{panel.label}</span>
           <Maximize2 className="h-3 w-3 text-muted-foreground/40 transition-colors group-hover:text-primary" />
         </button>
-        <span className="text-[10.5px] text-muted-foreground tabular-nums">{panel.unit} · {panel.start}~</span>
+        {conv ? (
+          <button
+            type="button"
+            onClick={() => setKrw((k) => !k)}
+            className="rounded px-1 text-[10.5px] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
+            title={`클릭하면 ${krw ? "달러" : "원화"}로 전환 (고정 환율 1$=${USD_KRW.toLocaleString("ko")}원)`}
+            data-testid={`panel-unit-${panel.id}`}
+          >
+            {displayUnit} · {panel.start}~
+          </button>
+        ) : (
+          <span className="text-[10.5px] text-muted-foreground tabular-nums">{panel.unit} · {panel.start}~</span>
+        )}
       </div>
 
       <PanelChart
         panel={panel} series={series}
         fromYear={fromYear} toYear={toYear}
         playYear={playYear} band={band} yMode={yMode} height={120}
+        scale={scale} unit={displayUnit}
       />
 
       {/* 전체 범위 모달 — framer-motion transform 컨테이닝블록을 벗어나도록 포털로 body 에 렌더. */}
@@ -207,7 +230,7 @@ export function CapChartPanel({
                     <span className="h-3 w-3 rounded-sm" style={{ background: panel.color }} />
                     <span className="text-sm font-semibold">{panel.label}</span>
                     <span className="text-[11px] text-muted-foreground tabular-nums">
-                      전체 구간 {fullRange[0]}~{fullRange[1]} · {panel.unit}
+                      전체 구간 {fullRange[0]}~{fullRange[1]} · {displayUnit}
                     </span>
                   </div>
                   <button
@@ -225,6 +248,7 @@ export function CapChartPanel({
                   panel={panel} series={series}
                   fromYear={fullRange[0]} toYear={fullRange[1]}
                   playYear={playYear} band={band} yMode="full" height={440} tickCount={10}
+                  scale={scale} unit={displayUnit}
                 />
               </div>
             </div>,
