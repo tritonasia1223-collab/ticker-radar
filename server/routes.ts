@@ -244,6 +244,10 @@ export function registerRoutes(app: Express) {
     col: z.enum(["center", "left", "right"]).nullable().optional(),
     table: capTableSchema.nullable().optional(),
   });
+  const capInsightSchema = z.object({
+    text: z.string(),
+    charts: z.array(z.object({ series: z.string(), from: z.number(), to: z.number() })),
+  });
   const capFlowInputSchema = z.object({
     slug: z.string().min(1),
     date: z.string().min(1),
@@ -252,6 +256,7 @@ export function registerRoutes(app: Express) {
     title: z.string().min(1),
     category: z.enum(["정치", "경제", "사회"]).default("경제"),
     layout: z.enum(["stack", "branch"]).default("stack"),
+    insight: capInsightSchema.nullable().optional(),
     sortOrder: z.number().int().optional(),
     nodes: z.array(capNodeSchema),
     edges: z.array(z.object({ from: z.string(), to: z.string() })),

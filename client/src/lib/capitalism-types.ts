@@ -8,6 +8,17 @@ export interface CapTableData {
   cells: string[][];     // [행][열] 일반 텍스트
 }
 
+// 사건 인사이트(과거↔현재 연결). 리치텍스트 본문 + 참고 그래프 N개.
+export interface CapInsightChart {
+  series: string;  // PANELS.series 키
+  from: number;    // 소수 연도(시작)
+  to: number;      // 소수 연도(끝)
+}
+export interface CapInsight {
+  text: string;              // 리치텍스트 마커 문자열
+  charts: CapInsightChart[]; // 참고 그래프(0개 이상)
+}
+
 export interface FlowNodeDTO {
   id: string;
   kind: "cause" | "event" | "effect" | "result" | string;
@@ -27,6 +38,7 @@ export interface FlowDTO {
   title: string;
   category: "정치" | "경제" | "사회" | string;
   layout: "stack" | "branch" | string;
+  insight?: CapInsight | null; // 사건 인사이트(없으면 null)
   sortOrder: number;
   nodes: FlowNodeDTO[];
   edges: FlowEdgeDTO[];
@@ -50,6 +62,7 @@ export interface FlowInputDTO {
   title: string;
   category: string;
   layout: string;
+  insight?: CapInsight | null;
   sortOrder?: number;
   nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null; table?: CapTableData | null }[];
   edges: { from: string; to: string }[];

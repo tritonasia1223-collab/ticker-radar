@@ -323,6 +323,7 @@ export const capFlows = pgTable(
     title: text("title").notNull(),
     category: text("category").notNull().default("경제"), // 정치 | 경제 | 사회
     layout: text("layout").notNull().default("stack"),   // stack | branch
+    insight: text("insight"),              // nullable JSON: 사건 인사이트 {text(리치), charts:[{series,from,to}]}
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: bigint("created_at", { mode: "number" }).notNull(),
     updatedAt: bigint("updated_at", { mode: "number" }).notNull(),

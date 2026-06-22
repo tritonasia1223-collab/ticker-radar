@@ -23,6 +23,9 @@ export interface FlowNodeDTO {
   table: CapTableData | null; // 노드별 표(없으면 null)
 }
 export interface FlowEdgeDTO { from: string; to: string }
+// 사건 인사이트 — 리치텍스트 본문 + 참고 그래프 N개.
+export interface CapInsightChart { series: string; from: number; to: number }
+export interface CapInsight { text: string; charts: CapInsightChart[] }
 export interface FlowDTO {
   id: number;
   slug: string;
@@ -32,6 +35,7 @@ export interface FlowDTO {
   title: string;
   category: string;
   layout: string;
+  insight: CapInsight | null; // 사건 인사이트(없으면 null)
   sortOrder: number;
   nodes: FlowNodeDTO[];
   edges: FlowEdgeDTO[];
@@ -46,9 +50,27 @@ export interface FlowInput {
   title: string;
   category: string;
   layout: string;
+  insight?: CapInsight | null;
   sortOrder?: number;
   nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null; table?: CapTableData | null }[];
   edges: { from: string; to: string }[];
+}
+
+// insight(JSON 문자열) → CapInsight. 깨졌거나 형식 불일치면 null 폴백.
+function parseInsight(raw: string | null | undefined): CapInsight | null {
+  if (!raw) return null;
+  try {
+    const t = JSON.parse(raw);
+    if (!t || typeof t.text !== "string") return null;
+    const charts = Array.isArray(t.charts)
+      ? t.charts
+          .filter((c: any) => c && typeof c.series === "string")
+          .map((c: any) => ({ series: String(c.series), from: Number(c.from) || 0, to: Number(c.to) || 0 }))
+      : [];
+    // 본문도 그래프도 없으면 인사이트 없음으로 취급.
+    if (!t.text.trim() && charts.length === 0) return null;
+    return { text: t.text, charts };
+  } catch { return null; }
 }
 
 // table_data(JSON 문자열) → CapTableData. 깨졌거나 형식 불일치면 null 로 안전 폴백.
@@ -82,6 +104,7 @@ function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
     title: flow.title,
     category: flow.category,
     layout: flow.layout,
+    insight: parseInsight(flow.insight),
     sortOrder: flow.sortOrder,
     nodes: nodes
       .sort((a, b) => a.pos - b.pos)
@@ -108,6 +131,9 @@ export async function listFlows(): Promise<FlowDTO[]> {
 //    기존 노드가 통째로 사라지는 데이터 손실을 막는다(원자성).
 export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
   const now = Date.now();
+  // 본문도 그래프도 없는 인사이트는 null 로 저장(빈 인사이트 보존 안 함).
+  const insightJson = input.insight && (input.insight.text.trim() || input.insight.charts.length)
+    ? JSON.stringify(input.insight) : null;
   return await db.transaction(async (tx) => {
     const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);
 
@@ -115,7 +141,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
     if (existing) {
       await tx.update(capFlows).set({
         date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
-        category: input.category, layout: input.layout,
+        category: input.category, layout: input.layout, insight: insightJson,
         sortOrder: input.sortOrder ?? existing.sortOrder, updatedAt: now,
       }).where(eq(capFlows.id, existing.id));
       flowId = existing.id;
@@ -130,7 +156,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
       }
       const inserted = await tx.insert(capFlows).values({
         slug: input.slug, date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
-        category: input.category, layout: input.layout,
+        category: input.category, layout: input.layout, insight: insightJson,
         sortOrder: nextOrder, createdAt: now, updatedAt: now,
       }).returning();
       flowId = inserted[0].id;

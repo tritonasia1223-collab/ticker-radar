@@ -39,6 +39,7 @@ export function toInput(flow: FlowDTO, nodes: FlowNodeDTO[]): FlowInputDTO {
     year: flow.year,
     category: flow.category,
     layout: flow.layout,
+    insight: flow.insight ?? null, // 사건 인사이트(있으면 유지)
     sortOrder: flow.sortOrder,
     nodes: nodes.map((n) => ({
       nodeKey: n.id,
