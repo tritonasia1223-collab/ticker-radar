@@ -19,8 +19,8 @@ function fracOf(date: string): number {
   return Number(date.slice(0, 4)) + (Number(date.slice(5, 7)) - 1) / 12;
 }
 
-// 차트 본체 — 작은 패널과 전체보기 모달이 공유. fromYear~toYear 창 + 높이만 다르게 받는다.
-function PanelChart({
+// 차트 본체 — 작은 패널과 전체보기 모달, 인사이트 그래프가 공유. fromYear~toYear 창 + 높이만 다르게 받는다.
+export function PanelChart({
   panel, series, fromYear, toYear, playYear, band, yMode, height, tickCount = 6, scale = 1, unit,
 }: {
   panel: PanelDef;
