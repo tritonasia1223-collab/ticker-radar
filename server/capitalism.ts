@@ -1,7 +1,7 @@
 // 자본주의 경제사 타임라인 — 격리된 인과 플로우 CRUD.
 // 기존 storage.ts(DatabaseStorage/IStorage) 비침습: 같은 lazy db만 재사용한다.
 import { db } from "./storage.js";
-import { capFlows, capNodes, capEdges, capLinks } from "../shared/schema.js";
+import { capFlows, capNodes, capEdges, capLinks, capSettings } from "../shared/schema.js";
 import type { CapFlow, CapNode, CapEdge, CapLink } from "../shared/schema.js";
 import { eq, asc, desc, and, or } from "drizzle-orm";
 
@@ -241,4 +241,19 @@ export async function addLink(input: { fromSlug: string; fromKey: string; toSlug
 
 export async function deleteLink(id: number): Promise<void> {
   await db.delete(capLinks).where(eq(capLinks.id, id));
+}
+
+// ============================================================================
+// app-level 설정(키-값) — 메타 테제(insight_overview) 등 사건에 안 묶이는 텍스트
+// ============================================================================
+export async function getSetting(key: string): Promise<string | null> {
+  const row = (await db.select().from(capSettings).where(eq(capSettings.key, key))).at(0);
+  return row?.value ?? null;
+}
+
+export async function setSetting(key: string, value: string | null): Promise<void> {
+  const now = Date.now();
+  const existing = (await db.select().from(capSettings).where(eq(capSettings.key, key))).at(0);
+  if (existing) await db.update(capSettings).set({ value, updatedAt: now }).where(eq(capSettings.key, key));
+  else await db.insert(capSettings).values({ key, value, updatedAt: now });
 }

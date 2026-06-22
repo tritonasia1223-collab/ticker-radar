@@ -189,12 +189,49 @@ function InsightChartView({ chart }: { chart: CapInsightChart }) {
   );
 }
 
-// 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰.
-// (메타 테제 공간은 Phase D2 예정)
+// 메타 테제(전체 관통 논증) — 모아보기 최상단. 특정 사건에 안 묶이는 app-level 인사이트.
+function OverviewBlock({ overview, onSave, onJump }: { overview: string; onSave?: (t: string) => void; onJump?: (slug: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(overview);
+  const ref = useRef(overview);
+  ref.current = text;
+  useEffect(() => { if (!editing) { setText(overview); ref.current = overview; } }, [overview, editing]);
+  const done = () => { setEditing(false); onSave?.(ref.current); };
+
+  if (!onSave && !overview.trim()) return null;
+  return (
+    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-primary">전체 관통 — 메타 인사이트</h2>
+        {onSave && !editing ? (
+          <button type="button" onClick={() => setEditing(true)}
+            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
+            <Pencil className="h-3 w-3" /> 편집
+          </button>
+        ) : onSave && editing ? (
+          <button type="button" onClick={done}
+            className="rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/10">완료</button>
+        ) : null}
+      </div>
+      {editing ? (
+        <CapRichEditor value={text} onChange={setText} onBlur={() => onSave?.(ref.current)} rows={8}
+          placeholder="전체를 관통하는 논증(메타 테제)을 적어보세요." />
+      ) : overview.trim() ? (
+        <CapRichText text={overview} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
+      ) : (
+        <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
+      )}
+    </section>
+  );
+}
+
+// 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰 + 메타 테제.
 export function InsightsCollection({
-  flows, onOpenInsight, onJump,
+  flows, overview, onSaveOverview, onOpenInsight, onJump,
 }: {
   flows: FlowDTO[];
+  overview?: string;
+  onSaveOverview?: (text: string) => void;
   onOpenInsight: (slug: string) => void;
   onJump?: (slug: string) => void;
 }) {
@@ -202,17 +239,15 @@ export function InsightsCollection({
     .filter((f) => f.insight && (f.insight.text.trim() || f.insight.charts.length))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
-  if (items.length === 0) {
-    return (
-      <div className="mx-auto max-w-3xl py-16 text-center text-sm text-muted-foreground">
-        아직 인사이트가 없습니다. 타임라인에서 사건 카드의 <Star className="inline h-3.5 w-3.5 text-red-500" fill="currentColor" /> 별을 눌러 인사이트를 적어보세요.
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 py-2">
-      {items.map((f) => {
+      <OverviewBlock overview={overview ?? ""} onSave={onSaveOverview} onJump={onJump} />
+
+      {items.length === 0 ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">
+          아직 사건 인사이트가 없습니다. 타임라인에서 사건 카드의 <Star className="inline h-3.5 w-3.5 text-red-500" fill="currentColor" /> 별을 눌러 적어보세요.
+        </div>
+      ) : items.map((f) => {
         const eventFrac = toFracYear(f.date);
         return (
           <article key={f.slug} className="border-b border-border/40 pb-6 last:border-0">

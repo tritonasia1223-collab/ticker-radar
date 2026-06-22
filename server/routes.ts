@@ -3,7 +3,7 @@ import { storage } from "./storage.js";
 import { collectAll } from "./apify.js";
 import { seedDummy } from "./seed.js";
 import { insertAccountSchema } from "../shared/schema.js";
-import { listFlows, upsertFlow, deleteFlow, listLinks, addLink, deleteLink, type FlowInput } from "./capitalism.js";
+import { listFlows, upsertFlow, deleteFlow, listLinks, addLink, deleteLink, getSetting, setSetting, type FlowInput } from "./capitalism.js";
 import { z } from "zod";
 
 // Writes that hit Apify (and run for a long time) must not run on Vercel's
@@ -299,6 +299,16 @@ export function registerRoutes(app: Express) {
   app.delete("/api/capitalism/links/:id", async (req, res) => {
     await deleteLink(Number(req.params.id));
     res.status(204).end();
+  });
+
+  // ---- app-level 설정(키-값): 메타 테제 등 ----
+  app.get("/api/capitalism/settings/:key", async (req, res) => {
+    res.json({ value: await getSetting(req.params.key) });
+  });
+  app.put("/api/capitalism/settings/:key", async (req, res) => {
+    const value = typeof req.body?.value === "string" ? req.body.value : null;
+    await setSetting(req.params.key, value);
+    res.json({ ok: true });
   });
 
   // ---- Dummy data (testing) ----

@@ -382,9 +382,17 @@ export const capLinks = pgTable(
   })
 );
 
+// --- 자본주의 도메인 app-level 설정(키-값). 메타 테제(insight_overview) 등 사건에 안 묶이는 텍스트. ---
+export const capSettings = pgTable("cap_settings", {
+  key: text("key").primaryKey(),
+  value: text("value"),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
 export const insertCapFlowSchema = createInsertSchema(capFlows).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCapFlow = z.infer<typeof insertCapFlowSchema>;
 export type CapFlow = typeof capFlows.$inferSelect;
 export type CapNode = typeof capNodes.$inferSelect;
 export type CapEdge = typeof capEdges.$inferSelect;
 export type CapLink = typeof capLinks.$inferSelect;
+export type CapSetting = typeof capSettings.$inferSelect;

@@ -51,6 +51,12 @@ export default function Capitalism() {
   const { data: flows, isLoading } = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
   // 보드 전역 화살표(카드 내/간 드래그앤드롭 연결).
   const { data: links } = useQuery<LinkDTO[]>({ queryKey: ["/api/capitalism/links"] });
+  // 메타 테제(전체 관통 논증) — 사건에 안 묶이는 app-level 설정.
+  const { data: overviewData } = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview"] });
+  const saveOverview = (text: string) => {
+    qc.setQueryData(["/api/capitalism/settings/insight_overview"], { value: text });
+    apiRequest("PUT", "/api/capitalism/settings/insight_overview", { value: text }).catch(() => {});
+  };
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))
@@ -491,6 +497,8 @@ export default function Capitalism() {
       {viewMode === "insights" ? (
         <InsightsCollection
           flows={flows ?? []}
+          overview={overviewData?.value ?? ""}
+          onSaveOverview={saveOverview}
           onOpenInsight={(slug) => { setViewMode("timeline"); setActiveInsightSlug(slug); seekToYear(toFracYear(flows?.find((f) => f.slug === slug)?.date ?? `${YEAR_MIN}-01-01`)); }}
           onJump={jumpToSlug}
         />
