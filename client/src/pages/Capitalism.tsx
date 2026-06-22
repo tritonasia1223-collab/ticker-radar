@@ -12,7 +12,7 @@ import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
-import { persistNodes, toInput, newNodeKey } from "@/lib/capitalism-flowops";
+import { persistNodes, toInput, newNodeKey, nodeHasContent } from "@/lib/capitalism-flowops";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
@@ -325,7 +325,7 @@ export default function Capitalism() {
     pushUndo(makeFlowEntry("사건 수정", flow.slug, flows));
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
       if (!prev) return prev;
-      const clean = nextNodes.filter((n) => n.text.trim());
+      const clean = nextNodes.filter(nodeHasContent);
       if (clean.length === 0) return prev.filter((f) => f.slug !== flow.slug);
       return prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: clean } : f));
     });
@@ -335,24 +335,27 @@ export default function Capitalism() {
   // 카드 메타(날짜/제목/레이아웃) 변경 — year 자동 재산출, 날짜순 재정렬, 서버 upsert 저장.
   // 날짜를 바꾸면 그룹/슬라이더 범위가 자동으로 갱신되어 다른 연도로 카드가 이동한다.
   const onMutateMeta: MutateMeta = (flow, patch) => {
-    const nextDate = patch.date ?? flow.date;
-    const nextYear = patch.date ? Number(patch.date.slice(0, 4)) : flow.year;
+    // H3 완화: 진행 중인 노드 편집과 클로버되지 않게, '스냅샷(flow)' 대신 최신 캐시의 노드를 기준으로 머지.
+    // (캐시는 onMutateNodes 가 낙관적으로 갱신해 둠 → 메타 저장이 최신 노드 내용을 그대로 보존.)
+    const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === flow.slug) ?? flow;
+    const nextDate = patch.date ?? latest.date;
+    const nextYear = patch.date ? Number(patch.date.slice(0, 4)) : latest.year;
     // endDate: patch에 키가 있으면(설정/해제) 그 값을, 없으면 기존값 유지.
-    const nextEndDate = "endDate" in patch ? (patch.endDate ?? null) : (flow.endDate ?? null);
+    const nextEndDate = "endDate" in patch ? (patch.endDate ?? null) : (latest.endDate ?? null);
     const merged: FlowDTO = {
-      ...flow,
+      ...latest,
       date: nextDate,
       endDate: nextEndDate,
       year: nextYear,
-      title: patch.title ?? flow.title,
-      layout: patch.layout ?? flow.layout,
+      title: patch.title ?? latest.title,
+      layout: patch.layout ?? latest.layout,
     };
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
       if (!prev) return prev;
       const updated = prev.map((f) => (f.slug === flow.slug ? merged : f));
       return [...updated].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sortOrder - b.sortOrder));
     });
-    const cleanNodes = merged.nodes.filter((n) => n.text.trim());
+    const cleanNodes = merged.nodes.filter(nodeHasContent);
     apiRequest("POST", "/api/capitalism/flows", toInput(merged, cleanNodes.length ? cleanNodes : merged.nodes))
       .then(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }))
       .catch(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }));

@@ -57,13 +57,19 @@ export function newNodeKey(): string {
   return `k${Date.now().toString(36)}${Math.floor(Math.random() * 100000).toString(36)}`;
 }
 
-// 플로우의 노드 배열을 통째로 저장. 빈 노드(text 공백)는 저장 시 제외.
+// 노드가 '내용 있음'(보존 대상)인지 — 텍스트뿐 아니라 표(table)·메모(ref)가 있어도 유지한다.
+// (텍스트만 비었다고 버리면 그 노드의 표/메모까지 영구 삭제되는 데이터 손실이 발생했다.)
+export function nodeHasContent(n: FlowNodeDTO): boolean {
+  return !!(n.text.trim() || n.table || (n.ref && n.ref.trim()));
+}
+
+// 플로우의 노드 배열을 통째로 저장. 진짜 빈 노드(텍스트·표·메모 모두 없음)만 제외.
 // 모든 노드가 비면 플로우 자체를 삭제한다. 반환: "deleted" | "saved".
 export async function persistNodes(
   flow: FlowDTO,
   nodes: FlowNodeDTO[]
 ): Promise<"deleted" | "saved"> {
-  const clean = nodes.filter((n) => n.text.trim());
+  const clean = nodes.filter(nodeHasContent);
   if (clean.length === 0) {
     await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(flow.slug)}`);
     return "deleted";

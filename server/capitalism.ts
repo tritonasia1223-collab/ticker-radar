@@ -3,7 +3,7 @@
 import { db } from "./storage.js";
 import { capFlows, capNodes, capEdges, capLinks } from "../shared/schema.js";
 import type { CapFlow, CapNode, CapEdge, CapLink } from "../shared/schema.js";
-import { eq, asc, desc, and } from "drizzle-orm";
+import { eq, asc, desc, and, or } from "drizzle-orm";
 
 // 노드별 표(메모와 같은 층위). 일반 텍스트 셀 + 열 너비(px). text 필드의 [[..]] 마커와 독립.
 export interface CapTableData {
@@ -104,62 +104,64 @@ export async function listFlows(): Promise<FlowDTO[]> {
 }
 
 // upsert by slug: 같은 slug면 통째로 교체(노드/엣지 삭제 후 재삽입). 에디터 저장용.
+// ⚠️ delete→reinsert 를 '트랜잭션'으로 감싼다 — 중간(재삽입) 실패 시 전부 롤백되어
+//    기존 노드가 통째로 사라지는 데이터 손실을 막는다(원자성).
 export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
   const now = Date.now();
-  const existing = (await db.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);
+  return await db.transaction(async (tx) => {
+    const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);
 
-  let flowId: number;
-  if (existing) {
-    await db.update(capFlows).set({
-      date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
-      category: input.category, layout: input.layout,
-      sortOrder: input.sortOrder ?? existing.sortOrder, updatedAt: now,
-    }).where(eq(capFlows.id, existing.id));
-    flowId = existing.id;
-    await db.delete(capNodes).where(eq(capNodes.flowId, flowId));
-    await db.delete(capEdges).where(eq(capEdges.flowId, flowId));
-  } else {
-    // sortOrder 미지정 시 기존 최대값+1로 자동 부여(새 항목이 뒤로).
-    let nextOrder = input.sortOrder;
-    if (nextOrder === undefined) {
-      const top = (await db.select().from(capFlows).orderBy(desc(capFlows.sortOrder)).limit(1)).at(0);
-      nextOrder = top ? top.sortOrder + 1 : 0;
+    let flowId: number;
+    if (existing) {
+      await tx.update(capFlows).set({
+        date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
+        category: input.category, layout: input.layout,
+        sortOrder: input.sortOrder ?? existing.sortOrder, updatedAt: now,
+      }).where(eq(capFlows.id, existing.id));
+      flowId = existing.id;
+      await tx.delete(capNodes).where(eq(capNodes.flowId, flowId));
+      await tx.delete(capEdges).where(eq(capEdges.flowId, flowId));
+    } else {
+      // sortOrder 미지정 시 기존 최대값+1로 자동 부여(새 항목이 뒤로).
+      let nextOrder = input.sortOrder;
+      if (nextOrder === undefined) {
+        const top = (await tx.select().from(capFlows).orderBy(desc(capFlows.sortOrder)).limit(1)).at(0);
+        nextOrder = top ? top.sortOrder + 1 : 0;
+      }
+      const inserted = await tx.insert(capFlows).values({
+        slug: input.slug, date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
+        category: input.category, layout: input.layout,
+        sortOrder: nextOrder, createdAt: now, updatedAt: now,
+      }).returning();
+      flowId = inserted[0].id;
     }
-    const inserted = await db.insert(capFlows).values({
-      slug: input.slug, date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
-      category: input.category, layout: input.layout,
-      sortOrder: nextOrder, createdAt: now, updatedAt: now,
-    }).returning();
-    flowId = inserted[0].id;
-  }
 
-  if (input.nodes.length) {
-    await db.insert(capNodes).values(input.nodes.map((n, i) => ({
-      flowId, nodeKey: n.nodeKey, kind: n.kind,
-      inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null,
-      col: n.col ?? null, tableData: n.table ? JSON.stringify(n.table) : null, pos: i,
-    })));
-  }
-  if (input.edges.length) {
-    await db.insert(capEdges).values(input.edges.map((e) => ({ flowId, fromKey: e.from, toKey: e.to })));
-  }
+    if (input.nodes.length) {
+      await tx.insert(capNodes).values(input.nodes.map((n, i) => ({
+        flowId, nodeKey: n.nodeKey, kind: n.kind,
+        inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null,
+        col: n.col ?? null, tableData: n.table ? JSON.stringify(n.table) : null, pos: i,
+      })));
+    }
+    if (input.edges.length) {
+      await tx.insert(capEdges).values(input.edges.map((e) => ({ flowId, fromKey: e.from, toKey: e.to })));
+    }
 
-  const flow = (await db.select().from(capFlows).where(eq(capFlows.id, flowId)))[0];
-  const nodes = await db.select().from(capNodes).where(eq(capNodes.flowId, flowId));
-  const edges = await db.select().from(capEdges).where(eq(capEdges.flowId, flowId));
-  return assemble(flow, nodes, edges);
+    const flow = (await tx.select().from(capFlows).where(eq(capFlows.id, flowId)))[0];
+    const nodes = await tx.select().from(capNodes).where(eq(capNodes.flowId, flowId));
+    const edges = await tx.select().from(capEdges).where(eq(capEdges.flowId, flowId));
+    return assemble(flow, nodes, edges);
+  });
 }
 
 export async function deleteFlow(slug: string): Promise<void> {
-  const existing = (await db.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
-  if (!existing) return;
-  await db.delete(capFlows).where(eq(capFlows.id, existing.id)); // cascade nodes/edges
-  // 고아 링크(카드 간 화살표) 수동 정리 — 이 slug 가 관여한 링크 제거.
-  for (const l of await db.select().from(capLinks)) {
-    if (l.fromSlug === slug || l.toSlug === slug) {
-      await db.delete(capLinks).where(eq(capLinks.id, l.id));
-    }
-  }
+  await db.transaction(async (tx) => {
+    const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
+    if (!existing) return;
+    await tx.delete(capFlows).where(eq(capFlows.id, existing.id)); // cascade nodes/edges
+    // 고아 링크(카드 간 화살표) 정리 — 이 slug 가 관여한 링크를 한 번에 삭제(원자).
+    await tx.delete(capLinks).where(or(eq(capLinks.fromSlug, slug), eq(capLinks.toSlug, slug)));
+  });
 }
 
 // ============================================================================

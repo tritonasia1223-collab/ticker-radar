@@ -479,9 +479,11 @@ export function FlowColumn({
     // 내용이 실제로 바뀌지 않았으면(=기존 텍스트 그대로 빠져나감) 서버 저장·Undo 푸시 없이 종료.
     const cur = flow.nodes.find((n) => n.id === id);
     if (cur && cur.text === text) return;
+    // 텍스트를 비웠어도 표/메모가 달려 있으면 노드를 삭제하지 않고 텍스트만 비운다(표·메모 보존).
+    const keepEvenIfEmpty = !!(cur && (cur.table || (cur.ref && cur.ref.trim())));
     let next: FlowNodeDTO[];
-    if (!trimmed) {
-      next = flow.nodes.filter((n) => n.id !== id); // 내용 미입력 → 삭제
+    if (!trimmed && !keepEvenIfEmpty) {
+      next = flow.nodes.filter((n) => n.id !== id); // 진짜 빈 칸 → 삭제
     } else {
       next = flow.nodes.map((n) => (n.id === id ? { ...n, text } : n));
     }
