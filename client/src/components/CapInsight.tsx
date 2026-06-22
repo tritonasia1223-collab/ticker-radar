@@ -1,8 +1,9 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 리치텍스트 본문 + 참고 그래프 블록 N개(지표 선택 + 범위, 사건 시점 마커).
 import { useState, useRef, useEffect } from "react";
-import { X, Star, Plus } from "lucide-react";
+import { X, Star, Plus, Pencil } from "lucide-react";
 import { CapRichEditor } from "@/components/CapRichEditor";
+import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
 import { PANELS, toFracYear } from "@/lib/capitalism-config";
 import type { FlowDTO, CapInsight, CapInsightChart } from "@/lib/capitalism-types";
@@ -163,6 +164,90 @@ export function InsightPanel({
           <Plus className="h-3.5 w-3.5" /> 참고 그래프 추가
         </button>
       </div>
+    </div>
+  );
+}
+
+// 읽기 전용 참고 그래프(모아보기용). 컨트롤 없이 차트 + 라벨만.
+function InsightChartView({ chart }: { chart: CapInsightChart }) {
+  const panel = panelFor(chart.series);
+  const from = Math.min(chart.from, chart.to);
+  const to = Math.max(chart.from, chart.to);
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 p-2">
+      <div className="mb-0.5 flex items-center gap-1.5 px-0.5">
+        <span className="h-2 w-2 rounded-sm" style={{ background: panel.color }} />
+        <span className="text-[11px] font-medium">{panel.label}</span>
+        <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit} · {from}~{to}</span>
+      </div>
+      <PanelChart
+        panel={panel} series={SERIES[chart.series]}
+        fromYear={from} toYear={to}
+        playYear={0} yMode="window" height={150} unit={panel.unit}
+      />
+    </div>
+  );
+}
+
+// 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰.
+// (메타 테제 공간은 Phase D2 예정)
+export function InsightsCollection({
+  flows, onOpenInsight, onJump,
+}: {
+  flows: FlowDTO[];
+  onOpenInsight: (slug: string) => void;
+  onJump?: (slug: string) => void;
+}) {
+  const items = flows
+    .filter((f) => f.insight && (f.insight.text.trim() || f.insight.charts.length))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  if (items.length === 0) {
+    return (
+      <div className="mx-auto max-w-3xl py-16 text-center text-sm text-muted-foreground">
+        아직 인사이트가 없습니다. 타임라인에서 사건 카드의 <Star className="inline h-3.5 w-3.5 text-red-500" fill="currentColor" /> 별을 눌러 인사이트를 적어보세요.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex max-w-3xl flex-col gap-8 py-2">
+      {items.map((f) => {
+        const eventFrac = toFracYear(f.date);
+        return (
+          <article key={f.slug} className="border-b border-border/40 pb-6 last:border-0">
+            <header className="mb-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[11px] tabular-nums text-muted-foreground">
+                  {f.endDate ? `${f.date} ~ ${f.endDate}` : f.date}
+                </div>
+                <h3 className="flex items-center gap-1.5 text-base font-bold">
+                  <Star className="h-4 w-4 shrink-0 text-red-500" fill="currentColor" />
+                  {f.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenInsight(f.slug)}
+                className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                title="타임라인에서 편집"
+                data-testid={`insight-edit-${f.slug}`}
+              >
+                <Pencil className="h-3 w-3" /> 편집
+              </button>
+            </header>
+            {f.insight!.text.trim() ? (
+              <CapRichText text={f.insight!.text} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
+            ) : null}
+            {f.insight!.charts.length ? (
+              <div className="mt-3 flex flex-col gap-2">
+                {f.insight!.charts.map((c, i) => <InsightChartView key={i} chart={c} />)}
+              </div>
+            ) : null}
+            <div className="sr-only">{eventFrac}</div>
+          </article>
+        );
+      })}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Plus, Undo2 } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
-import { InsightPanel } from "@/components/CapInsight";
+import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
 import { persistNodes, toInput, newNodeKey, nodeHasContent } from "@/lib/capitalism-flowops";
 import { apiRequest } from "@/lib/queryClient";
@@ -60,6 +60,8 @@ export default function Capitalism() {
   const [yMode, setYMode] = useState<"full" | "window">("window");
   // 인사이트 모드 — 별 클릭 시 그 사건 slug. 설정되면 오른쪽 패널이 그래프 대신 인사이트를 보여준다.
   const [activeInsightSlug, setActiveInsightSlug] = useState<string | null>(null);
+  // 상단 탭 — 타임라인 vs 인사이트 모아보기(시간순 읽기).
+  const [viewMode, setViewMode] = useState<"timeline" | "insights">("timeline");
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
   // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
@@ -466,7 +468,34 @@ export default function Capitalism() {
 
   return (
     <div className="p-4 max-w-[1900px] mx-auto">
-      {/* ── 세로 2단 레이아웃: 좌측 세로 타임라인(위=과거→아래=미래) + 우측 sticky 그래프 패널 ── */}
+      {/* ── 상단 탭: 타임라인 / 인사이트 모아보기 ── */}
+      <div className="mb-3 inline-flex items-center rounded-md border border-border bg-card/40 p-0.5" role="group" aria-label="보기 모드">
+        {([
+          { v: "timeline" as const, label: "타임라인" },
+          { v: "insights" as const, label: "인사이트 모아보기" },
+        ]).map((t) => (
+          <button
+            key={t.v}
+            type="button"
+            onClick={() => setViewMode(t.v)}
+            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+              viewMode === t.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+            data-testid={`viewmode-${t.v}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {viewMode === "insights" ? (
+        <InsightsCollection
+          flows={flows ?? []}
+          onOpenInsight={(slug) => { setViewMode("timeline"); setActiveInsightSlug(slug); seekToYear(toFracYear(flows?.find((f) => f.slug === slug)?.date ?? `${YEAR_MIN}-01-01`)); }}
+          onJump={jumpToSlug}
+        />
+      ) : (
+      /* ── 세로 2단 레이아웃: 좌측 세로 타임라인(위=과거→아래=미래) + 우측 sticky 그래프 패널 ── */
       <div className="flex gap-5 items-start">
         {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
         {/* 카드 콘텐츠 폭만큼만 차지(플렉스 아님) — 남는 우측 공간은 그래프 패널이 흡수한다. */}
@@ -811,6 +840,7 @@ export default function Capitalism() {
           )}
         </aside>
       </div>
+      )}
     </div>
   );
 }
