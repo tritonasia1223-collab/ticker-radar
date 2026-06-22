@@ -120,7 +120,9 @@ export function leadersForYear(year: number): { president: string; fed: string }
   else if (year === 2014) fed = "버냉키→옐런"; // 옐런 2014.2 취임
   else if (year <= 2017) fed = "옐런";
   else if (year === 2018) fed = "옐런→파월"; // 파월 2018.2 취임
-  else fed = "파월"; // 2019~
+  else if (year <= 2025) fed = "파월"; // 2019~2025
+  else if (year === 2026) fed = "파월→워시"; // 워시 2026.5.22 취임
+  else fed = "워시"; // 2027~
 
   return { president, fed };
 }
