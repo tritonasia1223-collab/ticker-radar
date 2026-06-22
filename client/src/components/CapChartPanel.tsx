@@ -5,6 +5,7 @@ import {
   Tooltip, ReferenceLine, ReferenceArea, CartesianGrid,
 } from "recharts";
 import type { PanelDef } from "@/lib/capitalism-config";
+import { fracYearToLabel } from "@/lib/capitalism-config";
 
 type Point = [string, number]; // [date, value]
 
@@ -105,10 +106,26 @@ export function CapChartPanel({
               tickCount={6}
             />
             <YAxis domain={yDomain} allowDataOverflow tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground" width={40} />
+            {/* 컴팩트 툴팁 — 한 줄(연·월 + 값), 상단 고정(position.y=0)으로 가로만 커서 추적해
+                데이터 라인을 가리지 않게. 패널 이름은 헤더에 이미 있어 생략(폭 축소). */}
             <Tooltip
-              contentStyle={{ fontSize: 11, borderRadius: 6 }}
-              labelFormatter={(v) => `${Number(v).toFixed(1)}년`}
-              formatter={(val: any) => [`${Number(val).toFixed(2)} ${panel.unit}`, panel.label]}
+              isAnimationActive={false}
+              position={{ y: 0 }}
+              cursor={{ stroke: panel.color, strokeOpacity: 0.4, strokeWidth: 1 }}
+              wrapperStyle={{ zIndex: 20 }}
+              content={({ active, payload, label }: any) => {
+                if (!active || !payload || !payload.length) return null;
+                const v = payload[0]?.value;
+                if (v == null) return null;
+                return (
+                  <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[10.5px] leading-tight text-popover-foreground shadow-sm backdrop-blur-sm">
+                    <span className="text-muted-foreground tabular-nums">{fracYearToLabel(Number(label))}</span>
+                    {" · "}
+                    <span className="font-semibold tabular-nums" style={{ color: panel.color }}>{Number(v).toFixed(2)}</span>
+                    <span className="text-muted-foreground"> {panel.unit}</span>
+                  </div>
+                );
+              }}
             />
             {panel.zeroLine ? <ReferenceLine y={0} stroke="currentColor" className="text-muted-foreground" strokeWidth={1} opacity={0.5} /> : null}
             {/* 기간 사건이면 시작~종료 구간 음영(그 구간을 지날 때만 색칠로 보임). 단일 사건이면 음영 없음. */}
