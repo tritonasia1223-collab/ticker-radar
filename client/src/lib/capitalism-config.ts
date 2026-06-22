@@ -33,6 +33,7 @@ export const PANELS: PanelDef[] = [
   { id: "fedfunds", label: "연준 정책금리", unit: "%", series: "fedfunds", cat: "rates", color: "#f0a0a0", on: true, start: "1954", kind: "line" },
   { id: "dollar", label: "달러지수", unit: "idx", series: "dollar", cat: "money", color: "#f0b366", on: true, start: "1973", kind: "line" },
   { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "#cc7a33", on: false, start: "1946", kind: "line" },
+  { id: "gold", label: "금값 (oz당)", unit: "$/oz", series: "gold", cat: "money", color: "#d4af37", on: false, start: "1944", kind: "line" },
   { id: "trade", label: "무역수지 (순수출)", unit: "$B", series: "trade", cat: "money", color: "#e0a050", on: false, start: "1947", zeroLine: true, kind: "area" },
   { id: "m2", label: "M2 통화량", unit: "$B", series: "m2", cat: "money", color: "#d9954a", on: false, start: "1959", kind: "line" },
   { id: "monbase", label: "본원통화", unit: "$B", series: "monbase", cat: "fed", color: "#c08cf0", on: false, start: "1959", kind: "line" },
@@ -50,6 +51,7 @@ export const USD_KRW = 1380;
 export function krwConversion(unit: string): { factor: number; unit: string } | null {
   if (unit === "$B") return { factor: USD_KRW / 1000, unit: "조₩" };
   if (unit === "$/bbl") return { factor: USD_KRW, unit: "₩/bbl" };
+  if (unit === "$/oz") return { factor: USD_KRW, unit: "₩/oz" };
   if (unit === "$") return { factor: USD_KRW, unit: "₩" };
   return null;
 }

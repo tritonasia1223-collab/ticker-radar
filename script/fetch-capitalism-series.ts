@@ -12,8 +12,11 @@ const OUT = join(__dirname, "../client/src/data/capitalism-series.json");
 type Point = [string, number];
 interface SeriesDef {
   key: string;          // capitalism-series.json 의 키 (PANELS.series 와 일치)
-  fredId: string;       // FRED 시리즈 ID
+  fredId?: string;      // FRED 시리즈 ID (url 미지정 시 이걸로 FRED CSV URL 구성)
+  url?: string;         // 직접 CSV URL(비-FRED 소스). 있으면 fredId 대신 사용.
   freq: "monthly" | "asis"; // daily→월말 다운샘플 | 원본 그대로(이미 월/분기)
+  valueCol?: number;    // 값 컬럼 인덱스(기본 1)
+  fromDate?: string;    // 'YYYY-MM-DD' 이상만 포함(데이터 시작 절단)
   scale?: number;       // 값 배율(예: 백만$→십억$ = 1/1000)
   decimals: number;
 }
@@ -27,21 +30,27 @@ const SERIES: SeriesDef[] = [
   { key: "mktcap", fredId: "NCBEILQ027S", freq: "asis", scale: 1 / 1000, decimals: 1 },
   // 유가 — WTI 원유 현물($/배럴, 1946~ 월별). 오일쇼크(1973·1979) 가시화용.
   { key: "oil", fredId: "WTISPLC", freq: "asis", decimals: 2 },
+  // 금값 — 월별 $/oz. FRED 는 LBMA 라이선스로 막혀(HTML), datahub 공개셋 사용. 1944~(브레튼우즈 이후).
+  { key: "gold", url: "https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv", freq: "asis", fromDate: "1944-01-01", decimals: 2 },
 ];
 
-async function fetchCsv(id: string): Promise<Point[]> {
-  const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`;
+async function fetchCsv(s: SeriesDef): Promise<Point[]> {
+  const url = s.url ?? `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${s.fredId}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`${id}: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`${s.key}: HTTP ${res.status}`);
   const text = await res.text();
   const lines = text.trim().split("\n").slice(1); // 헤더 제외
+  const col = s.valueCol ?? 1;
   const out: Point[] = [];
   for (const line of lines) {
-    const [date, raw] = line.split(",");
-    if (!date || raw === undefined || raw === "." || raw.trim() === "") continue; // FRED 결측치 = "."
+    const parts = line.split(",");
+    let date = parts[0]?.trim();
+    const raw = parts[col];
+    if (!date || raw === undefined || raw === "." || raw.trim() === "") continue; // 결측치(FRED="." 등)
+    if (/^\d{4}-\d{2}$/.test(date)) date += "-01"; // YYYY-MM → YYYY-MM-01 통일
     const v = Number(raw);
     if (!Number.isFinite(v)) continue;
-    out.push([date.trim(), v]);
+    out.push([date, v]);
   }
   return out;
 }
@@ -59,9 +68,10 @@ function toMonthly(points: Point[]): Point[] {
 async function main() {
   const json = JSON.parse(readFileSync(OUT, "utf-8")) as Record<string, Point[]>;
   for (const s of SERIES) {
-    process.stdout.write(`  ${s.key} (${s.fredId})… `);
-    const raw = await fetchCsv(s.fredId);
+    process.stdout.write(`  ${s.key} (${s.fredId ?? s.url})… `);
+    const raw = await fetchCsv(s);
     let pts = s.freq === "monthly" ? toMonthly(raw) : raw;
+    if (s.fromDate) pts = pts.filter(([d]) => d >= s.fromDate!);
     const scale = s.scale ?? 1;
     pts = pts.map(([d, v]) => [d, Number((v * scale).toFixed(s.decimals))] as Point);
     json[s.key] = pts;
