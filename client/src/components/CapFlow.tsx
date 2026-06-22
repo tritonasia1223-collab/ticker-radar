@@ -4,7 +4,7 @@
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 그 칸 삭제(내용 비워도 자동 삭제). 마지막 칸이면 플로우 삭제.
 import { useState, useRef, useLayoutEffect } from "react";
-import { X, MessageSquare, Table2 } from "lucide-react";
+import { X, MessageSquare, Table2, Star } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
@@ -442,7 +442,7 @@ function SideColumn({
 }
 
 export function FlowColumn({
-  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, onLink, editingId, setEditingId, editable = false, linkTargets, onJump,
+  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, onLink, editingId, setEditingId, editable = false, linkTargets, onJump, onInsightClick,
 }: {
   flow: FlowDTO;
   active: boolean;
@@ -457,6 +457,8 @@ export function FlowColumn({
   // 내부 링크 — 편집 시 카드 목록, 클릭 시 점프 콜백.
   linkTargets?: LinkTarget[];
   onJump?: (slug: string) => void;
+  // 인사이트 별(★) 클릭 — 오른쪽 패널에 이 사건 인사이트를 연다.
+  onInsightClick?: (slug: string) => void;
 }) {
   // 카드 헤더 인라인 편집 상태: "date" | "title" | null
   const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
@@ -724,13 +726,28 @@ export function FlowColumn({
   return (
     <div
       style={{ width: cardWidth }}
-      className={`shrink-0 self-start rounded-lg border bg-transparent p-3 transition-colors ${
+      className={`relative shrink-0 self-start rounded-lg border bg-transparent p-3 transition-colors ${
         active ? "border-primary/70 ring-1 ring-primary/30" : "border-border/60 hover:border-primary/40"
       }`}
       onClick={() => onSelect(flow)}
       data-testid={`flow-${flow.slug}`}
     >
-      <div className="mb-2.5 border-b border-border/50 pb-2">
+      {/* 인사이트 별(★) — 우상단. 인사이트 있으면 빨강 채움, 없으면 흐린 외곽선(추가용). 클릭 시 오른쪽 패널에 인사이트. */}
+      {editable || flow.insight ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onInsightClick?.(flow.slug); }}
+          className={`absolute right-1.5 top-1.5 z-10 transition-transform hover:scale-110 ${
+            flow.insight ? "text-red-500" : "text-muted-foreground/30 hover:text-red-400"
+          }`}
+          title={flow.insight ? "인사이트 보기/편집" : "인사이트 추가 (과거↔현재 연결)"}
+          data-testid={`insight-btn-${flow.slug}`}
+        >
+          <Star className="h-4 w-4" fill={flow.insight ? "currentColor" : "none"} strokeWidth={2} />
+        </button>
+      ) : null}
+
+      <div className="mb-2.5 border-b border-border/50 pb-2 pr-6">
         {/* 날짜 — 클릭 시 시작일 + (선택)종료일 입력으로 전환. 종료일을 넣으면 기간 이벤트가 된다. */}
         {editable && metaEdit === "date" ? (
           <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>

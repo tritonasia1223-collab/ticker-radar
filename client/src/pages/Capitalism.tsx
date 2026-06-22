@@ -11,12 +11,13 @@ import { Plus, Undo2 } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
+import { InsightPanel } from "@/components/CapInsight";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
 import { persistNodes, toInput, newNodeKey, nodeHasContent } from "@/lib/capitalism-flowops";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
-import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO } from "@/lib/capitalism-types";
+import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO, CapInsight } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 type SeriesMap = Record<string, [string, number][]>;
@@ -57,6 +58,8 @@ export default function Capitalism() {
   const [playYear, setPlayYear] = useState(1973.8);
   // Y축 범위 모드: "window"=보이는 시점 구간에 맞춰 유동 조절(기본), "full"=전체 데이터 범위 고정.
   const [yMode, setYMode] = useState<"full" | "window">("window");
+  // 인사이트 모드 — 별 클릭 시 그 사건 slug. 설정되면 오른쪽 패널이 그래프 대신 인사이트를 보여준다.
+  const [activeInsightSlug, setActiveInsightSlug] = useState<string | null>(null);
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
   // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
@@ -299,6 +302,9 @@ export default function Capitalism() {
   // 현재 active 사건이 속한 연대(칩 하이라이트용).
   const activeDecade = useMemo(() => Math.floor(playYear / 10) * 10, [playYear]);
 
+  // 인사이트 모드 대상 flow(별 클릭한 사건). slug 가 없거나 삭제됐으면 null → 그래프 표시.
+  const activeInsightFlow = activeInsightSlug ? (flows?.find((f) => f.slug === activeInsightSlug) ?? null) : null;
+
   const onPanels = PANELS.filter((p) => enabled[p.id]);
   // 동작 최소화 선호 시 스프링을 끄고 즉시 전환.
   const reduceMotion = useReducedMotion();
@@ -355,6 +361,21 @@ export default function Capitalism() {
       const updated = prev.map((f) => (f.slug === flow.slug ? merged : f));
       return [...updated].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sortOrder - b.sortOrder));
     });
+    const cleanNodes = merged.nodes.filter(nodeHasContent);
+    apiRequest("POST", "/api/capitalism/flows", toInput(merged, cleanNodes.length ? cleanNodes : merged.nodes))
+      .then(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }))
+      .catch(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }));
+  };
+
+  // 사건 인사이트 저장 — 최신 캐시 flow 에 insight 만 갈아끼워 통째 저장(onMutateMeta 와 동일 패턴).
+  const onCommitInsight = (slug: string, insight: CapInsight) => {
+    const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
+    if (!latest) return;
+    const hasContent = !!(insight.text.trim() || insight.charts.length);
+    const merged: FlowDTO = { ...latest, insight: hasContent ? insight : null };
+    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
+      prev ? prev.map((f) => (f.slug === slug ? merged : f)) : prev
+    );
     const cleanNodes = merged.nodes.filter(nodeHasContent);
     apiRequest("POST", "/api/capitalism/flows", toInput(merged, cleanNodes.length ? cleanNodes : merged.nodes))
       .then(() => qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }))
@@ -542,6 +563,7 @@ export default function Capitalism() {
                               editable
                               linkTargets={linkTargets}
                               onJump={jumpToSlug}
+                              onInsightClick={setActiveInsightSlug}
                             />
                           </div>
                         );
@@ -594,6 +616,14 @@ export default function Capitalism() {
           className="min-w-[480px] flex-1 sticky top-4 flex flex-col gap-3 overflow-y-auto cap-noscrollbar"
           style={{ maxHeight: "calc(100vh - 32px)" }}
         >
+          {activeInsightFlow ? (
+            <InsightPanel
+              flow={activeInsightFlow}
+              onCommit={onCommitInsight}
+              onClose={() => setActiveInsightSlug(null)}
+            />
+          ) : (
+          <>
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
@@ -777,6 +807,8 @@ export default function Capitalism() {
               ))}
             </div>
           </section>
+          </>
+          )}
         </aside>
       </div>
     </div>
