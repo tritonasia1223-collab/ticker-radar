@@ -55,8 +55,8 @@ export default function Capitalism() {
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))
   );
   const [playYear, setPlayYear] = useState(1973.8);
-  // Y축 범위 모드: "full"=전체 데이터 고정(기본), "window"=시점에 따라 유동 조절.
-  const [yMode, setYMode] = useState<"full" | "window">("full");
+  // Y축 범위 모드: "window"=보이는 시점 구간에 맞춰 유동 조절(기본), "full"=전체 데이터 범위 고정.
+  const [yMode, setYMode] = useState<"full" | "window">("window");
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
   // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
