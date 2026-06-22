@@ -32,6 +32,7 @@ export const PANELS: PanelDef[] = [
   { id: "gs10", label: "장기금리 (10Y 국채)", unit: "%", series: "gs10", cat: "rates", color: "#d96a6a", on: true, start: "1953", kind: "line" },
   { id: "fedfunds", label: "연준 정책금리", unit: "%", series: "fedfunds", cat: "rates", color: "#f0a0a0", on: false, start: "1954", kind: "line" },
   { id: "dollar", label: "달러지수", unit: "idx", series: "dollar", cat: "money", color: "#f0b366", on: true, start: "1973", kind: "line" },
+  { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "#cc7a33", on: true, start: "1946", kind: "line" },
   { id: "trade", label: "무역수지 (순수출)", unit: "$B", series: "trade", cat: "money", color: "#e0a050", on: false, start: "1947", zeroLine: true, kind: "area" },
   { id: "m2", label: "M2 통화량", unit: "$B", series: "m2", cat: "money", color: "#d9954a", on: false, start: "1959", kind: "line" },
   { id: "monbase", label: "본원통화", unit: "$B", series: "monbase", cat: "fed", color: "#c08cf0", on: false, start: "1959", kind: "line" },
@@ -72,25 +73,54 @@ export function fracYearToLabel(frac: number): string {
   return `${year}년 ${month}월`;
 }
 
-// 연도 → 당시 미국 대통령 / 연준(Fed) 의장 (타임라인 범위).
-// 한 해 안에서 교체된 경우 병기. 출처: 백악관/연준 공식 재임 기록.
-// 대통령: 닉슨(~1974.8) → 포드(1974.8~1977.1) → 카터(1977.1~1981.1.20) → 레이건(1981.1.20~1989.1)
-// Fed: 번스(~1978.1) → 밀러(1978.3~1979.8) → 볼커(1979.8~)
+// 연도 → 당시 미국 대통령 / 연준(Fed) 의장. 한 해 안에서 교체되면 "전임→후임"으로 병기.
+// 취임은 대부분 연초(대통령 1.20, 연준 의장은 1~2월 또는 8월) → 교체연도 라벨은 전임→후임.
+// 출처: 백악관/연준 공식 재임 기록.
+//  대통령: 존슨(~1969.1) → 닉슨(1969.1~1974.8) → 포드(~1977.1) → 카터(~1981.1) →
+//          레이건(~1989.1) → 부시(아버지)(~1993.1) → 클린턴(~2001.1) → 부시(아들)(~2009.1) →
+//          오바마(~2017.1) → 트럼프(~2021.1) → 바이든(~2025.1) → 트럼프(2025.1~)
+//  연준:   마틴(~1970.1) → 번스(~1978.1) → 밀러(~1979.8) → 볼커(~1987.8) → 그린스펀(~2006.1) →
+//          버냉키(~2014.1) → 옐런(~2018.2) → 파월(2018.2~)
 export function leadersForYear(year: number): { president: string; fed: string } | null {
   let president: string;
-  if (year <= 1973) president = "닉슨";
-  else if (year === 1974) president = "닉슨→포드";
+  if (year <= 1968) president = "존슨";
+  else if (year === 1969) president = "존슨→닉슨"; // 1969.1.20 취임
+  else if (year <= 1973) president = "닉슨";
+  else if (year === 1974) president = "닉슨→포드"; // 1974.8 사임
   else if (year <= 1976) president = "포드";
-  else if (year <= 1980) president = "카터"; // 1977~1980
-  else if (year === 1981) president = "카터→레이건"; // 1981.1.20 취임
-  else president = "레이건"; // 1982~
+  else if (year <= 1980) president = "카터";
+  else if (year === 1981) president = "카터→레이건";
+  else if (year <= 1988) president = "레이건";
+  else if (year === 1989) president = "레이건→부시(아버지)";
+  else if (year <= 1992) president = "부시(아버지)";
+  else if (year === 1993) president = "부시(아버지)→클린턴";
+  else if (year <= 2000) president = "클린턴";
+  else if (year === 2001) president = "클린턴→부시(아들)";
+  else if (year <= 2008) president = "부시(아들)";
+  else if (year === 2009) president = "부시(아들)→오바마";
+  else if (year <= 2016) president = "오바마";
+  else if (year === 2017) president = "오바마→트럼프";
+  else if (year <= 2020) president = "트럼프";
+  else if (year === 2021) president = "트럼프→바이든";
+  else if (year <= 2024) president = "바이든";
+  else if (year === 2025) president = "바이든→트럼프";
+  else president = "트럼프"; // 2026~
 
   let fed: string;
-  if (year <= 1977) fed = "번스";
+  if (year <= 1969) fed = "마틴";
+  else if (year === 1970) fed = "마틴→번스"; // 번스 1970.1 말 취임
+  else if (year <= 1977) fed = "번스";
   else if (year === 1978) fed = "번스→밀러";
-  else if (year === 1979) fed = "밀러→볼커";
-  else fed = "볼커"; // 1980~
+  else if (year === 1979) fed = "밀러→볼커"; // 볼커 1979.8 취임
+  else if (year <= 1986) fed = "볼커";
+  else if (year === 1987) fed = "볼커→그린스펀"; // 그린스펀 1987.8 취임
+  else if (year <= 2005) fed = "그린스펀";
+  else if (year === 2006) fed = "그린스펀→버냉키"; // 버냉키 2006.2 취임
+  else if (year <= 2013) fed = "버냉키";
+  else if (year === 2014) fed = "버냉키→옐런"; // 옐런 2014.2 취임
+  else if (year <= 2017) fed = "옐런";
+  else if (year === 2018) fed = "옐런→파월"; // 파월 2018.2 취임
+  else fed = "파월"; // 2019~
 
-  if (!president || !fed) return null;
   return { president, fed };
 }

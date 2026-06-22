@@ -25,6 +25,8 @@ const SERIES: SeriesDef[] = [
   { key: "sp500", fredId: "SPASTT01USM661N", freq: "asis", decimals: 2 },
   // 미국 기업 주식 시가총액(1945~ 분기, 백만$ → 십억$)
   { key: "mktcap", fredId: "NCBEILQ027S", freq: "asis", scale: 1 / 1000, decimals: 1 },
+  // 유가 — WTI 원유 현물($/배럴, 1946~ 월별). 오일쇼크(1973·1979) 가시화용.
+  { key: "oil", fredId: "WTISPLC", freq: "asis", decimals: 2 },
 ];
 
 async function fetchCsv(id: string): Promise<Point[]> {
