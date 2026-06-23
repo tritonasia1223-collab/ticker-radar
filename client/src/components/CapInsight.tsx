@@ -1,7 +1,7 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 리치텍스트 본문 + 참고 그래프 블록 N개(지표 선택 + 범위, 사건 시점 마커).
 import { useState, useRef, useEffect } from "react";
-import { X, Star, Plus, Pencil } from "lucide-react";
+import { X, Star, Plus, Pencil, Check } from "lucide-react";
 import { CapRichEditor } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
@@ -30,6 +30,9 @@ export function InsightPanel({
 }) {
   const [text, setText] = useState(flow.insight?.text ?? "");
   const [charts, setCharts] = useState<CapInsightChart[]>(flow.insight?.charts ?? []);
+  // 내용이 있으면 읽기 뷰로 떠서 가독성 확보, 비어 있으면(새 인사이트) 바로 편집.
+  const hasContent = (i?: CapInsight | null) => !!(i && (i.text.trim() || i.charts.length));
+  const [editing, setEditing] = useState(!hasContent(flow.insight));
   const textRef = useRef(text);
   textRef.current = text;
   const chartsRef = useRef(charts);
@@ -40,6 +43,7 @@ export function InsightPanel({
     setText(flow.insight?.text ?? "");
     setCharts(flow.insight?.charts ?? []);
     textRef.current = flow.insight?.text ?? "";
+    setEditing(!hasContent(flow.insight));
   }, [flow.slug]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
@@ -68,6 +72,8 @@ export function InsightPanel({
     applyCharts(charts.map((c, j) => (j === i ? { ...c, ...patch } : c)), doCommit);
   const removeChart = (i: number) => applyCharts(charts.filter((_, j) => j !== i), true);
   const commitCharts = () => commit(textRef.current, chartsRef.current);
+  // '완료' — 마지막 내용 저장 후 읽기 뷰로.
+  const finishEditing = () => { commit(textRef.current, chartsRef.current); setEditing(false); };
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3">
@@ -81,32 +87,57 @@ export function InsightPanel({
             <span className="truncate">{flow.title}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-          title="그래프로 돌아가기"
-          data-testid="insight-close"
-        >
-          <X className="h-3.5 w-3.5" /> 그래프
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {editing ? (
+            <button
+              type="button"
+              onClick={finishEditing}
+              className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+              title="작성 완료 — 읽기 화면으로"
+              data-testid="insight-done"
+            >
+              <Check className="h-3.5 w-3.5" /> 완료
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              title="인사이트 편집"
+              data-testid="insight-edit"
+            >
+              <Pencil className="h-3 w-3" /> 편집
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            title="그래프로 돌아가기"
+            data-testid="insight-close"
+          >
+            <X className="h-3.5 w-3.5" /> 그래프
+          </button>
+        </div>
       </div>
 
-      <div className="text-[11px] text-muted-foreground/70">
-        이 사건과 <b className="text-foreground/80">지금</b>을 어떻게 연결할 수 있을까? — 과거↔현재 인사이트
-      </div>
+      {editing ? (
+        <>
+          <div className="text-[11px] text-muted-foreground/70">
+            이 사건과 <b className="text-foreground/80">지금</b>을 어떻게 연결할 수 있을까? — 과거↔현재 인사이트
+          </div>
 
-      <CapRichEditor
-        value={text}
-        onChange={setText}
-        onBlur={() => commit(textRef.current, charts)}
-        rows={12}
-        align="left"
-        placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿)"
-      />
+          <CapRichEditor
+            value={text}
+            onChange={setText}
+            onBlur={() => commit(textRef.current, charts)}
+            rows={12}
+            align="left"
+            placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿)"
+          />
 
-      {/* ── 참고 그래프 블록 ── */}
-      <div className="flex flex-col gap-2">
+          {/* ── 참고 그래프 블록(편집) ── */}
+          <div className="flex flex-col gap-2">
         {charts.map((c, i) => {
           const panel = panelFor(c.series);
           const lo = firstYearOf(c.series);
@@ -166,13 +197,31 @@ export function InsightPanel({
         >
           <Plus className="h-3.5 w-3.5" /> 참고 그래프 추가
         </button>
-      </div>
+          </div>
+        </>
+      ) : (
+        /* ── 읽기 뷰 ── */
+        <>
+          {text.trim() ? (
+            <CapRichText text={text} className="block text-[13.5px] leading-relaxed text-foreground" />
+          ) : (
+            <div className="py-2 text-[12px] italic text-muted-foreground/60">
+              아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요.
+            </div>
+          )}
+          {charts.length ? (
+            <div className="flex flex-col gap-2">
+              {charts.map((c, i) => <InsightChartView key={i} chart={c} mark={eventFrac} />)}
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
 
-// 읽기 전용 참고 그래프(모아보기용). 컨트롤 없이 차트 + 라벨만.
-function InsightChartView({ chart }: { chart: CapInsightChart }) {
+// 읽기 전용 참고 그래프. 컨트롤 없이 차트 + 라벨만. mark>0 이면 사건 시점 점선 마커 표시.
+function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: number }) {
   const panel = panelFor(chart.series);
   const from = Math.min(chart.from, chart.to);
   const to = Math.max(chart.from, chart.to);
@@ -186,7 +235,7 @@ function InsightChartView({ chart }: { chart: CapInsightChart }) {
       <PanelChart
         panel={panel} series={SERIES[chart.series]}
         fromYear={from} toYear={to}
-        playYear={0} yMode="window" height={150} unit={panel.unit}
+        playYear={mark} yMode="window" height={150} unit={panel.unit}
       />
     </div>
   );
