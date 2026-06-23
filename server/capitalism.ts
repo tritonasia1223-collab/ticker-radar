@@ -23,9 +23,9 @@ export interface FlowNodeDTO {
   table: CapTableData | null; // 노드별 표(없으면 null)
 }
 export interface FlowEdgeDTO { from: string; to: string }
-// 사건 인사이트 — 리치텍스트 본문 + 참고 그래프 N개.
+// 사건 인사이트 — 리치텍스트 본문 + 참고 그래프 N개 + 표 N개.
 export interface CapInsightChart { series: string; from: number; to: number }
-export interface CapInsight { text: string; charts: CapInsightChart[] }
+export interface CapInsight { text: string; charts: CapInsightChart[]; tables?: CapTableData[] }
 export interface FlowDTO {
   id: number;
   slug: string;
@@ -67,24 +67,28 @@ function parseInsight(raw: string | null | undefined): CapInsight | null {
           .filter((c: any) => c && typeof c.series === "string")
           .map((c: any) => ({ series: String(c.series), from: Number(c.from) || 0, to: Number(c.to) || 0 }))
       : [];
-    // 본문도 그래프도 없으면 인사이트 없음으로 취급.
-    if (!t.text.trim() && charts.length === 0) return null;
-    return { text: t.text, charts };
+    const tables = Array.isArray(t.tables)
+      ? t.tables.map(sanitizeTable).filter((x: CapTableData | null): x is CapTableData => x !== null)
+      : [];
+    // 본문도 그래프도 표도 없으면 인사이트 없음으로 취급.
+    if (!t.text.trim() && charts.length === 0 && tables.length === 0) return null;
+    return { text: t.text, charts, tables };
   } catch { return null; }
 }
 
 // table_data(JSON 문자열) → CapTableData. 깨졌거나 형식 불일치면 null 로 안전 폴백.
+// 표 객체 정규화(노드 표 · 인사이트 표 공용). 형식 불일치면 null.
+function sanitizeTable(t: any): CapTableData | null {
+  if (!t || !Array.isArray(t.widths) || !Array.isArray(t.cells)) return null;
+  return {
+    title: typeof t.title === "string" ? t.title : "",
+    widths: t.widths.map((w: any) => Number(w) || 0),
+    cells: t.cells.map((row: any) => (Array.isArray(row) ? row.map((c: any) => String(c ?? "")) : [])),
+  };
+}
 function parseTableData(raw: string | null | undefined): CapTableData | null {
   if (!raw) return null;
-  try {
-    const t = JSON.parse(raw);
-    if (!t || !Array.isArray(t.widths) || !Array.isArray(t.cells)) return null;
-    return {
-      title: typeof t.title === "string" ? t.title : "",
-      widths: t.widths.map((w: any) => Number(w) || 0),
-      cells: t.cells.map((row: any) => (Array.isArray(row) ? row.map((c: any) => String(c ?? "")) : [])),
-    };
-  } catch { return null; }
+  try { return sanitizeTable(JSON.parse(raw)); } catch { return null; }
 }
 
 // 빈 문자열·공백은 null 로 정규화(기간 해제). 종료일이 시작일보다 빠르면 무시.
@@ -132,7 +136,7 @@ export async function listFlows(): Promise<FlowDTO[]> {
 export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
   const now = Date.now();
   // 본문도 그래프도 없는 인사이트는 null 로 저장(빈 인사이트 보존 안 함).
-  const insightJson = input.insight && (input.insight.text.trim() || input.insight.charts.length)
+  const insightJson = input.insight && (input.insight.text.trim() || input.insight.charts.length || input.insight.tables?.length)
     ? JSON.stringify(input.insight) : null;
   return await db.transaction(async (tx) => {
     const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);

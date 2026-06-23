@@ -247,6 +247,7 @@ export function registerRoutes(app: Express) {
   const capInsightSchema = z.object({
     text: z.string(),
     charts: z.array(z.object({ series: z.string(), from: z.number(), to: z.number() })),
+    tables: z.array(capTableSchema).optional(),
   });
   const capFlowInputSchema = z.object({
     slug: z.string().min(1),

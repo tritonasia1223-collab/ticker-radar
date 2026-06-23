@@ -1,12 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
-const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "dark", toggle: () => {} });
+const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "light", toggle: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() =>
-    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "dark"
-  );
+  // 기본 라이트 모드(토글로 다크 전환 가능).
+  const [theme, setTheme] = useState<Theme>("light");
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");

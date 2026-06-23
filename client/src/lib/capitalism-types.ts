@@ -17,6 +17,7 @@ export interface CapInsightChart {
 export interface CapInsight {
   text: string;              // 리치텍스트 마커 문자열
   charts: CapInsightChart[]; // 참고 그래프(0개 이상)
+  tables?: CapTableData[];   // 표(0개 이상) — 그래프처럼 넓게 들어감
 }
 
 export interface FlowNodeDTO {

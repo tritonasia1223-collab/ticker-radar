@@ -1,12 +1,13 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 리치텍스트 본문 + 참고 그래프 블록 N개(지표 선택 + 범위, 사건 시점 마커).
 import { useState, useRef, useEffect } from "react";
-import { X, Star, Plus, Pencil, Check } from "lucide-react";
+import { X, Star, Plus, Pencil, Check, Table as TableIcon } from "lucide-react";
 import { CapRichEditor } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
+import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { PANELS, toFracYear } from "@/lib/capitalism-config";
-import type { FlowDTO, CapInsight, CapInsightChart } from "@/lib/capitalism-types";
+import type { FlowDTO, CapInsight, CapInsightChart, CapTableData, FlowNodeDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 const SERIES = seriesData as unknown as Record<string, [string, number][]>;
@@ -20,6 +21,9 @@ function firstYearOf(key: string): number {
   const arr = SERIES[key];
   return arr && arr.length ? Math.floor(toFracYear(arr[0][0])) : 1940;
 }
+// 인사이트 표를 노드용 TableCard 로 재사용하기 위한 합성 노드(id·table 만 사용됨).
+const synthNode = (id: string, table: CapTableData): FlowNodeDTO =>
+  ({ id, kind: "effect", inLabel: null, text: "", ref: null, col: null, table });
 
 export function InsightPanel({
   flow, onCommit, onClose, variant = "panel",
@@ -33,18 +37,22 @@ export function InsightPanel({
 }) {
   const [text, setText] = useState(flow.insight?.text ?? "");
   const [charts, setCharts] = useState<CapInsightChart[]>(flow.insight?.charts ?? []);
+  const [tables, setTables] = useState<CapTableData[]>(flow.insight?.tables ?? []);
   // 내용이 있으면 읽기 뷰로 떠서 가독성 확보, 비어 있으면(새 인사이트) 바로 편집.
-  const hasContent = (i?: CapInsight | null) => !!(i && (i.text.trim() || i.charts.length));
+  const hasContent = (i?: CapInsight | null) => !!(i && (i.text.trim() || i.charts.length || i.tables?.length));
   const [editing, setEditing] = useState(!hasContent(flow.insight));
   const textRef = useRef(text);
   textRef.current = text;
   const chartsRef = useRef(charts);
   chartsRef.current = charts;
+  const tablesRef = useRef(tables);
+  tablesRef.current = tables;
 
   // 다른 카드의 별을 누르면 그 사건 인사이트로 재시드.
   useEffect(() => {
     setText(flow.insight?.text ?? "");
     setCharts(flow.insight?.charts ?? []);
+    setTables(flow.insight?.tables ?? []);
     textRef.current = flow.insight?.text ?? "";
     setEditing(!hasContent(flow.insight));
   }, [flow.slug]);
@@ -52,17 +60,19 @@ export function InsightPanel({
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
   const eventFrac = toFracYear(flow.date);
 
-  // 저장(본문/그래프 합쳐). 변경 없으면 스킵.
-  const commit = (nextText: string, nextCharts: CapInsightChart[]) => {
-    const cur = flow.insight ?? { text: "", charts: [] };
-    if ((cur.text ?? "") === nextText && JSON.stringify(cur.charts ?? []) === JSON.stringify(nextCharts)) return;
-    onCommit(flow.slug, { text: nextText, charts: nextCharts });
+  // 저장(본문/그래프/표 합쳐). 변경 없으면 스킵.
+  const commit = (nextText: string, nextCharts: CapInsightChart[], nextTables: CapTableData[]) => {
+    const cur = flow.insight ?? { text: "", charts: [], tables: [] };
+    if ((cur.text ?? "") === nextText
+        && JSON.stringify(cur.charts ?? []) === JSON.stringify(nextCharts)
+        && JSON.stringify(cur.tables ?? []) === JSON.stringify(nextTables)) return;
+    onCommit(flow.slug, { text: nextText, charts: nextCharts, tables: nextTables });
   };
 
   // doCommit=false 면 로컬만 갱신(입력 중), blur/구조변경 때만 저장(POST 폭주 방지).
   const applyCharts = (next: CapInsightChart[], doCommit: boolean) => {
     setCharts(next);
-    if (doCommit) commit(textRef.current, next);
+    if (doCommit) commit(textRef.current, next, tablesRef.current);
   };
   const addChart = () => {
     // 기본: 달러지수, '그 카드 시점' 중심 ±5년 창(슬라이더처럼). 데이터 범위로 클램프.
@@ -74,9 +84,22 @@ export function InsightPanel({
   const patchChart = (i: number, patch: Partial<CapInsightChart>, doCommit: boolean) =>
     applyCharts(charts.map((c, j) => (j === i ? { ...c, ...patch } : c)), doCommit);
   const removeChart = (i: number) => applyCharts(charts.filter((_, j) => j !== i), true);
-  const commitCharts = () => commit(textRef.current, chartsRef.current);
+  const commitCharts = () => commit(textRef.current, chartsRef.current, tablesRef.current);
+
+  // ── 표 블록 ── TableCard 는 (합성 노드 id, 표|null) 로 콜백 → 인덱스로 매핑(null=삭제).
+  // 항상 최신 ref 기준으로 갱신(다중 표 편집 시 stale 클로저 방지).
+  const applyTables = (next: CapTableData[], doCommit: boolean) => {
+    setTables(next);
+    if (doCommit) commit(textRef.current, chartsRef.current, next);
+  };
+  const addTable = () => applyTables([...tablesRef.current, makeDefaultTable()], true);
+  const setTableAt = (i: number, t: CapTableData | null) => {
+    const base = tablesRef.current;
+    applyTables(t === null ? base.filter((_, j) => j !== i) : base.map((x, j) => (j === i ? t : x)), true);
+  };
+
   // '완료' — 마지막 내용 저장 후 읽기 뷰로.
-  const finishEditing = () => { commit(textRef.current, chartsRef.current); setEditing(false); };
+  const finishEditing = () => { commit(textRef.current, chartsRef.current, tablesRef.current); setEditing(false); };
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3">
@@ -135,11 +158,25 @@ export function InsightPanel({
           <CapRichEditor
             value={text}
             onChange={setText}
-            onBlur={() => commit(textRef.current, charts)}
+            onBlur={() => commit(textRef.current, chartsRef.current, tablesRef.current)}
             rows={12}
             align="left"
             placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿)"
           />
+
+          {/* ── 표 블록(편집) — 그래프처럼 넓게, 셀 내용에 맞춰 반응형 ── */}
+          <div className="flex flex-col gap-2">
+            {tables.map((tbl, i) => (
+              <TableCard key={i} node={synthNode(`itbl-${i}`, tbl)} editable onCommit={(_id, t) => setTableAt(i, t)} />
+            ))}
+            <button
+              type="button" onClick={addTable}
+              className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+              data-testid="insight-add-table"
+            >
+              <TableIcon className="h-3.5 w-3.5" /> 표 추가
+            </button>
+          </div>
 
           {/* ── 참고 그래프 블록(편집) ── */}
           <div className="flex flex-col gap-2">
@@ -209,11 +246,16 @@ export function InsightPanel({
         <>
           {text.trim() ? (
             <CapRichText text={text} className="block text-[13.5px] leading-relaxed text-foreground" />
-          ) : (
+          ) : !tables.length && !charts.length ? (
             <div className="py-2 text-[12px] italic text-muted-foreground/60">
               아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요.
             </div>
-          )}
+          ) : null}
+          {tables.length ? (
+            <div className="flex flex-col gap-2">
+              {tables.map((tbl, i) => <TableCard key={i} node={synthNode(`itbl-r-${i}`, tbl)} editable={false} onCommit={() => {}} />)}
+            </div>
+          ) : null}
           {charts.length ? (
             <div className="flex flex-col gap-2">
               {charts.map((c, i) => <InsightChartView key={i} chart={c} mark={eventFrac} />)}
@@ -293,7 +335,7 @@ export function InsightsCollection({
   onJump?: (slug: string) => void;
 }) {
   const items = flows
-    .filter((f) => f.insight && (f.insight.text.trim() || f.insight.charts.length))
+    .filter((f) => f.insight && (f.insight.text.trim() || f.insight.charts.length || f.insight.tables?.length))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
   return (
@@ -330,6 +372,11 @@ export function InsightsCollection({
             </header>
             {f.insight!.text.trim() ? (
               <CapRichText text={f.insight!.text} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
+            ) : null}
+            {f.insight!.tables?.length ? (
+              <div className="mt-3 flex flex-col gap-2">
+                {f.insight!.tables.map((tbl, i) => <TableCard key={i} node={synthNode(`itbl-c-${f.slug}-${i}`, tbl)} editable={false} onCommit={() => {}} />)}
+              </div>
             ) : null}
             {f.insight!.charts.length ? (
               <div className="mt-3 flex flex-col gap-2">

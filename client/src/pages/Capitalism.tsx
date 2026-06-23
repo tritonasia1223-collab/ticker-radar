@@ -398,7 +398,7 @@ export default function Capitalism() {
   const onCommitInsight = (slug: string, insight: CapInsight) => {
     const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
     if (!latest) return;
-    const hasContent = !!(insight.text.trim() || insight.charts.length);
+    const hasContent = !!(insight.text.trim() || insight.charts.length || insight.tables?.length);
     const merged: FlowDTO = { ...latest, insight: hasContent ? insight : null };
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === slug ? merged : f)) : prev
@@ -585,7 +585,7 @@ export default function Capitalism() {
                     </div>
 
                     {/* 같은 연도 사건들 = 소분류. 세로로 쌓아(월 순) 잘림 없이 모두 노출. 단일 사건의 분기(branch) 카드는 자체 폭을 유지(해당 행만 가로 스크롤 가능) */}
-                    <div className="cap-noscrollbar flex flex-col items-start gap-3 overflow-x-auto rounded-xl bg-muted/30 p-2 pb-3">
+                    <div className={`cap-noscrollbar flex flex-col items-start gap-3 overflow-x-auto ${insightMode ? "" : "rounded-xl bg-muted/30 p-2 pb-3"}`}>
                       {g.items.map((f) => {
                         const isActive = f.slug === activeSlug;
                         const isPeriod = !!f.endDate;
@@ -596,7 +596,7 @@ export default function Capitalism() {
                         const showBesideInsight = insightMode && (hasInsight(f) || f.slug === activeInsightSlug);
                         return (
                           <div key={f.slug} className="flex flex-row items-start gap-4">
-                          <div className="flex flex-col">
+                          <div className="flex flex-col shrink-0">
                             {/* 사건 시점 라벨(월) — 클릭 시 그 시점으로 이동 */}
                             <button
                               type="button"
@@ -627,7 +627,7 @@ export default function Capitalism() {
                           </div>
                           {/* 카드 옆 인사이트(메모형) — 같은 스크롤 흐름이라 카드와 함께 움직인다 */}
                           {showBesideInsight ? (
-                            <div className="w-[440px] shrink-0 pt-6">
+                            <div className="flex-1 min-w-[440px] max-w-[820px] pt-6">
                               <InsightPanel
                                 flow={f}
                                 variant="inline"
