@@ -318,3 +318,14 @@
 /* 자본주의 타임라인: 가로 스크롤 영역의 회색 스크롤바 숨김(연도 슬라이더로 대체) */
 .cap-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .cap-noscrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* 인사이트 별(★) 네온 글로우 — 빨간 중심은 그대로, 주변 빛무리만 깜빡(펄스).
+   drop-shadow 라 별 모양을 따라 빛난다. 아이콘 자체 색/투명도는 건드리지 않음. */
+@keyframes capStarGlow {
+  0%, 100% { filter: drop-shadow(0 0 0.5px rgba(239,68,68,0.55)) drop-shadow(0 0 1.5px rgba(239,68,68,0.35)); }
+  50%      { filter: drop-shadow(0 0 4px rgba(239,68,68,0.95)) drop-shadow(0 0 9px rgba(239,68,68,0.7)); }
+}
+.cap-star-neon { animation: capStarGlow 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cap-star-neon { animation: none; filter: drop-shadow(0 0 3px rgba(239,68,68,0.8)); }
+}

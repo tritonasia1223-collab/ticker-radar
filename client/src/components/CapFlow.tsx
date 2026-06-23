@@ -743,7 +743,7 @@ export function FlowColumn({
           title={flow.insight ? "인사이트 보기/편집" : "인사이트 추가 (과거↔현재 연결)"}
           data-testid={`insight-btn-${flow.slug}`}
         >
-          <Star className="h-4 w-4" fill={flow.insight ? "currentColor" : "none"} strokeWidth={2} />
+          <Star className={`h-4 w-4 ${flow.insight ? "cap-star-neon" : ""}`} fill={flow.insight ? "currentColor" : "none"} strokeWidth={2} />
         </button>
       ) : null}
 
