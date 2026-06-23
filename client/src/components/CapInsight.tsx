@@ -58,9 +58,11 @@ export function InsightPanel({
     if (doCommit) commit(textRef.current, next);
   };
   const addChart = () => {
-    // 기본: 달러지수, 사건 시점 → 최신. '범위 자유' — 이후 자유 조절.
+    // 기본: 달러지수, '그 카드 시점' 중심 ±5년 창(슬라이더처럼). 데이터 범위로 클램프.
+    // 필요하면 아래 시작/끝 연도 입력으로 자유 조절(현재까지 늘리기 등).
     const key = "dollar";
-    applyCharts([...charts, { series: key, from: Math.floor(eventFrac), to: lastYearOf(key) }], true);
+    const ey = Math.floor(eventFrac);
+    applyCharts([...charts, { series: key, from: Math.max(firstYearOf(key), ey - 5), to: Math.min(lastYearOf(key), ey + 5) }], true);
   };
   const patchChart = (i: number, patch: Partial<CapInsightChart>, doCommit: boolean) =>
     applyCharts(charts.map((c, j) => (j === i ? { ...c, ...patch } : c)), doCommit);
