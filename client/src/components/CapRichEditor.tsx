@@ -212,7 +212,7 @@ function serializeEl(el: HTMLElement): string {
 export interface LinkTarget { slug: string; year: number; title: string; }
 
 export function CapRichEditor({
-  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, linkTargets,
+  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, linkTargets, align = "center",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -222,6 +222,8 @@ export function CapRichEditor({
   onBlur?: () => void;
   // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
   linkTargets?: LinkTarget[];
+  // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
+  align?: "left" | "center";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [toolbar, setToolbar] = useState<{ x: number; y: number } | null>(null);
@@ -747,7 +749,7 @@ export function CapRichEditor({
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
-        className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed text-center outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words"
+        className={`w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words ${align === "left" ? "text-left" : "text-center"}`}
         style={{ minHeight: `${rows * 1.4 + 1}rem` }}
         onKeyDown={handleKeyDown}
         onInput={() => { if (!composingRef.current) emit(); }}
@@ -762,7 +764,7 @@ export function CapRichEditor({
         data-richeditor
       />
       {isEmpty && placeholder ? (
-        <span className="pointer-events-none absolute inset-x-2.5 top-2 text-center text-xs text-muted-foreground">
+        <span className={`pointer-events-none absolute inset-x-2.5 top-2 text-xs text-muted-foreground ${align === "left" ? "text-left" : "text-center"}`}>
           {placeholder}
         </span>
       ) : null}

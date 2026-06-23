@@ -101,6 +101,7 @@ export function InsightPanel({
         onChange={setText}
         onBlur={() => commit(textRef.current, charts)}
         rows={12}
+        align="left"
         placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿)"
       />
 
@@ -216,7 +217,7 @@ function OverviewBlock({ overview, onSave, onJump }: { overview: string; onSave?
         ) : null}
       </div>
       {editing ? (
-        <CapRichEditor value={text} onChange={setText} onBlur={() => onSave?.(ref.current)} rows={8}
+        <CapRichEditor value={text} onChange={setText} onBlur={() => onSave?.(ref.current)} rows={8} align="left"
           placeholder="전체를 관통하는 논증(메타 테제)을 적어보세요." />
       ) : overview.trim() ? (
         <CapRichText text={overview} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
