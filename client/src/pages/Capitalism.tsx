@@ -127,10 +127,18 @@ export default function Capitalism() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // 탭 전환 시 바깥 윈도우 스크롤을 최상단으로 리셋.
-  // '모아보기'(높이 제한 없는 긴 콘텐츠)는 윈도우를 스크롤시키는데, 거기서 편집→타임라인으로
-  // 돌아오면 그 스크롤이 남아 좌측 보드(일반 흐름)와 우측 sticky 패널의 상단 정렬이 어긋난다(단차).
+  // 탭 전환 시 스크롤 컨테이너를 최상단으로 리셋.
+  // 실제 스크롤 컨테이너는 window 가 아니라 레이아웃의 <main overflow-auto> 다.
+  // '모아보기'(긴 콘텐츠)에서 편집→타임라인으로 돌아오면 그 scrollTop 이 남아,
+  // 좌측 보드(일반 흐름)와 우측 sticky 패널의 상단 정렬이 어긋난다(단차) → 부모를 찾아 0으로.
+  const pageRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
+    let el = pageRef.current?.parentElement;
+    while (el) {
+      const oy = getComputedStyle(el).overflowY;
+      if (oy === "auto" || oy === "scroll") { el.scrollTop = 0; break; }
+      el = el.parentElement;
+    }
     window.scrollTo({ top: 0 });
   }, [viewMode]);
 
@@ -319,6 +327,10 @@ export default function Capitalism() {
 
   // 인사이트 모드 대상 flow(별 클릭한 사건). slug 가 없거나 삭제됐으면 null → 그래프 표시.
   const activeInsightFlow = activeInsightSlug ? (flows?.find((f) => f.slug === activeInsightSlug) ?? null) : null;
+  // 별을 누르면 '인사이트 모드' ON — 우측 그래프 대신, 각 사건 카드 옆에 그 카드 인사이트가 메모처럼 붙는다.
+  const insightMode = !!activeInsightFlow;
+  const hasInsight = (f: FlowDTO) => !!(f.insight && (f.insight.text.trim() || f.insight.charts.length));
+  const exitInsightMode = () => setActiveInsightSlug(null);
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
   // 동작 최소화 선호 시 스프링을 끄고 즉시 전환.
@@ -480,7 +492,7 @@ export default function Capitalism() {
   };
 
   return (
-    <div className="p-4 max-w-[1900px] mx-auto">
+    <div ref={pageRef} className="p-4 max-w-[1900px] mx-auto">
       {/* ── 상단 탭: 타임라인 / 인사이트 모아보기 ── */}
       <div className="mb-3 inline-flex items-center rounded-md border border-border bg-card/40 p-0.5" role="group" aria-label="보기 모드">
         {([
@@ -514,7 +526,7 @@ export default function Capitalism() {
       <div className="flex gap-5 items-start">
         {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
         {/* 카드 콘텐츠 폭만큼만 차지(플렉스 아님) — 남는 우측 공간은 그래프 패널이 흡수한다. */}
-        <section className="min-w-0 shrink-0">
+        <section className={`min-w-0 ${insightMode ? "w-full" : "shrink-0"}`}>
           {isLoading ? (
             <div className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
@@ -580,8 +592,11 @@ export default function Capitalism() {
                         const rangeLabel = isPeriod
                           ? `${fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")} ~ ${fracYearToLabel(toFracYear(f.endDate!)).replace(/^\d+년 /, "")}`
                           : fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "");
+                        // 인사이트 모드: 카드 옆에 그 카드 인사이트를 메모처럼 붙인다(있을 때만, 또는 막 별 누른 카드).
+                        const showBesideInsight = insightMode && (hasInsight(f) || f.slug === activeInsightSlug);
                         return (
-                          <div key={f.slug} className="flex flex-col">
+                          <div key={f.slug} className="flex flex-row items-start gap-4">
+                          <div className="flex flex-col">
                             {/* 사건 시점 라벨(월) — 클릭 시 그 시점으로 이동 */}
                             <button
                               type="button"
@@ -607,8 +622,20 @@ export default function Capitalism() {
                               editable
                               linkTargets={linkTargets}
                               onJump={jumpToSlug}
-                              onInsightClick={setActiveInsightSlug}
+                              onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev ? null : slug))}
                             />
+                          </div>
+                          {/* 카드 옆 인사이트(메모형) — 같은 스크롤 흐름이라 카드와 함께 움직인다 */}
+                          {showBesideInsight ? (
+                            <div className="w-[440px] shrink-0 pt-6">
+                              <InsightPanel
+                                flow={f}
+                                variant="inline"
+                                onCommit={onCommitInsight}
+                                onClose={exitInsightMode}
+                              />
+                            </div>
+                          ) : null}
                           </div>
                         );
                       })}
@@ -655,18 +682,12 @@ export default function Capitalism() {
           )}
         </section>
 
-        {/* ════════ 우측: sticky 패널 (슬라이더 + 연대 네비 + 그래프 스택 + 체크박스) ════════ */}
+        {/* ════════ 우측: sticky 그래프 패널 — 인사이트 모드일 땐 숨김(인사이트는 카드 옆 인라인) ════════ */}
+        {!insightMode ? (
         <aside
           className="min-w-[480px] flex-1 sticky top-4 flex flex-col gap-3 overflow-y-auto cap-noscrollbar"
           style={{ maxHeight: "calc(100vh - 32px)" }}
         >
-          {activeInsightFlow ? (
-            <InsightPanel
-              flow={activeInsightFlow}
-              onCommit={onCommitInsight}
-              onClose={() => setActiveInsightSlug(null)}
-            />
-          ) : (
           <>
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
@@ -852,8 +873,8 @@ export default function Capitalism() {
             </div>
           </section>
           </>
-          )}
         </aside>
+        ) : null}
       </div>
       )}
     </div>

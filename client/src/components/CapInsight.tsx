@@ -22,11 +22,14 @@ function firstYearOf(key: string): number {
 }
 
 export function InsightPanel({
-  flow, onCommit, onClose,
+  flow, onCommit, onClose, variant = "panel",
 }: {
   flow: FlowDTO;
   onCommit: (slug: string, insight: CapInsight) => void;
   onClose: () => void;
+  // "panel" = 우측 단일 패널(✕그래프 닫기 버튼 노출).
+  // "inline" = 사건 카드 옆 메모형(닫기는 전역 종료라 카드별 버튼 숨김).
+  variant?: "panel" | "inline";
 }) {
   const [text, setText] = useState(flow.insight?.text ?? "");
   const [charts, setCharts] = useState<CapInsightChart[]>(flow.insight?.charts ?? []);
@@ -109,15 +112,17 @@ export function InsightPanel({
               <Pencil className="h-3 w-3" /> 편집
             </button>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-            title="그래프로 돌아가기"
-            data-testid="insight-close"
-          >
-            <X className="h-3.5 w-3.5" /> 그래프
-          </button>
+          {variant !== "inline" ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              title="그래프로 돌아가기"
+              data-testid="insight-close"
+            >
+              <X className="h-3.5 w-3.5" /> 그래프
+            </button>
+          ) : null}
         </div>
       </div>
 
