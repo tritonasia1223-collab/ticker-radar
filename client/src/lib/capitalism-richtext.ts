@@ -23,10 +23,11 @@ export const MARK_STYLES: MarkStyle[] = [
   { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "#4ade80", style: { background: "rgba(74,222,128,0.30)", borderRadius: 3, padding: "0 2px" } },
   { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },
   { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },
-  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#f87171", style: { color: "#f87171", fontWeight: 600 } },
-  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#60a5fa", style: { color: "#60a5fa", fontWeight: 600 } },
-  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#4ade80", style: { color: "#4ade80", fontWeight: 600 } },
-  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#fb923c", style: { color: "#fb923c", fontWeight: 600 } },
+  // 글자색: 하이라이트(파스텔)와 달리 채도 높고 쨍하게 — 어두운 배경에서 또렷하게 튀도록.
+  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#ff2e2e", style: { color: "#ff2e2e", fontWeight: 600 } },
+  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#1f7bff", style: { color: "#1f7bff", fontWeight: 600 } },
+  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#12c75a", style: { color: "#12c75a", fontWeight: 600 } },
+  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#ff7a00", style: { color: "#ff7a00", fontWeight: 600 } },
 ];
 
 export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(
