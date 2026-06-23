@@ -127,6 +127,13 @@ export default function Capitalism() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // 탭 전환 시 바깥 윈도우 스크롤을 최상단으로 리셋.
+  // '모아보기'(높이 제한 없는 긴 콘텐츠)는 윈도우를 스크롤시키는데, 거기서 편집→타임라인으로
+  // 돌아오면 그 스크롤이 남아 좌측 보드(일반 흐름)와 우측 sticky 패널의 상단 정렬이 어긋난다(단차).
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [viewMode]);
+
   const [fromY, toY] = useMemo(() => {
     if (!flows || flows.length === 0) return [YEAR_MIN, YEAR_MAX];
     const years = flows.map((f) => toFracYear(f.date));
