@@ -19,6 +19,7 @@
 - **추적 계정** (`/accounts`) — X·Threads 핸들 단건/일괄 추가, 플랫폼 지정, 활성 토글, 삭제
 - **정치인 거래** (`/congress`) — 미 의원 STOCK Act 공시 거래 (아래 별도 섹션)
 - **내부자 거래** (`/insider`) — Form 4 내부자 매매 랭킹
+- **자본주의 경제사** (`/capitalism`) — 전후 달러 패권사를 인과 플로우 타임라인 + 전 구간 FRED 거시지표 그래프 + 사건별 인사이트로 직접 편집·열람 (아래 별도 섹션 · [아키텍처](docs/CAPITALISM.md))
 - **관심종목** (`/interest`, *현재 비활성*) — 한국투자증권 관심종목등록 상위. KIS 앱키 발급 후 [Layout.tsx](client/src/components/Layout.tsx)의 nav 한 줄 주석 해제하면 활성화 (아래 별도 섹션)
 
 ### 동작 원칙
@@ -43,6 +44,7 @@
 | 관심종목(국장) | **한국투자증권 Open API** 관심종목등록 상위 | 앱키 필요 |
 | "왜 뜨나" 뉴스 레포트 | **Anthropic**(Claude `web_search`) 또는 **Gemini**(Google Search) | 키 있는 쪽 자동 선택 |
 | 섹터 보강(선택) | **Finnhub** profile2 | 정치인·내부자 종목용 |
+| 거시지표 시계열(자본주의) | **FRED** 공개 CSV(키 불필요) · S&P500=OECD · 금값=datahub.io | 빌드타임 정적 JSON으로 저장 |
 
 ---
 
@@ -186,6 +188,28 @@ SEC Form 4 기반 내부자 매매 랭킹. 사이드바 **내부자 거래**(`/#
 |---|---|
 | `npm run collect:insider` | Form 4 수집 |
 | `npm run enrich:insider-roles` | 내부자 직책 보강 |
+
+---
+
+## 자본주의 경제사 모듈 (Capitalism)
+
+전후(1944~) 달러 패권사를 **인과 플로우(마인드맵형) 타임라인**으로 직접 편집·열람. 사이드바 **자본주의 경제사**(`/#/capitalism`).
+정치인·내부자·SNS 와 **완전 분리된 모듈**(테이블 `cap_*`·라우트 `/api/capitalism/*`·컴포넌트 `Cap*`).
+
+- **타임라인 보드** — 사건을 카드로 쌓고(연도순), 카드 안 노드(원인·사건·영향·결과)와 카드 사이를 화살표로 연결. `stack`/`branch`(분기) 레이아웃.
+- **거시지표 그래프** — 전 구간 FRED 시계열 19종(GDP·인플레·금리·달러·유가·금값·시총·연준 유동성…). 기본 ON 6개. Y축 "시점 맞춤", 단위 라벨 클릭 시 **달러→원화** 환산, 라벨 클릭 시 전체범위 팝업.
+- **인사이트** — 카드 헤더 ★ 클릭 시 그 사건을 현재와 연결짓는 해설(리치텍스트 + 그 시점 그래프). 전체를 **모아보기 탭**에서 시간순으로 + **메타 테제** 공간.
+
+| 명령 | 설명 |
+|---|---|
+| `tsx script/db-push-capitalism.ts` | 핵심 테이블 생성(IF NOT EXISTS) |
+| `tsx script/db-push-capitalism-{table,insight,settings}.ts` | 표·인사이트 컬럼 / 설정 테이블 증분 추가 |
+| `npx tsx script/fetch-capitalism-series.ts` | FRED 시계열 → `client/src/data/capitalism-series.json` 재생성(키 불필요) |
+| `npx tsx script/seed-capitalism.ts` | 사건 카드 시드 |
+| `npx tsx script/seed-capitalism-insights.ts --write` | 인사이트·메타테제 시드(비파괴) |
+
+> **상세 아키텍처: [docs/CAPITALISM.md](docs/CAPITALISM.md)** (데이터 모델·API·그래프·인사이트·컴포넌트 지도).
+> ⚠️ DDL 은 raw 스크립트로만, 입력된 사건 데이터(현재 1968~1994)는 손실 금지 — 시드는 전부 비파괴.
 
 ---
 

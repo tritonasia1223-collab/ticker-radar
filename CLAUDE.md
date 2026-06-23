@@ -1,6 +1,6 @@
 # ticker-radar — 작업 가이드
 
-통합 금융 대시보드: **정치인 거래 / 내부자 거래 / SNS 인플루언서** 3개 모듈.
+통합 금융 대시보드: **정치인 거래 / 내부자 거래 / SNS 인플루언서 / 자본주의 경제사** 4개 모듈.
 작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 피처 브랜치 푸시는 비공개 Preview만 만들어지니 평소엔 master 에서 바로 작업. 커밋 끝에 `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 
 ## 스택
@@ -14,6 +14,7 @@ postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 
 - `script/` — 수집/보강(collect-*, enrich-*) + **검증 하네스**(아래).
 - 수집 주기는 **비대칭**(소스 신선도에 맞춤): 내부자 Form4 = **일 1회**(`.github/workflows/insider.yml`, 03:00 UTC — 클러스터 매수 알파가 공시 직후 수일에 가장 강함, T+2라 인트라데이는 무의미) / 정치인 PTR = **주 1회**(`congress.yml` — 최대 45일 지연이라 충분). 둘 다 수집 직후 `npm run healthcheck`(#27) 자동, orphan B(진짜깨짐)>0면 RED. 겹침-증분 멱등은 external_id 유니크(`uniq_itrade_ext`)가 보장.
 - 데이터: 정치인·내부자는 완전 분리(DB 테이블·API 라우트·페이지 파일). format.ts 유틸만 공유.
+- **자본주의 경제사**(`/capitalism`) — 4번째 모듈, 위 3개와 완전 분리(테이블 `cap_*`·라우트 `/api/capitalism/*`·컴포넌트 `Cap*`). 전후 달러 패권사를 인과 플로우 타임라인 + 전 구간 FRED 거시지표(정적 JSON `client/src/data/capitalism-series.json`, 런타임 fetch 0) + 사건별 인사이트로 편집·열람. 서버 `server/capitalism.ts`(upsert/delete 는 트랜잭션). `/capitalism` 라우트는 `React.lazy` 코드 스플릿(357KB JSON·framer-motion 분리). 입력 사건 데이터(현재 1968~1994) **손실 금지**, 시드는 전부 비파괴. **상세: `docs/CAPITALISM.md`**.
 
 ## 내부자 클러스터 점수 (현재 레버)
 방향(매수×2) × Σ(티어가중 × 보유대비배율 × 절대규모log) / √n × thin페널티, 클래스캡·post0게이트.
