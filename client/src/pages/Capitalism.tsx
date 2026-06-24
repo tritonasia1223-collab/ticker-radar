@@ -327,9 +327,8 @@ export default function Capitalism() {
 
   // 인사이트 모드 대상 flow(별 클릭한 사건). slug 가 없거나 삭제됐으면 null → 그래프 표시.
   const activeInsightFlow = activeInsightSlug ? (flows?.find((f) => f.slug === activeInsightSlug) ?? null) : null;
-  // 별을 누르면 '인사이트 모드' ON — 우측 그래프 대신, 각 사건 카드 옆에 그 카드 인사이트가 메모처럼 붙는다.
+  // 별을 누르면 '인사이트 모드' ON — 우측 그래프가 블러되고 그 위에 인사이트가 프로스트 카드로 얹힌다(iOS식).
   const insightMode = !!activeInsightFlow;
-  const hasInsight = (f: FlowDTO) => !!(f.insight && (f.insight.text.trim() || f.insight.charts.length));
   const exitInsightMode = () => setActiveInsightSlug(null);
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
@@ -522,11 +521,12 @@ export default function Capitalism() {
           onJump={jumpToSlug}
         />
       ) : (
-      /* ── 세로 2단 레이아웃: 좌측 세로 타임라인(위=과거→아래=미래) + 우측 sticky 그래프 패널 ── */
-      <div className="flex gap-5 items-start">
+      /* ── 세로 2단 레이아웃: 좌측 타임라인 + 우측 그래프. 행을 고정 높이로 묶고 두 컬럼을
+            items-stretch 로 같이 채워 바닥을 맞춘다(한쪽만 길어 생기던 하단 여백 제거). ── */
+      <div className="flex gap-5 items-stretch" style={{ height: "calc(100vh - 72px)" }}>
         {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
         {/* 카드 콘텐츠 폭만큼만 차지(플렉스 아님) — 남는 우측 공간은 그래프 패널이 흡수한다. */}
-        <section className={`min-w-0 ${insightMode ? "w-full" : "shrink-0"}`}>
+        <section className="min-w-0 shrink-0">
           {isLoading ? (
             <div className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
@@ -534,8 +534,7 @@ export default function Capitalism() {
           ) : (
             <div
               ref={boardRef}
-              className="cap-noscrollbar relative overflow-y-auto overflow-x-hidden pr-1"
-              style={{ height: "calc(100vh - 110px)" }}
+              className="cap-noscrollbar relative h-full overflow-y-auto overflow-x-hidden pr-1"
             >
               {/* 세로 중심 레일은 각 연도 그룹 내부에서 세그먼트로 그려 콘텐츠 전체 높이를 끊김 없이 관통한다(아래 그룹 div 참고) */}
 
@@ -585,18 +584,15 @@ export default function Capitalism() {
                     </div>
 
                     {/* 같은 연도 사건들 = 소분류. 세로로 쌓아(월 순) 잘림 없이 모두 노출. 단일 사건의 분기(branch) 카드는 자체 폭을 유지(해당 행만 가로 스크롤 가능) */}
-                    <div className={`cap-noscrollbar flex flex-col items-start gap-3 overflow-x-auto ${insightMode ? "" : "rounded-xl bg-muted/30 p-2 pb-3"}`}>
+                    <div className="cap-noscrollbar flex flex-col items-start gap-3 overflow-x-auto rounded-xl bg-muted/30 p-2 pb-3">
                       {g.items.map((f) => {
                         const isActive = f.slug === activeSlug;
                         const isPeriod = !!f.endDate;
                         const rangeLabel = isPeriod
                           ? `${fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")} ~ ${fracYearToLabel(toFracYear(f.endDate!)).replace(/^\d+년 /, "")}`
                           : fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "");
-                        // 인사이트 모드: 카드 옆에 그 카드 인사이트를 메모처럼 붙인다(있을 때만, 또는 막 별 누른 카드).
-                        const showBesideInsight = insightMode && (hasInsight(f) || f.slug === activeInsightSlug);
                         return (
-                          <div key={f.slug} className="flex flex-row items-start gap-4">
-                          <div className="flex flex-col shrink-0">
+                          <div key={f.slug} className="flex flex-col">
                             {/* 사건 시점 라벨(월) — 클릭 시 그 시점으로 이동 */}
                             <button
                               type="button"
@@ -622,20 +618,8 @@ export default function Capitalism() {
                               editable
                               linkTargets={linkTargets}
                               onJump={jumpToSlug}
-                              onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev ? null : slug))}
+                              onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev === slug ? null : slug))}
                             />
-                          </div>
-                          {/* 카드 옆 인사이트(메모형) — 같은 스크롤 흐름이라 카드와 함께 움직인다 */}
-                          {showBesideInsight ? (
-                            <div className="flex-1 min-w-[440px] max-w-[820px] pt-6">
-                              <InsightPanel
-                                flow={f}
-                                variant="inline"
-                                onCommit={onCommitInsight}
-                                onClose={exitInsightMode}
-                              />
-                            </div>
-                          ) : null}
                           </div>
                         );
                       })}
@@ -683,11 +667,9 @@ export default function Capitalism() {
         </section>
 
         {/* ════════ 우측: sticky 그래프 패널 — 인사이트 모드일 땐 숨김(인사이트는 카드 옆 인라인) ════════ */}
-        {!insightMode ? (
-        <aside
-          className="min-w-[480px] flex-1 sticky top-4 flex flex-col gap-3 overflow-y-auto cap-noscrollbar"
-          style={{ maxHeight: "calc(100vh - 32px)" }}
-        >
+        {/* 우측: 그래프 패널. 인사이트 모드면 그래프가 블러되고 그 위에 인사이트가 프로스트 카드로 얹힌다(iOS식). */}
+        <aside className="min-w-[480px] flex-1 relative h-full">
+          <div className={`absolute inset-0 flex flex-col gap-3 overflow-y-auto cap-noscrollbar transition-[filter,opacity] duration-200 ${insightMode ? "blur-[3px] opacity-50 pointer-events-none select-none" : ""}`}>
           <>
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
@@ -873,8 +855,22 @@ export default function Capitalism() {
             </div>
           </section>
           </>
+          </div>
+
+          {/* 인사이트 오버레이 — 블러된 그래프 위에 프로스트 카드로 */}
+          {insightMode && activeInsightFlow ? (
+            <div className="absolute inset-0 overflow-y-auto cap-noscrollbar">
+              <div className="rounded-lg bg-background/80 shadow-2xl ring-1 ring-border/60 backdrop-blur-md">
+                <InsightPanel
+                  flow={activeInsightFlow}
+                  variant="panel"
+                  onCommit={onCommitInsight}
+                  onClose={exitInsightMode}
+                />
+              </div>
+            </div>
+          ) : null}
         </aside>
-        ) : null}
       </div>
       )}
     </div>
