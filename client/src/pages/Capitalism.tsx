@@ -7,7 +7,7 @@ import { motion, AnimatePresence, useReducedMotion, LayoutGroup } from "framer-m
 import { spring, fadeRise, reducedTransition } from "@/lib/motion-presets";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Undo2 } from "lucide-react";
+import { Plus, Undo2, X } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
@@ -327,8 +327,9 @@ export default function Capitalism() {
 
   // 인사이트 모드 대상 flow(별 클릭한 사건). slug 가 없거나 삭제됐으면 null → 그래프 표시.
   const activeInsightFlow = activeInsightSlug ? (flows?.find((f) => f.slug === activeInsightSlug) ?? null) : null;
-  // 별을 누르면 '인사이트 모드' ON — 우측 그래프가 블러되고 그 위에 인사이트가 프로스트 카드로 얹힌다(iOS식).
+  // 별을 누르면 '인사이트 모드' ON — 그래프 패널이 블러 배경이 되고, 모든 인사이트가 각 사건 카드 옆에 매칭된다(iOS식).
   const insightMode = !!activeInsightFlow;
+  const hasInsight = (f: FlowDTO) => !!(f.insight && (f.insight.text.trim() || f.insight.charts.length || f.insight.tables?.length));
   const exitInsightMode = () => setActiveInsightSlug(null);
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
@@ -491,9 +492,9 @@ export default function Capitalism() {
   };
 
   return (
-    <div ref={pageRef} className="p-4 max-w-[1900px] mx-auto">
+    <div ref={pageRef} className="p-4 max-w-[1900px] mx-auto h-full flex flex-col overflow-hidden">
       {/* ── 상단 탭: 타임라인 / 인사이트 모아보기 ── */}
-      <div className="mb-3 inline-flex items-center rounded-md border border-border bg-card/40 p-0.5" role="group" aria-label="보기 모드">
+      <div className="mb-3 inline-flex shrink-0 self-start items-center rounded-md border border-border bg-card/40 p-0.5" role="group" aria-label="보기 모드">
         {([
           { v: "timeline" as const, label: "타임라인" },
           { v: "insights" as const, label: "인사이트 모아보기" },
@@ -513,20 +514,22 @@ export default function Capitalism() {
       </div>
 
       {viewMode === "insights" ? (
-        <InsightsCollection
-          flows={flows ?? []}
-          overview={overviewData?.value ?? ""}
-          onSaveOverview={saveOverview}
-          onOpenInsight={(slug) => { setViewMode("timeline"); setActiveInsightSlug(slug); seekToYear(toFracYear(flows?.find((f) => f.slug === slug)?.date ?? `${YEAR_MIN}-01-01`)); }}
-          onJump={jumpToSlug}
-        />
+        <div className="flex-1 min-h-0 overflow-y-auto cap-noscrollbar">
+          <InsightsCollection
+            flows={flows ?? []}
+            overview={overviewData?.value ?? ""}
+            onSaveOverview={saveOverview}
+            onOpenInsight={(slug) => { setViewMode("timeline"); setActiveInsightSlug(slug); seekToYear(toFracYear(flows?.find((f) => f.slug === slug)?.date ?? `${YEAR_MIN}-01-01`)); }}
+            onJump={jumpToSlug}
+          />
+        </div>
       ) : (
-      /* ── 세로 2단 레이아웃: 좌측 타임라인 + 우측 그래프. 행을 고정 높이로 묶고 두 컬럼을
-            items-stretch 로 같이 채워 바닥을 맞춘다(한쪽만 길어 생기던 하단 여백 제거). ── */
-      <div className="flex gap-5 items-stretch" style={{ height: "calc(100vh - 72px)" }}>
+      /* ── 세로 2단 레이아웃: 좌측 타임라인 + 우측 그래프. 남은 높이를 flex-1 로 정확히 채우고
+            (vh 계산 대신) 두 컬럼을 items-stretch·h-full 로 바닥 맞춤 — 1px 오버플로/여백 0. ── */
+      <div className="relative flex-1 min-h-0 flex gap-5 items-stretch">
         {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
-        {/* 카드 콘텐츠 폭만큼만 차지(플렉스 아님) — 남는 우측 공간은 그래프 패널이 흡수한다. */}
-        <section className="min-w-0 shrink-0">
+        {/* 인사이트 모드면 보드가 전체 폭(z-10) — 카드 옆 인사이트가 블러 그래프 위로 얹힌다. */}
+        <section className={`min-w-0 ${insightMode ? "relative z-10 w-full" : "shrink-0"}`}>
           {isLoading ? (
             <div className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
@@ -591,8 +594,11 @@ export default function Capitalism() {
                         const rangeLabel = isPeriod
                           ? `${fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "")} ~ ${fracYearToLabel(toFracYear(f.endDate!)).replace(/^\d+년 /, "")}`
                           : fracYearToLabel(toFracYear(f.date)).replace(/^\d+년 /, "");
+                        // 인사이트 모드: 모든 카드의 인사이트를 그 카드 바로 옆에 매칭(있을 때만, 또는 막 별 누른 카드).
+                        const showBesideInsight = insightMode && (hasInsight(f) || f.slug === activeInsightSlug);
                         return (
-                          <div key={f.slug} className="flex flex-col">
+                          <div key={f.slug} className="flex flex-row items-start gap-4">
+                          <div className="flex flex-col shrink-0">
                             {/* 사건 시점 라벨(월) — 클릭 시 그 시점으로 이동 */}
                             <button
                               type="button"
@@ -618,8 +624,15 @@ export default function Capitalism() {
                               editable
                               linkTargets={linkTargets}
                               onJump={jumpToSlug}
-                              onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev === slug ? null : slug))}
+                              onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev ? null : slug))}
                             />
+                          </div>
+                          {/* 카드 옆 인사이트(메모형) — 블러된 그래프 위에 얹힌다 */}
+                          {showBesideInsight ? (
+                            <div className="relative z-10 flex-1 min-w-[440px] max-w-[820px] pt-6">
+                              <InsightPanel flow={f} variant="inline" onCommit={onCommitInsight} onClose={exitInsightMode} />
+                            </div>
+                          ) : null}
                           </div>
                         );
                       })}
@@ -666,10 +679,10 @@ export default function Capitalism() {
           )}
         </section>
 
-        {/* ════════ 우측: sticky 그래프 패널 — 인사이트 모드일 땐 숨김(인사이트는 카드 옆 인라인) ════════ */}
-        {/* 우측: 그래프 패널. 인사이트 모드면 그래프가 블러되고 그 위에 인사이트가 프로스트 카드로 얹힌다(iOS식). */}
-        <aside className="min-w-[480px] flex-1 relative h-full">
-          <div className={`absolute inset-0 flex flex-col gap-3 overflow-y-auto cap-noscrollbar transition-[filter,opacity] duration-200 ${insightMode ? "blur-[3px] opacity-50 pointer-events-none select-none" : ""}`}>
+        {/* ════════ 우측: 그래프 패널 ════════ */}
+        {/* 평소엔 우측 컬럼. 인사이트 모드면 전체 영역을 덮는 '블러 배경'으로 전환(z-0) → 그 위로 카드+인사이트가 얹힌다. */}
+        <aside className={`transition-[filter,opacity] duration-200 ${insightMode ? "absolute inset-0 z-0 overflow-hidden blur-[3px] opacity-50 pointer-events-none select-none" : "min-w-[480px] flex-1 relative h-full"}`}>
+          <div className="flex h-full flex-col gap-3 overflow-y-auto cap-noscrollbar">
           <>
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
@@ -856,21 +869,20 @@ export default function Capitalism() {
           </section>
           </>
           </div>
-
-          {/* 인사이트 오버레이 — 블러된 그래프 위에 프로스트 카드로 */}
-          {insightMode && activeInsightFlow ? (
-            <div className="absolute inset-0 overflow-y-auto cap-noscrollbar">
-              <div className="rounded-lg bg-background/80 shadow-2xl ring-1 ring-border/60 backdrop-blur-md">
-                <InsightPanel
-                  flow={activeInsightFlow}
-                  variant="panel"
-                  onCommit={onCommitInsight}
-                  onClose={exitInsightMode}
-                />
-              </div>
-            </div>
-          ) : null}
         </aside>
+
+        {/* 인사이트 모드 종료 — 별 재클릭 외에 버튼으로도 그래프 복귀 */}
+        {insightMode ? (
+          <button
+            type="button"
+            onClick={exitInsightMode}
+            className="absolute right-2 top-2 z-20 flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground"
+            title="그래프로 돌아가기"
+            data-testid="insight-exit"
+          >
+            <X className="h-3.5 w-3.5" /> 그래프
+          </button>
+        ) : null}
       </div>
       )}
     </div>
