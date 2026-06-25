@@ -17,7 +17,7 @@ import { persistNodes, toInput, newNodeKey, nodeHasContent } from "@/lib/capital
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
-import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO, CapInsight } from "@/lib/capitalism-types";
+import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 type SeriesMap = Record<string, [string, number][]>;
@@ -51,11 +51,23 @@ export default function Capitalism() {
   const { data: flows, isLoading } = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
   // 보드 전역 화살표(카드 내/간 드래그앤드롭 연결).
   const { data: links } = useQuery<LinkDTO[]>({ queryKey: ["/api/capitalism/links"] });
-  // 메타 테제(전체 관통 논증) — 사건에 안 묶이는 app-level 설정.
+  // 메타 인사이트(전체 관통 논증) — 사건에 안 묶이는 app-level 카드들(표·이미지 포함).
+  //   v2 키(insight_overview_v2)에 { cards } JSON 으로 저장. 레거시 단일 문자열(insight_overview)은
+  //   손실 방지를 위해 그대로 두고, v2 가 비어 있을 때만 첫 카드로 시드(수동 편집본 보존).
+  const { data: metaV2 } = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview_v2"] });
   const { data: overviewData } = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview"] });
-  const saveOverview = (text: string) => {
-    qc.setQueryData(["/api/capitalism/settings/insight_overview"], { value: text });
-    apiRequest("PUT", "/api/capitalism/settings/insight_overview", { value: text }).catch(() => {});
+  const metaCards = useMemo<CapMetaCard[]>(() => {
+    if (metaV2?.value) {
+      try { const parsed = JSON.parse(metaV2.value); if (Array.isArray(parsed?.cards)) return parsed.cards; } catch { /* fall through */ }
+    }
+    const legacy = overviewData?.value;
+    if (legacy && legacy.trim()) return [{ id: "meta-legacy", title: "", text: legacy, tables: [], images: [] }];
+    return [];
+  }, [metaV2?.value, overviewData?.value]);
+  const saveMetaCards = (next: CapMetaCard[]) => {
+    const value = JSON.stringify({ cards: next });
+    qc.setQueryData(["/api/capitalism/settings/insight_overview_v2"], { value });
+    apiRequest("PUT", "/api/capitalism/settings/insight_overview_v2", { value }).catch(() => {});
   };
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
@@ -517,8 +529,8 @@ export default function Capitalism() {
         <div className="flex-1 min-h-0 overflow-y-auto cap-noscrollbar">
           <InsightsCollection
             flows={flows ?? []}
-            overview={overviewData?.value ?? ""}
-            onSaveOverview={saveOverview}
+            metaCards={metaCards}
+            onSaveMetaCards={saveMetaCards}
             onOpenInsight={(slug) => { setViewMode("timeline"); setActiveInsightSlug(slug); seekToYear(toFracYear(flows?.find((f) => f.slug === slug)?.date ?? `${YEAR_MIN}-01-01`)); }}
             onJump={jumpToSlug}
           />

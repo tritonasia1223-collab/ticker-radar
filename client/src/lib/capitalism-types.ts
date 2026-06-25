@@ -20,6 +20,22 @@ export interface CapInsight {
   tables?: CapTableData[];   // 표(0개 이상) — 그래프처럼 넓게 들어감
 }
 
+// 메타 인사이트 이미지. src 는 data URL(붙여넣기 시 캔버스로 가로 축소·비율 유지) 또는 URL.
+export interface CapImageData {
+  src: string;     // data:image/webp;base64,... 또는 https://...
+  alt?: string;    // 대체 텍스트(선택)
+}
+
+// 전체 관통 메타 인사이트 카드 — 특정 사건에 안 묶이는 app-level 인사이트(여러 장 가능).
+// 설정 키 insight_overview_v2 에 { cards: CapMetaCard[] } JSON 으로 저장.
+export interface CapMetaCard {
+  id: string;                // 안정적 키(클라이언트 생성)
+  title?: string;            // 카드 소제목(선택)
+  text: string;              // 리치텍스트 본문
+  tables?: CapTableData[];   // 표(0개 이상)
+  images?: CapImageData[];   // 이미지(0개 이상) — 너비에 맞춰 비율 유지
+}
+
 export interface FlowNodeDTO {
   id: string;
   kind: "cause" | "event" | "effect" | "result" | string;

@@ -1,13 +1,13 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 리치텍스트 본문 + 참고 그래프 블록 N개(지표 선택 + 범위, 사건 시점 마커).
 import { useState, useRef, useEffect } from "react";
-import { X, Star, Plus, Pencil, Check, Table as TableIcon } from "lucide-react";
+import { X, Star, Plus, Pencil, Check, Trash2, Table as TableIcon, ImagePlus } from "lucide-react";
 import { CapRichEditor } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { PANELS, toFracYear } from "@/lib/capitalism-config";
-import type { FlowDTO, CapInsight, CapInsightChart, CapTableData, FlowNodeDTO } from "@/lib/capitalism-types";
+import type { FlowDTO, CapInsight, CapInsightChart, CapTableData, FlowNodeDTO, CapMetaCard, CapImageData } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 const SERIES = seriesData as unknown as Record<string, [string, number][]>;
@@ -288,49 +288,217 @@ function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: 
   );
 }
 
-// 메타 테제(전체 관통 논증) — 모아보기 최상단. 특정 사건에 안 묶이는 app-level 인사이트.
-function OverviewBlock({ overview, onSave, onJump }: { overview: string; onSave?: (t: string) => void; onJump?: (slug: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(overview);
-  const ref = useRef(overview);
-  ref.current = text;
-  useEffect(() => { if (!editing) { setText(overview); ref.current = overview; } }, [overview, editing]);
-  const done = () => { setEditing(false); onSave?.(ref.current); };
+// 붙여넣기/업로드한 이미지를 가로 maxW 로 축소(비율 유지) → webp data URL. 실패 시 원본 data URL.
+async function blobToScaledDataUrl(blob: Blob, maxW = 1280): Promise<string> {
+  try {
+    const bmp = await createImageBitmap(blob);
+    const scale = Math.min(1, maxW / bmp.width);
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no 2d context");
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close?.();
+    return canvas.toDataURL("image/webp", 0.82);
+  } catch {
+    return await new Promise<string>((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(blob);
+    });
+  }
+}
 
-  if (!onSave && !overview.trim()) return null;
-  return (
-    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-primary">전체 관통 — 메타 인사이트</h2>
-        {onSave && !editing ? (
-          <button type="button" onClick={() => setEditing(true)}
-            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
-            <Pencil className="h-3 w-3" /> 편집
-          </button>
-        ) : onSave && editing ? (
-          <button type="button" onClick={done}
-            className="rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/10">완료</button>
-        ) : null}
+const hasMetaContent = (c: CapMetaCard) =>
+  !!(c.text.trim() || c.tables?.length || c.images?.length || (c.title ?? "").trim());
+
+const newMetaCard = (): CapMetaCard =>
+  ({ id: `meta-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`, title: "", text: "", tables: [], images: [] });
+
+// 메타 인사이트 카드 1장 — 소제목 + 리치텍스트 + 표 + 이미지(붙여넣기). 읽기/편집 토글.
+// 편집 중 변경은 blur·구조변경 때 onChange 로 상위에 커밋(전체 카드 목록 저장 → POST).
+function MetaCard({ card, onChange, onDelete, onJump }: {
+  card: CapMetaCard;
+  onChange: (next: CapMetaCard) => void;
+  onDelete: () => void;
+  onJump?: (slug: string) => void;
+}) {
+  const [title, setTitle] = useState(card.title ?? "");
+  const [text, setText] = useState(card.text);
+  const [tables, setTables] = useState<CapTableData[]>(card.tables ?? []);
+  const [images, setImages] = useState<CapImageData[]>(card.images ?? []);
+  const [editing, setEditing] = useState(!hasMetaContent(card));
+  const titleRef = useRef(title); titleRef.current = title;
+  const textRef = useRef(text); textRef.current = text;
+  const tablesRef = useRef(tables); tablesRef.current = tables;
+  const imagesRef = useRef(images); imagesRef.current = images;
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const commit = () => onChange({
+    ...card, title: titleRef.current, text: textRef.current, tables: tablesRef.current, images: imagesRef.current,
+  });
+
+  // 표 — TableCard 콜백(합성 노드 id, 표|null). null=삭제. 항상 최신 ref 기준.
+  const setTableAt = (i: number, t: CapTableData | null) => {
+    const base = tablesRef.current;
+    const next = t === null ? base.filter((_, j) => j !== i) : base.map((x, j) => (j === i ? t : x));
+    setTables(next); tablesRef.current = next; commit();
+  };
+  const addTable = () => { const next = [...tablesRef.current, makeDefaultTable()]; setTables(next); tablesRef.current = next; commit(); };
+
+  // 이미지 — 붙여넣기/파일선택 → 축소 후 추가. null 인덱스 제거.
+  const addImages = (imgs: CapImageData[]) => {
+    if (!imgs.length) return;
+    const next = [...imagesRef.current, ...imgs]; setImages(next); imagesRef.current = next; commit();
+  };
+  const removeImage = (i: number) => {
+    const next = imagesRef.current.filter((_, j) => j !== i); setImages(next); imagesRef.current = next; commit();
+  };
+  const ingestFiles = async (files: FileList | File[]) => {
+    const out: CapImageData[] = [];
+    for (const f of Array.from(files)) if (f.type.startsWith("image/")) out.push({ src: await blobToScaledDataUrl(f) });
+    addImages(out);
+  };
+  const onPaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const blobs: Blob[] = [];
+    for (const it of Array.from(items)) if (it.type.startsWith("image/")) { const b = it.getAsFile(); if (b) blobs.push(b); }
+    if (!blobs.length) return;
+    e.preventDefault();
+    addImages(await Promise.all(blobs.map((b) => blobToScaledDataUrl(b))).then((srcs) => srcs.map((src) => ({ src }))));
+  };
+
+  const finishEditing = () => { commit(); setEditing(false); };
+
+  // 이미지 렌더(컴포넌트 아님 — render fn. 매 렌더마다 <img> 리마운트/깜빡임 방지).
+  const renderImages = (edit: boolean) => (
+    images.length ? (
+      <div className="flex flex-col gap-2">
+        {images.map((img, i) => (
+          <div key={i} className="relative">
+            <img src={img.src} alt={img.alt ?? ""} className="block w-full h-auto rounded-md border border-border/50" />
+            {edit ? (
+              <button type="button" onClick={() => removeImage(i)} title="이미지 삭제"
+                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive/15 hover:text-destructive"
+                data-testid={`meta-image-remove-${i}`}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+        ))}
       </div>
+    ) : null
+  );
+
+  return (
+    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" onPaste={editing ? onPaste : undefined}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        {editing ? (
+          <input
+            type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={commit}
+            placeholder="소제목 (선택)"
+            className="min-w-0 flex-1 rounded border-0 bg-transparent text-sm font-bold text-primary outline-none placeholder:font-medium placeholder:text-primary/40 focus:bg-background/40"
+            data-testid="meta-title"
+          />
+        ) : card.title?.trim() ? (
+          <h3 className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{card.title}</h3>
+        ) : (
+          <div className="min-w-0 flex-1" />
+        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {editing ? (
+            <button type="button" onClick={finishEditing}
+              className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+              data-testid="meta-done"><Check className="h-3.5 w-3.5" /> 완료</button>
+          ) : (
+            <button type="button" onClick={() => setEditing(true)}
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              data-testid="meta-edit"><Pencil className="h-3 w-3" /> 편집</button>
+          )}
+          <button type="button" onClick={onDelete} title="카드 삭제"
+            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground/70 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+            data-testid="meta-delete"><Trash2 className="h-3 w-3" /></button>
+        </div>
+      </div>
+
       {editing ? (
-        <CapRichEditor value={text} onChange={setText} onBlur={() => onSave?.(ref.current)} rows={8} align="left"
-          placeholder="전체를 관통하는 논증(메타 테제)을 적어보세요." />
-      ) : overview.trim() ? (
-        <CapRichText text={overview} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
+        <div className="flex flex-col gap-2">
+          <CapRichEditor value={text} onChange={setText} onBlur={commit} rows={8} align="left"
+            placeholder="전체를 관통하는 논증(메타 테제)을 적어보세요. (이미지는 복사 후 Ctrl+V 로 붙여넣기)" />
+
+          {/* 이미지(편집) — 붙여넣기 또는 파일 선택. 너비 맞춤·비율 유지. */}
+          {renderImages(true)}
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+            onChange={(e) => { if (e.target.files) ingestFiles(e.target.files); e.target.value = ""; }} />
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+            data-testid="meta-add-image">
+            <ImagePlus className="h-3.5 w-3.5" /> 이미지 추가 (또는 Ctrl+V 로 붙여넣기)
+          </button>
+
+          {/* 표(편집) */}
+          {tables.map((tbl, i) => (
+            <TableCard key={i} node={synthNode(`mtbl-${card.id}-${i}`, tbl)} editable onCommit={(_id, t) => setTableAt(i, t)} />
+          ))}
+          <button type="button" onClick={addTable}
+            className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+            data-testid="meta-add-table">
+            <TableIcon className="h-3.5 w-3.5" /> 표 추가
+          </button>
+        </div>
       ) : (
-        <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
+        <div className="flex flex-col gap-3">
+          {text.trim() ? (
+            <CapRichText text={text} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
+          ) : !images.length && !tables.length ? (
+            <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
+          ) : null}
+          {renderImages(false)}
+          {tables.length ? (
+            <div className="flex flex-col gap-2">
+              {tables.map((tbl, i) => <TableCard key={i} node={synthNode(`mtbl-r-${card.id}-${i}`, tbl)} editable={false} onCommit={() => {}} />)}
+            </div>
+          ) : null}
+        </div>
       )}
     </section>
   );
 }
 
+// 메타 인사이트 카드 묶음 — 모아보기 최상단. 카드 추가/삭제/편집.
+function MetaCards({ cards, onSave, onJump }: {
+  cards: CapMetaCard[];
+  onSave: (next: CapMetaCard[]) => void;
+  onJump?: (slug: string) => void;
+}) {
+  const updateAt = (i: number, next: CapMetaCard) => onSave(cards.map((c, j) => (j === i ? next : c)));
+  const removeAt = (i: number) => onSave(cards.filter((_, j) => j !== i));
+  const addCard = () => onSave([...cards, newMetaCard()]);
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-sm font-bold text-primary">전체 관통 — 메타 인사이트</h2>
+      {cards.map((c, i) => (
+        <MetaCard key={c.id} card={c} onChange={(n) => updateAt(i, n)} onDelete={() => removeAt(i)} onJump={onJump} />
+      ))}
+      <button type="button" onClick={addCard}
+        className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 py-2.5 text-[12px] font-medium text-primary/80 transition-colors hover:border-primary/70 hover:bg-primary/[0.04] hover:text-primary"
+        data-testid="meta-add-card">
+        <Plus className="h-4 w-4" /> 메타 인사이트 카드 추가
+      </button>
+    </div>
+  );
+}
+
 // 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰 + 메타 테제.
 export function InsightsCollection({
-  flows, overview, onSaveOverview, onOpenInsight, onJump,
+  flows, metaCards, onSaveMetaCards, onOpenInsight, onJump,
 }: {
   flows: FlowDTO[];
-  overview?: string;
-  onSaveOverview?: (text: string) => void;
+  metaCards: CapMetaCard[];
+  onSaveMetaCards: (next: CapMetaCard[]) => void;
   onOpenInsight: (slug: string) => void;
   onJump?: (slug: string) => void;
 }) {
@@ -340,7 +508,7 @@ export function InsightsCollection({
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 py-2">
-      <OverviewBlock overview={overview ?? ""} onSave={onSaveOverview} onJump={onJump} />
+      <MetaCards cards={metaCards} onSave={onSaveMetaCards} onJump={onJump} />
 
       {items.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
