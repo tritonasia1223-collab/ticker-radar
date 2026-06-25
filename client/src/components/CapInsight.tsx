@@ -1,29 +1,15 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
-// 리치텍스트 본문 + 참고 그래프 블록 N개(지표 선택 + 범위, 사건 시점 마커).
+// 본문은 '블록 스택'(텍스트·표·이미지·그래프를 순서대로 섞어 배치) — BlockStack 컴포넌트가 담당.
 import { useState, useRef, useEffect } from "react";
-import { X, Star, Plus, Pencil, Check, Trash2, Table as TableIcon, ImagePlus } from "lucide-react";
-import { CapRichEditor } from "@/components/CapRichEditor";
-import { CapRichText } from "@/components/CapRichText";
-import { PanelChart } from "@/components/CapChartPanel";
-import { TableCard, makeDefaultTable } from "@/components/CapTable";
-import { PANELS, toFracYear } from "@/lib/capitalism-config";
-import type { FlowDTO, CapInsight, CapInsightChart, CapTableData, FlowNodeDTO, CapMetaCard, CapImageData } from "@/lib/capitalism-types";
-import seriesData from "@/data/capitalism-series.json";
+import { X, Star, Plus, Pencil, Check, Trash2 } from "lucide-react";
+import { toFracYear } from "@/lib/capitalism-config";
+import {
+  BlockStack, insightToBlocks, blocksToInsight, blocksHaveContent, metaCardToBlocks, blocksToMetaFields,
+} from "@/components/CapBlocks";
+import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalism-types";
 
-const SERIES = seriesData as unknown as Record<string, [string, number][]>;
-const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? PANELS[0];
-// 해당 지표 데이터의 마지막(최신) 연도.
-function lastYearOf(key: string): number {
-  const arr = SERIES[key];
-  return arr && arr.length ? Math.ceil(toFracYear(arr[arr.length - 1][0])) : 2026;
-}
-function firstYearOf(key: string): number {
-  const arr = SERIES[key];
-  return arr && arr.length ? Math.floor(toFracYear(arr[0][0])) : 1940;
-}
-// 인사이트 표를 노드용 TableCard 로 재사용하기 위한 합성 노드(id·table 만 사용됨).
-const synthNode = (id: string, table: CapTableData): FlowNodeDTO =>
-  ({ id, kind: "effect", inLabel: null, text: "", ref: null, col: null, table });
+// 본문 블록 중 보일 게 하나라도 있나(텍스트는 비어있지 않을 때만, 표/이미지/그래프는 항상).
+const hasVisibleBlock = (blocks: CapBlock[]) => blocks.some((b) => (b.type === "text" ? !!b.text.trim() : true));
 
 export function InsightPanel({
   flow, onCommit, onClose, variant = "panel",
@@ -35,71 +21,35 @@ export function InsightPanel({
   // "inline" = 사건 카드 옆 메모형(닫기는 전역 종료라 카드별 버튼 숨김).
   variant?: "panel" | "inline";
 }) {
-  const [text, setText] = useState(flow.insight?.text ?? "");
-  const [charts, setCharts] = useState<CapInsightChart[]>(flow.insight?.charts ?? []);
-  const [tables, setTables] = useState<CapTableData[]>(flow.insight?.tables ?? []);
-  // 내용이 있으면 읽기 뷰로 떠서 가독성 확보, 비어 있으면(새 인사이트) 바로 편집.
-  const hasContent = (i?: CapInsight | null) => !!(i && (i.text.trim() || i.charts.length || i.tables?.length));
-  const [editing, setEditing] = useState(!hasContent(flow.insight));
-  const textRef = useRef(text);
-  textRef.current = text;
-  const chartsRef = useRef(charts);
-  chartsRef.current = charts;
-  const tablesRef = useRef(tables);
-  tablesRef.current = tables;
+  // 새 인사이트면 빈 텍스트 블록 1개로 시작(바로 입력 가능).
+  const seedBlocks = (f: FlowDTO): CapBlock[] => {
+    const b = insightToBlocks(f.insight);
+    return b.length ? b : [{ type: "text", text: "" }];
+  };
+  const [blocks, setBlocks] = useState<CapBlock[]>(() => seedBlocks(flow));
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+  // 내용이 있으면 읽기 뷰로(가독성), 비어 있으면(새 인사이트) 바로 편집.
+  const [editing, setEditing] = useState(!hasVisibleBlock(insightToBlocks(flow.insight)));
 
   // 다른 카드의 별을 누르면 그 사건 인사이트로 재시드.
   useEffect(() => {
-    setText(flow.insight?.text ?? "");
-    setCharts(flow.insight?.charts ?? []);
-    setTables(flow.insight?.tables ?? []);
-    textRef.current = flow.insight?.text ?? "";
-    setEditing(!hasContent(flow.insight));
+    const b = seedBlocks(flow);
+    setBlocks(b); blocksRef.current = b;
+    setEditing(!hasVisibleBlock(insightToBlocks(flow.insight)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flow.slug]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
   const eventFrac = toFracYear(flow.date);
 
-  // 저장(본문/그래프/표 합쳐). 변경 없으면 스킵.
-  const commit = (nextText: string, nextCharts: CapInsightChart[], nextTables: CapTableData[]) => {
-    const cur = flow.insight ?? { text: "", charts: [], tables: [] };
-    if ((cur.text ?? "") === nextText
-        && JSON.stringify(cur.charts ?? []) === JSON.stringify(nextCharts)
-        && JSON.stringify(cur.tables ?? []) === JSON.stringify(nextTables)) return;
-    onCommit(flow.slug, { text: nextText, charts: nextCharts, tables: nextTables });
+  const persist = (next: CapBlock[]) => onCommit(flow.slug, blocksToInsight(next));
+  // doCommit=false → 텍스트 입력 중(로컬), true → 구조 변경/blur(저장).
+  const handleChange = (next: CapBlock[], doCommit: boolean) => {
+    setBlocks(next); blocksRef.current = next;
+    if (doCommit) persist(next);
   };
-
-  // doCommit=false 면 로컬만 갱신(입력 중), blur/구조변경 때만 저장(POST 폭주 방지).
-  const applyCharts = (next: CapInsightChart[], doCommit: boolean) => {
-    setCharts(next);
-    if (doCommit) commit(textRef.current, next, tablesRef.current);
-  };
-  const addChart = () => {
-    // 기본: 달러지수, '그 카드 시점' 중심 ±5년 창(슬라이더처럼). 데이터 범위로 클램프.
-    // 필요하면 아래 시작/끝 연도 입력으로 자유 조절(현재까지 늘리기 등).
-    const key = "dollar";
-    const ey = Math.floor(eventFrac);
-    applyCharts([...charts, { series: key, from: Math.max(firstYearOf(key), ey - 5), to: Math.min(lastYearOf(key), ey + 5) }], true);
-  };
-  const patchChart = (i: number, patch: Partial<CapInsightChart>, doCommit: boolean) =>
-    applyCharts(charts.map((c, j) => (j === i ? { ...c, ...patch } : c)), doCommit);
-  const removeChart = (i: number) => applyCharts(charts.filter((_, j) => j !== i), true);
-  const commitCharts = () => commit(textRef.current, chartsRef.current, tablesRef.current);
-
-  // ── 표 블록 ── TableCard 는 (합성 노드 id, 표|null) 로 콜백 → 인덱스로 매핑(null=삭제).
-  // 항상 최신 ref 기준으로 갱신(다중 표 편집 시 stale 클로저 방지).
-  const applyTables = (next: CapTableData[], doCommit: boolean) => {
-    setTables(next);
-    if (doCommit) commit(textRef.current, chartsRef.current, next);
-  };
-  const addTable = () => applyTables([...tablesRef.current, makeDefaultTable()], true);
-  const setTableAt = (i: number, t: CapTableData | null) => {
-    const base = tablesRef.current;
-    applyTables(t === null ? base.filter((_, j) => j !== i) : base.map((x, j) => (j === i ? t : x)), true);
-  };
-
-  // '완료' — 마지막 내용 저장 후 읽기 뷰로.
-  const finishEditing = () => { commit(textRef.current, chartsRef.current, tablesRef.current); setEditing(false); };
+  const finishEditing = () => { persist(blocksRef.current); setEditing(false); };
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3">
@@ -154,251 +104,57 @@ export function InsightPanel({
           <div className="text-[11px] text-muted-foreground/70">
             이 사건과 <b className="text-foreground/80">지금</b>을 어떻게 연결할 수 있을까? — 과거↔현재 인사이트
           </div>
-
-          <CapRichEditor
-            value={text}
-            onChange={setText}
-            onBlur={() => commit(textRef.current, chartsRef.current, tablesRef.current)}
-            rows={12}
-            align="left"
-            placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿)"
+          <BlockStack
+            blocks={blocks} editing allow={{ text: true, table: true, image: true, chart: true }}
+            eventFrac={eventFrac} onChange={handleChange}
           />
-
-          {/* ── 표 블록(편집) — 그래프처럼 넓게, 셀 내용에 맞춰 반응형 ── */}
-          <div className="flex flex-col gap-2">
-            {tables.map((tbl, i) => (
-              <TableCard key={i} node={synthNode(`itbl-${i}`, tbl)} editable onCommit={(_id, t) => setTableAt(i, t)} />
-            ))}
-            <button
-              type="button" onClick={addTable}
-              className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
-              data-testid="insight-add-table"
-            >
-              <TableIcon className="h-3.5 w-3.5" /> 표 추가
-            </button>
-          </div>
-
-          {/* ── 참고 그래프 블록(편집) ── */}
-          <div className="flex flex-col gap-2">
-        {charts.map((c, i) => {
-          const panel = panelFor(c.series);
-          const lo = firstYearOf(c.series);
-          const hi = lastYearOf(c.series);
-          return (
-            <div key={i} className="rounded-md border border-border/60 bg-background/40 p-2">
-              <div className="mb-1 flex items-center gap-1.5">
-                <select
-                  value={c.series}
-                  onChange={(e) => patchChart(i, { series: e.target.value }, true)}
-                  className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[11px] text-foreground"
-                  data-testid={`insight-chart-series-${i}`}
-                >
-                  {PANELS.map((p) => <option key={p.id} value={p.series}>{p.label}</option>)}
-                </select>
-                <input
-                  type="number" value={c.from} min={lo} max={hi}
-                  onChange={(e) => patchChart(i, { from: Number(e.target.value) }, false)}
-                  onBlur={commitCharts}
-                  className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-foreground"
-                  title="시작 연도" data-testid={`insight-chart-from-${i}`}
-                />
-                <span className="text-[11px] text-muted-foreground">~</span>
-                <input
-                  type="number" value={c.to} min={lo} max={hi}
-                  onChange={(e) => patchChart(i, { to: Number(e.target.value) }, false)}
-                  onBlur={commitCharts}
-                  className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-foreground"
-                  title="끝 연도" data-testid={`insight-chart-to-${i}`}
-                />
-                <button
-                  type="button" onClick={() => removeChart(i)}
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  title="그래프 제거" data-testid={`insight-chart-remove-${i}`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="mb-0.5 flex items-center gap-1.5 px-0.5">
-                <span className="h-2 w-2 rounded-sm" style={{ background: panel.color }} />
-                <span className="text-[11px] font-medium">{panel.label}</span>
-                <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit}</span>
-              </div>
-              {/* 사건 시점(eventFrac)을 점선 마커로 표시 → '이 사건이 여기' 시각 앵커 */}
-              <PanelChart
-                panel={panel} series={SERIES[c.series]}
-                fromYear={Math.min(c.from, c.to)} toYear={Math.max(c.from, c.to)}
-                playYear={eventFrac} yMode="window" height={130} unit={panel.unit}
-              />
-            </div>
-          );
-        })}
-        <button
-          type="button" onClick={addChart}
-          className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
-          data-testid="insight-add-chart"
-        >
-          <Plus className="h-3.5 w-3.5" /> 참고 그래프 추가
-        </button>
-          </div>
         </>
+      ) : hasVisibleBlock(blocks) ? (
+        <BlockStack blocks={blocks} editing={false} allow={{}} eventFrac={eventFrac} onChange={() => {}} />
       ) : (
-        /* ── 읽기 뷰 ── */
-        <>
-          {text.trim() ? (
-            <CapRichText text={text} className="block text-[13.5px] leading-relaxed text-foreground" />
-          ) : !tables.length && !charts.length ? (
-            <div className="py-2 text-[12px] italic text-muted-foreground/60">
-              아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요.
-            </div>
-          ) : null}
-          {tables.length ? (
-            <div className="flex flex-col gap-2">
-              {tables.map((tbl, i) => <TableCard key={i} node={synthNode(`itbl-r-${i}`, tbl)} editable={false} onCommit={() => {}} />)}
-            </div>
-          ) : null}
-          {charts.length ? (
-            <div className="flex flex-col gap-2">
-              {charts.map((c, i) => <InsightChartView key={i} chart={c} mark={eventFrac} />)}
-            </div>
-          ) : null}
-        </>
+        <div className="py-2 text-[12px] italic text-muted-foreground/60">
+          아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요.
+        </div>
       )}
     </div>
   );
 }
 
-// 읽기 전용 참고 그래프. 컨트롤 없이 차트 + 라벨만. mark>0 이면 사건 시점 점선 마커 표시.
-function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: number }) {
-  const panel = panelFor(chart.series);
-  const from = Math.min(chart.from, chart.to);
-  const to = Math.max(chart.from, chart.to);
-  return (
-    <div className="rounded-md border border-border/60 bg-background/40 p-2">
-      <div className="mb-0.5 flex items-center gap-1.5 px-0.5">
-        <span className="h-2 w-2 rounded-sm" style={{ background: panel.color }} />
-        <span className="text-[11px] font-medium">{panel.label}</span>
-        <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit} · {from}~{to}</span>
-      </div>
-      <PanelChart
-        panel={panel} series={SERIES[chart.series]}
-        fromYear={from} toYear={to}
-        playYear={mark} yMode="window" height={150} unit={panel.unit}
-      />
-    </div>
-  );
-}
-
-// 붙여넣기/업로드한 이미지를 가로 maxW 로 축소(비율 유지) → webp data URL. 실패 시 원본 data URL.
-async function blobToScaledDataUrl(blob: Blob, maxW = 1280): Promise<string> {
-  try {
-    const bmp = await createImageBitmap(blob);
-    const scale = Math.min(1, maxW / bmp.width);
-    const w = Math.max(1, Math.round(bmp.width * scale));
-    const h = Math.max(1, Math.round(bmp.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("no 2d context");
-    ctx.drawImage(bmp, 0, 0, w, h);
-    bmp.close?.();
-    return canvas.toDataURL("image/webp", 0.82);
-  } catch {
-    return await new Promise<string>((resolve) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.readAsDataURL(blob);
-    });
-  }
-}
-
-const hasMetaContent = (c: CapMetaCard) =>
-  !!(c.text.trim() || c.tables?.length || c.images?.length || (c.title ?? "").trim());
-
 const newMetaCard = (): CapMetaCard =>
-  ({ id: `meta-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`, title: "", text: "", tables: [], images: [] });
+  ({ id: `meta-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`, title: "", text: "", tables: [], images: [], blocks: [] });
 
-// 메타 인사이트 카드 1장 — 소제목 + 리치텍스트 + 표 + 이미지(붙여넣기). 읽기/편집 토글.
-// 편집 중 변경은 blur·구조변경 때 onChange 로 상위에 커밋(전체 카드 목록 저장 → POST).
+// 메타 인사이트 카드 1장 — 소제목 + 블록 스택(텍스트·표·이미지). 읽기/편집 토글.
 function MetaCard({ card, onChange, onDelete, onJump }: {
   card: CapMetaCard;
   onChange: (next: CapMetaCard) => void;
   onDelete: () => void;
   onJump?: (slug: string) => void;
 }) {
+  const seedBlocks = (c: CapMetaCard): CapBlock[] => {
+    const b = metaCardToBlocks(c);
+    return b.length ? b : [{ type: "text", text: "" }];
+  };
   const [title, setTitle] = useState(card.title ?? "");
-  const [text, setText] = useState(card.text);
-  const [tables, setTables] = useState<CapTableData[]>(card.tables ?? []);
-  const [images, setImages] = useState<CapImageData[]>(card.images ?? []);
-  const [editing, setEditing] = useState(!hasMetaContent(card));
   const titleRef = useRef(title); titleRef.current = title;
-  const textRef = useRef(text); textRef.current = text;
-  const tablesRef = useRef(tables); tablesRef.current = tables;
-  const imagesRef = useRef(images); imagesRef.current = images;
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [blocks, setBlocks] = useState<CapBlock[]>(() => seedBlocks(card));
+  const blocksRef = useRef(blocks); blocksRef.current = blocks;
+  const hasContent = !!(card.title ?? "").trim() || hasVisibleBlock(metaCardToBlocks(card));
+  const [editing, setEditing] = useState(!hasContent);
 
-  const commit = () => onChange({
-    ...card, title: titleRef.current, text: textRef.current, tables: tablesRef.current, images: imagesRef.current,
-  });
-
-  // 표 — TableCard 콜백(합성 노드 id, 표|null). null=삭제. 항상 최신 ref 기준.
-  const setTableAt = (i: number, t: CapTableData | null) => {
-    const base = tablesRef.current;
-    const next = t === null ? base.filter((_, j) => j !== i) : base.map((x, j) => (j === i ? t : x));
-    setTables(next); tablesRef.current = next; commit();
+  const commit = (nextBlocks: CapBlock[] = blocksRef.current, nextTitle: string = titleRef.current) =>
+    onChange({ ...card, title: nextTitle, ...blocksToMetaFields(nextBlocks) });
+  const handleChange = (next: CapBlock[], doCommit: boolean) => {
+    setBlocks(next); blocksRef.current = next;
+    if (doCommit) commit(next);
   };
-  const addTable = () => { const next = [...tablesRef.current, makeDefaultTable()]; setTables(next); tablesRef.current = next; commit(); };
-
-  // 이미지 — 붙여넣기/파일선택 → 축소 후 추가. null 인덱스 제거.
-  const addImages = (imgs: CapImageData[]) => {
-    if (!imgs.length) return;
-    const next = [...imagesRef.current, ...imgs]; setImages(next); imagesRef.current = next; commit();
-  };
-  const removeImage = (i: number) => {
-    const next = imagesRef.current.filter((_, j) => j !== i); setImages(next); imagesRef.current = next; commit();
-  };
-  const ingestFiles = async (files: FileList | File[]) => {
-    const out: CapImageData[] = [];
-    for (const f of Array.from(files)) if (f.type.startsWith("image/")) out.push({ src: await blobToScaledDataUrl(f) });
-    addImages(out);
-  };
-  const onPaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const blobs: Blob[] = [];
-    for (const it of Array.from(items)) if (it.type.startsWith("image/")) { const b = it.getAsFile(); if (b) blobs.push(b); }
-    if (!blobs.length) return;
-    e.preventDefault();
-    addImages(await Promise.all(blobs.map((b) => blobToScaledDataUrl(b))).then((srcs) => srcs.map((src) => ({ src }))));
-  };
-
   const finishEditing = () => { commit(); setEditing(false); };
 
-  // 이미지 렌더(컴포넌트 아님 — render fn. 매 렌더마다 <img> 리마운트/깜빡임 방지).
-  const renderImages = (edit: boolean) => (
-    images.length ? (
-      <div className="flex flex-col gap-2">
-        {images.map((img, i) => (
-          <div key={i} className="relative">
-            <img src={img.src} alt={img.alt ?? ""} className="block w-full h-auto rounded-md border border-border/50" />
-            {edit ? (
-              <button type="button" onClick={() => removeImage(i)} title="이미지 삭제"
-                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive/15 hover:text-destructive"
-                data-testid={`meta-image-remove-${i}`}>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    ) : null
-  );
-
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" onPaste={editing ? onPaste : undefined}>
+    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
         {editing ? (
           <input
-            type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={commit}
+            type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => commit()}
             placeholder="소제목 (선택)"
             className="min-w-0 flex-1 rounded border-0 bg-transparent text-sm font-bold text-primary outline-none placeholder:font-medium placeholder:text-primary/40 focus:bg-background/40"
             data-testid="meta-title"
@@ -425,44 +181,14 @@ function MetaCard({ card, onChange, onDelete, onJump }: {
       </div>
 
       {editing ? (
-        <div className="flex flex-col gap-2">
-          <CapRichEditor value={text} onChange={setText} onBlur={commit} rows={8} align="left"
-            placeholder="전체를 관통하는 논증(메타 테제)을 적어보세요. (이미지는 복사 후 Ctrl+V 로 붙여넣기)" />
-
-          {/* 이미지(편집) — 붙여넣기 또는 파일 선택. 너비 맞춤·비율 유지. */}
-          {renderImages(true)}
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
-            onChange={(e) => { if (e.target.files) ingestFiles(e.target.files); e.target.value = ""; }} />
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
-            data-testid="meta-add-image">
-            <ImagePlus className="h-3.5 w-3.5" /> 이미지 추가 (또는 Ctrl+V 로 붙여넣기)
-          </button>
-
-          {/* 표(편집) */}
-          {tables.map((tbl, i) => (
-            <TableCard key={i} node={synthNode(`mtbl-${card.id}-${i}`, tbl)} editable onCommit={(_id, t) => setTableAt(i, t)} />
-          ))}
-          <button type="button" onClick={addTable}
-            className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border/70 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
-            data-testid="meta-add-table">
-            <TableIcon className="h-3.5 w-3.5" /> 표 추가
-          </button>
-        </div>
+        <BlockStack
+          blocks={blocks} editing allow={{ text: true, table: true, image: true }}
+          onChange={handleChange} onJump={onJump}
+        />
+      ) : hasVisibleBlock(blocks) ? (
+        <BlockStack blocks={blocks} editing={false} allow={{}} onChange={() => {}} onJump={onJump} />
       ) : (
-        <div className="flex flex-col gap-3">
-          {text.trim() ? (
-            <CapRichText text={text} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
-          ) : !images.length && !tables.length ? (
-            <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
-          ) : null}
-          {renderImages(false)}
-          {tables.length ? (
-            <div className="flex flex-col gap-2">
-              {tables.map((tbl, i) => <TableCard key={i} node={synthNode(`mtbl-r-${card.id}-${i}`, tbl)} editable={false} onCommit={() => {}} />)}
-            </div>
-          ) : null}
-        </div>
+        <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
       )}
     </section>
   );
@@ -492,6 +218,10 @@ function MetaCards({ cards, onSave, onJump }: {
   );
 }
 
+// 인사이트 있는 사건인가(텍스트/그래프/표/블록 중 하나라도).
+const hasInsightContent = (i?: CapInsight | null) =>
+  !!i && (i.text.trim() !== "" || i.charts.length > 0 || (i.tables?.length ?? 0) > 0 || (i.blocks?.length ?? 0) > 0);
+
 // 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰 + 메타 테제.
 export function InsightsCollection({
   flows, metaCards, onSaveMetaCards, onOpenInsight, onJump,
@@ -503,7 +233,7 @@ export function InsightsCollection({
   onJump?: (slug: string) => void;
 }) {
   const items = flows
-    .filter((f) => f.insight && (f.insight.text.trim() || f.insight.charts.length || f.insight.tables?.length))
+    .filter((f) => hasInsightContent(f.insight))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
   return (
@@ -514,47 +244,34 @@ export function InsightsCollection({
         <div className="py-12 text-center text-sm text-muted-foreground">
           아직 사건 인사이트가 없습니다. 타임라인에서 사건 카드의 <Star className="inline h-3.5 w-3.5 text-red-500" fill="currentColor" /> 별을 눌러 적어보세요.
         </div>
-      ) : items.map((f) => {
-        const eventFrac = toFracYear(f.date);
-        return (
-          <article key={f.slug} className="border-b border-border/40 pb-6 last:border-0">
-            <header className="mb-2 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-[11px] tabular-nums text-muted-foreground">
-                  {f.endDate ? `${f.date} ~ ${f.endDate}` : f.date}
-                </div>
-                <h3 className="flex items-center gap-1.5 text-base font-bold">
-                  <Star className="h-4 w-4 shrink-0 text-red-500" fill="currentColor" />
-                  {f.title}
-                </h3>
+      ) : items.map((f) => (
+        <article key={f.slug} className="border-b border-border/40 pb-6 last:border-0">
+          <header className="mb-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[11px] tabular-nums text-muted-foreground">
+                {f.endDate ? `${f.date} ~ ${f.endDate}` : f.date}
               </div>
-              <button
-                type="button"
-                onClick={() => onOpenInsight(f.slug)}
-                className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                title="타임라인에서 편집"
-                data-testid={`insight-edit-${f.slug}`}
-              >
-                <Pencil className="h-3 w-3" /> 편집
-              </button>
-            </header>
-            {f.insight!.text.trim() ? (
-              <CapRichText text={f.insight!.text} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
-            ) : null}
-            {f.insight!.tables?.length ? (
-              <div className="mt-3 flex flex-col gap-2">
-                {f.insight!.tables.map((tbl, i) => <TableCard key={i} node={synthNode(`itbl-c-${f.slug}-${i}`, tbl)} editable={false} onCommit={() => {}} />)}
-              </div>
-            ) : null}
-            {f.insight!.charts.length ? (
-              <div className="mt-3 flex flex-col gap-2">
-                {f.insight!.charts.map((c, i) => <InsightChartView key={i} chart={c} />)}
-              </div>
-            ) : null}
-            <div className="sr-only">{eventFrac}</div>
-          </article>
-        );
-      })}
+              <h3 className="flex items-center gap-1.5 text-base font-bold">
+                <Star className="h-4 w-4 shrink-0 text-red-500" fill="currentColor" />
+                {f.title}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenInsight(f.slug)}
+              className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              title="타임라인에서 편집"
+              data-testid={`insight-edit-${f.slug}`}
+            >
+              <Pencil className="h-3 w-3" /> 편집
+            </button>
+          </header>
+          <BlockStack
+            blocks={insightToBlocks(f.insight)} editing={false} allow={{}}
+            eventFrac={toFracYear(f.date)} onChange={() => {}} onJump={onJump}
+          />
+        </article>
+      ))}
     </div>
   );
 }

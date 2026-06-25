@@ -341,7 +341,7 @@ export default function Capitalism() {
   const activeInsightFlow = activeInsightSlug ? (flows?.find((f) => f.slug === activeInsightSlug) ?? null) : null;
   // 별을 누르면 '인사이트 모드' ON — 그래프 패널이 블러 배경이 되고, 모든 인사이트가 각 사건 카드 옆에 매칭된다(iOS식).
   const insightMode = !!activeInsightFlow;
-  const hasInsight = (f: FlowDTO) => !!(f.insight && (f.insight.text.trim() || f.insight.charts.length || f.insight.tables?.length));
+  const hasInsight = (f: FlowDTO) => !!(f.insight && (f.insight.text.trim() || f.insight.charts.length || f.insight.tables?.length || f.insight.blocks?.length));
   const exitInsightMode = () => setActiveInsightSlug(null);
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
@@ -410,7 +410,7 @@ export default function Capitalism() {
   const onCommitInsight = (slug: string, insight: CapInsight) => {
     const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
     if (!latest) return;
-    const hasContent = !!(insight.text.trim() || insight.charts.length || insight.tables?.length);
+    const hasContent = !!(insight.text.trim() || insight.charts.length || insight.tables?.length || insight.blocks?.length);
     const merged: FlowDTO = { ...latest, insight: hasContent ? insight : null };
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === slug ? merged : f)) : prev

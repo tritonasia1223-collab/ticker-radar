@@ -23,9 +23,15 @@ export interface FlowNodeDTO {
   table: CapTableData | null; // 노드별 표(없으면 null)
 }
 export interface FlowEdgeDTO { from: string; to: string }
-// 사건 인사이트 — 리치텍스트 본문 + 참고 그래프 N개 + 표 N개.
+// 사건 인사이트 — 본문 블록(텍스트/표/이미지/그래프 순서 혼합) + 레거시 평면 필드.
 export interface CapInsightChart { series: string; from: number; to: number }
-export interface CapInsight { text: string; charts: CapInsightChart[]; tables?: CapTableData[] }
+export interface CapImageData { src: string; alt?: string }
+export type CapBlock =
+  | { type: "text"; text: string }
+  | { type: "table"; table: CapTableData }
+  | { type: "image"; image: CapImageData }
+  | { type: "chart"; chart: CapInsightChart };
+export interface CapInsight { text: string; charts: CapInsightChart[]; tables?: CapTableData[]; blocks?: CapBlock[] }
 export interface FlowDTO {
   id: number;
   slug: string;
@@ -70,10 +76,25 @@ function parseInsight(raw: string | null | undefined): CapInsight | null {
     const tables = Array.isArray(t.tables)
       ? t.tables.map(sanitizeTable).filter((x: CapTableData | null): x is CapTableData => x !== null)
       : [];
-    // 본문도 그래프도 표도 없으면 인사이트 없음으로 취급.
-    if (!t.text.trim() && charts.length === 0 && tables.length === 0) return null;
-    return { text: t.text, charts, tables };
+    const blocks = Array.isArray(t.blocks)
+      ? t.blocks.map(sanitizeBlock).filter((x: CapBlock | null): x is CapBlock => x !== null)
+      : undefined;
+    // 본문도 그래프도 표도 블록도 없으면 인사이트 없음으로 취급.
+    if (!t.text.trim() && charts.length === 0 && tables.length === 0 && !(blocks && blocks.length)) return null;
+    return { text: t.text, charts, tables, ...(blocks && blocks.length ? { blocks } : {}) };
   } catch { return null; }
+}
+
+// 블록 정규화(텍스트/표/이미지/그래프). 형식 불일치면 null.
+function sanitizeBlock(b: any): CapBlock | null {
+  if (!b || typeof b.type !== "string") return null;
+  if (b.type === "text") return typeof b.text === "string" ? { type: "text", text: b.text } : null;
+  if (b.type === "table") { const t = sanitizeTable(b.table); return t ? { type: "table", table: t } : null; }
+  if (b.type === "image") return b.image && typeof b.image.src === "string"
+    ? { type: "image", image: { src: String(b.image.src), ...(typeof b.image.alt === "string" ? { alt: b.image.alt } : {}) } } : null;
+  if (b.type === "chart") return b.chart && typeof b.chart.series === "string"
+    ? { type: "chart", chart: { series: String(b.chart.series), from: Number(b.chart.from) || 0, to: Number(b.chart.to) || 0 } } : null;
+  return null;
 }
 
 // table_data(JSON 문자열) → CapTableData. 깨졌거나 형식 불일치면 null 로 안전 폴백.
@@ -136,7 +157,7 @@ export async function listFlows(): Promise<FlowDTO[]> {
 export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
   const now = Date.now();
   // 본문도 그래프도 없는 인사이트는 null 로 저장(빈 인사이트 보존 안 함).
-  const insightJson = input.insight && (input.insight.text.trim() || input.insight.charts.length || input.insight.tables?.length)
+  const insightJson = input.insight && (input.insight.text.trim() || input.insight.charts.length || input.insight.tables?.length || input.insight.blocks?.length)
     ? JSON.stringify(input.insight) : null;
   return await db.transaction(async (tx) => {
     const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);

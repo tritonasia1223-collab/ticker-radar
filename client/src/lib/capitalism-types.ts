@@ -14,10 +14,19 @@ export interface CapInsightChart {
   from: number;    // 소수 연도(시작)
   to: number;      // 소수 연도(끝)
 }
+// 본문 블록 — 텍스트/표/이미지/그래프를 순서대로 섞어 배치(글 중간 삽입·재배치).
+//   blocks 가 있으면 본문의 단일 출처(순서 보존). 없으면 레거시(text+tables+charts/images)에서 파생.
+export type CapBlock =
+  | { type: "text"; text: string }            // 리치텍스트 마커 문자열
+  | { type: "table"; table: CapTableData }
+  | { type: "image"; image: CapImageData }
+  | { type: "chart"; chart: CapInsightChart };
+
 export interface CapInsight {
-  text: string;              // 리치텍스트 마커 문자열
-  charts: CapInsightChart[]; // 참고 그래프(0개 이상)
-  tables?: CapTableData[];   // 표(0개 이상) — 그래프처럼 넓게 들어감
+  text: string;              // 리치텍스트 마커 문자열(레거시·검색용; blocks 의 텍스트 블록 합본)
+  charts: CapInsightChart[]; // 참고 그래프(레거시·역호환)
+  tables?: CapTableData[];   // 표(레거시·역호환)
+  blocks?: CapBlock[];       // 본문 블록(있으면 순서의 단일 출처)
 }
 
 // 메타 인사이트 이미지. src 는 data URL(붙여넣기 시 캔버스로 가로 축소·비율 유지) 또는 URL.
@@ -31,9 +40,10 @@ export interface CapImageData {
 export interface CapMetaCard {
   id: string;                // 안정적 키(클라이언트 생성)
   title?: string;            // 카드 소제목(선택)
-  text: string;              // 리치텍스트 본문
-  tables?: CapTableData[];   // 표(0개 이상)
-  images?: CapImageData[];   // 이미지(0개 이상) — 너비에 맞춰 비율 유지
+  text: string;              // 리치텍스트 본문(레거시·검색용; blocks 텍스트 합본)
+  tables?: CapTableData[];   // 표(레거시·역호환)
+  images?: CapImageData[];   // 이미지(레거시·역호환)
+  blocks?: CapBlock[];       // 본문 블록(있으면 순서의 단일 출처)
 }
 
 export interface FlowNodeDTO {

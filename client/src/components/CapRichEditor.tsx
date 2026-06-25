@@ -575,6 +575,20 @@ export function CapRichEditor({
         replaceLine(info.index, makeBulletLine(0, ""), info.lineStartSerialize + 2);
         return;
       }
+      // '->' + 스페이스 → 화살표("→ "). 캐럿 바로 앞 평문 두 글자가 "->" 이면 치환(마크 보존).
+      //   불릿 트리거(bodyRaw==="-")와 배타적: 화살표는 caretInBody>=2 라 겹치지 않는다.
+      if (info && info.caretInBody >= 2
+          && plainText(info.bodyRaw).slice(info.caretInBody - 2, info.caretInBody) === "->") {
+        ev.preventDefault();
+        const head = splitBodyAt(info.bodyRaw, info.caretInBody - 2).before; // "->" 앞(마크 유지)
+        const tail = splitBodyAt(info.bodyRaw, info.caretInBody).after;      // 캐럿 뒤(마크 유지)
+        const newBody = `${head}→ ${tail}`;
+        const prefixLen = info.bullet ? info.level + 2 : 0;
+        const newLineRaw = info.bullet ? makeBulletLine(info.level, newBody) : newBody;
+        // "->"(2자) → "→ "(2자)라 길이 변동 0 → 캐럿은 기존 caretInBody 위치 유지(삽입한 공백 뒤).
+        replaceLine(info.index, newLineRaw, info.lineStartSerialize + prefixLen + info.caretInBody);
+        return;
+      }
       return;
     }
 

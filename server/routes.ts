@@ -244,10 +244,19 @@ export function registerRoutes(app: Express) {
     col: z.enum(["center", "left", "right"]).nullable().optional(),
     table: capTableSchema.nullable().optional(),
   });
+  const capChartSchema = z.object({ series: z.string(), from: z.number(), to: z.number() });
+  const capImageSchema = z.object({ src: z.string(), alt: z.string().optional() });
+  const capBlockSchema = z.discriminatedUnion("type", [
+    z.object({ type: z.literal("text"), text: z.string() }),
+    z.object({ type: z.literal("table"), table: capTableSchema }),
+    z.object({ type: z.literal("image"), image: capImageSchema }),
+    z.object({ type: z.literal("chart"), chart: capChartSchema }),
+  ]);
   const capInsightSchema = z.object({
     text: z.string(),
-    charts: z.array(z.object({ series: z.string(), from: z.number(), to: z.number() })),
+    charts: z.array(capChartSchema),
     tables: z.array(capTableSchema).optional(),
+    blocks: z.array(capBlockSchema).optional(),
   });
   const capFlowInputSchema = z.object({
     slug: z.string().min(1),
