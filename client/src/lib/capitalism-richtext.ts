@@ -87,6 +87,26 @@ export function plainText(raw: string): string {
   return parseRich(raw).map((s) => s.text).join("");
 }
 
+// 마커 문자열을 평문 오프셋에서 둘로 분할(마크 보존). 멀티라인·불릿 프리픽스 모두
+// 평문 글자로 카운트 → 직렬화 좌표(serializeEl/caretSerializeOffsetOf)와 동일 좌표계.
+// 커서 위치에 표/이미지를 끼울 때 텍스트 블록을 before/after 로 가르는 데 사용.
+export function splitRichTextAt(raw: string, plainOffset: number): { before: string; after: string } {
+  const segs = parseRich(raw);
+  const before: RichSeg[] = [];
+  const after: RichSeg[] = [];
+  let acc = 0;
+  for (const s of segs) {
+    const len = s.text.length;
+    if (acc >= plainOffset) { after.push(s); acc += len; continue; }
+    if (acc + len <= plainOffset) { before.push(s); acc += len; continue; }
+    const cut = plainOffset - acc;
+    before.push({ ...s, text: s.text.slice(0, cut) });
+    after.push({ ...s, text: s.text.slice(cut) });
+    acc += len;
+  }
+  return { before: serializeRich(before), after: serializeRich(after) };
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // 말머리(불릿) — 슬랙/노션식. 줄 단위로 동작한다.
 //   저장 형식(줄 프리픽스): \t × 레벨 + "• "

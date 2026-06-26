@@ -1,9 +1,9 @@
 // 인라인 리치텍스트 에디터: 텍스트를 드래그 선택하면 색상/하이라이트 팝업 툴바가 떠서
 // 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
 // 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import {
-  MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX,
+  MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
   parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, type RichSeg,
 } from "@/lib/capitalism-richtext";
 
@@ -211,9 +211,12 @@ function serializeEl(el: HTMLElement): string {
 // 링크 대상 후보 카드 — 상위(페이지)에서 전달. slug/라벨(연도+제목)만 필요.
 export interface LinkTarget { slug: string; year: number; title: string; }
 
-export function CapRichEditor({
-  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, linkTargets, align = "center",
-}: {
+export interface CapRichEditorHandle {
+  // 현재 캐럿 위치에서 본문을 둘로 분할(마크 보존). 캐럿이 이 에디터 밖이면 null.
+  splitAtCaret(): { before: string; after: string } | null;
+  blur(): void;
+}
+export interface CapRichEditorProps {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -224,7 +227,10 @@ export function CapRichEditor({
   linkTargets?: LinkTarget[];
   // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
   align?: "left" | "center";
-}) {
+}
+export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
+  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, linkTargets, align = "center",
+}, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const [toolbar, setToolbar] = useState<{ x: number; y: number } | null>(null);
   const composingRef = useRef(false);
@@ -235,6 +241,22 @@ export function CapRichEditor({
   // onBlur 클로저가 최신 linkPanel 값을 읽도록 ref 동기화.
   const linkPanelRef = useRef(false);
   useEffect(() => { linkPanelRef.current = linkPanel; }, [linkPanel]);
+
+  // 외부(블록 스택)에서 '커서 위치 분할 삽입'을 위해 캐럿 분할/blur 노출.
+  //   caretSerializeOffsetOf/serializeEl 은 동일 좌표계 → splitRichTextAt 로 마크 보존 분할.
+  useImperativeHandle(forwardedRef, () => ({
+    splitAtCaret() {
+      const el = ref.current;
+      if (!el) return null;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return null;
+      const r = sel.getRangeAt(0);
+      if (!el.contains(r.startContainer)) return null;
+      const offset = caretSerializeOffsetOf(el, r.startContainer, r.startOffset);
+      return splitRichTextAt(serializeEl(el), offset);
+    },
+    blur() { ref.current?.blur(); },
+  }));
 
   // value(외부) → DOM 초기화 (포커스 없을 때만 재렌더하여 커서 튐 방지).
   useEffect(() => {
@@ -890,4 +912,4 @@ export function CapRichEditor({
       ) : null}
     </div>
   );
-}
+});

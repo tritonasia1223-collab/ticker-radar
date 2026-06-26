@@ -1,13 +1,14 @@
 // 인사이트/메타카드 본문을 '블록 스택'으로 — 텍스트·표·이미지·그래프 블록을 순서대로 섞어
 // 배치한다. 블록 사이/끝에 삽입, 각 블록 ↑↓ 재배치·삭제, 이미지 붙여넣기(Ctrl+V) 지원.
 // 사건 인사이트와 메타카드가 공유(allow 로 허용 블록 타입만 노출).
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ArrowUp, ArrowDown, X, Plus, Type as TypeIcon, Table as TableIcon, ImagePlus, LineChart as ChartIcon } from "lucide-react";
-import { CapRichEditor } from "@/components/CapRichEditor";
+import { CapRichEditor, type CapRichEditorHandle } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { PANELS, toFracYear } from "@/lib/capitalism-config";
+import { plainText } from "@/lib/capitalism-richtext";
 import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, CapImageData, FlowNodeDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
@@ -124,6 +125,8 @@ export function BlockStack({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const pendingPosRef = useRef<number>(0);   // 파일 선택으로 이미지 추가 시 삽입 위치
   const focusedRef = useRef<number>(-1);      // 마지막 포커스 블록(붙여넣기 위치 기준)
+  const editorRefs = useRef(new Map<number, CapRichEditorHandle | null>()); // 텍스트 블록 에디터 핸들(커서 분할)
+  const [activeText, setActiveText] = useState<number | null>(null);        // 포커스한 텍스트 블록(커서 삽입 툴바 노출)
 
   const insertAt = (pos: number, block: CapBlock) => onChange([...blocks.slice(0, pos), block, ...blocks.slice(pos)], true);
   const removeAt = (i: number) => onChange(blocks.filter((_, j) => j !== i), true);
@@ -154,7 +157,44 @@ export function BlockStack({
     const pos = pendingPosRef.current;
     onChange([...blocks.slice(0, pos), ...imgs.map((image) => ({ type: "image", image } as CapBlock)), ...blocks.slice(pos)], true);
   };
-  // 붙여넣기 → 포커스 블록 다음(없으면 끝)에 이미지 블록 삽입.
+
+  // 텍스트 블록 i 를 캐럿 기준 둘로 가른 뒤 그 사이에 newBlocks 삽입(빈 조각은 버림).
+  //   캐럿이 없거나 분할 불가면 블록 다음에 삽입. 분할 후엔 blur 로 before 값 재렌더(포커스 가드 회피).
+  const spliceAtCaret = (i: number, newBlocks: CapBlock[], split: { before: string; after: string } | null) => {
+    setActiveText(null);
+    if (!split) { onChange([...blocks.slice(0, i + 1), ...newBlocks, ...blocks.slice(i + 1)], true); return; }
+    editorRefs.current.get(i)?.blur();
+    const mk = (t: string): CapBlock => ({ type: "text", text: t });
+    const out: CapBlock[] = [];
+    if (plainText(split.before).length) out.push(mk(split.before));
+    out.push(...newBlocks);
+    if (plainText(split.after).length) out.push(mk(split.after));
+    onChange([...blocks.slice(0, i), ...out, ...blocks.slice(i + 1)], true);
+  };
+  // 커서 위치에 표/그래프 삽입(동기).
+  const splitInsert = (i: number, block: CapBlock) => {
+    const split = blocks[i]?.type === "text" ? editorRefs.current.get(i)?.splitAtCaret() ?? null : null;
+    spliceAtCaret(i, [block], split);
+  };
+  // 커서 위치에 이미지 삽입(파일 선택, 비동기) — 분할 좌표는 동기로 먼저 캡처.
+  const splitInsertImage = async (i: number) => {
+    const split = blocks[i]?.type === "text" ? editorRefs.current.get(i)?.splitAtCaret() ?? null : null;
+    setActiveText(null);
+    pendingPosRef.current = i;
+    fileRef.current?.click();
+    // 파일 선택은 onFilesChosen 이 처리하나, 분할 위치 반영 위해 분할을 먼저 적용해 두고 그 사이 인덱스로 삽입.
+    if (split) {
+      editorRefs.current.get(i)?.blur();
+      const mk = (t: string): CapBlock => ({ type: "text", text: t });
+      const out: CapBlock[] = [];
+      let gap = i;
+      if (plainText(split.before).length) { out.push(mk(split.before)); gap = i + 1; }
+      if (plainText(split.after).length) out.push(mk(split.after));
+      onChange([...blocks.slice(0, i), ...out, ...blocks.slice(i + 1)], true);
+      pendingPosRef.current = gap;
+    }
+  };
+  // 붙여넣기 → 포커스한 텍스트 블록의 캐럿 위치에서 분할해 그 사이에 이미지 삽입(없으면 블록 다음/끝).
   const onPaste = async (e: React.ClipboardEvent) => {
     if (!allow.image) return;
     const items = e.clipboardData?.items;
@@ -163,9 +203,17 @@ export function BlockStack({
     for (const it of Array.from(items)) if (it.type.startsWith("image/")) { const b = it.getAsFile(); if (b) blobs.push(b); }
     if (!blobs.length) return;
     e.preventDefault();
+    const i = focusedRef.current;
+    // 캐럿/분할 좌표를 비동기(이미지 축소) 전에 동기로 캡처.
+    const split = i >= 0 && blocks[i]?.type === "text" ? editorRefs.current.get(i)?.splitAtCaret() ?? null : null;
     const srcs = await Promise.all(blobs.map((b) => blobToScaledDataUrl(b)));
-    const pos = focusedRef.current >= 0 ? focusedRef.current + 1 : blocks.length;
-    onChange([...blocks.slice(0, pos), ...srcs.map((src) => ({ type: "image", image: { src } } as CapBlock)), ...blocks.slice(pos)], true);
+    const imgBlocks = srcs.map((src) => ({ type: "image", image: { src } } as CapBlock));
+    if (i >= 0 && blocks[i]?.type === "text" && split) {
+      spliceAtCaret(i, imgBlocks, split);
+    } else {
+      const pos = i >= 0 ? i + 1 : blocks.length;
+      onChange([...blocks.slice(0, pos), ...imgBlocks, ...blocks.slice(pos)], true);
+    }
   };
 
   // 삽입 버튼 묶음(allow 에 따라). main=하단 상시 노출 / 사이 갭은 hover 시 팝.
@@ -196,6 +244,7 @@ export function BlockStack({
     if (b.type === "text") {
       return editing ? (
         <CapRichEditor
+          ref={(h) => { editorRefs.current.set(i, h); }}
           value={b.text} onChange={(t) => setTextAt(i, t)} onBlur={() => onChange(blocks, true)}
           rows={5} align="left" placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿 · '->'로 화살표)"
         />
@@ -266,7 +315,8 @@ export function BlockStack({
       {blocks.map((b, i) => (
         <div key={i}>
           {insertBar(i)}
-          <div className="group/blk relative flex flex-col gap-1 rounded-md py-0.5" onFocusCapture={() => { focusedRef.current = i; }}>
+          <div className="group/blk relative flex flex-col gap-1 rounded-md py-0.5"
+            onFocusCapture={() => { focusedRef.current = i; setActiveText(b.type === "text" ? i : null); }}>
             <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/blk:opacity-100">
               <button type="button" onClick={() => moveBy(i, -1)} disabled={i === 0}
                 className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-25"
@@ -279,6 +329,21 @@ export function BlockStack({
                 title="블록 삭제" data-testid={`block-remove-${i}`}><X className="h-3.5 w-3.5" /></button>
             </div>
             {renderBlock(b, i)}
+            {/* 커서 위치 삽입 툴바 — 포커스한 텍스트 블록 아래. mousedown preventDefault 로 캐럿 유지. */}
+            {b.type === "text" && activeText === i && (allow.table || allow.image || allow.chart) ? (
+              <div className="flex flex-wrap items-center gap-1 pt-0.5" onMouseDown={(e) => e.preventDefault()}>
+                <span className="text-[10px] text-muted-foreground/60">커서 위치에 삽입:</span>
+                {allow.table ? <button type="button" onClick={() => splitInsert(i, newTable())}
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  data-testid={`block-caret-table-${i}`}><TableIcon className="h-3 w-3" /> 표</button> : null}
+                {allow.image ? <button type="button" onClick={() => splitInsertImage(i)}
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  data-testid={`block-caret-image-${i}`}><ImagePlus className="h-3 w-3" /> 이미지</button> : null}
+                {allow.chart ? <button type="button" onClick={() => splitInsert(i, newChart())}
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  data-testid={`block-caret-chart-${i}`}><ChartIcon className="h-3 w-3" /> 그래프</button> : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ))}
