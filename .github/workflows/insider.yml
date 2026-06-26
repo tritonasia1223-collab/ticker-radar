@@ -41,6 +41,7 @@ jobs:
           npm run enrich:tickers
           npm run enrich:insider-roles
           npm run enrich:10b5
+          npm run enrich:cover
           npm run enrich:holdings
 
       # #27 — 수집·보강 직후 데이터 정합 모니터. orphan B(진짜 링크깨짐)>0 면 step 실패(RED)로 알림.

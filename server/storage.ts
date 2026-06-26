@@ -1009,7 +1009,8 @@ export class DatabaseStorage implements IStorage {
 
   // P/S 원시행 fetch — 클러스터·랭킹 공유 단일 소스. excludePlanSells: 클러스터 true / 랭킹 false.
   private async fetchInsiderPsRows(from: number, to: number, excludePlanSells: boolean): Promise<any[]> {
-    const planClause = excludePlanSells ? sql`AND NOT (it.side = 'sell' AND it.plan10b5 IS TRUE)` : sql``;
+    // 클러스터 제외 노이즈: 10b5-1 정기 플랜매도 + sell-to-cover(RSU vesting 세금충당, 코드 S지만 행정 자동매도).
+    const planClause = excludePlanSells ? sql`AND NOT (it.side = 'sell' AND (it.plan10b5 IS TRUE OR it.cover_tax IS TRUE))` : sql``;
     const raw = (await db.execute(sql`
       SELECT it.insider_id AS "insiderId", i.name AS name, i.slug AS slug, it.role AS role,
              it.symbol AS symbol, t.company_name AS company, ts.sector AS sector,

@@ -27,6 +27,7 @@
     "collect:insider": "tsx script/collect-insider.ts",
     "enrich:insider-roles": "tsx script/enrich-insider-roles.ts",
     "enrich:10b5": "tsx script/enrich-10b5.ts",
+    "enrich:cover": "tsx script/enrich-insider-cover.ts",
     "enrich:holdings": "tsx script/enrich-holdings.ts",
     "check": "tsc",
     "healthcheck": "tsx script/healthcheck.ts",

@@ -286,6 +286,9 @@ export const insiderTrades = pgTable(
     filedDate: bigint("filed_date", { mode: "number" }),
     role: text("role"), // 직책 (SEC EDGAR Form 4 enrich): CEO/CFO/Director/10% Owner/Officer ...
     plan10b5: boolean("plan10b5"), // Form4 <aff10b5One>: true=10b5-1 정기플랜(노이즈) / false=재량적 매도(시그널) / null=미확인
+    // Form4 <remarks> 기반: true=RSU vesting 세금 충당용 sell-to-cover(코드 S지만 노이즈 — 클러스터 제외) / null=미확인.
+    //   plan10b5 와 별개(sell-to-cover 는 10b5-1 플랜 아님). enrich-insider-cover 가 채움.
+    coverTax: boolean("cover_tax"),
     externalId: text("external_id"), // dedup
     createdAt: bigint("created_at", { mode: "number" }).notNull(),
   },
