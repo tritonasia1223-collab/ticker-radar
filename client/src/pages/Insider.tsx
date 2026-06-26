@@ -388,7 +388,12 @@ function ClusterWidget({ from, to, onPick }: { from?: number; to?: number; onPic
     queryFn: async () => (await apiRequest("GET", `/api/insider/clusters${from ? `?from=${from}&to=${to}` : ""}`)).json(),
   });
   const clusters = data ?? [];
-  if (!clusters.length) return null;
+  if (data === undefined) return null; // 로딩 중 — '없음' 깜빡임 방지
+  if (!clusters.length) return (
+    <div className="mb-5 text-[13px] text-muted-foreground rounded-lg border border-dashed px-4 py-3">
+      해당 기간 클러스터 없음 — 2명 이상이 같은 종목·같은 방향으로 거래한 합의가 없어요. <span className="text-foreground font-medium">기간을 늘려보세요</span> (최근 7일은 짧아 잘 안 잡힙니다).
+    </div>
+  );
   const buys = clusters.filter((c) => c.side === "buy");
   const sells = clusters.filter((c) => c.side === "sell");
   return (
@@ -486,7 +491,7 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
 
 // ============================= MAIN =============================
 export default function Insider() {
-  const [period, setPeriod] = useState<string>("90"); // all | 7 | 30 | 90 (days)
+  const [period, setPeriod] = useState<string>("7"); // all | 7 | 30 | 90 (days) — 기본 최근 7일
   const [metric, setMetric] = useState<Metric>("signal");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"tickers" | "insider">("tickers");
