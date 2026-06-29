@@ -1,7 +1,7 @@
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
-import { useMemo, useState, useRef, useEffect, useCallback, Fragment } from "react";
+import { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback, Fragment } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion, LayoutGroup } from "framer-motion";
 import { spring, fadeRise, reducedTransition } from "@/lib/motion-presets";
@@ -343,6 +343,18 @@ export default function Capitalism() {
   const insightMode = !!activeInsightFlow;
   const hasInsight = (f: FlowDTO) => !!(f.insight && (f.insight.text.trim() || f.insight.charts.length || f.insight.tables?.length || f.insight.blocks?.length));
   const exitInsightMode = () => setActiveInsightSlug(null);
+
+  // 인사이트 모드에서 그래프를 '제자리 블러 배경'으로. absolute 로 띄우되 원래(비인사이트) 우측
+  // 컬럼 폭을 그대로 고정 → 차트가 전체 폭으로 리플로우돼 넓어지는 버그 방지. 비인사이트일 때 폭 측정.
+  const asideRef = useRef<HTMLElement | null>(null);
+  const [graphWidth, setGraphWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (insightMode) return; // 인사이트 모드 중엔 직전 폭 유지(측정 금지)
+    const el = asideRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    if (w && w !== graphWidth) setGraphWidth(w);
+  });
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
   // 동작 최소화 선호 시 스프링을 끄고 즉시 전환.
@@ -693,7 +705,11 @@ export default function Capitalism() {
 
         {/* ════════ 우측: 그래프 패널 ════════ */}
         {/* 평소엔 우측 컬럼. 인사이트 모드면 전체 영역을 덮는 '블러 배경'으로 전환(z-0) → 그 위로 카드+인사이트가 얹힌다. */}
-        <aside className={`transition-[filter,opacity] duration-200 ${insightMode ? "absolute inset-0 z-0 overflow-hidden blur-[3px] opacity-50 pointer-events-none select-none" : "min-w-[480px] flex-1 relative h-full"}`}>
+        <aside
+          ref={asideRef}
+          className={`transition-[filter,opacity] duration-200 ${insightMode ? "absolute right-0 top-0 bottom-0 z-0 overflow-hidden blur-[3px] opacity-50 pointer-events-none select-none" : "min-w-[480px] flex-1 relative h-full"}`}
+          style={insightMode && graphWidth ? { width: graphWidth } : undefined}
+        >
           <div className="flex h-full flex-col gap-3 overflow-y-auto cap-noscrollbar">
           <>
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
