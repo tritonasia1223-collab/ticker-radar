@@ -32,6 +32,7 @@
     "check": "tsc",
     "probe:clo:csv": "tsx script/probe-clo-etf-csv.ts",
     "probe:clo:join": "tsx script/probe-clo-cusip-join.ts",
+    "probe:bdc": "tsx script/probe-bdc-nonaccrual.ts",
     "healthcheck": "tsx script/healthcheck.ts",
     "db:push": "tsx script/db-push-guard.ts"
   },
