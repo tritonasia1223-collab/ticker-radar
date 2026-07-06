@@ -4,6 +4,7 @@ import { collectAll } from "./apify.js";
 import { seedDummy } from "./seed.js";
 import { insertAccountSchema } from "../shared/schema.js";
 import { listFlows, upsertFlow, deleteFlow, listLinks, addLink, deleteLink, getSetting, setSetting, type FlowInput } from "./capitalism.js";
+import { cloOverview } from "./clo.js";
 import { z } from "zod";
 
 // Writes that hit Apify (and run for a long time) must not run on Vercel's
@@ -319,6 +320,15 @@ export function registerRoutes(app: Express) {
     const value = typeof req.body?.value === "string" ? req.body.value : null;
     await setSetting(req.params.key, value);
     res.json({ ok: true });
+  });
+
+  // ---- CLO 모니터 (라이브 프리뷰, DB 무접촉 — server/clo.ts) ----
+  app.get("/api/clo/overview", async (req, res) => {
+    try {
+      res.json(await cloOverview(req.query.force === "1"));
+    } catch (e: any) {
+      res.status(500).json({ error: String(e?.message || e) });
+    }
   });
 
   // ---- Dummy data (testing) ----

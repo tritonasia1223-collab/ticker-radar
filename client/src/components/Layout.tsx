@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -9,6 +9,7 @@ const NAV = [
   { href: "/congress", label: "정치인 거래", icon: Landmark },
   { href: "/insider", label: "내부자 거래", icon: UserSearch },
   { href: "/capitalism", label: "자본주의 경제사", icon: History },
+  { href: "/clo", label: "CLO 모니터", icon: Layers },
   // KIS 앱키 발급 후 이 줄 주석 해제하면 탭 활성화 (라우트·페이지·수집기 코드는 그대로 있음)
   // { href: "/interest", label: "관심종목", icon: Star },
 ];

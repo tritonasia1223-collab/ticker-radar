@@ -14,3 +14,7 @@ data.db-journal
 
 *.log
 .DS_Store
+
+# CLO 프로브 — 로컬 확정 엔드포인트(브라우저 DevTools 로 찾은 실데이터 URL, 커밋 금지)
+script/clo-endpoints.local.json
+script/clo-probe-observations.json

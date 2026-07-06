@@ -30,6 +30,8 @@
     "enrich:cover": "tsx script/enrich-insider-cover.ts",
     "enrich:holdings": "tsx script/enrich-holdings.ts",
     "check": "tsc",
+    "probe:clo:csv": "tsx script/probe-clo-etf-csv.ts",
+    "probe:clo:join": "tsx script/probe-clo-cusip-join.ts",
     "healthcheck": "tsx script/healthcheck.ts",
     "db:push": "tsx script/db-push-guard.ts"
   },

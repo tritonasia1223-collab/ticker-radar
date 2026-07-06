@@ -19,6 +19,7 @@ const Congress = lazy(() => import("@/pages/Congress"));
 const Insider = lazy(() => import("@/pages/Insider"));
 const Interest = lazy(() => import("@/pages/Interest"));
 const Capitalism = lazy(() => import("@/pages/Capitalism"));
+const Clo = lazy(() => import("@/pages/Clo"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
@@ -41,6 +42,7 @@ function AppRouter() {
         <Route path="/insider" component={Insider} />
         <Route path="/interest" component={Interest} />
         <Route path="/capitalism" component={Capitalism} />
+        <Route path="/clo" component={Clo} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
