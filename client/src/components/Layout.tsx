@@ -9,7 +9,8 @@ const NAV = [
   { href: "/congress", label: "정치인 거래", icon: Landmark },
   { href: "/insider", label: "내부자 거래", icon: UserSearch },
   { href: "/capitalism", label: "자본주의 경제사", icon: History },
-  { href: "/clo", label: "CLO 모니터", icon: Layers },
+  // CLO 모니터 — 작업 중단(paused). nav 에서 숨김. 라우트·페이지·서버 코드는 그대로 두고 재개 시 주석 해제.
+  // { href: "/clo", label: "CLO 모니터", icon: Layers },
   // KIS 앱키 발급 후 이 줄 주석 해제하면 탭 활성화 (라우트·페이지·수집기 코드는 그대로 있음)
   // { href: "/interest", label: "관심종목", icon: Star },
 ];

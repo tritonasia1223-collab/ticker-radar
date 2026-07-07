@@ -150,8 +150,17 @@ export function CapLinkOverlay({ boardRef, links, flows, onDeleteLink }: Props) 
         p.id === next[i].id && p.d === next[i].d)) return prev;
       return next;
     });
-    const w = board.scrollWidth;
-    const h = board.scrollHeight;
+    // board.scrollHeight/scrollWidth 는 이 오버레이 SVG(board 의 absolute 자식)까지 포함한다.
+    // 그 값을 다시 SVG 높이로 되먹이면, 콘텐츠가 줄어도 SVG 가 scrollHeight 를 붙잡아 '위로만 자라는'
+    // 자기참조 래칫이 되어 스크롤 바닥에 흰 여백이 남는다(간헐 재발한 자본주의 탭 버그).
+    // → 오버레이 자신을 제외한 실제 콘텐츠 자식들의 범위만 측정한다(SVG 높이가 줄어들 수 있게).
+    let w = board.clientWidth;
+    let h = 0;
+    for (const child of Array.from(board.children) as HTMLElement[]) {
+      if (child.getAttribute("data-testid") === "cap-link-overlay") continue; // 오버레이 자신 제외
+      h = Math.max(h, child.offsetTop + child.offsetHeight);
+      w = Math.max(w, child.offsetLeft + child.offsetWidth);
+    }
     setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
   }, [boardRef, links]);
 
