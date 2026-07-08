@@ -374,7 +374,11 @@ function SideColumn({
       const cardEl = col.querySelector<HTMLElement>(`[data-side-anchor="${n.id}"]`);
       if (!cardEl) continue;
       const nodeEl = bodyEl.querySelector<HTMLElement>(`[data-node-id="${slug}::${n.id}"]`);
-      const nodeTop = nodeEl ? nodeEl.getBoundingClientRect().top - bodyRect.top : cursor;
+      // ⚠ getBoundingClientRect 는 서브픽셀 float 를 반환한다. 이 값을 그대로 tops/stackH 로 setState 하면,
+      // 이 measure 가 매 렌더(useLayoutEffect, deps 없음)마다 돌면서 값이 PC 의 DPI/폰트 렌더링에 따라
+      // 미세 진동(199.99↔200.01)해 === 가드를 못 맞추고 → 무한 setState → React #185(일부 PC 흰화면 크래시).
+      // 정수로 반올림해 진동을 제거하면 고정점에 수렴한다.
+      const nodeTop = nodeEl ? Math.round(nodeEl.getBoundingClientRect().top - bodyRect.top) : cursor;
       const top = Math.max(nodeTop, cursor);
       next[n.id] = top;
       const h = cardEl.offsetHeight;
