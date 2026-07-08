@@ -1,4 +1,4 @@
-import { Switch, Route, Router } from "wouter";
+import { Switch, Route, Router, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
@@ -7,6 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Layout from "@/components/Layout";
 
 // 라우트별 코드 스플릿 — 페이지를 처음 열 때만 해당 청크를 받아온다.
@@ -29,6 +30,17 @@ function PageFallback() {
     <div className="flex items-center justify-center py-24 text-muted-foreground">
       <Loader2 className="h-6 w-6 animate-spin" />
     </div>
+  );
+}
+
+// 페이지 렌더 예외를 여기서 가둔다 — 사이드바(Layout)는 살리고 크래시한 페이지만 폴백.
+// resetKey=location 이라 다른 탭으로 이동하면 자동 복구.
+function BoundedRouter() {
+  const [location] = useLocation();
+  return (
+    <ErrorBoundary resetKey={location}>
+      <AppRouter />
+    </ErrorBoundary>
   );
 }
 
@@ -59,7 +71,7 @@ function App() {
           <Toaster />
           <Router hook={useHashLocation}>
             <Layout>
-              <AppRouter />
+              <BoundedRouter />
             </Layout>
           </Router>
         </TooltipProvider>
