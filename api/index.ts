@@ -8,8 +8,10 @@ import { registerRoutes } from "../server/routes.js";
 let app: express.Express | null = null;
 function buildApp(): express.Express {
   const a = express();
-  a.use(express.json());
-  a.use(express.urlencoded({ extended: false }));
+  // 카드 저장은 카드 전체(붙여넣은 이미지 = base64 data URI 포함)를 통째로 POST 한다.
+  // 기본 100KB 한도면 이미지 든 카드가 413 으로 거부돼 영구 저장 불가 → 넉넉히 상향.
+  a.use(express.json({ limit: "8mb" }));
+  a.use(express.urlencoded({ extended: false, limit: "8mb" }));
   registerRoutes(a);
   return a;
 }

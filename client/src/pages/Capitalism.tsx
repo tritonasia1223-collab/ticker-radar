@@ -372,16 +372,21 @@ export default function Capitalism() {
       const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
       if (!latest) { await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(slug)}`); return; }
       await persistNodes(latest, latest.nodes); // 빈 칸 정리, 전부 비면 삭제
-    })).catch(() => {
-      if (autoRetryLeft > 0) {
+    })).catch((err: unknown) => {
+      // 413(요청이 너무 큼)은 재시도해도 결정적으로 실패한다 — 원인(대개 붙여넣은 이미지)이 그대로라
+      // 자동 재시도로 시간 끌지 말고 즉시 '줄이라'고 정확히 안내한다(재편집 안내는 여기선 오답).
+      const msg = String((err as Error)?.message ?? err);
+      const tooLarge = /^413\b/.test(msg) || /too large|payloadtoolarge/i.test(msg);
+      if (!tooLarge && autoRetryLeft > 0) {
         // 손 안 대도 4초 뒤 자동 재저장(실행 시점 최신 캐시를 다시 읽음 → 그새 편집분까지 포함).
         setTimeout(() => { void saveFlow(slug, autoRetryLeft - 1); }, 4000);
         return;
       }
       toast({
-        description:
-          "저장 실패(자동 재시도도 안 됨). 편집 내용은 화면에만 있고 아직 DB에 저장되지 않았어요. " +
-          "⚠ 새로고침하지 마세요 — 저장 안 된 내용이 사라집니다. 그 카드를 한 번 더 편집하면 재저장됩니다.",
+        description: tooLarge
+          ? "저장 실패: 이 카드 내용(특히 붙여넣은 이미지)이 너무 커서 서버가 거부했어요. 이미지를 줄이거나 개수를 줄인 뒤 다시 저장하세요."
+          : "저장 실패(자동 재시도도 안 됨). 편집 내용은 화면에만 있고 아직 DB에 저장되지 않았어요. " +
+            "⚠ 새로고침하지 마세요 — 저장 안 된 내용이 사라집니다. 그 카드를 한 번 더 편집하면 재저장됩니다.",
         variant: "destructive",
       });
     });

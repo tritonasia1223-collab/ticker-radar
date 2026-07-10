@@ -16,13 +16,14 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "8mb", // 이미지(base64 data URI) 든 카드 저장 — 기본 100KB 넘어 413 나던 것 방지
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "8mb" }));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
