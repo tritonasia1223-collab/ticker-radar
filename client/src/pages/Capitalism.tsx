@@ -365,14 +365,23 @@ export default function Capitalism() {
   // 최신 '캐시' 상태의 그 카드를 slug별 직렬화(②)·재시도(③)로 저장한다. invalidate/refetch 안 함(①).
   //   · 직렬화: 같은 카드 동시 저장이 서로를 덮지 않음. 실행 시점에 최신 캐시를 읽어 누적 보존.
   //   · 실패해도 편집을 '유지'하고 토스트로 알림(조용한 손실 금지). 캐시에서 사라진 카드는 서버 삭제.
-  const saveFlow = useCallback((slug: string) => {
+  //   · withRetry(빠른 3회) 도 실패하면, 사용자가 손대지 않아도 몇 초 뒤 자동 재시도(콜드스타트·풀러
+  //     히컵은 수 초면 회복). 자동 재시도도 소진되면 그제서야 토스트로 알림.
+  const saveFlow = useCallback((slug: string, autoRetryLeft = 2) => {
     return enqueueSave(slug, () => withRetry(async () => {
       const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
       if (!latest) { await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(slug)}`); return; }
       await persistNodes(latest, latest.nodes); // 빈 칸 정리, 전부 비면 삭제
     })).catch(() => {
+      if (autoRetryLeft > 0) {
+        // 손 안 대도 4초 뒤 자동 재저장(실행 시점 최신 캐시를 다시 읽음 → 그새 편집분까지 포함).
+        setTimeout(() => { void saveFlow(slug, autoRetryLeft - 1); }, 4000);
+        return;
+      }
       toast({
-        description: "저장에 실패했어요(재시도했지만 안 됨). 편집 내용은 유지됩니다 — 잠시 후 다시 저장하거나 새로고침하세요.",
+        description:
+          "저장 실패(자동 재시도도 안 됨). 편집 내용은 화면에만 있고 아직 DB에 저장되지 않았어요. " +
+          "⚠ 새로고침하지 마세요 — 저장 안 된 내용이 사라집니다. 그 카드를 한 번 더 편집하면 재저장됩니다.",
         variant: "destructive",
       });
     });
