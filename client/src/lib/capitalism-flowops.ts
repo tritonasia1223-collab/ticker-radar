@@ -58,6 +58,30 @@ export function newNodeKey(): string {
   return `k${Date.now().toString(36)}${Math.floor(Math.random() * 100000).toString(36)}`;
 }
 
+// ── 저장 안정화 프리미티브 ──────────────────────────────────────────────
+// Fix②: 같은 카드(slug)의 저장을 '순차 실행'해 동시 full-replace 로 서로를 덮는 손실을 막는다.
+//   runFn 은 반드시 '실행 시점'에 최신 상태를 읽어 보내야 한다(스테일 스냅샷 금지) → 누적 보존.
+const saveChains = new Map<string, Promise<unknown>>();
+export function enqueueSave<T>(key: string, runFn: () => Promise<T>): Promise<T> {
+  const prev = saveChains.get(key) ?? Promise.resolve();
+  const run = prev.then(runFn, runFn); // 앞 저장 성패와 무관하게 이어서 실행(직렬화)
+  const tracker = run.then(() => {}, () => {}); // 다음 저장이 기다릴 '완료' 신호
+  saveChains.set(key, tracker);
+  void tracker.finally(() => { if (saveChains.get(key) === tracker) saveChains.delete(key); });
+  return run;
+}
+
+// Fix③: 일시적 실패(서버리스 콜드스타트·Supabase 풀러 히컵·커넥션 포화) 를 재시도.
+//   최종 실패 시 throw → 호출부가 토스트로 사용자에게 알리고 편집을 '유지'한다(조용한 손실 금지).
+export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try { return await fn(); }
+    catch (e) { lastErr = e; if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i)); }
+  }
+  throw lastErr;
+}
+
 // 노드가 '내용 있음'(보존 대상)인지 — 텍스트뿐 아니라 표(table)·메모(ref)가 있어도 유지한다.
 // (텍스트만 비었다고 버리면 그 노드의 표/메모까지 영구 삭제되는 데이터 손실이 발생했다.)
 export function nodeHasContent(n: FlowNodeDTO): boolean {

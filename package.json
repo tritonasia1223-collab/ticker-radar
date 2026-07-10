@@ -33,6 +33,10 @@
     "probe:clo:csv": "tsx script/probe-clo-etf-csv.ts",
     "probe:clo:join": "tsx script/probe-clo-cusip-join.ts",
     "probe:bdc": "tsx script/probe-bdc-nonaccrual.ts",
+    "cap:backup": "tsx script/cap-backup.ts",
+    "cap:watch": "tsx script/cap-backup-watch.ts",
+    "cap:integrity": "tsx script/cap-integrity-check.ts",
+    "probe:cap:race": "tsx script/probe-cap-save-race.ts",
     "healthcheck": "tsx script/healthcheck.ts",
     "db:push": "tsx script/db-push-guard.ts"
   },
