@@ -82,11 +82,15 @@ export default function Capitalism() {
   const [viewMode, setViewMode] = useState<"timeline" | "insights">("timeline");
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // '모아보기'에서 편집 클릭 → 타임라인으로 전환 후 '그 카드'로 스크롤할 대상 slug(보드 마운트 뒤 처리).
+  const [pendingJump, setPendingJump] = useState<string | null>(null);
   // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
   const boardRef = useRef<HTMLDivElement | null>(null);
   // 프로그램이 스크롤을 움직이는 동안엔 스크롤→playYear 역동기화를 잠가 피드백 루프를 막는다.
   const programScrollRef = useRef(false);
   const programScrollTimer = useRef<number | null>(null);
+  // 모아보기→타임라인 전환 후 카드 스크롤용 rAF 핸들(언마운트/재실행 시 취소).
+  const pendingRafRef = useRef<number | null>(null);
   const { toast } = useToast();
 
   // ── 되돌리기(Undo) 스택 ── 텍스트 글자 편집 제외, 구조 변경만.
@@ -242,6 +246,21 @@ export default function Capitalism() {
     programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
     board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
   }, [flows, fromY, toY, seekToYear]);
+
+  // '모아보기' 편집 클릭 → 타임라인 전환 후, 보드가 마운트·레이아웃된 다음 그 카드로 스크롤한다.
+  // (전환과 같은 틱에 스크롤하면 보드 DOM이 아직 없어 무효화되고, viewMode 리셋 이펙트가 최상단으로
+  //  밀어버려 항상 1968로 갔다. rAF 2회로 커밋·레이아웃 완료를 기다린 뒤 실행.)
+  useEffect(() => {
+    if (viewMode !== "timeline" || !pendingJump) return;
+    const slug = pendingJump;
+    setPendingJump(null);
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => jumpToSlug(slug));
+      pendingRafRef.current = raf2;
+    });
+    pendingRafRef.current = raf1;
+    return () => { if (pendingRafRef.current) cancelAnimationFrame(pendingRafRef.current); };
+  }, [viewMode, pendingJump, jumpToSlug]);
 
   // active 사건이 기간 이벤트면 [시작, 종료] 소수연도 밴드를 산출(그래프 음영·중앙값용). 단일 이벤트면 null.
   const activeBand = useMemo(() => {
@@ -550,7 +569,7 @@ export default function Capitalism() {
             flows={flows ?? []}
             metaCards={metaCards}
             onSaveMetaCards={saveMetaCards}
-            onOpenInsight={(slug) => { setViewMode("timeline"); setActiveInsightSlug(slug); seekToYear(toFracYear(flows?.find((f) => f.slug === slug)?.date ?? `${YEAR_MIN}-01-01`)); }}
+            onOpenInsight={(slug) => { setActiveInsightSlug(slug); setPendingJump(slug); setViewMode("timeline"); }}
             onJump={jumpToSlug}
           />
         </div>
