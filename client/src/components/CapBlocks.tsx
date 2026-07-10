@@ -329,8 +329,10 @@ export function BlockStack({
                 title="블록 삭제" data-testid={`block-remove-${i}`}><X className="h-3.5 w-3.5" /></button>
             </div>
             {renderBlock(b, i)}
-            {/* 커서 위치 삽입 툴바 — 포커스한 텍스트 블록 아래. mousedown preventDefault 로 캐럿 유지. */}
-            {b.type === "text" && activeText === i && (allow.table || allow.image || allow.chart) ? (
+            {/* 커서 위치 삽입 툴바 — 포커스한 텍스트 블록 아래. mousedown preventDefault 로 캐럿 유지.
+                마지막 블록에선 바로 밑 하단 고정바와 표/이미지/그래프가 중복돼 지저분하므로 숨긴다
+                (중간 블록은 안 겹치니 유지 — 글 중간 커서 삽입 기능 보존). */}
+            {b.type === "text" && activeText === i && i !== last && (allow.table || allow.image || allow.chart) ? (
               <div className="flex flex-wrap items-center gap-1 pt-0.5" onMouseDown={(e) => e.preventDefault()}>
                 <span className="text-[10px] text-muted-foreground/60">커서 위치에 삽입:</span>
                 {allow.table ? <button type="button" onClick={() => splitInsert(i, newTable())}
