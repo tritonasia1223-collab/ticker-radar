@@ -1,0 +1,41 @@
+name: Fed balance sheet — collect + verify
+
+# Fed 대차대조표(H.4.1) FRED 수집. 키 없는 공개 CSV(fredgraph.csv) — Secret 은 DATABASE_URL 뿐.
+# 비대칭 주기: 주간 H.4.1(목 발표) + 일간(RRP·SP500). upsert 라 재실행 멱등.
+# 수집 직후 fed:verify(F1~F5) 로 게이트 — 단위/항등식/네거티브컨트롤 깨지면 job 실패(RED).
+#
+# ⚠️ GitHub schedule 트리거는 기본 브랜치에서만 실행됨 — 이 파일이 병합돼야 정기 실행 시작.
+#    필요한 레포 Secret: DATABASE_URL
+
+on:
+  schedule:
+    - cron: "30 22 * * 4"   # 주간: 목 22:30 UTC (H.4.1 목 16:30 ET 발표 후, EDT/EST 연중 안전)
+    - cron: "0 23 * * 1-5"  # 일간: 평일 23:00 UTC (RRP·SP500)
+  workflow_dispatch: {}
+
+concurrency:
+  group: fed-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      # 주간 트리거면 주간 시리즈(최근 5주 재요청=수정치 반영), 그 외(일간·수동)엔 일간 시리즈.
+      # 수동 실행(workflow_dispatch)은 일간 세트로 가볍게 — 전체 백필은 로컬 npm run fed:backfill.
+      - name: Collect FRED (H.4.1 + daily) + verify
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "30 22 * * 4" ]; then
+            npm run fed:backfill -- --only weekly --recent 35
+          else
+            npm run fed:backfill -- --only daily --recent 10
+          fi
+          npm run fed:verify

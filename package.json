@@ -37,6 +37,9 @@
     "cap:watch": "tsx script/cap-backup-watch.ts",
     "cap:integrity": "tsx script/cap-integrity-check.ts",
     "probe:cap:race": "tsx script/probe-cap-save-race.ts",
+    "fed:push": "tsx script/db-push-fed.ts",
+    "fed:backfill": "tsx script/fed-backfill.ts",
+    "fed:verify": "tsx script/fed-verify.ts",
     "healthcheck": "tsx script/healthcheck.ts",
     "db:push": "tsx script/db-push-guard.ts"
   },

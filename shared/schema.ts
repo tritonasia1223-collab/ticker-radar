@@ -1,4 +1,4 @@
-import { pgTable, text, integer, serial, bigint, boolean, real, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, bigint, boolean, real, doublePrecision, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -399,3 +399,23 @@ export type CapNode = typeof capNodes.$inferSelect;
 export type CapEdge = typeof capEdges.$inferSelect;
 export type CapLink = typeof capLinks.$inferSelect;
 export type CapSetting = typeof capSettings.$inferSelect;
+
+// ============================================================================
+// Fed 대차대조표(H.4.1) — 미국 유동성 전용. FRED 시리즈별 관측치를 million USD 로
+// '통일'해 저장(수집 시점 정규화). 파생값(순유동성·워터폴·잔차)은 저장하지 않고
+// 조회/API 레이어에서 계산 — 정의 변경 시 백필 불필요. 다른 모듈과 완전 분리.
+// ⚠️ DDL 은 raw 스크립트(script/db-push-fed.ts)로만 — 공유 Supabase drizzle push 금지(#26).
+// ============================================================================
+export const fedBalanceSheet = pgTable(
+  "fed_balance_sheet",
+  {
+    seriesId: text("series_id").notNull(),   // FRED series_id (WALCL, RRPONTSYD ...)
+    obsDate: text("obs_date").notNull(),      // 'YYYY-MM-DD' (관측일; H.4.1 주간=수요일)
+    valueMusd: doublePrecision("value_musd"), // million USD 통일값(SP500 은 지수 원값). null=결측
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.seriesId, t.obsDate] }), // cron 재실행 멱등(upsert on conflict)
+    byDate: index("idx_fbs_date").on(t.obsDate),
+  })
+);
+export type FedBalanceRow = typeof fedBalanceSheet.$inferSelect;
