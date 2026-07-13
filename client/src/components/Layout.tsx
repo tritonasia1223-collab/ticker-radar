@@ -27,8 +27,8 @@ function Logo() {
         <circle cx="24" cy="9" r="2" fill="hsl(var(--primary))" />
       </svg>
       <div className="leading-tight">
-        <div className="font-semibold text-sm">Ticker Radar</div>
-        <div className="text-[11px] text-muted-foreground">SNS 종목 발견</div>
+        <div className="font-semibold text-sm">자본주의 경제사</div>
+        <div className="text-[11px] text-muted-foreground">달러 패권 · 유동성</div>
       </div>
     </div>
   );

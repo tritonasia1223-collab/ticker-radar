@@ -40,7 +40,7 @@ const PHASES: { date: string; label: string; desc: string }[] = [
 // ── 단위: 세미 한국식($억/$조) ── musd(백만달러) → 억=÷100, 조=÷1e6
 const asMoney = (v: number) => {
   const a = Math.abs(v), s = v < 0 ? "−" : "";
-  if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(2)}조`;
+  if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(1)}조`;
   if (a >= 100) return `${s}$${Math.round(a / 100).toLocaleString()}억`;
   return `${s}$${(a / 100).toFixed(2)}억`;
 };
@@ -140,11 +140,11 @@ function TAccount({ w }: { w: WeekPoint }) {
 function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const net = now.reserves - prev.reserves;
   const rows = [
-    { label: "Δ자산", d: now.total - prev.total, hint: "총자산 증가 → 준비금 유입" },
-    { label: "ΔTGA", d: -(now.tga - prev.tga), hint: "재무부 계좌 증가 → 준비금 유출" },
-    { label: "Δ역레포", d: -(now.rrp - prev.rrp), hint: "역레포 증가 → 준비금 유출" },
-    { label: "Δ현금통화", d: -(now.currency - prev.currency), hint: "현금 증가 → 준비금 유출" },
-    { label: "Δ기타·자본", d: -(now.liabResidual - prev.liabResidual), hint: "기타부채·자본 증가 → 준비금 유출" },
+    { label: "자산 변화", d: now.total - prev.total, hint: "총자산 증가 → 준비금 유입" },
+    { label: "TGA 변화", d: -(now.tga - prev.tga), hint: "재무부 계좌 증가 → 준비금 유출" },
+    { label: "역레포 변화", d: -(now.rrp - prev.rrp), hint: "역레포 증가 → 준비금 유출" },
+    { label: "현금통화 변화", d: -(now.currency - prev.currency), hint: "현금 증가 → 준비금 유출" },
+    { label: "기타·자본 변화", d: -(now.liabResidual - prev.liabResidual), hint: "기타부채·자본 증가 → 준비금 유출" },
   ];
   const maxAbs = Math.max(1, ...rows.map((r) => Math.abs(r.d)));
   const top = rows.reduce((m, r) => (Math.abs(r.d) > Math.abs(m.d) ? r : m), rows[0]);
@@ -164,8 +164,8 @@ function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
         {rows.map((r) => {
           const w = (Math.abs(r.d) / maxAbs) * 50;
           return (
-            <div key={r.label} title={r.hint} className="grid grid-cols-[84px_1fr_90px] items-center gap-2">
-              <span className="text-[12px] text-muted-foreground">{r.label}</span>
+            <div key={r.label} title={r.hint} className="grid grid-cols-[100px_1fr_84px] items-center gap-2">
+              <span className="text-[11.5px] text-muted-foreground whitespace-nowrap">{r.label}</span>
               <div className="relative h-4">
                 <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border" />
                 <div className="absolute top-0.5 bottom-0.5 rounded-sm"
