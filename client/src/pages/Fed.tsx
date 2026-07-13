@@ -181,6 +181,14 @@ function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   );
 }
 
+function Legend({ items }: { items: [string, string][] }) {
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground">
+      {items.map(([n, c]) => <span key={n} className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm" style={{ background: c }} />{n}</span>)}
+    </div>
+  );
+}
+
 const RANGES = [{ k: "1Y", d: 365 }, { k: "3Y", d: 365 * 3 }, { k: "QT2", d: 0 }, { k: "전체", d: -1 }] as const;
 
 export default function Fed() {
@@ -217,6 +225,9 @@ export default function Fed() {
   const qt2 = weeks[nearestIdx(weeks, "2022-06-01")];
   const latestDaily = daily[daily.length - 1];
   const prevDaily = daily[Math.max(0, daily.length - 6)];
+  // 하단 차트 판독값
+  const lendAlert = latest.loans > 100_000; // >$1000억(=$100B) 이면 경보(평상시 <$300억)
+  const nlQt2 = daily.length ? daily.reduce((b, p) => (Math.abs(+new Date(p.date) - +new Date("2022-06-01")) < Math.abs(+new Date(b.date) - +new Date("2022-06-01")) ? p : b), daily[0]) : null;
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
@@ -272,18 +283,28 @@ export default function Fed() {
         {sel && selPrev ? <DeltaBreakdown prev={selPrev} now={sel} /> : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
       </Card>
 
-      {/* 대출 프로그램 */}
+      {/* 대출 프로그램 = 위기 감지기 */}
       <Card className="p-4">
-        <div className="mb-1 text-sm font-semibold">대출 프로그램 <span className="text-[11px] font-normal text-muted-foreground">Fed 대출이 튀면 어딘가에서 불이 났다</span></div>
-        <div className="h-[200px]">
+        <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
+          <div>
+            <div className="text-sm font-semibold">위기 감지기 <span className="text-[11px] font-normal text-muted-foreground">Fed 긴급대출</span></div>
+            <div className="text-[11px] text-muted-foreground">평상시엔 바닥. 이 선들이 튀면 은행·자금시장 어딘가에 불이 났다는 신호 (2008·2020·2023).</div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[10.5px] text-muted-foreground">현재 긴급대출 잔액</div>
+            <div className={`tabular-nums font-semibold ${lendAlert ? "text-red-500" : "text-emerald-500"}`}>{asMoney(latest.loans)} · {lendAlert ? "경보" : "평상시"}</div>
+          </div>
+        </div>
+        <Legend items={[["할인창구", LEND.discount], ["BTFP", LEND.btfp], ["레포", LEND.repo], ["통화스왑", LEND.swap]]} />
+        <div className="h-[200px] mt-1">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeks} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
+            <AreaChart data={weeks} margin={{ top: 12, right: 8, left: 8, bottom: 0 }}>
               <XAxis dataKey="date" tickFormatter={yr} minTickGap={40} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
               <YAxis tickFormatter={(v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}조` : `$${Math.round(v / 100).toLocaleString()}억`)} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={52} className="text-muted-foreground" />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [asMoney(v), n]} />
-              <ReferenceArea x1="2008-09-01" x2="2009-06-01" fill={NEG} fillOpacity={0.06} />
-              <ReferenceArea x1="2020-03-01" x2="2020-07-01" fill={NEG} fillOpacity={0.06} />
-              <ReferenceArea x1="2023-03-01" x2="2023-06-01" fill={NEG} fillOpacity={0.06} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [asMoney(v), n]} labelFormatter={(l) => l} />
+              <ReferenceArea x1="2008-09-01" x2="2009-06-01" fill={NEG} fillOpacity={0.07} label={{ value: "2008 GFC", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
+              <ReferenceArea x1="2020-03-01" x2="2020-07-01" fill={NEG} fillOpacity={0.07} label={{ value: "2020 코로나", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
+              <ReferenceArea x1="2023-03-01" x2="2023-06-01" fill={NEG} fillOpacity={0.07} label={{ value: "2023 SVB", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
               <Area dataKey="discount" name="할인창구" stackId="1" stroke={LEND.discount} fill={LEND.discount} fillOpacity={0.5} />
               <Area dataKey="btfp" name="BTFP" stackId="1" stroke={LEND.btfp} fill={LEND.btfp} fillOpacity={0.5} />
               <Area dataKey="repo" name="레포" stackId="1" stroke={LEND.repo} fill={LEND.repo} fillOpacity={0.5} />
@@ -293,14 +314,25 @@ export default function Fed() {
         </div>
       </Card>
 
-      {/* 순유동성 + SP500 */}
+      {/* 순유동성과 위험자산 */}
       <Card className="p-4">
-        <div className="mb-1 flex items-center justify-between flex-wrap gap-2">
-          <div className="text-sm font-semibold">순유동성 <span className="text-[11px] font-normal text-muted-foreground">WALCL − TGA − ONRRP (일간) · S&P 500 오버레이</span></div>
-          <div className="flex items-center gap-1 text-[11px]">
-            {RANGES.map((r) => <button key={r.k} onClick={() => setRange(r.k)} className={`px-2 py-0.5 rounded ${range === r.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{r.k}</button>)}
+        <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
+          <div>
+            <div className="text-sm font-semibold">순유동성과 위험자산 <span className="text-[11px] font-normal text-muted-foreground">WALCL − TGA − ONRRP</span></div>
+            <div className="text-[11px] text-muted-foreground">유동성이 늘면 위험자산이 오른다는 가설 — 순유동성과 S&P 500이 함께 움직이는지.</div>
+          </div>
+          <div className="flex items-start gap-3 shrink-0">
+            <div className="text-right">
+              <div className="text-[10.5px] text-muted-foreground">현재 순유동성</div>
+              <div className="tabular-nums font-semibold">{latestDaily ? T(latestDaily.netLiq) : "—"}</div>
+              {latestDaily && nlQt2 && <div className="text-[10.5px] text-muted-foreground tabular-nums">QT2 이후 {signed(latestDaily.netLiq - nlQt2.netLiq)}</div>}
+            </div>
+            <div className="flex items-center gap-1 text-[11px]">
+              {RANGES.map((r) => <button key={r.k} onClick={() => setRange(r.k)} className={`px-2 py-0.5 rounded ${range === r.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{r.k}</button>)}
+            </div>
           </div>
         </div>
+        <Legend items={[["순유동성", A_SOMA], ["S&P 500", "#eab308"]]} />
         <div className="h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={dailyView} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
