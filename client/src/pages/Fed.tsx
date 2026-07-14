@@ -1,30 +1,27 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip,
+  AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown } from "lucide-react";
 
-// server/fed.ts 의 응답 형태(모든 수치 million USD, SP500 은 지수).
+// server/fed.ts 의 응답 형태(모든 수치 million USD).
 interface WeekPoint {
   date: string; total: number;
   treast: number; mbs: number; agency: number; soma: number;
   discount: number; btfp: number; repo: number; swap: number; loans: number; assetResidual: number;
   reserves: number; rrp: number; tga: number; currency: number; liabResidual: number;
 }
-interface DailyPoint { date: string; netLiq: number; sp500: number | null }
-interface Overview { weeks: WeekPoint[]; daily: DailyPoint[]; updatedAt: string }
+interface Overview { weeks: WeekPoint[]; updatedAt: string }
 
-// ── 색 ── 자산=teal 3단 / 부채=purple + 현금·기타=gray (계획서 §7.2)
+// ── 색 ── 자산=teal 3단 / 부채=purple + 현금·기타=gray
 const A_SOMA = "#0d9488", A_LOAN = "#2dd4bf", A_RESID = "#99f6e4";
 const L_RES = "#7c3aed", L_RRP = "#a855f7", L_TGA = "#d8b4fe", L_CUR = "#9ca3af", L_RESID = "#6b7280";
 const POS = "#16a34a", NEG = "#dc2626";
 const LEND = { discount: "#f59e0b", btfp: "#ef4444", repo: "#3b82f6", swap: "#8b5cf6" };
 
-// 국면 — 급변 지점에서 '왜'를 보여준다.
 const PHASES: { date: string; label: string; desc: string }[] = [
   { date: "2008-11-25", label: "QE1", desc: "금융위기 — MBS·국채 대량매입 시작" },
   { date: "2010-11-03", label: "QE2", desc: "2차 양적완화 국채 $6,000억" },
@@ -37,7 +34,7 @@ const PHASES: { date: string; label: string; desc: string }[] = [
   { date: "2023-03-12", label: "SVB/BTFP", desc: "SVB 파산 → BTFP 긴급대출" },
 ];
 
-// ── 단위: 세미 한국식($억/$조) ── musd(백만달러) → 억=÷100, 조=÷1e6
+// ── 단위: 세미 한국식($억/$조) ── musd → 억=÷100, 조=÷1e6(소수점 1자리)
 const asMoney = (v: number) => {
   const a = Math.abs(v), s = v < 0 ? "−" : "";
   if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(1)}조`;
@@ -47,11 +44,9 @@ const asMoney = (v: number) => {
 const T = asMoney;
 const signed = (v: number) => (v >= 0 ? "+" : "−") + asMoney(Math.abs(v));
 const yr = (d: string) => d.slice(0, 4);
-// 관측일 → 'M월 N주차'
 const weekLabel = (d: string) => `${Number(d.slice(5, 7))}월 ${Math.ceil(Number(d.slice(8, 10)) / 7)}주차`;
 const weekRange = (a: string, b: string) =>
   a.slice(0, 7) === b.slice(0, 7) ? `${weekLabel(a)} → ${weekLabel(b).replace(/^\d+월 /, "")}` : `${weekLabel(a)} → ${weekLabel(b)}`;
-// 흰/검 자동 대비(라벨 가독성)
 const textOn = (hex: string) => {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? "#0f172a" : "#ffffff";
@@ -62,44 +57,27 @@ const nearestIdx = (weeks: WeekPoint[], date: string) => {
   return best;
 };
 
-function Stat({ label, value, sub, delta }: { label: string; value: string; sub?: string; delta?: number }) {
-  return (
-    <Card className="p-3.5">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="mt-0.5 text-2xl font-bold tabular-nums">{value}</div>
-      <div className="mt-1 flex items-center gap-2 text-[11px]">
-        {delta != null && (
-          <span className={`flex items-center gap-0.5 tabular-nums font-medium ${delta >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-            {delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{signed(delta)}
-          </span>
-        )}
-        {sub && <span className="text-muted-foreground">{sub}</span>}
-      </div>
-    </Card>
-  );
-}
-
-// ── T-계정 한쪽 컬럼(꽉 찬 구성비 스택, 큰 라벨) ──
+// ── T-계정 한쪽 컬럼(꽉 찬 구성비 스택) ──
 interface Seg { label: string; val: number; color: string; sub?: [string, number][] }
+const STACK_H = 320;
 function StackColumn({ segs, total, align }: { segs: Seg[]; total: number; align: "left" | "right" }) {
-  const H = 380;
   return (
-    <div className="flex flex-col overflow-hidden rounded-md" style={{ height: H }}>
+    <div className="flex flex-col overflow-hidden rounded-md" style={{ height: STACK_H }}>
       {segs.map((s, i) => {
-        const h = Math.max(0, (s.val / total) * H);
+        const h = Math.max(0, (s.val / total) * STACK_H);
         const pct = ((s.val / total) * 100).toFixed(1);
         const fg = textOn(s.color);
         const title = `${s.label} ${asMoney(s.val)} (${pct}%)${s.sub ? "\n" + s.sub.map(([n, v]) => `  ${n} ${asMoney(v)}`).join("\n") : ""}`;
         return (
           <div key={i} title={title} style={{ height: h, background: s.color, color: fg }}
             className={`flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
-            {h >= 38 ? (
+            {h >= 36 ? (
               <>
-                <span className="text-[13px] font-semibold leading-tight">{s.label}</span>
-                <span className="text-[12px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
+                <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
+                <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
               </>
-            ) : h >= 19 ? (
-              <span className="text-[11.5px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
+            ) : h >= 18 ? (
+              <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
             ) : null}
           </div>
         );
@@ -122,21 +100,21 @@ function TAccount({ w }: { w: WeekPoint }) {
     { label: "기타·자본", val: Math.max(0, w.liabResidual), color: L_RESID },
   ];
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
       <div>
-        <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="font-medium">자산(차변)</span><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span></div>
+        <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="font-medium">자산</span><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span></div>
         <StackColumn segs={assets} total={w.total} align="left" />
       </div>
-      <div className="mt-6 h-[380px] w-px bg-border" />
+      <div className="mt-6 w-px bg-border" style={{ height: STACK_H }} />
       <div>
-        <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span><span className="font-medium">부채·자본(대변)</span></div>
+        <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span><span className="font-medium">부채·자본</span></div>
         <StackColumn segs={liabs} total={w.total} align="right" />
       </div>
     </div>
   );
 }
 
-// ── 주간 준비금 변화 '분해' ── 레벨은 숫자로, 변화(−$120억)를 구성 요인별로.
+// ── 주간 준비금 변화 분해 ──
 function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const net = now.reserves - prev.reserves;
   const rows = [
@@ -150,15 +128,10 @@ function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const top = rows.reduce((m, r) => (Math.abs(r.d) > Math.abs(m.d) ? r : m), rows[0]);
   return (
     <div>
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-        <div>
-          <div className="text-[12px] text-muted-foreground">{weekRange(prev.date, now.date)} · 주간 준비금 변화</div>
-          <div className={`text-3xl font-bold tabular-nums ${net >= 0 ? "text-emerald-500" : "text-red-500"}`}>{signed(net)}</div>
-        </div>
-        <div className="text-[12px] text-muted-foreground tabular-nums">
-          <div>전주 <b className="text-foreground">{T(prev.reserves)}</b> <span className="mx-1">→</span> 이번주 <b className="text-foreground">{T(now.reserves)}</b></div>
-          <div className="mt-0.5">최대 요인 <b className="text-foreground">{top.label} {signed(top.d)}</b></div>
-        </div>
+      <div className="text-[12px] text-muted-foreground">{weekRange(prev.date, now.date)} · 주간 준비금 변화</div>
+      <div className={`text-3xl font-bold tabular-nums ${net >= 0 ? "text-emerald-500" : "text-red-500"}`}>{signed(net)}</div>
+      <div className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">
+        전주 <b className="text-foreground">{T(prev.reserves)}</b> <span className="mx-1">→</span> 이번주 <b className="text-foreground">{T(now.reserves)}</b> · 최대 요인 <b className="text-foreground">{top.label} {signed(top.d)}</b>
       </div>
       <div className="mt-3 space-y-1.5">
         {rows.map((r) => {
@@ -189,20 +162,15 @@ function Legend({ items }: { items: [string, string][] }) {
   );
 }
 
-const RANGES = [{ k: "1Y", d: 365 }, { k: "3Y", d: 365 * 3 }, { k: "QT2", d: 0 }, { k: "전체", d: -1 }] as const;
-
 export default function Fed() {
   const { data, isLoading } = useQuery<Overview>({ queryKey: ["/api/fed/overview"] });
   const [idx, setIdx] = useState<number>(-1);
-  const [range, setRange] = useState<(typeof RANGES)[number]["k"]>("QT2");
 
   const weeks = data?.weeks ?? [];
-  const daily = data?.daily ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
   const sel = weeks.length ? weeks[curIdx] : null;
   const selPrev = weeks.length && curIdx > 0 ? weeks[curIdx - 1] : null;
 
-  // 스크러버가 그 국면 근처에 왔을 때만 설명 라벨을 보여준다(±26주).
   const activePhase = useMemo(() => {
     if (!weeks.length) return null;
     const withI = PHASES.map((p) => ({ ...p, i: nearestIdx(weeks, p.date) }));
@@ -210,56 +178,34 @@ export default function Fed() {
     return Math.abs(near.i - curIdx) <= 26 ? near : null;
   }, [weeks, curIdx]);
 
-  const dailyView = useMemo(() => {
-    if (!daily.length) return [];
-    if (range === "전체") return daily;
-    const cut = range === "QT2" ? +new Date("2022-06-01") : +new Date(daily[daily.length - 1].date) - RANGES.find((r) => r.k === range)!.d * 86400_000;
-    return daily.filter((p) => +new Date(p.date) >= cut);
-  }, [daily, range]);
-
-  if (isLoading) return <div className="p-6 space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-96 w-full" /></div>;
+  if (isLoading) return <div className="p-6 space-y-4"><Skeleton className="h-40 w-full" /><Skeleton className="h-96 w-full" /></div>;
   if (!weeks.length) return <div className="p-6 text-sm text-muted-foreground">데이터가 없습니다.</div>;
 
   const latest = weeks[weeks.length - 1];
-  const prevWk = weeks[weeks.length - 2] ?? latest;
-  const qt2 = weeks[nearestIdx(weeks, "2022-06-01")];
-  const latestDaily = daily[daily.length - 1];
-  const prevDaily = daily[Math.max(0, daily.length - 6)];
-  // 하단 차트 판독값
-  const lendAlert = latest.loans > 100_000; // >$1000억(=$100B) 이면 경보(평상시 <$300억)
-  const nlQt2 = daily.length ? daily.reduce((b, p) => (Math.abs(+new Date(p.date) - +new Date("2022-06-01")) < Math.abs(+new Date(b.date) - +new Date("2022-06-01")) ? p : b), daily[0]) : null;
+  const lendAlert = latest.loans > 100_000; // >$1000억이면 경보(평상시 <$300억)
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold">Fed 대차대조표 <span className="text-sm font-normal text-muted-foreground">H.4.1 · 미국 유동성</span></h1>
         <span className="text-[11px] text-muted-foreground tabular-nums">최신 {latest.date} · 자료 FRED</span>
       </div>
 
-      {/* 헤드라인 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="총자산 (WALCL)" value={T(latest.total)} delta={latest.total - prevWk.total} sub={`QT2 이후 ${signed(latest.total - qt2.total)}`} />
-        <Stat label="지급준비금" value={T(latest.reserves)} delta={latest.reserves - prevWk.reserves} />
-        <Stat label="순유동성 (일간)" value={latestDaily ? T(latestDaily.netLiq) : "—"} delta={latestDaily && prevDaily ? latestDaily.netLiq - prevDaily.netLiq : undefined} sub="WALCL−TGA−ONRRP" />
-        <Stat label="주간 준비금 변화" value={signed(latest.reserves - prevWk.reserves)} sub="전주 대비" />
-      </div>
-
-      {/* 규모 시계열 = 스크러버 (연준 덩치가 시간에 따라 얼마나 커졌나) */}
-      <Card className="p-4">
+      {/* 규모 시계열 = 시간 선택기 */}
+      <Card className="p-3.5">
         <div className="mb-1 flex items-baseline justify-between flex-wrap gap-2">
-          <div className="text-sm font-semibold">연준 대차대조표 규모 <span className="text-[11px] font-normal text-muted-foreground">2002 → 현재 · 그래프를 클릭/드래그해 시점 선택</span></div>
+          <div className="text-sm font-semibold">연준 대차대조표 규모 <span className="text-[11px] font-normal text-muted-foreground">2002 → 현재 · 그래프 클릭/드래그로 시점 선택</span></div>
           <div className="text-[12px] tabular-nums"><b>{sel && weekLabel(sel.date)}</b> <span className="text-muted-foreground">({sel?.date})</span> · 총자산 <b>{sel && T(sel.total)}</b></div>
         </div>
-        <div className="h-[168px] cursor-crosshair">
+        <div className="h-[136px] cursor-crosshair">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeks} margin={{ top: 22, right: 8, left: 6, bottom: 0 }}
+            <AreaChart data={weeks} margin={{ top: 20, right: 8, left: 6, bottom: 0 }}
               onClick={(e: any) => { if (e?.activeLabel) setIdx(nearestIdx(weeks, String(e.activeLabel))); }}>
               <defs><linearGradient id="fedsz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={A_SOMA} stopOpacity={0.4} /><stop offset="100%" stopColor={A_SOMA} stopOpacity={0.03} /></linearGradient></defs>
               <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
               <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [T(v), "총자산"]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
               <Area dataKey="total" stroke={A_SOMA} strokeWidth={1.5} fill="url(#fedsz)" />
-              {/* 국면 마커: 작은 점은 상시, 설명은 스크러버가 그 지점에 왔을 때만 */}
               {PHASES.map((p) => { const w = weeks[nearestIdx(weeks, p.date)]; return <ReferenceDot key={p.label} x={w.date} y={w.total} r={2.5} fill="hsl(var(--muted-foreground))" stroke="none" />; })}
               {activePhase && <ReferenceDot x={weeks[activePhase.i].date} y={weeks[activePhase.i].total} r={4.5} fill={NEG} stroke="hsl(var(--background))" strokeWidth={1.5}
                 label={{ value: `${activePhase.label} · ${activePhase.desc}`, position: "top", fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />}
@@ -268,23 +214,23 @@ export default function Fed() {
           </ResponsiveContainer>
         </div>
         <input type="range" min={0} max={weeks.length - 1} value={curIdx}
-          onChange={(e) => setIdx(Number(e.target.value))} className="mt-2 w-full accent-primary" data-testid="fed-scrubber" />
+          onChange={(e) => setIdx(Number(e.target.value))} className="mt-1.5 w-full accent-primary" data-testid="fed-scrubber" />
       </Card>
 
-      {/* T-계정 */}
-      <Card className="p-4">
-        <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비(양변 = 총자산 {sel && T(sel.total)})</span></div>
-        {sel && <TAccount w={sel} />}
-      </Card>
+      {/* T-계정 ↔ 준비금 변화 분해 (한 화면 2단) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+        <Card className="p-3.5">
+          <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비</span></div>
+          {sel && <TAccount w={sel} />}
+        </Card>
+        <Card className="p-3.5">
+          <div className="mb-2 text-sm font-semibold">주간 준비금 변화 분해</div>
+          {sel && selPrev ? <DeltaBreakdown prev={selPrev} now={sel} /> : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
+        </Card>
+      </div>
 
-      {/* 주간 준비금 변화 분해 */}
-      <Card className="p-4">
-        <div className="mb-2 text-sm font-semibold">주간 준비금 변화 분해</div>
-        {sel && selPrev ? <DeltaBreakdown prev={selPrev} now={sel} /> : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
-      </Card>
-
-      {/* 대출 프로그램 = 위기 감지기 */}
-      <Card className="p-4">
+      {/* 위기 감지기 (전체기간 · 슬라이더 무관) */}
+      <Card className="p-3.5">
         <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
           <div>
             <div className="text-sm font-semibold">위기 감지기 <span className="text-[11px] font-normal text-muted-foreground">Fed 긴급대출</span></div>
@@ -296,7 +242,7 @@ export default function Fed() {
           </div>
         </div>
         <Legend items={[["할인창구", LEND.discount], ["BTFP", LEND.btfp], ["레포", LEND.repo], ["통화스왑", LEND.swap]]} />
-        <div className="h-[200px] mt-1">
+        <div className="h-[190px] mt-1">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={weeks} margin={{ top: 12, right: 8, left: 8, bottom: 0 }}>
               <XAxis dataKey="date" tickFormatter={yr} minTickGap={40} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
@@ -310,39 +256,6 @@ export default function Fed() {
               <Area dataKey="repo" name="레포" stackId="1" stroke={LEND.repo} fill={LEND.repo} fillOpacity={0.5} />
               <Area dataKey="swap" name="통화스왑" stackId="1" stroke={LEND.swap} fill={LEND.swap} fillOpacity={0.5} />
             </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      {/* 순유동성과 위험자산 */}
-      <Card className="p-4">
-        <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
-          <div>
-            <div className="text-sm font-semibold">순유동성과 위험자산 <span className="text-[11px] font-normal text-muted-foreground">WALCL − TGA − ONRRP</span></div>
-            <div className="text-[11px] text-muted-foreground">유동성이 늘면 위험자산이 오른다는 가설 — 순유동성과 S&P 500이 함께 움직이는지.</div>
-          </div>
-          <div className="flex items-start gap-3 shrink-0">
-            <div className="text-right">
-              <div className="text-[10.5px] text-muted-foreground">현재 순유동성</div>
-              <div className="tabular-nums font-semibold">{latestDaily ? T(latestDaily.netLiq) : "—"}</div>
-              {latestDaily && nlQt2 && <div className="text-[10.5px] text-muted-foreground tabular-nums">QT2 이후 {signed(latestDaily.netLiq - nlQt2.netLiq)}</div>}
-            </div>
-            <div className="flex items-center gap-1 text-[11px]">
-              {RANGES.map((r) => <button key={r.k} onClick={() => setRange(r.k)} className={`px-2 py-0.5 rounded ${range === r.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{r.k}</button>)}
-            </div>
-          </div>
-        </div>
-        <Legend items={[["순유동성", A_SOMA], ["S&P 500", "#eab308"]]} />
-        <div className="h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dailyView} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
-              <XAxis dataKey="date" tickFormatter={(d) => d.slice(0, 7)} minTickGap={50} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis yAxisId="l" tickFormatter={(v) => `$${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={52} domain={["auto", "auto"]} className="text-muted-foreground" />
-              <YAxis yAxisId="r" orientation="right" tickFormatter={(v) => `${Math.round(v)}`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={44} domain={["auto", "auto"]} className="text-muted-foreground" />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [n === "순유동성" ? T(v) : Math.round(v).toLocaleString(), n]} />
-              <Line yAxisId="l" dataKey="netLiq" name="순유동성" stroke={A_SOMA} strokeWidth={1.8} dot={false} />
-              <Line yAxisId="r" dataKey="sp500" name="S&P 500" stroke="#eab308" strokeWidth={1.2} dot={false} connectNulls />
-            </LineChart>
           </ResponsiveContainer>
         </div>
       </Card>
