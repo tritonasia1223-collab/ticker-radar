@@ -206,22 +206,15 @@ export default function Fed() {
     return Math.abs(near.i - curIdx) <= 26 ? near : null;
   }, [weeks, curIdx]);
 
-  // QT/QE 속도 = 총자산의 분기(13주) 변화를 월 평균으로(musd/월). 0 위=완화, 아래=긴축.
-  const pace = useMemo(() => {
-    const N = 13, out: { date: string; pace: number }[] = [];
-    for (let i = N; i < weeks.length; i++) out.push({ date: weeks[i].date, pace: (weeks[i].total - weeks[i - N].total) / 3 });
-    return out;
-  }, [weeks]);
 
   if (isLoading) return <div className="p-6 space-y-4"><Skeleton className="h-40 w-full" /><Skeleton className="h-96 w-full" /></div>;
   if (!weeks.length) return <div className="p-6 text-sm text-muted-foreground">데이터가 없습니다.</div>;
 
   const latest = weeks[weeks.length - 1];
   const lendAlert = latest.loans > 100_000; // >$1000억이면 경보(평상시 <$300억)
-  const paceNow = pace.length ? pace[pace.length - 1].pace : 0;
-  const pMax = Math.max(0, ...pace.map((p) => p.pace)), pMin = Math.min(0, ...pace.map((p) => p.pace));
-  const zeroOff = pMax === pMin ? 0.5 : pMax / (pMax - pMin); // 그라디언트에서 0 이 위치하는 세로 비율
-  const easing = paceNow > 10_000, tightening = paceNow < -10_000; // ±$100억/월 데드밴드
+  // QT/QE 속도 = 선택 주차의 총자산 분기(13주) 변화를 월평균으로(musd/월). 기본=최신=현재.
+  const paceSel = curIdx >= 13 ? (weeks[curIdx].total - weeks[curIdx - 13].total) / 3 : NaN;
+  const easing = paceSel > 10_000, tightening = paceSel < -10_000; // ±$100억/월 데드밴드
 
   return (
     <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
@@ -257,47 +250,27 @@ export default function Fed() {
       </Card>
 
       {/* T-계정 ↔ 준비금 변화 분해 (한 화면 2단) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <Card className="p-3.5">
           <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비</span></div>
           {sel && <TAccount w={sel} />}
         </Card>
-        <Card className="p-3.5">
+        <Card className="p-3.5 flex flex-col">
           <div className="mb-2 text-sm font-semibold">주간 준비금 변화 분해</div>
           {sel && selPrev ? <DeltaBreakdown prev={selPrev} now={sel} /> : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
+          {/* QT/QE 속도 — 숫자 판독(그래프 없이). 선택 주차 기준. */}
+          <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-3">
+            <div>
+              <div className="text-[12px] font-semibold">QE / QT 속도</div>
+              <div className="text-[10.5px] text-muted-foreground">총자산 분기(13주) 변화·월평균 · <span className="text-emerald-500">0↑ QE</span> / <span className="text-red-500">0↓ QT</span></div>
+            </div>
+            <div className={`text-right leading-tight ${easing ? "text-emerald-500" : tightening ? "text-red-500" : "text-muted-foreground"}`}>
+              <div className="text-xl font-bold tabular-nums">{Number.isFinite(paceSel) ? `${signed(paceSel)}/월` : "—"}</div>
+              <div className="text-[11px] font-semibold">{easing ? "QE (완화)" : tightening ? "QT (긴축)" : "중립"}</div>
+            </div>
+          </div>
         </Card>
       </div>
-
-      {/* QT/QE 속도계 = 총자산 변화율(월) */}
-      <Card className="p-3.5">
-        <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
-          <div>
-            <div className="text-sm font-semibold">QT / QE 속도계 <span className="text-[11px] font-normal text-muted-foreground">연준이 얼마나 빠르게 조이나/푸나</span></div>
-            <div className="text-[11px] text-muted-foreground">총자산의 분기(13주) 변화를 월평균으로. <span className="text-emerald-500">0 위 = 완화(QE, 돈 풀기)</span> · <span className="text-red-500">0 아래 = 긴축(QT, 회수)</span>.</div>
-          </div>
-          <div className="text-right shrink-0">
-            <div className="text-[10.5px] text-muted-foreground">현재 속도</div>
-            <div className={`tabular-nums font-semibold ${easing ? "text-emerald-500" : tightening ? "text-red-500" : "text-muted-foreground"}`}>{signed(paceNow)}/월 · {easing ? "완화" : tightening ? "긴축" : "중립"}</div>
-          </div>
-        </div>
-        <div className="h-[180px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={pace} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
-              <defs><linearGradient id="pace" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={POS} stopOpacity={0.55} />
-                <stop offset={zeroOff} stopColor={POS} stopOpacity={0.08} />
-                <stop offset={zeroOff} stopColor={NEG} stopOpacity={0.08} />
-                <stop offset="1" stopColor={NEG} stopOpacity={0.55} />
-              </linearGradient></defs>
-              <XAxis dataKey="date" tickFormatter={yr} minTickGap={40} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis tickFormatter={(v) => (v === 0 ? "0" : `${v > 0 ? "+" : "−"}${asMoney(Math.abs(v))}`)} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={60} className="text-muted-foreground" />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [`${signed(v)}/월`, "속도"]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
-              <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.45} />
-              <Area dataKey="pace" stroke="hsl(var(--foreground))" strokeOpacity={0.35} strokeWidth={1} fill="url(#pace)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
 
       {/* 위기 감지기 (전체기간 · 슬라이더 무관) */}
       <Card className="p-3.5">
