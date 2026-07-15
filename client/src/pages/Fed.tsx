@@ -61,9 +61,12 @@ const nearestIdx = (weeks: WeekPoint[], date: string) => {
 // ── T-계정 한쪽 컬럼(꽉 찬 구성비 스택) ──
 interface Seg { label: string; val: number; color: string; sub?: [string, number][] }
 const STACK_H = 320;
-function StackColumn({ segs, total, align }: { segs: Seg[]; total: number; align: "left" | "right" }) {
-  return (
-    <div className="flex flex-col overflow-hidden rounded-md" style={{ height: STACK_H }}>
+function StackColumn({ segs, total, align, group }: {
+  segs: Seg[]; total: number; align: "left" | "right";
+  group?: { label: string; count: number }; // 앞 count 개 세그먼트를 상위 분류로 묶는 브래킷(왼쪽)
+}) {
+  const stack = (
+    <div className="flex flex-1 flex-col overflow-hidden rounded-md" style={{ height: STACK_H }}>
       {segs.map((s, i) => {
         const h = Math.max(0, (s.val / total) * STACK_H);
         const pct = ((s.val / total) * 100).toFixed(1);
@@ -72,17 +75,38 @@ function StackColumn({ segs, total, align }: { segs: Seg[]; total: number; align
         return (
           <div key={i} title={title} style={{ height: h, background: s.color, color: fg }}
             className={`flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
-            {h >= 36 ? (
+            {h >= 34 ? (
               <>
                 <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
                 <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
               </>
-            ) : h >= 18 ? (
+            ) : h >= 17 ? (
               <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
             ) : null}
           </div>
         );
       })}
+    </div>
+  );
+  if (!group) return stack;
+  // 상위 분류 브래킷: 앞 count 세그먼트(예: SOMA=국채+MBS+기관채)의 합산 높이만큼 왼쪽에 세로 괄호.
+  const gval = segs.slice(0, group.count).reduce((s, x) => s + x.val, 0);
+  const gh = (gval / total) * STACK_H;
+  const gpct = ((gval / total) * 100).toFixed(1);
+  return (
+    <div className="flex gap-1" style={{ height: STACK_H }}>
+      <div className="flex w-[52px] shrink-0 flex-col">
+        <div style={{ height: gh }} className="relative flex items-center justify-end pr-1.5">
+          <div className="absolute right-0 top-0 bottom-0 w-px bg-foreground/30" />
+          <div className="absolute right-0 top-0 h-px w-2 bg-foreground/30" />
+          <div className="absolute right-0 bottom-0 h-px w-2 bg-foreground/30" />
+          <div className="text-right leading-tight">
+            <div className="text-[11.5px] font-bold">{group.label}</div>
+            {gh >= 42 && <><div className="text-[9.5px] text-muted-foreground tabular-nums">{asMoney(gval)}</div><div className="text-[9.5px] text-muted-foreground tabular-nums">{gpct}%</div></>}
+          </div>
+        </div>
+      </div>
+      {stack}
     </div>
   );
 }
@@ -107,7 +131,7 @@ function TAccount({ w }: { w: WeekPoint }) {
     <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
       <div>
         <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="font-medium">자산</span><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span></div>
-        <StackColumn segs={assets} total={w.total} align="left" />
+        <StackColumn segs={assets} total={w.total} align="left" group={{ label: "SOMA", count: 3 }} />
       </div>
       <div className="mt-6 w-px bg-border" style={{ height: STACK_H }} />
       <div>
