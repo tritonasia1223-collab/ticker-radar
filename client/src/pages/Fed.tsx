@@ -142,42 +142,58 @@ function TAccount({ w }: { w: WeekPoint }) {
   );
 }
 
-// ── 주간 준비금 변화 분해 ──
+// ── 주간 준비금 변화 분해 (수렴 흐름도) ──
+// 좌변 4개(TGA·역레포·현금·기타)의 '자기 변화 → 준비금 효과'가 준비금 공으로 수렴.
+// 위쪽 꼬리 화살표 = 국채매입(QE) = 시스템 밖에서 들어온 '신규' 돈(자리이동과 구분).
 function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const net = now.reserves - prev.reserves;
-  const rows = [
-    { label: "자산 변화", d: now.total - prev.total, hint: "총자산 증가 → 준비금 유입" },
-    { label: "TGA 변화", d: -(now.tga - prev.tga), hint: "재무부 계좌 증가 → 준비금 유출" },
-    { label: "역레포 변화", d: -(now.rrp - prev.rrp), hint: "역레포 증가 → 준비금 유출" },
-    { label: "현금통화 변화", d: -(now.currency - prev.currency), hint: "현금 증가 → 준비금 유출" },
-    { label: "기타·자본 변화", d: -(now.liabResidual - prev.liabResidual), hint: "기타부채·자본 증가 → 준비금 유출" },
-  ];
-  const maxAbs = Math.max(1, ...rows.map((r) => Math.abs(r.d)));
-  const top = rows.reduce((m, r) => (Math.abs(r.d) > Math.abs(m.d) ? r : m), rows[0]);
+  const qe = now.total - prev.total;                 // 자산 자기변화 = 준비금 효과(동부호)
+  const items = [
+    { name: "TGA", own: now.tga - prev.tga },
+    { name: "역레포", own: now.rrp - prev.rrp },
+    { name: "현금통화", own: now.currency - prev.currency },
+    { name: "기타·자본", own: now.liabResidual - prev.liabResidual },
+  ].map((r) => ({ ...r, eff: -r.own }));             // 부채↑ → 준비금↓ (부호 뒤집힘)
+  const netCol = net >= 0 ? POS : NEG;
+  const qeCol = qe >= 0 ? POS : NEG;
+  const qeLabel = qe >= 0 ? "국채매입(QE)" : "국채매각(QT)";
+  const contribs = [...items.map((i) => ({ name: i.name, eff: i.eff })), { name: qeLabel, eff: qe }];
+  const top = contribs.reduce((m, x) => (Math.abs(x.eff) > Math.abs(m.eff) ? x : m), contribs[0]);
+  const rowY = [58, 96, 134, 170], endY = [98, 114, 132, 150];
   return (
     <div>
-      <div className="text-[12px] text-muted-foreground">{weekRange(prev.date, now.date)} · 주간 준비금 변화</div>
-      <div className={`text-3xl font-bold tabular-nums ${net >= 0 ? "text-emerald-500" : "text-red-500"}`}>{signed(net)}</div>
-      <div className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">
-        전주 <b className="text-foreground">{T(prev.reserves)}</b> <span className="mx-1">→</span> 이번주 <b className="text-foreground">{T(now.reserves)}</b> · 최대 요인 <b className="text-foreground">{top.label} {signed(top.d)}</b>
-      </div>
-      <div className="mt-3 space-y-1.5">
-        {rows.map((r) => {
-          const w = (Math.abs(r.d) / maxAbs) * 50;
+      <svg viewBox="0 0 350 200" className="w-full">
+        <defs>
+          <marker id="ahG" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill={POS} /></marker>
+          <marker id="ahR" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill={NEG} /></marker>
+        </defs>
+        {/* 준비금 공(순변화) */}
+        <rect x="224" y="60" width="120" height="118" rx="18" fill="hsl(var(--primary) / 0.08)" stroke="hsl(var(--primary) / 0.45)" strokeWidth="1.2" />
+        <text x="284" y="102" textAnchor="middle" fontSize="11" fill="hsl(var(--muted-foreground))">지급준비금</text>
+        <text x="284" y="127" textAnchor="middle" fontSize="19" fontWeight="700" fill={netCol}>{signed(net)}</text>
+        <text x="284" y="146" textAnchor="middle" fontSize="9" fill="hsl(var(--muted-foreground))">주간 변화</text>
+        {/* 좌변: 시스템 내 자리이동 4 */}
+        {items.map((it, i) => {
+          const col = it.eff >= 0 ? POS : NEG;
+          const my = (rowY[i] + endY[i]) / 2;
           return (
-            <div key={r.label} title={r.hint} className="grid grid-cols-[100px_1fr_84px] items-center gap-2">
-              <span className="text-[11.5px] text-muted-foreground whitespace-nowrap">{r.label}</span>
-              <div className="relative h-4">
-                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border" />
-                <div className="absolute top-0.5 bottom-0.5 rounded-sm"
-                  style={{ background: r.d >= 0 ? POS : NEG, left: r.d >= 0 ? "50%" : `${50 - w}%`, width: `${w}%` }} />
-              </div>
-              <span className={`text-[12px] text-right tabular-nums font-medium ${r.d >= 0 ? "text-emerald-500" : "text-red-500"}`}>{signed(r.d)}</span>
-            </div>
+            <g key={it.name}>
+              <text x="2" y={rowY[i] + 3.5} fontSize="10.5" fill="hsl(var(--foreground))">{it.name}</text>
+              <text x="98" y={rowY[i] + 3.5} textAnchor="end" fontSize="10.5" fill="hsl(var(--muted-foreground))">{signed(it.own)}</text>
+              <line x1="102" y1={rowY[i]} x2="224" y2={endY[i]} stroke={col} strokeWidth="1.5" markerEnd={it.eff >= 0 ? "url(#ahG)" : "url(#ahR)"} opacity="0.9" />
+              <text x="163" y={my - 3} textAnchor="middle" fontSize="9.5" fontWeight="600" fill={col}>{signed(it.eff)}</text>
+            </g>
           );
         })}
+        {/* 위: 국채매입(QE) = 시스템 밖 신규 */}
+        <text x="284" y="12" textAnchor="middle" fontSize="9.5" fontWeight="600" fill={qeCol}>{qeLabel} {signed(qe)}</text>
+        <text x="284" y="23" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">시스템 밖에서 신규</text>
+        <line x1="284" y1="28" x2="284" y2="58" stroke={qeCol} strokeWidth="1.8" markerEnd={qe >= 0 ? "url(#ahG)" : "url(#ahR)"} />
+      </svg>
+      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+        {weekRange(prev.date, now.date)} · 전주 <b className="text-foreground">{T(prev.reserves)}</b> → 이번주 <b className="text-foreground">{T(now.reserves)}</b> · 최대 요인 <b className="text-foreground">{top.name} {signed(top.eff)}</b>
       </div>
-      <div className="mt-2 text-[10.5px] text-muted-foreground">초록=준비금 유입 · 빨강=유출. 다섯 요인의 합이 곧 주간 변화({signed(net)}).</div>
+      <div className="mt-1 text-[10.5px] text-muted-foreground">좌변 = 시스템 내 자리이동(항목 변화 → 준비금 효과) · 위 = 신규(QE). 화살표 <span className="text-emerald-500">초록=준비금↑</span>/<span className="text-red-500">빨강=준비금↓</span>.</div>
     </div>
   );
 }
