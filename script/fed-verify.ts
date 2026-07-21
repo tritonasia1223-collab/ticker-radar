@@ -25,14 +25,17 @@ async function main() {
     { id: "WALCL", date: "2024-06-26", exp: 7_231_163 },
     { id: "TREAST", date: "2024-06-26", exp: 4_453_571 },
     { id: "WSHOMCB", date: "2024-06-26", exp: 2_335_997 },
-    { id: "WRESBAL", date: "2024-06-26", exp: 3_302_647 },
+    { id: "WRESBAL", date: "2024-06-26", exp: 3_302_647 },  // 주간평균(참고)
+    { id: "WLODLL", date: "2024-06-26", exp: 3_268_896 },   // 수요일 준비금(파생계산에 실제 사용)
+    { id: "WLFN", date: "2024-06-26", exp: 2_301_532 },     // FR notes net 수요일(=화폐발행)
+    { id: "WDFOL", date: "2024-06-26", exp: 9_682 },        // 해외공식예금(잔차 성분)
     { id: "WLRRAL", date: "2024-06-26", exp: 879_766 },
     { id: "WDTGAL", date: "2024-06-26", exp: 744_206 },
-    { id: "WCURCIR", date: "2024-06-26", exp: 2_351_673 },
+    { id: "WCURCIR", date: "2024-06-26", exp: 2_351_673 },  // 통화발행(참고)
     { id: "RRPONTSYD", date: "2024-06-26", exp: 490_156 }, // 490.156B × 1000
   ];
   const f1bad = anchors.filter((a) => { const v = all.get(a.id)?.get(a.date); return v == null || Math.abs(v - a.exp) > 1; });
-  add("F1 단위앵커(9종)", f1bad.length === 0,
+  add("F1 단위앵커(12종)", f1bad.length === 0,
     f1bad.length === 0 ? `${anchors.length}개 시리즈·날짜 전부 일치`
       : `불일치: ${f1bad.map((a) => `${a.id}@${a.date} 기대 ${a.exp}/실제 ${all.get(a.id)?.get(a.date) ?? "없음"}`).join("; ")}`);
 
@@ -86,8 +89,29 @@ async function main() {
   const f5rel = Math.abs(nl - 5.85 * M) / (5.85 * M);
   add("F5 순유동성(2022-12)", Number.isFinite(nl) && f5rel <= 0.03, `${wDate} ONRRP기반 순유동성 $${(nl / M).toFixed(2)}T (기준 $5.85T, 편차 ${(f5rel * 100).toFixed(1)}%)`);
 
+  // ── F6. 잔차 지배 검사(최근 체제) ── 부채 분해의 설명력 보증. 잔차(기타·자본)의 주간 변화가
+  //   명시요인(TGA·역레포·현금)을 '지배'하면 분해가 무의미하다. WRESBAL(주간평균)을 수요일 스냅샷에
+  //   섞던 버그가 원인이었고(§3), WLODLL/WLFN(수요일레벨)로 통일해 해소 — 최근160주 지배율 32%→2%.
+  //   ⚠ 전-역사 대상이 아니라 '최근 ~3년(160주)'만 본다: 2008 GFC(재무부 SFP ~$500B)·2020 코비드
+  //   긴급대출처럼 위기기엔 4요인이 담지 않는 대형 부채프로그램이 잔차로 잡히는 게 정상(설계상 미itemize).
+  //   카드가 보여주는 건 현행 체제뿐이고, 회귀(주간평균 재혼입)는 최근창에서도 즉시 32%로 터져 게이트가 잡는다.
+  //   기준: |Δ잔차| > max(|ΔTGA|,|Δ역레포|,|Δ현금|) 이면서 |Δ잔차| > $10B 인 최근주 비율 ≤ 5%.
+  const F6WIN = 160, F6FLOOR = 10 * B;
+  const f6win = wdates.slice(-(F6WIN + 1));
+  let f6pairs = 0, f6dom = 0; const f6ex: string[] = [];
+  for (let i = 1; i < f6win.length; i++) {
+    const a = deriveLiabilities(all, f6win[i - 1]), b = deriveLiabilities(all, f6win[i]);
+    if (![a.residual, b.residual, a.tga, b.tga, a.rrp, a.currency].every(Number.isFinite)) continue;
+    f6pairs++;
+    const dOther = Math.abs(b.residual - a.residual);
+    const dNamed = Math.max(Math.abs(b.tga - a.tga), Math.abs(b.rrp - a.rrp), Math.abs(b.currency - a.currency));
+    if (dOther > dNamed && dOther > F6FLOOR) { f6dom++; if (f6ex.length < 3) f6ex.push(`${f6win[i]}: Δ잔차 ${Math.round((b.residual - a.residual) / B)}B > 명시 ${Math.round(dNamed / B)}B`); }
+  }
+  const f6rate = f6pairs ? f6dom / f6pairs : 1;
+  add("F6 잔차 지배(최근≤5%)", f6rate <= 0.05, `최근 ${f6pairs}주 중 지배 ${f6dom} (${(f6rate * 100).toFixed(1)}%, floor $10B)${f6ex.length ? " — " + f6ex.join(" / ") : ""}`);
+
   // ── 리포트 ──
-  console.log("\n══ Fed 대차대조표 검증 (F1~F5) ══");
+  console.log("\n══ Fed 대차대조표 검증 (F1~F6) ══");
   for (const r of results) console.log(`  ${r.pass ? "✅" : "❌"} ${r.name.padEnd(22)} ${r.detail}`);
   const failed = results.filter((r) => !r.pass);
   console.log(failed.length === 0 ? "\n✅ 전부 통과 — 배포/증분 게이트 통과" : `\n❌ ${failed.length}개 실패 — ${failed.map((r) => r.name).join(", ")}`);

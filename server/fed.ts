@@ -31,11 +31,17 @@ export const SERIES: SeriesSpec[] = [
   { id: "H41RESPPALDKNWW", label: "BTFP", unit: "millions", freq: "weekly", role: "asset", group: "loans", optionalZero: true },
   { id: "WORAL",   label: "레포",         unit: "millions", freq: "weekly", role: "asset", group: "loans", optionalZero: true },
   { id: "SWPT",    label: "통화스왑",     unit: "millions", freq: "weekly", role: "asset", group: "loans", optionalZero: true },
-  // 부채·자본(대변)
-  { id: "WRESBAL", label: "지급준비금",   unit: "millions", freq: "weekly", role: "liability", group: "reserves" },
+  // 부채·자본(대변) — ⚠ 전부 '수요일 레벨(Wednesday Level)'로 통일. H.4.1 은 수요일 스냅샷이라
+  //   주간평균 시리즈를 섞으면 항등식에 ±$100B 타이밍 노이즈가 잔차로 샌다(§3 진단으로 확정).
+  //   지급준비금은 WLODLL(대차대조표 수요일 준비금=Other Deposits Held by DIs), 화폐발행은 WLFN(FR notes net 수요일).
+  //   WRESBAL(주간평균)·WCURCIR(통화발행)은 파생계산에서 제외 — 참고·F1 앵커용으로만 수집 유지.
+  { id: "WLODLL",  label: "지급준비금",   unit: "millions", freq: "weekly", role: "liability", group: "reserves" },
   { id: "WLRRAL",  label: "역레포(주간)", unit: "millions", freq: "weekly", role: "liability", group: "rrp" },
   { id: "WDTGAL",  label: "TGA(주간)",    unit: "millions", freq: "weekly", role: "liability", group: "tga" },
-  { id: "WCURCIR", label: "화폐발행",     unit: "millions", freq: "weekly", role: "liability", group: "currency" },
+  { id: "WLFN",    label: "화폐발행",     unit: "millions", freq: "weekly", role: "liability", group: "currency" },
+  { id: "WDFOL",   label: "해외공식예금", unit: "millions", freq: "weekly", role: "liability", group: "other" },
+  { id: "WRESBAL", label: "지급준비금(주간평균·참고)", unit: "millions", freq: "weekly", role: "liability", group: "reserves-avg" },
+  { id: "WCURCIR", label: "통화발행(참고)", unit: "millions", freq: "weekly", role: "liability", group: "currency-ref" },
   // ── 일간(순유동성 추적용) ──
   // RRPONTSYD 는 billions → ×1000. WTREGEN 은 FRED keyless 에선 주간(수요일)으로 반환됨(프리체크 확인)
   //   → 일간 순유동성에서 forward-fill 로 사용(§4). SP500 은 지수라 정규화 안 함.
@@ -100,10 +106,11 @@ export function deriveAssets(all: Map<string, Map<string, number>>, date: string
 // 부채·자본 분해(대변): 준비금/역레포/TGA/현금 + 기타·자본(잔차) — 합은 WALCL.
 export function deriveLiabilities(all: Map<string, Map<string, number>>, date: string): LiabBreak {
   const total = valAt(all, "WALCL", date);
-  const reserves = valAt(all, "WRESBAL", date);
+  const reserves = valAt(all, "WLODLL", date);   // 수요일 준비금(대차대조표). WRESBAL(주간평균) 아님 — §3.
   const rrp = valAt(all, "WLRRAL", date);
   const tga = valAt(all, "WDTGAL", date);
-  const currency = valAt(all, "WCURCIR", date);
+  const currency = valAt(all, "WLFN", date);     // FR notes net(수요일). WCURCIR(통화발행) 아님 — §3.
+  // 잔차 = 총자산 − (준비금+역레포+TGA+화폐발행). 남는 건 해외공식예금(WDFOL, ~$9B)+기타부채+자본 ≈ $60B 안정.
   return { total, reserves, rrp, tga, currency, residual: total - reserves - rrp - tga - currency };
 }
 
@@ -170,7 +177,7 @@ export function buildWeekly(all: Map<string, Map<string, number>>): WeekPoint[] 
     const soma = treast + mbs + agency;
     const discount = v(all, "WLCFLPCL", date), btfp = v(all, "H41RESPPALDKNWW", date), repo = v(all, "WORAL", date), swap = v(all, "SWPT", date);
     const loans = discount + btfp + repo + swap;
-    const reserves = v(all, "WRESBAL", date), rrp = v(all, "WLRRAL", date), tga = v(all, "WDTGAL", date), currency = v(all, "WCURCIR", date);
+    const reserves = v(all, "WLODLL", date), rrp = v(all, "WLRRAL", date), tga = v(all, "WDTGAL", date), currency = v(all, "WLFN", date);
     // 코어 부채 결측(시리즈 시작 전)이면 스킵 — 불완전주는 T계정에서 제외.
     if (![treast, mbs, reserves, rrp, tga, currency].every(Number.isFinite)) continue;
     out.push({
