@@ -142,59 +142,152 @@ function TAccount({ w }: { w: WeekPoint }) {
   );
 }
 
-// ── 주간 준비금 변화 분해 (수렴 흐름도) ──
-// 좌변 4개(TGA·역레포·현금·기타)의 '자기 변화 → 준비금 효과'가 준비금 공으로 수렴.
-// 위쪽 꼬리 화살표 = 국채매입(QE) = 시스템 밖에서 들어온 '신규' 돈(자리이동과 구분).
-function DeltaBreakdown({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
+// ── 주간 준비금 변화 분해 (2그룹 delta 워터폴) ──
+// 원칙(§2.3): 화면의 모든 숫자는 '준비금 효과' 단일부호. 항목 자체 증감은 라벨 계층(이름+화살표·해설)으로.
+//   막대 순서 고정: 자산 → TGA → 역레포 → 현금통화 → 기타·자본 → 준비금 변화(순).
+//   밴드A(자산)=돈 총량 창조/소멸(QE/QT) · 밴드B(4개)=기존 돈의 자리이동 · 순변화 막대는 밴드 밖(결과).
+const FLOW_UP = POS, FLOW_DN = NEG, FLOW_NET = L_RES; // 유입 green / 유출 red / 순변화 purple
+
+// 3층 라벨의 해설 단어(§2.3) — 항목 자체 방향 기준.
+function flowGloss(key: string, own: number): string {
+  if (key === "assets") return own >= 0 ? "QE · 새 돈" : "QT · 회수";
+  if (key === "cur") return own >= 0 ? "현찰 인출" : "현찰 환수";
+  return own <= 0 ? "빠져나옴" : "주차됨"; // 부채 감소=준비금 유입 / 증가=유출
+}
+// hover 툴팁 풀문장(§2.3).
+function flowSentence(key: string, name: string, own: number, eff: number): string {
+  const amt = asMoney(Math.abs(own)), e = asMoney(Math.abs(eff));
+  if (key === "assets") return own >= 0
+    ? `Fed가 자산 ${amt}를 사들여(QE) 시스템에 새 돈이 들어왔어요 → 준비금 +${e}`
+    : `Fed가 자산 ${amt}를 줄여(QT) 시스템에서 돈이 회수됐어요 → 준비금 −${e}`;
+  if (key === "cur") return own >= 0
+    ? `대중이 현찰 ${amt}를 인출해 준비금에서 빠졌어요 → 준비금 −${e}`
+    : `현찰 ${amt}가 은행으로 돌아와 준비금이 늘었어요 → 준비금 +${e}`;
+  return eff >= 0
+    ? `${name}에서 ${amt}이 빠져나와 준비금으로 유입됐어요 → 준비금 +${e}`
+    : `${name}에 ${amt}이 주차되며 준비금에서 빠졌어요 → 준비금 −${e}`;
+}
+
+function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
+  const factors = [
+    { key: "assets", name: "자산", own: now.total - prev.total, asset: true },
+    { key: "tga", name: "TGA", own: now.tga - prev.tga, asset: false },
+    { key: "rrp", name: "역레포", own: now.rrp - prev.rrp, asset: false },
+    { key: "cur", name: "현금통화", own: now.currency - prev.currency, asset: false },
+    { key: "other", name: "기타·자본", own: now.liabResidual - prev.liabResidual, asset: false },
+  ].map((f) => ({ ...f, eff: f.asset ? f.own : -f.own })); // 준비금 효과: 자산은 동부호, 부채는 반대부호
   const net = now.reserves - prev.reserves;
-  const qe = now.total - prev.total;                 // 자산 자기변화 = 준비금 효과(동부호)
-  const items = [
-    { name: "TGA", own: now.tga - prev.tga },
-    { name: "역레포", own: now.rrp - prev.rrp },
-    { name: "현금통화", own: now.currency - prev.currency },
-    { name: "기타·자본", own: now.liabResidual - prev.liabResidual },
-  ].map((r) => ({ ...r, eff: -r.own }));             // 부채↑ → 준비금↓ (부호 뒤집힘)
-  const netCol = net >= 0 ? POS : NEG;
-  const qeCol = qe >= 0 ? POS : NEG;
-  const qeLabel = qe >= 0 ? "국채매입(QE)" : "국채매각(QT)";
-  const contribs = [...items.map((i) => ({ name: i.name, eff: i.eff })), { name: qeLabel, eff: qe }];
-  const top = contribs.reduce((m, x) => (Math.abs(x.eff) > Math.abs(m.eff) ? x : m), contribs[0]);
-  const rowY = [58, 96, 134, 170], endY = [98, 114, 132, 150];
+
+  // 누적 레벨(delta-only): 0에서 출발, 요인별 효과 누적.
+  const from: number[] = [], to: number[] = [];
+  let acc = 0;
+  for (const f of factors) { from.push(acc); acc += f.eff; to.push(acc); }
+  const levels = [0, ...to, net];
+  const domMax = Math.max(...levels, 0), domMin = Math.min(...levels, 0);
+  const span = Math.max(domMax - domMin, 1);
+  const pad = span * 0.16;
+  const hi = domMax + pad, lo = domMin - pad;
+  const yTop = 26, yBot = 120;
+  const y = (v: number) => yTop + ((hi - v) / (hi - lo)) * (yBot - yTop);
+  const y0 = y(0);
+
+  const N = 6, x0 = 42, colW = 52, barW = 26;
+  const cx = (i: number) => x0 + colW * i + colW / 2;
+  const W = x0 + colW * N + 6;
+
+  // 밴드 배경: A=col0(자산), B=col1..4(자리이동).
+  const bandA = { x: x0 + 2, w: colW - 4 };
+  const bandB = { x: x0 + colW + 2, w: colW * 4 - 4 };
+
+  type Bar = { i: number; key: string; name: string; own: number; eff: number; net?: boolean };
+  const bars: Bar[] = factors.map((f, i) => ({ i, ...f }));
+  bars.push({ i: 5, key: "net", name: "준비금 변화", own: net, eff: net, net: true });
+
   return (
-    <div>
-      <svg viewBox="0 0 350 200" className="w-full">
-        <defs>
-          <marker id="ahG" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill={POS} /></marker>
-          <marker id="ahR" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill={NEG} /></marker>
-        </defs>
-        {/* 준비금 공(순변화) */}
-        <rect x="224" y="60" width="120" height="118" rx="18" fill="hsl(var(--primary) / 0.08)" stroke="hsl(var(--primary) / 0.45)" strokeWidth="1.2" />
-        <text x="284" y="102" textAnchor="middle" fontSize="11" fill="hsl(var(--muted-foreground))">지급준비금</text>
-        <text x="284" y="127" textAnchor="middle" fontSize="19" fontWeight="700" fill={netCol}>{signed(net)}</text>
-        <text x="284" y="146" textAnchor="middle" fontSize="9" fill="hsl(var(--muted-foreground))">주간 변화</text>
-        {/* 좌변: 시스템 내 자리이동 4 */}
-        {items.map((it, i) => {
-          const col = it.eff >= 0 ? POS : NEG;
-          const my = (rowY[i] + endY[i]) / 2;
-          return (
-            <g key={it.name}>
-              <text x="2" y={rowY[i] + 3.5} fontSize="10.5" fill="hsl(var(--foreground))">{it.name}</text>
-              <text x="98" y={rowY[i] + 3.5} textAnchor="end" fontSize="10.5" fill="hsl(var(--muted-foreground))">{signed(it.own)}</text>
-              <line x1="102" y1={rowY[i]} x2="224" y2={endY[i]} stroke={col} strokeWidth="1.5" markerEnd={it.eff >= 0 ? "url(#ahG)" : "url(#ahR)"} opacity="0.9" />
-              <text x="163" y={my - 3} textAnchor="middle" fontSize="9.5" fontWeight="600" fill={col}>{signed(it.eff)}</text>
-            </g>
-          );
-        })}
-        {/* 위: 국채매입(QE) = 시스템 밖 신규 */}
-        <text x="284" y="12" textAnchor="middle" fontSize="9.5" fontWeight="600" fill={qeCol}>{qeLabel} {signed(qe)}</text>
-        <text x="284" y="23" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">시스템 밖에서 신규</text>
-        <line x1="284" y1="28" x2="284" y2="58" stroke={qeCol} strokeWidth="1.8" markerEnd={qe >= 0 ? "url(#ahG)" : "url(#ahR)"} />
-      </svg>
-      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-        {weekRange(prev.date, now.date)} · 전주 <b className="text-foreground">{T(prev.reserves)}</b> → 이번주 <b className="text-foreground">{T(now.reserves)}</b> · 최대 요인 <b className="text-foreground">{top.name} {signed(top.eff)}</b>
-      </div>
-      <div className="mt-1 text-[10.5px] text-muted-foreground">좌변 = 시스템 내 자리이동(항목 변화 → 준비금 효과) · 위 = 신규(QE). 화살표 <span className="text-emerald-500">초록=준비금↑</span>/<span className="text-red-500">빨강=준비금↓</span>.</div>
-    </div>
+    <svg viewBox={`0 0 ${W} 156`} className="w-full" style={{ maxHeight: 220 }}>
+      {/* 밴드 배경 + 헤더 */}
+      <rect x={bandA.x} y={12} width={bandA.w} height={yBot - 12 + 4} rx={4} fill={A_SOMA} opacity={0.07} />
+      <rect x={bandB.x} y={12} width={bandB.w} height={yBot - 12 + 4} rx={4} fill="#64748b" opacity={0.08} />
+      <text x={cx(0)} y={9} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">돈 총량</text>
+      <text x={(bandB.x + bandB.w / 2)} y={9} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">자리 이동 (총량 그대로)</text>
+      {/* 0 기준선 */}
+      <line x1={x0} y1={y0} x2={W - 4} y2={y0} stroke="hsl(var(--border))" strokeWidth={1} strokeDasharray="3 3" />
+
+      {/* 커넥터(누적 레벨 점선) — 요인 막대 사이 */}
+      {factors.slice(0, -1).map((_, i) => (
+        <line key={`c${i}`} x1={cx(i) + barW / 2} y1={y(to[i])} x2={cx(i + 1) - barW / 2} y2={y(to[i])}
+          stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.6} />
+      ))}
+
+      {bars.map((b) => {
+        const f0 = b.net ? 0 : from[b.i], f1 = b.net ? net : to[b.i];
+        const yA = y(Math.max(f0, f1)), yB = y(Math.min(f0, f1));
+        const h = Math.max(Math.abs(yB - yA), 1.5);
+        const color = b.net ? FLOW_NET : b.eff >= 0 ? FLOW_UP : FLOW_DN;
+        const rises = b.eff >= 0;
+        const valY = rises ? yA - 4 : yB + 11;          // 값 라벨은 막대 바깥쪽 끝(작은 막대도 안전)
+        const arrow = b.own >= 0 ? "↑" : "↓";
+        return (
+          <g key={b.key}>
+            <title>{b.net
+              ? `이번 주 지급준비금은 전주 대비 ${signed(net)} 변했어요 (전주 ${asMoney(prev.reserves)} → ${asMoney(now.reserves)})`
+              : flowSentence(b.key, b.name, b.own, b.eff)}</title>
+            <rect x={cx(b.i) - barW / 2} y={yA} width={barW} height={h} rx={2} fill={color}
+              opacity={b.net ? 0.95 : 0.9} style={{ transition: "y 0.3s ease, height 0.3s ease" }} />
+            {/* 층1: 준비금 효과(단일부호) */}
+            <text x={cx(b.i)} y={valY} textAnchor="middle" fontSize={10.5} fontWeight={700} fill={color}>{signed(b.eff)}</text>
+            {/* 층2: 이름 + 항목 자체 방향 */}
+            <text x={cx(b.i)} y={137} textAnchor="middle" fontSize={10} fill="hsl(var(--foreground))">
+              {b.name}{b.net ? "" : ` ${arrow}`}
+            </text>
+            {/* 층3: 한 단어 해설 */}
+            <text x={cx(b.i)} y={150} textAnchor="middle" fontSize={9.5} fill="hsl(var(--muted-foreground))">
+              {b.net ? "= 순변화" : flowGloss(b.key, b.own)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// 요약 문장(§2.4) — 순변화값에만 색.
+function FlowSummary({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
+  const factors = [
+    { key: "assets", name: "자산", eff: now.total - prev.total, asset: true },
+    { key: "tga", name: "TGA", eff: -(now.tga - prev.tga) },
+    { key: "rrp", name: "역레포", eff: -(now.rrp - prev.rrp) },
+    { key: "cur", name: "현금통화", eff: -(now.currency - prev.currency) },
+    { key: "other", name: "기타·자본", eff: -(now.liabResidual - prev.liabResidual) },
+  ];
+  const net = now.reserves - prev.reserves;
+  const netCol = net >= 0 ? FLOW_UP : FLOW_DN;
+  const assetEff = factors[0].eff;
+  const moves = factors.slice(1);
+  const moveTop = moves.reduce((m, x) => (Math.abs(x.eff) > Math.abs(m.eff) ? x : m), moves[0]);
+  const netChip = <b style={{ color: netCol }}>{signed(net)}</b>;
+
+  // 자산(QE)이 작고 자리이동이 지배하면 별도 템플릿.
+  if (Math.abs(assetEff) < Math.abs(moveTop.eff) * 0.5) {
+    return (
+      <p className="text-[12px] leading-relaxed text-muted-foreground">
+        이번 주 준비금 {netChip} — 새로 풀린 돈(QE)은 <b className="text-foreground">{signed(assetEff)}</b>뿐이고,
+        대부분은 <b className="text-foreground">{moveTop.name}</b>에서 옮겨온 돈이에요.
+      </p>
+    );
+  }
+  const byAbs = [...factors].sort((a, b) => Math.abs(b.eff) - Math.abs(a.eff));
+  const top = byAbs[0];
+  const opp = factors.filter((c) => Math.sign(c.eff) === -Math.sign(top.eff) && c.eff !== 0)
+    .sort((a, b) => Math.abs(b.eff) - Math.abs(a.eff))[0];
+  const won = net === 0 || Math.sign(top.eff) === Math.sign(net);
+  return (
+    <p className="text-[12px] leading-relaxed text-muted-foreground">
+      이번 주 준비금 {netChip} — <b className="text-foreground">{top.name}</b>({signed(top.eff)})이{" "}
+      {opp
+        ? <>{opp.name}({signed(opp.eff)})을 {won ? "이겼어요" : "못 이겼어요"}.</>
+        : <>상쇄 요인 없이 그대로 반영됐어요.</>}
+    </p>
   );
 }
 
@@ -229,8 +322,11 @@ export default function Fed() {
   const latest = weeks[weeks.length - 1];
   const lendAlert = latest.loans > 100_000; // >$1000억이면 경보(평상시 <$300억)
   // QT/QE 속도 = 선택 주차의 총자산 분기(13주) 변화를 월평균으로(musd/월). 기본=최신=현재.
+  //   국면(배지·푸터 공통 단일출처, §2.5): 월평균 ≥+$50억=QE / ≤−$50억=QT / 사이=중립.
+  //   임계 $50억(=5,000musd)은 0 근처에서 배지가 깜빡이지 않게 하는 데드밴드.
   const paceSel = curIdx >= 13 ? (weeks[curIdx].total - weeks[curIdx - 13].total) / 3 : NaN;
-  const easing = paceSel > 10_000, tightening = paceSel < -10_000; // ±$100억/월 데드밴드
+  const phase = !Number.isFinite(paceSel) ? "unknown" : paceSel >= 5_000 ? "QE" : paceSel <= -5_000 ? "QT" : "중립";
+  const phaseCol = phase === "QE" ? "text-emerald-500" : phase === "QT" ? "text-red-500" : "text-muted-foreground";
 
   return (
     <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
@@ -272,17 +368,33 @@ export default function Fed() {
           {sel && <TAccount w={sel} />}
         </Card>
         <Card className="p-3.5 flex flex-col">
-          <div className="mb-2 text-sm font-semibold">주간 준비금 변화 분해</div>
-          {sel && selPrev ? <DeltaBreakdown prev={selPrev} now={sel} /> : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
-          {/* QT/QE 속도 — 숫자 판독(그래프 없이). 선택 주차 기준. */}
-          <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-3">
-            <div>
-              <div className="text-[12px] font-semibold">QE / QT 속도</div>
-              <div className="text-[10.5px] text-muted-foreground">총자산 분기(13주) 변화·월평균 · <span className="text-emerald-500">0↑ QE</span> / <span className="text-red-500">0↓ QT</span></div>
+          {/* 헤더 + 국면 배지(13주 속도 파생) */}
+          <div className="mb-0.5 flex items-center justify-between gap-2">
+            <div className="text-sm font-semibold">주간 준비금 변화 분해</div>
+            <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${
+              phase === "QE" ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
+              : phase === "QT" ? "border-red-500/40 text-red-500 bg-red-500/10"
+              : "border-border text-muted-foreground"}`}>
+              {phase === "QE" ? "QE 국면" : phase === "QT" ? "QT 국면" : "중립"}
+            </span>
+          </div>
+          {/* 서브: 전주 → 이번주 · 억 달러 */}
+          {sel && selPrev && (
+            <div className="mb-1.5 text-[11px] text-muted-foreground tabular-nums">
+              {weekRange(selPrev.date, sel.date)} · 전주 <b className="text-foreground">{T(selPrev.reserves)}</b> → 이번주 <b className="text-foreground">{T(sel.reserves)}</b> · 단위 억 달러
             </div>
-            <div className={`text-right leading-tight ${easing ? "text-emerald-500" : tightening ? "text-red-500" : "text-muted-foreground"}`}>
-              <div className="text-xl font-bold tabular-nums">{Number.isFinite(paceSel) ? `${signed(paceSel)}/월` : "—"}</div>
-              <div className="text-[11px] font-semibold">{easing ? "QE (완화)" : tightening ? "QT (긴축)" : "중립"}</div>
+          )}
+          {sel && selPrev ? (
+            <>
+              <DeltaWaterfall prev={selPrev} now={sel} />
+              <div className="mt-1"><FlowSummary prev={selPrev} now={sel} /></div>
+            </>
+          ) : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
+          {/* QE/QT 속도 — 푸터 텍스트 한 줄(§2.5) */}
+          <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
+            <div className="text-[12px] text-muted-foreground">QE/QT 속도 <span className="text-[10.5px]">· 총자산 13주 변화 월평균</span></div>
+            <div className={`text-[13px] font-semibold tabular-nums ${phaseCol}`}>
+              {Number.isFinite(paceSel) ? `${signed(paceSel)}/월 ${phase === "중립" ? "중립" : phase}` : "—"}
             </div>
           </div>
         </Card>
