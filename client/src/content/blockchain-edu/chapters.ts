@@ -17,13 +17,23 @@ export interface ChapterMeta {
 export const CHAPTERS: Record<ChapterId, ChapterMeta> = {
   ch1: { id: "ch1", num: 1, title: "두 개의 층, 그리고 L2의 스펙트럼",
     blurb: "L1/L2 정의와 놀이공원 비유. L2는 단일 종이 아니다.",
-    steps: [{ text: "블록체인에는 두 개의 층이 있습니다. L1은 현금, L2는 놀이공원 선불 팔찌예요. 이 여정에서 돈이 층을 오가며 어떻게 수수료가 쪼개지는지 따라가 봅니다.", sceneId: "intro" }] },
+    steps: [
+      { text: "블록체인에는 두 개의 층이 있습니다. L1은 현금, L2는 놀이공원 선불 팔찌예요. 아래 토글로 같은 송금이 층에 따라 비용·속도가 어떻게 달라지는지 보세요.", sceneId: "ch1-toggle" },
+      { text: "그런데 L2는 단일 종이 아닙니다. 시퀀싱 정책·컴플라이언스·개방성은 각 운영사의 설계 선택지예요. 2026년의 L2 지형은 범용 체인을 넘어 기업 전용 체인의 시대입니다.", sceneId: "ch1-spectrum" },
+    ] },
   ch2: { id: "ch2", num: 2, title: "입금 — 락앤민트",
     blurb: "ETH가 L1에 잠기고 L2에서 사본이 발행된다.",
-    steps: [{ text: "코인이 이동하는 게 아니라, 담보로 잠기고 사본이 생깁니다.", sceneId: "lockmint" }] },
+    steps: [
+      { text: "L2에 돈을 넣으면 무슨 일이 일어날까요? 코인이 이동하는 게 아니라, L1 브릿지 컨트랙트에 담보로 잠기고 L2에서 사본이 발행됩니다. '입금 실행'을 눌러보세요.", sceneId: "ch2-lockmint" },
+    ] },
   ch3: { id: "ch3", num: 3, title: "L2의 작동원리 — 시퀀서·압축·블롭",
     blurb: "순서 결정권, 압축, 블롭 수수료 바닥의 패러독스.",
-    steps: [{ text: "시퀀서는 배치를 쌓을 뿐 아니라 '순서를 정하는 권력'을 가집니다. 압축된 배치는 블롭에 담겨 L1에 실리고, 블롭 수수료는 종종 바닥에 고착됩니다.", sceneId: "sequencer" }] },
+    steps: [
+      { text: "시퀀서는 배치를 쌓을 뿐 아니라 '순서를 정하는 권력'을 가집니다. FCFS와 가스 경매를 토글해, MEV(프론트러닝)가 왜 생기고 어떤 설계가 막는지 체험하세요.", sceneId: "ch3-sequencer" },
+      { text: "묶인 배치는 압축됩니다 — 서명을 제거하고 state diff만 남겨 바이트 수를 확 줄여요.", sceneId: "ch3-compression" },
+      { text: "압축된 배치는 128KB 블롭에 담겨 L1 블록에 실립니다. 18.2일이 지나면 데이터는 사라지고 KZG 커밋먼트(지문)만 남아요.", sceneId: "ch3-blobtimeline" },
+      { text: "블롭은 가스와 분리된 독립 fee 시장입니다. 수요를 타깃(14) 아래로 두면 base fee가 1 wei 바닥에 고착돼요. 이게 'L2 정산비가 거의 공짜'인 구조적 이유입니다.", sceneId: "ch3-blobfloor" },
+    ] },
   ch4: { id: "ch4", num: 4, title: "수수료의 해부",
     blurb: "입금·스왑·송금·출금의 수수료가 누구에게 가는가. 소액↔거액 역전.",
     steps: [{ text: "같은 거래라도 소액일 땐 가스(고정비)가, 거액일 땐 슬리피지·LP(비례비)가 지배합니다. 금액 슬라이더로 그 역전을 직접 느껴보세요.", sceneId: "anatomy" }] },

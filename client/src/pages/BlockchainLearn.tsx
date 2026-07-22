@@ -11,6 +11,7 @@ import ChapterShell from "@/components/blockchain-edu/ChapterShell";
 import AmountSlider from "@/components/blockchain-edu/AmountSlider";
 import FeeStackBar from "@/components/blockchain-edu/FeeStackBar";
 import MoneyFlowPanel from "@/components/blockchain-edu/MoneyFlowPanel";
+import { SCENES } from "@/components/blockchain-edu/scenes";
 
 const ACTIONS: ActionKind[] = ["bridgeDeposit", "l2Swap", "l2Transfer", "withdraw", "hold"];
 
@@ -23,6 +24,9 @@ function EduInner() {
 
   const splits = useMemo(() => actionSplits(action, state.amountUSD), [action, state.amountUSD]);
   const flowKey = `${action}-${state.amountUSD}`;
+
+  const curStep = active.steps[Math.min(step, active.steps.length - 1)];
+  const Scene = curStep?.sceneId ? SCENES[curStep.sceneId] : undefined;
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-4">
@@ -62,6 +66,7 @@ function EduInner() {
         step={step}
         onPrev={() => setStep(activeId, Math.max(0, step - 1))}
         onNext={() => setStep(activeId, Math.min(active.steps.length - 1, step + 1))}
+        stage={Scene ? <Scene /> : undefined}
         bottom={<FeeStackBar splits={splits} />}
       />
 
