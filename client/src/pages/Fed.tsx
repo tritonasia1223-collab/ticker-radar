@@ -357,7 +357,7 @@ export default function Fed() {
         <Card className="p-3.5 flex flex-col">
           {/* 헤더 + 국면 배지(13주 속도 파생) */}
           <div className="mb-0.5 flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold">주간 준비금 변화 분해</div>
+            <div className="text-sm font-semibold">주간 준비금 변화 추이</div>
             <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${
               phase === "QE" ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
               : phase === "QT" ? "border-red-500/40 text-red-500 bg-red-500/10"
@@ -380,12 +380,12 @@ export default function Fed() {
           {/* QE/QT 속도 — 워터폴과 동일 층위의 별도 섹션(타이틀 부여, §2.5) */}
           <div className="mt-auto border-t border-border pt-2.5">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold">QE / QT 속도</div>
+              <div className="text-sm font-semibold">월간 준비금 변화 추이</div>
               <div className={`text-[15px] font-bold tabular-nums ${phaseCol}`}>
                 {Number.isFinite(paceSel) ? `${signed(paceSel)}/월 · ${phase}` : "—"}
               </div>
             </div>
-            <div className="text-[11px] text-muted-foreground">총자산 13주 변화 월평균 · ±$50억 데드밴드</div>
+            <div className="text-[11px] text-muted-foreground">현재 QE 중인지, QT 중인지 파악합니다 (최근 13주 기준)</div>
           </div>
         </Card>
       </div>
