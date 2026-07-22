@@ -2,7 +2,7 @@
 //   스코프 라이트 테마(.edu-light) + JourneyProvider + 챕터 네비 + ChapterShell +
 //   상시 패널(AmountSlider·FeeStackBar·MoneyFlowPanel). 씬 애니메이션은 Phase 3~5.
 import { useMemo, useState } from "react";
-import { RotateCcw, Save } from "lucide-react";
+import { RotateCcw, Save, Check } from "lucide-react";
 import { JourneyProvider, useJourney } from "@/lib/blockchain-edu/journeyState";
 import { CHAPTER_LIST } from "@/content/blockchain-edu/chapters";
 import type { ChapterId } from "@/lib/blockchain-edu/types";
@@ -42,19 +42,24 @@ function EduInner() {
         </button>
       </header>
 
-      {/* 상단 고정: 금액 슬라이더 */}
-      <AmountSlider />
+      {/* 상단 고정(sticky): 금액 슬라이더 — 씬을 스크롤해도 항상 보임 */}
+      <div className="sticky top-0 z-20 -mx-4 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm md:-mx-6 md:px-6">
+        <AmountSlider />
+      </div>
 
       {/* 챕터 네비 */}
       <nav className="flex gap-2 overflow-x-auto pb-1">
         {CHAPTER_LIST.map((c) => {
           const on = c.id === activeId;
+          const done = c.steps.length > 1 && (state.chapterProgress[c.id] ?? 0) >= c.steps.length - 1;
           return (
             <button key={c.id} onClick={() => setActiveId(c.id)}
               className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
                 on ? "border-primary bg-primary/10" : "border-border hover:bg-accent"}`}>
               <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
-                on ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{c.num}</span>
+                on ? "bg-primary text-primary-foreground" : done ? "bg-emerald-500 text-white" : "bg-secondary text-secondary-foreground"}`}>
+                {done && !on ? <Check className="h-3.5 w-3.5" /> : c.num}
+              </span>
               <span className="text-[12px] font-medium whitespace-nowrap">{c.title.split(" — ")[0]}</span>
             </button>
           );
