@@ -5,17 +5,17 @@ import type { FeeSplit } from "@/lib/blockchain-edu/feeEngine";
 import { recipientPalette, RECIPIENT_META } from "@/lib/blockchain-edu/layers";
 import { fmtUSD, fmtUSDprecise, fmtPct } from "@/lib/blockchain-edu/format";
 
-export default function FeeStackBar({ splits }: { splits: FeeSplit[] }) {
+export default function FeeStackBar({ splits, title = "수수료 구성" }: { splits: FeeSplit[]; title?: string }) {
   const reduce = useReducedMotion();
   const total = splits.reduce((s, x) => s + x.amountUSD, 0);
   const sorted = [...splits].filter((s) => s.amountUSD > 0).sort((a, b) => b.amountUSD - a.amountUSD);
 
-  if (total <= 0) return <div className="text-[11px] text-muted-foreground">수수료 없음</div>;
+  if (total <= 0) return <div className="text-[11px] text-muted-foreground">{title} · 수수료 없음</div>;
 
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[11px] text-muted-foreground">수수료 구성</span>
+        <span className="text-[11px] text-muted-foreground">{title}</span>
         <span className="text-[12px] font-semibold tabular-nums">총 {fmtUSDprecise(total)}</span>
       </div>
       <div className="flex h-6 w-full overflow-hidden rounded-md">

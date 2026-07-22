@@ -1,7 +1,7 @@
 // 블록체인 학습 탭(/learn/blockchain) — Phase 1 프레임 + Phase 2 상시 UI.
 //   스코프 라이트 테마(.edu-light) + JourneyProvider + 챕터 네비 + ChapterShell +
 //   상시 패널(AmountSlider·FeeStackBar·MoneyFlowPanel). 씬 애니메이션은 Phase 3~5.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Save, Check } from "lucide-react";
 import { JourneyProvider, useJourney } from "@/lib/blockchain-edu/journeyState";
 import { CHAPTER_LIST } from "@/content/blockchain-edu/chapters";
@@ -15,10 +15,18 @@ import { SCENES } from "@/components/blockchain-edu/scenes";
 
 const ACTIONS: ActionKind[] = ["bridgeDeposit", "l2Swap", "l2Transfer", "withdraw", "hold"];
 
+// 챕터별로 문맥에 맞는 거래를 기본 선택(하단 패널이 챕터 주제와 연결되도록). 사용자는 언제든 바꿀 수 있음.
+const CHAPTER_DEFAULT_ACTION: Record<ChapterId, ActionKind> = {
+  ch1: "l2Swap", ch2: "bridgeDeposit", ch3: "l2Swap", ch4: "l2Swap",
+  ch5: "withdraw", ch6: "bridgeDeposit", ch7: "hold", ch8: "l2Swap",
+};
+
 function EduInner() {
   const { state, setStep, reset, addLedger } = useJourney();
   const [activeId, setActiveId] = useState<ChapterId>("ch1");
   const [action, setAction] = useState<ActionKind>("l2Swap");
+  // 챕터를 바꾸면 그 챕터의 기본 거래로 전환(문맥 연결). 챕터 내에서는 사용자가 자유롭게 재선택.
+  useEffect(() => { setAction(CHAPTER_DEFAULT_ACTION[activeId]); }, [activeId]);
   const active = CHAPTER_LIST.find((c) => c.id === activeId) ?? CHAPTER_LIST[0];
   const step = state.chapterProgress[activeId] ?? 0;
 
@@ -72,14 +80,14 @@ function EduInner() {
         onPrev={() => setStep(activeId, Math.max(0, step - 1))}
         onNext={() => setStep(activeId, Math.min(active.steps.length - 1, step + 1))}
         stage={Scene ? <Scene /> : undefined}
-        bottom={<FeeStackBar splits={splits} />}
+        bottom={<FeeStackBar splits={splits} title={`${ACTION_LABEL[action]} 수수료 구성`} />}
       />
 
       {/* 상시: 돈의 행방 */}
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <h3 className="text-[14px] font-bold">돈의 행방</h3>
+            <h3 className="text-[14px] font-bold">돈의 행방 <span className="text-[11.5px] font-normal text-muted-foreground">· 현재 거래: <b className="text-foreground">{ACTION_LABEL[action]}</b></span></h3>
             <p className="text-[11px] text-muted-foreground">거래 종류를 고르고 금액을 바꿔 수수료가 누구에게 가는지 보세요.</p>
           </div>
           <div className="flex items-center gap-1.5">
