@@ -148,12 +148,6 @@ function TAccount({ w }: { w: WeekPoint }) {
 //   밴드A(자산)=돈 총량 창조/소멸(QE/QT) · 밴드B(4개)=기존 돈의 자리이동 · 순변화 막대는 밴드 밖(결과).
 const FLOW_UP = POS, FLOW_DN = NEG, FLOW_NET = L_RES; // 유입 green / 유출 red / 순변화 purple
 
-// 3층 라벨의 해설 단어(§2.3) — 항목 자체 방향 기준.
-function flowGloss(key: string, own: number): string {
-  if (key === "assets") return own >= 0 ? "QE · 새 돈" : "QT · 회수";
-  if (key === "cur") return own >= 0 ? "현찰 인출" : "현찰 환수";
-  return own <= 0 ? "빠져나옴" : "주차됨"; // 부채 감소=준비금 유입 / 증가=유출
-}
 // hover 툴팁 풀문장(§2.3).
 function flowSentence(key: string, name: string, own: number, eff: number): string {
   const amt = asMoney(Math.abs(own)), e = asMoney(Math.abs(eff));
@@ -204,7 +198,7 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   bars.push({ i: 5, key: "net", name: "준비금 변화", own: net, eff: net, net: true });
 
   return (
-    <svg viewBox={`0 0 ${W} 156`} className="w-full" style={{ maxHeight: 220 }}>
+    <svg viewBox={`0 0 ${W} 146`} className="w-full" style={{ maxHeight: 210 }}>
       {/* 밴드 배경 + 헤더 */}
       <rect x={bandA.x} y={12} width={bandA.w} height={yBot - 12 + 4} rx={4} fill={A_SOMA} opacity={0.07} />
       <rect x={bandB.x} y={12} width={bandB.w} height={yBot - 12 + 4} rx={4} fill="#64748b" opacity={0.08} />
@@ -226,7 +220,6 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
         const color = b.net ? FLOW_NET : b.eff >= 0 ? FLOW_UP : FLOW_DN;
         const rises = b.eff >= 0;
         const valY = rises ? yA - 4 : yB + 11;          // 값 라벨은 막대 바깥쪽 끝(작은 막대도 안전)
-        const arrow = b.own >= 0 ? "↑" : "↓";
         return (
           <g key={b.key}>
             <title>{b.net
@@ -234,16 +227,10 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
               : flowSentence(b.key, b.name, b.own, b.eff)}</title>
             <rect x={cx(b.i) - barW / 2} y={yA} width={barW} height={h} rx={2} fill={color}
               opacity={b.net ? 0.95 : 0.9} style={{ transition: "y 0.3s ease, height 0.3s ease" }} />
-            {/* 층1: 준비금 효과(단일부호) */}
+            {/* 준비금 효과값(단일부호) */}
             <text x={cx(b.i)} y={valY} textAnchor="middle" fontSize={10.5} fontWeight={700} fill={color}>{signed(b.eff)}</text>
-            {/* 층2: 이름 + 항목 자체 방향 */}
-            <text x={cx(b.i)} y={137} textAnchor="middle" fontSize={10} fill="hsl(var(--foreground))">
-              {b.name}{b.net ? "" : ` ${arrow}`}
-            </text>
-            {/* 층3: 한 단어 해설 */}
-            <text x={cx(b.i)} y={150} textAnchor="middle" fontSize={9.5} fill="hsl(var(--muted-foreground))">
-              {b.net ? "= 순변화" : flowGloss(b.key, b.own)}
-            </text>
+            {/* 이름만 — 화살표·해설줄 제거(상세는 hover 툴팁). */}
+            <text x={cx(b.i)} y={138} textAnchor="middle" fontSize={10} fill="hsl(var(--foreground))">{b.name}</text>
           </g>
         );
       })}
@@ -390,12 +377,15 @@ export default function Fed() {
               <div className="mt-1"><FlowSummary prev={selPrev} now={sel} /></div>
             </>
           ) : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
-          {/* QE/QT 속도 — 푸터 텍스트 한 줄(§2.5) */}
-          <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
-            <div className="text-[12px] text-muted-foreground">QE/QT 속도 <span className="text-[10.5px]">· 총자산 13주 변화 월평균</span></div>
-            <div className={`text-[13px] font-semibold tabular-nums ${phaseCol}`}>
-              {Number.isFinite(paceSel) ? `${signed(paceSel)}/월 ${phase === "중립" ? "중립" : phase}` : "—"}
+          {/* QE/QT 속도 — 워터폴과 동일 층위의 별도 섹션(타이틀 부여, §2.5) */}
+          <div className="mt-auto border-t border-border pt-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold">QE / QT 속도</div>
+              <div className={`text-[15px] font-bold tabular-nums ${phaseCol}`}>
+                {Number.isFinite(paceSel) ? `${signed(paceSel)}/월 · ${phase}` : "—"}
+              </div>
             </div>
+            <div className="text-[11px] text-muted-foreground">총자산 13주 변화 월평균 · ±$50억 데드밴드</div>
           </div>
         </Card>
       </div>
