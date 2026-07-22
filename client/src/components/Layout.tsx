@@ -1,11 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2 } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 
 const NAV = [
   { href: "/capitalism", label: "자본주의 경제사", icon: History },
   { href: "/fed", label: "Fed 대차대조표", icon: Building2 },
+  { href: "/learn/blockchain", label: "블록체인 구조", icon: Blocks },
   { href: "/", label: "종목 발견", icon: Radar },
   { href: "/accounts", label: "추적 계정", icon: Users },
   { href: "/congress", label: "정치인 거래", icon: Landmark },

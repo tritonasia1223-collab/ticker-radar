@@ -329,3 +329,35 @@
 @media (prefers-reduced-motion: reduce) {
   .cap-star-neon { animation: none; filter: drop-shadow(0 0 3px rgba(239,68,68,0.8)); }
 }
+
+/* ── 블록체인 학습 탭(/learn/blockchain) 스코프 라이트 테마 ──
+   전역 .dark 여부와 무관하게 이 서브트리만 밝은 교육 톤. CSS 변수는 가장 가까운 조상이 이기므로
+   .edu-light 래퍼가 .dark(html)를 덮어쓴다. 콘텐츠 관련 토큰만 라이트값으로 재선언(사이드바 제외). */
+.edu-light {
+  --button-outline: rgba(0, 0, 0, 0.1);
+  --badge-outline: rgba(0, 0, 0, 0.05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0, 0, 0, 0.03);
+  --elevate-2: rgba(0, 0, 0, 0.08);
+  --background: 0 0% 100%;
+  --foreground: 222 20% 18%;
+  --border: 0 0% 90%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 20% 18%;
+  --card-border: 0 0% 92%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 20% 18%;
+  --popover-border: 0 0% 90%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 222 20% 18%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 20% 94%;
+  --accent-foreground: 222 20% 18%;
+  --input: 0 0% 82%;
+  --ring: 221 83% 53%;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+}
