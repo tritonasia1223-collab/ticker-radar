@@ -6,7 +6,8 @@ import { useTheme } from "@/components/ThemeProvider";
 const NAV = [
   { href: "/capitalism", label: "자본주의 경제사", icon: History },
   { href: "/fed", label: "Fed 대차대조표", icon: Building2 },
-  { href: "/learn/blockchain", label: "블록체인 구조", icon: Blocks },
+  // 블록체인 구조 — 작업 일시 중단(paused). nav 에서 숨김. 라우트·페이지·엔진·테스트는 그대로 두고 재개 시 주석 해제.
+  // { href: "/learn/blockchain", label: "블록체인 구조", icon: Blocks },
   { href: "/", label: "종목 발견", icon: Radar },
   { href: "/accounts", label: "추적 계정", icon: Users },
   { href: "/congress", label: "정치인 거래", icon: Landmark },
