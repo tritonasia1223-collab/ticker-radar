@@ -14,13 +14,21 @@ export interface CapInsightChart {
   from: number;    // 소수 연도(시작)
   to: number;      // 소수 연도(끝)
 }
-// 본문 블록 — 텍스트/표/이미지/그래프를 순서대로 섞어 배치(글 중간 삽입·재배치).
+// HTML 미니앱 블록 — 임의 HTML/JS(예: D3 지도). sandbox iframe(allow-scripts, same-origin 없음)로 격리 렌더.
+//   src 는 HTML 조각 또는 완결 문서. height 는 iframe 픽셀 높이(폭은 100% 반응형).
+export interface CapHtmlData {
+  src: string;      // HTML 문자열(외부 CDN 스크립트 허용 — 격리 iframe에서 실행)
+  height?: number;  // iframe 높이(px), 기본 560
+}
+
+// 본문 블록 — 텍스트/표/이미지/그래프/HTML미니앱을 순서대로 섞어 배치(글 중간 삽입·재배치).
 //   blocks 가 있으면 본문의 단일 출처(순서 보존). 없으면 레거시(text+tables+charts/images)에서 파생.
 export type CapBlock =
   | { type: "text"; text: string }            // 리치텍스트 마커 문자열
   | { type: "table"; table: CapTableData }
   | { type: "image"; image: CapImageData }
-  | { type: "chart"; chart: CapInsightChart };
+  | { type: "chart"; chart: CapInsightChart }
+  | { type: "html"; html: CapHtmlData };
 
 export interface CapInsight {
   text: string;              // 리치텍스트 마커 문자열(레거시·검색용; blocks 의 텍스트 블록 합본)

@@ -2,14 +2,14 @@
 // 배치한다. 블록 사이/끝에 삽입, 각 블록 ↑↓ 재배치·삭제, 이미지 붙여넣기(Ctrl+V) 지원.
 // 사건 인사이트와 메타카드가 공유(allow 로 허용 블록 타입만 노출).
 import { useRef, useState } from "react";
-import { ArrowUp, ArrowDown, X, Plus, Type as TypeIcon, Table as TableIcon, ImagePlus, LineChart as ChartIcon } from "lucide-react";
+import { ArrowUp, ArrowDown, X, Plus, Type as TypeIcon, Table as TableIcon, ImagePlus, LineChart as ChartIcon, Code2 } from "lucide-react";
 import { CapRichEditor, type CapRichEditorHandle } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { PANELS, toFracYear } from "@/lib/capitalism-config";
 import { plainText } from "@/lib/capitalism-richtext";
-import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, CapImageData, FlowNodeDTO } from "@/lib/capitalism-types";
+import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, CapImageData, CapHtmlData, FlowNodeDTO } from "@/lib/capitalism-types";
 import seriesData from "@/data/capitalism-series.json";
 
 const SERIES = seriesData as unknown as Record<string, [string, number][]>;
@@ -91,7 +91,21 @@ export function blocksToMetaFields(blocks: CapBlock[]): Pick<CapMetaCard, "text"
   };
 }
 
-interface AllowBlocks { text?: boolean; table?: boolean; image?: boolean; chart?: boolean }
+interface AllowBlocks { text?: boolean; table?: boolean; image?: boolean; chart?: boolean; html?: boolean }
+
+// ──────── HTML 미니앱 뷰 ──────── 임의 HTML/JS 를 sandbox iframe(allow-scripts, same-origin 없음)으로
+//   격리 렌더 — iframe 은 앱 오리진과 분리(부모 DOM·쿠키·localStorage 접근 불가). 외부 CDN 스크립트는 허용.
+//   src 에 <html> 이 있으면 그대로, 없으면 최소 문서 셸로 감싼다(폭 100% 반응형, 높이 픽셀 고정).
+function HtmlBlockView({ html }: { html: CapHtmlData }) {
+  const doc = /<html[\s>]/i.test(html.src)
+    ? html.src
+    : `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#fff;color:#1c1917}</style></head><body>${html.src}</body></html>`;
+  return (
+    <iframe title="mini-app" srcDoc={doc} sandbox="allow-scripts" loading="lazy"
+      className="block w-full rounded-md border border-border/50 bg-white"
+      style={{ height: html.height ?? 560 }} />
+  );
+}
 
 // 읽기 전용 참고 그래프(컨트롤 없이 차트 + 라벨). mark>0 이면 사건 시점 점선 마커.
 function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: number }) {
@@ -147,6 +161,7 @@ export function BlockStack({
     const ey = Math.floor(eventFrac ?? 1980);
     return { type: "chart", chart: { series: key, from: Math.max(firstYearOf(key), ey - 5), to: Math.min(lastYearOf(key), ey + 5) } };
   };
+  const newHtml = (): CapBlock => ({ type: "html", html: { src: "", height: 560 } });
 
   // 파일 선택 → 축소 후 pendingPos 에 이미지 블록(여러 장) 삽입.
   const openFilePicker = (pos: number) => { pendingPosRef.current = pos; fileRef.current?.click(); };
@@ -225,6 +240,7 @@ export function BlockStack({
         {allow.table ? <button type="button" onClick={() => insertAt(pos, newTable())} className={btn} data-testid={`block-add-table-${pos}`}><TableIcon className="h-3.5 w-3.5" /> 표</button> : null}
         {allow.image ? <button type="button" onClick={() => openFilePicker(pos)} className={btn} data-testid={`block-add-image-${pos}`}><ImagePlus className="h-3.5 w-3.5" /> 이미지</button> : null}
         {allow.chart ? <button type="button" onClick={() => insertAt(pos, newChart())} className={btn} data-testid={`block-add-chart-${pos}`}><ChartIcon className="h-3.5 w-3.5" /> 그래프</button> : null}
+        {allow.html ? <button type="button" onClick={() => insertAt(pos, newHtml())} className={btn} data-testid={`block-add-html-${pos}`}><Code2 className="h-3.5 w-3.5" /> 미니앱</button> : null}
       </>
     );
     if (main) return <div className="flex flex-wrap items-center justify-center gap-1 pt-0.5">{buttons}{allow.image ? <span className="ml-1 text-[10px] text-muted-foreground/60">또는 Ctrl+V 붙여넣기</span> : null}</div>;
@@ -258,6 +274,29 @@ export function BlockStack({
     }
     if (b.type === "image") {
       return <img src={b.image.src} alt={b.image.alt ?? ""} className="block w-full h-auto rounded-md border border-border/50" />;
+    }
+    if (b.type === "html") {
+      if (!editing) return <HtmlBlockView html={b.html} />;
+      const h = b.html;
+      const patch = (p: Partial<CapHtmlData>, doCommit: boolean) =>
+        onChange(blocks.map((x, j) => (j === i ? { type: "html", html: { ...h, ...p } } : x)), doCommit);
+      return (
+        <div className="space-y-1.5 rounded-md border border-border/60 bg-background/40 p-2">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Code2 className="h-3.5 w-3.5" /> HTML 미니앱 <span className="text-[10px]">(sandbox 격리·외부 CDN 허용)</span>
+            <label className="ml-auto flex items-center gap-1">높이
+              <input type="number" value={h.height ?? 560} min={120} max={2000}
+                onChange={(e) => patch({ height: Number(e.target.value) || 560 }, false)} onBlur={() => onChange(blocks, true)}
+                className="w-16 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-foreground" />
+            </label>
+          </div>
+          <textarea value={h.src} onChange={(e) => patch({ src: e.target.value }, false)} onBlur={() => onChange(blocks, true)}
+            rows={6} spellCheck={false} data-testid={`block-html-src-${i}`}
+            placeholder="<div>…</div> + <script>…</script>  (D3 등 외부 CDN 스크립트 가능)"
+            className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono text-[11px] leading-snug text-foreground" />
+          {h.src.trim() ? <HtmlBlockView html={h} /> : <div className="py-3 text-center text-[11px] text-muted-foreground">미리보기 — HTML을 입력하세요</div>}
+        </div>
+      );
     }
     // chart
     if (!editing) return <InsightChartView chart={b.chart} mark={eventFrac} />;

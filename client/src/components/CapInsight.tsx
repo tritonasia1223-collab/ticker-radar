@@ -105,7 +105,7 @@ export function InsightPanel({
             이 사건과 <b className="text-foreground/80">지금</b>을 어떻게 연결할 수 있을까? — 과거↔현재 인사이트
           </div>
           <BlockStack
-            blocks={blocks} editing allow={{ text: true, table: true, image: true, chart: true }}
+            blocks={blocks} editing allow={{ text: true, table: true, image: true, chart: true, html: true }}
             eventFrac={eventFrac} onChange={handleChange}
           />
         </>
@@ -182,7 +182,7 @@ function MetaCard({ card, onChange, onDelete, onJump }: {
 
       {editing ? (
         <BlockStack
-          blocks={blocks} editing allow={{ text: true, table: true, image: true }}
+          blocks={blocks} editing allow={{ text: true, table: true, image: true, html: true }}
           onChange={handleChange} onJump={onJump}
         />
       ) : hasVisibleBlock(blocks) ? (

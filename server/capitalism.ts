@@ -26,11 +26,13 @@ export interface FlowEdgeDTO { from: string; to: string }
 // 사건 인사이트 — 본문 블록(텍스트/표/이미지/그래프 순서 혼합) + 레거시 평면 필드.
 export interface CapInsightChart { series: string; from: number; to: number }
 export interface CapImageData { src: string; alt?: string }
+export interface CapHtmlData { src: string; height?: number }
 export type CapBlock =
   | { type: "text"; text: string }
   | { type: "table"; table: CapTableData }
   | { type: "image"; image: CapImageData }
-  | { type: "chart"; chart: CapInsightChart };
+  | { type: "chart"; chart: CapInsightChart }
+  | { type: "html"; html: CapHtmlData };
 export interface CapInsight { text: string; charts: CapInsightChart[]; tables?: CapTableData[]; blocks?: CapBlock[] }
 export interface FlowDTO {
   id: number;
@@ -94,6 +96,8 @@ function sanitizeBlock(b: any): CapBlock | null {
     ? { type: "image", image: { src: String(b.image.src), ...(typeof b.image.alt === "string" ? { alt: b.image.alt } : {}) } } : null;
   if (b.type === "chart") return b.chart && typeof b.chart.series === "string"
     ? { type: "chart", chart: { series: String(b.chart.series), from: Number(b.chart.from) || 0, to: Number(b.chart.to) || 0 } } : null;
+  if (b.type === "html") return b.html && typeof b.html.src === "string"
+    ? { type: "html", html: { src: String(b.html.src), ...(Number(b.html.height) ? { height: Number(b.html.height) } : {}) } } : null;
   return null;
 }
 
