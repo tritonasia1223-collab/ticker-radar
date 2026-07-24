@@ -719,7 +719,7 @@ export default function Capitalism() {
                           </div>
                           {/* 카드 옆 인사이트(메모형) — 블러된 그래프 위에 얹힌다 */}
                           {showBesideInsight ? (
-                            <div className="relative z-10 flex-1 min-w-[440px] max-w-[820px] pt-6">
+                            <div className="relative z-10 flex-1 min-w-[900px] max-w-[1400px] pt-6">
                               <InsightPanel flow={f} variant="inline" onCommit={onCommitInsight} onClose={exitInsightMode} />
                             </div>
                           ) : null}
