@@ -93,15 +93,19 @@ export function blocksToMetaFields(blocks: CapBlock[]): Pick<CapMetaCard, "text"
 
 interface AllowBlocks { text?: boolean; table?: boolean; image?: boolean; chart?: boolean; html?: boolean }
 
-// ──────── HTML 미니앱 뷰 ──────── 임의 HTML/JS 를 sandbox iframe(allow-scripts, same-origin 없음)으로
-//   격리 렌더 — iframe 은 앱 오리진과 분리(부모 DOM·쿠키·localStorage 접근 불가). 외부 CDN 스크립트는 허용.
+// ──────── HTML 미니앱 뷰 ──────── 임의 HTML/JS 를 sandbox iframe 으로 렌더.
+//   ⚠ sandbox 에 allow-same-origin 이 필요한 이유: 이 미니앱들은 외부 데이터를 fetch 한다(예: D3 지도가
+//   jsdelivr 의 TopoJSON 을 d3.json 으로 로드). opaque-origin(allow-same-origin 없음) 에서는 크로스오리진
+//   fetch 가 브라우저에 막혀 데이터가 안 온다(스크립트 로드는 되지만 fetch 는 실패 → 지도 빈 화면).
+//   allow-same-origin 을 주면 스크립트가 부모(앱)에도 접근 가능해지므로, '신뢰된 편집자(대시보드 소유자)'가
+//   직접 넣는 미니앱에 한해 사용한다. 제3자 UGC 를 붙이는 용도가 아님.
 //   src 에 <html> 이 있으면 그대로, 없으면 최소 문서 셸로 감싼다(폭 100% 반응형, 높이 픽셀 고정).
 function HtmlBlockView({ html }: { html: CapHtmlData }) {
   const doc = /<html[\s>]/i.test(html.src)
     ? html.src
     : `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#fff;color:#1c1917}</style></head><body>${html.src}</body></html>`;
   return (
-    <iframe title="mini-app" srcDoc={doc} sandbox="allow-scripts" loading="lazy"
+    <iframe title="mini-app" srcDoc={doc} sandbox="allow-scripts allow-same-origin" loading="lazy"
       className="block w-full rounded-md border border-border/50 bg-white"
       style={{ height: html.height ?? 560 }} />
   );
