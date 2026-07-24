@@ -101,12 +101,14 @@ interface AllowBlocks { text?: boolean; table?: boolean; image?: boolean; chart?
 //   직접 넣는 미니앱에 한해 사용한다. 제3자 UGC 를 붙이는 용도가 아님.
 //   src 에 <html> 이 있으면 그대로, 없으면 최소 문서 셸로 감싼다(폭 100% 반응형, 높이 픽셀 고정).
 function HtmlBlockView({ html }: { html: CapHtmlData }) {
+  // 배경 transparent — 카드 배경이 그대로 비쳐 자연스럽게 어우러진다(테마도 자동 추종). 테두리 없음.
+  //   흰 배경/테두리가 필요한 블록은 자체 HTML 에서 지정하면 됨.
   const doc = /<html[\s>]/i.test(html.src)
     ? html.src
-    : `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#fff;color:#1c1917}</style></head><body>${html.src}</body></html>`;
+    : `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:transparent;color:inherit}</style></head><body>${html.src}</body></html>`;
   return (
     <iframe title="mini-app" srcDoc={doc} sandbox="allow-scripts allow-same-origin" loading="lazy"
-      className="block w-full rounded-md border border-border/50 bg-white"
+      className="block w-full rounded-md bg-transparent"
       style={{ height: html.height ?? 560 }} />
   );
 }
