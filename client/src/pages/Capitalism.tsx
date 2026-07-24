@@ -7,7 +7,7 @@ import { motion, AnimatePresence, useReducedMotion, LayoutGroup } from "framer-m
 import { spring, fadeRise, reducedTransition } from "@/lib/motion-presets";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Undo2, X } from "lucide-react";
+import { Plus, Undo2, X, CornerUpLeft } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
@@ -84,6 +84,9 @@ export default function Capitalism() {
   const [editingId, setEditingId] = useState<string | null>(null);
   // '모아보기'에서 편집 클릭 → 타임라인으로 전환 후 '그 카드'로 스크롤할 대상 slug(보드 마운트 뒤 처리).
   const [pendingJump, setPendingJump] = useState<string | null>(null);
+  // 링크 점프 되돌아가기 스택 — 링크 클릭 시 직전 {스크롤위치, playYear} 를 쌓아, "돌아가기"로 되돌린다.
+  //   체인 점프(A→B→C) 도 한 단계씩 거슬러 올라감. 타임라인을 떠나면(모아보기 전환) 위치가 무효라 비운다.
+  const [backStack, setBackStack] = useState<{ top: number; year: number }[]>([]);
   // 세로 타임라인 스크롤 컨테이너 ref — 스크롤 위치 ↔ playYear 동기화 + 화살표 오버레이 기준.
   const boardRef = useRef<HTMLDivElement | null>(null);
   // 프로그램이 스크롤을 움직이는 동안엔 스크롤→playYear 역동기화를 잠가 피드백 루프를 막는다.
@@ -246,6 +249,32 @@ export default function Capitalism() {
     programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
     board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
   }, [flows, fromY, toY, seekToYear]);
+
+  // 링크 클릭용 래퍼 — 점프 '직전' 위치를 스택에 쌓은 뒤 이동(그래야 "돌아가기"로 원위치 복귀).
+  //   pending-jump(모아보기 전환)는 raw jumpToSlug 를 그대로 써서 스택에 안 쌓인다(뷰 전환이라 무의미).
+  const jumpWithHistory = useCallback((slug: string) => {
+    const board = boardRef.current;
+    if (board) setBackStack((s) => [...s, { top: board.scrollTop, year: playYear }]);
+    jumpToSlug(slug);
+  }, [jumpToSlug, playYear]);
+
+  // "돌아가기" — 스택 최상단으로 스크롤·playYear 복원 후 pop.
+  const goBack = useCallback(() => {
+    const prev = backStack[backStack.length - 1];
+    if (!prev) return;
+    setBackStack((s) => s.slice(0, -1));
+    const board = boardRef.current;
+    if (board) {
+      programScrollRef.current = true;
+      if (programScrollTimer.current) window.clearTimeout(programScrollTimer.current);
+      programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
+      board.scrollTo({ top: prev.top, behavior: "smooth" });
+    }
+    setPlayYear(prev.year);
+  }, [backStack]);
+
+  // 뷰 전환(타임라인↔모아보기) 시 스택 비우기 — 보드가 remount 돼 스크롤 위치가 무효가 되므로.
+  useEffect(() => { setBackStack([]); }, [viewMode]);
 
   // '모아보기' 편집 클릭 → 타임라인 전환 후, 보드가 마운트·레이아웃된 다음 그 카드로 스크롤한다.
   // (전환과 같은 틱에 스크롤하면 보드 DOM이 아직 없어 무효화되고, viewMode 리셋 이펙트가 최상단으로
@@ -577,6 +606,17 @@ export default function Capitalism() {
       /* ── 세로 2단 레이아웃: 좌측 타임라인 + 우측 그래프. 남은 높이를 flex-1 로 정확히 채우고
             (vh 계산 대신) 두 컬럼을 items-stretch·h-full 로 바닥 맞춤 — 1px 오버플로/여백 0. ── */
       <div className="relative flex-1 min-h-0 flex gap-5 items-stretch">
+        {/* 링크 점프 후 "돌아가기" — 스택이 있을 때만 타임라인 좌하단에 떠서 원위치로 복귀 */}
+        {backStack.length > 0 ? (
+          <button
+            onClick={goBack}
+            className="absolute bottom-4 left-4 z-30 flex items-center gap-1.5 rounded-full border border-border bg-background/95 px-3 py-2 text-[12px] font-medium shadow-md backdrop-blur transition-colors hover:bg-accent"
+            title="링크로 이동하기 전 위치로 돌아갑니다"
+            data-testid="cap-jump-back"
+          >
+            <CornerUpLeft className="h-4 w-4" /> 돌아가기{backStack.length > 1 ? ` (${backStack.length})` : ""}
+          </button>
+        ) : null}
         {/* ════════ 좌측: 세로 타임라인 (스크롤 = 시간 이동) ════════ */}
         {/* 인사이트 모드면 보드가 전체 폭(z-10) — 카드 옆 인사이트가 블러 그래프 위로 얹힌다. */}
         <section className={`min-w-0 ${insightMode ? "relative z-10 w-full" : "shrink-0"}`}>
@@ -673,7 +713,7 @@ export default function Capitalism() {
                               setEditingId={setEditingId}
                               editable
                               linkTargets={linkTargets}
-                              onJump={jumpToSlug}
+                              onJump={jumpWithHistory}
                               onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev ? null : slug))}
                             />
                           </div>
