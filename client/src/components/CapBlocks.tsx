@@ -267,7 +267,8 @@ export function BlockStack({
       return editing ? (
         <CapRichEditor
           ref={(h) => { editorRefs.current.set(i, h); }}
-          value={b.text} onChange={(t) => setTextAt(i, t)} onBlur={() => onChange(blocks, true)}
+          value={b.text} onChange={(t) => setTextAt(i, t)}
+          onBlur={(v) => onChange(blocks.map((bb, idx) => (idx === i && bb.type === "text" ? { ...bb, text: v } : bb)), true)}
           rows={5} align="left" placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿 · '->'로 화살표)"
         />
       ) : b.text.trim() ? (

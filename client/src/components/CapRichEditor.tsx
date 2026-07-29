@@ -222,7 +222,7 @@ export interface CapRichEditorProps {
   placeholder?: string;
   rows?: number;
   autoFocus?: boolean;
-  onBlur?: () => void;
+  onBlur?: (value: string) => void; // blur 시 emit 한 '최신 값'을 넘긴다(IME 마지막 음절 보존).
   // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
   linkTargets?: LinkTarget[];
   // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
@@ -286,11 +286,16 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const emit = useCallback(() => {
+  // DOM(contentEditable) 의 현재 값을 직렬화해 onChange 로 올리고, 그 값을 '반환'한다.
+  // 반환이 중요: 한글 IME 조합 중엔 onInput emit 을 막으므로 부모 state(value)가 조합분만큼 뒤처진다.
+  // blur 커밋 때 부모가 stale state 대신 이 반환값을 써야 마지막 음절까지 저장된다.
+  const emit = useCallback((): string => {
     const el = ref.current;
-    if (!el) return;
-    onChange(serializeEl(el));
-  }, [onChange]);
+    if (!el) return value;
+    const out = serializeEl(el);
+    onChange(out);
+    return out;
+  }, [onChange, value]);
 
   // 선택이 비어있지 않고 에디터 내부면 툴바 위치 계산(뷰포트 좌표 = fixed).
   const updateToolbar = useCallback(() => {
@@ -792,10 +797,10 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         onCompositionStart={() => { composingRef.current = true; }}
         onCompositionEnd={() => { composingRef.current = false; emit(); }}
         onBlur={() => {
-          emit();
+          const v = emit();
           // 링크 패널 조작 중에는 편집 종료(커밋)를 미루다 — 패널 input 포커스로 인한 의도치 않은 blur 방지.
           if (linkPanelRef.current) return;
-          onBlur?.();
+          onBlur?.(v); // stale state 대신 방금 직렬화한 값으로 커밋 → IME 마지막 음절 유실 방지.
         }}
         data-richeditor
       />

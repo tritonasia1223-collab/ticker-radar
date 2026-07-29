@@ -9,10 +9,12 @@ import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { newNodeKey } from "@/lib/capitalism-flowops";
-import type { FlowDTO, FlowNodeDTO, CapTableData } from "@/lib/capitalism-types";
+import type { FlowDTO, FlowNodeDTO, CapTableData, NodeContentPatch } from "@/lib/capitalism-types";
 
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
 export type MutateNodes = (flow: FlowDTO, nextNodes: FlowNodeDTO[]) => void;
+// 기존 노드 '내용'만 세분화 저장(text/메모/표). 구조 변경(추가·삭제·순서)은 MutateNodes 로.
+export type EditNodeContent = (flow: FlowDTO, nodeId: string, patch: NodeContentPatch) => void;
 // 카드 메타(날짜/제목/레이아웃) 변경 저장 콜백.
 export type MutateMeta = (flow: FlowDTO, patch: { date?: string; endDate?: string | null; title?: string; layout?: string }) => void;
 // 드래그앤드롭 화살표 연결 콜백 — from 노드 → to 노드(카드 내/간 모두).
@@ -119,7 +121,7 @@ function Node({
           autoFocus
           placeholder="내용 입력 (드래그하여 강조 · 비우면 삭제)"
           rows={2}
-          onBlur={() => onCommit(node.id, draft)}
+          onBlur={(v) => onCommit(node.id, v)}
           linkTargets={linkTargets}
         />
       ) : (
@@ -278,7 +280,8 @@ function MemoCard({
   const finish = () => {
     setEditing(false);
     onFocusNode?.(null);
-    onMemo?.(node.id, draft);
+    // draft(state) 대신 textarea DOM 의 현재 값을 커밋 — 한글 IME 마지막 음절이 state 반영 전이라도 보존.
+    onMemo?.(node.id, taRef.current?.value ?? draft);
     onEditDone?.(node.id);
   };
   const cancel = () => {
@@ -446,13 +449,14 @@ function SideColumn({
 }
 
 export function FlowColumn({
-  flow, active, onSelect, onMutateNodes, onAddLocal, onMutateMeta, onLink, editingId, setEditingId, editable = false, linkTargets, onJump, onInsightClick,
+  flow, active, onSelect, onMutateNodes, onAddLocal, onEditContent, onMutateMeta, onLink, editingId, setEditingId, editable = false, linkTargets, onJump, onInsightClick,
 }: {
   flow: FlowDTO;
   active: boolean;
   onSelect: (f: FlowDTO) => void;
   onMutateNodes?: MutateNodes;
   onAddLocal?: MutateNodes;
+  onEditContent?: EditNodeContent;
   onMutateMeta?: MutateMeta;
   onLink?: LinkNodes;
   editingId: string | null;
@@ -487,13 +491,13 @@ export function FlowColumn({
     if (cur && cur.text === text) return;
     // 텍스트를 비웠어도 표/메모가 달려 있으면 노드를 삭제하지 않고 텍스트만 비운다(표·메모 보존).
     const keepEvenIfEmpty = !!(cur && (cur.table || (cur.ref && cur.ref.trim())));
-    let next: FlowNodeDTO[];
     if (!trimmed && !keepEvenIfEmpty) {
-      next = flow.nodes.filter((n) => n.id !== id); // 진짜 빈 칸 → 삭제
+      onMutateNodes(flow, flow.nodes.filter((n) => n.id !== id)); // 진짜 빈 칸 → 삭제(구조)
+    } else if (onEditContent) {
+      onEditContent(flow, id, { text }); // 내용 변경 → 그 노드 1건만 세분화 저장
     } else {
-      next = flow.nodes.map((n) => (n.id === id ? { ...n, text } : n));
+      onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, text } : n))); // 폴백
     }
-    onMutateNodes(flow, next);
   }
 
   function deleteNode(id: string) {
@@ -580,7 +584,8 @@ export function FlowColumn({
     const next: string | null = memo.trim() || null;
     const cur = flow.nodes.find((n) => n.id === id);
     if (!cur || (cur.ref ?? null) === next) return; // 변경 없음
-    onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, ref: next } : n)));
+    if (onEditContent) onEditContent(flow, id, { ref: next }); // 메모만 세분화 저장
+    else onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, ref: next } : n)));
   }
 
   // 노드 메모 버튼 클릭 — 우측 메모 컬럼에 이 노드 메모 카드를 띄우고 바로 편집 상태로 만든다.
@@ -600,13 +605,16 @@ export function FlowColumn({
     const prevJson = cur.table ? JSON.stringify(cur.table) : null;
     const nextJson = table ? JSON.stringify(table) : null;
     if (prevJson === nextJson) return; // 변경 없음
-    onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, table } : n)));
+    if (onEditContent) onEditContent(flow, id, { table }); // 표만 세분화 저장
+    else onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, table } : n)));
   }
   // 표 버튼 클릭 — 표 없으면 기본 표(2×2) 생성, 그리고 첫 셀 자동 편집.
   function onTableClick(id: string) {
     const cur = flow.nodes.find((n) => n.id === id);
     if (cur && !cur.table) {
-      onMutateNodes?.(flow, flow.nodes.map((n) => (n.id === id ? { ...n, table: makeDefaultTable() } : n)));
+      const table = makeDefaultTable();
+      if (onEditContent) onEditContent(flow, id, { table });
+      else onMutateNodes?.(flow, flow.nodes.map((n) => (n.id === id ? { ...n, table } : n)));
     }
     setAutoEditTableId(id);
   }
@@ -754,7 +762,12 @@ export function FlowColumn({
       <div className="mb-2.5 border-b border-border/50 pb-2 pr-6">
         {/* 날짜 — 클릭 시 시작일 + (선택)종료일 입력으로 전환. 종료일을 넣으면 기간 이벤트가 된다. */}
         {editable && metaEdit === "date" ? (
-          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex flex-col gap-1"
+            onClick={(e) => e.stopPropagation()}
+            // 그룹(시작일·종료일·버튼) 밖으로 포커스가 나갈 때만 저장 — 두 칸 사이 이동은 유지, 밖 클릭 시 blur 저장.
+            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) commitDate(); }}
+          >
             <div className="flex items-center gap-1">
               <input
                 type="date"

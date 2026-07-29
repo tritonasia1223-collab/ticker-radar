@@ -36,6 +36,7 @@ export type CapBlock =
 export interface CapInsight { text: string; charts: CapInsightChart[]; tables?: CapTableData[]; blocks?: CapBlock[] }
 export interface FlowDTO {
   id: number;
+  updatedAt: number; // 낙관적 동시성 버전(저장마다 갱신). 클라가 저장 시 baseVersion 으로 되돌려보냄.
   slug: string;
   date: string;
   endDate: string | null; // 있으면 기간 이벤트(date~endDate), 없으면 단일 시점
@@ -49,8 +50,21 @@ export interface FlowDTO {
   edges: FlowEdgeDTO[];
 }
 
+// 저장 충돌(낙관적 동시성): 클라가 보낸 baseVersion 이 DB 현재 updatedAt 과 다르면 —
+// 그새 다른 곳에서 이 카드가 먼저 저장됐다는 뜻. 통째 교체(full-replace) 저장이라
+// 그대로 진행하면 앞선 저장을 조용히 덮어써 데이터가 소실된다. 이 에러로 저장을 막고,
+// 라우트가 409 로 변환 → 클라는 최신본을 다시 불러오고 사용자에게 알린다.
+export class FlowConflictError extends Error {
+  constructor(public readonly currentVersion: number) {
+    super("FLOW_CONFLICT");
+    this.name = "FlowConflictError";
+  }
+}
+
 // 입력(에디터에서 저장): id 없는 합본 1건.
 export interface FlowInput {
+  // 낙관적 동시성: 클라가 이 카드를 불러온 시점의 updatedAt. 생략하면(undo·복원 등) 검사 안 하고 강제 저장.
+  baseVersion?: number;
   slug: string;
   date: string;
   endDate?: string | null;
@@ -126,6 +140,7 @@ function normEndDate(v: string | null | undefined): string | null {
 function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
   return {
     id: flow.id,
+    updatedAt: Number(flow.updatedAt),
     slug: flow.slug,
     date: flow.date,
     endDate: flow.endDate ?? null,
@@ -168,6 +183,11 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
 
     let flowId: number;
     if (existing) {
+      // 낙관적 동시성 가드: 불러온 버전과 DB 현재 버전이 어긋나면 = 그새 다른 곳에서 먼저 저장됨.
+      // 여기서 막지 않으면 full-replace 가 앞선 저장을 통째로 덮어써 소실이 난다(이번 '국유' 건의 원인).
+      if (input.baseVersion != null && Number(existing.updatedAt) !== Number(input.baseVersion)) {
+        throw new FlowConflictError(Number(existing.updatedAt));
+      }
       await tx.update(capFlows).set({
         date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
         category: input.category, layout: input.layout, insight: insightJson,
@@ -217,6 +237,64 @@ export async function deleteFlow(slug: string): Promise<void> {
     // 고아 링크(카드 간 화살표) 정리 — 이 slug 가 관여한 링크를 한 번에 삭제(원자).
     await tx.delete(capLinks).where(or(eq(capLinks.fromSlug, slug), eq(capLinks.toSlug, slug)));
   });
+}
+
+// ── 세분화 저장(실시간 자동저장 경량화) ──────────────────────────────────────
+// 기존 upsertFlow 는 '카드 통째 교체'(노드 전량 DELETE→재INSERT + insight 블롭 동봉)라,
+// 노드 한 줄 타이핑에도 insight·전체 노드를 매번 실어보내 (1) 느리고(버벅임) (2) 전체목록
+// 덮어쓰기로 다른 편집을 스테일 스냅샷으로 소실시켰다. 아래 두 함수는 '바뀐 것 1건'만 건드린다.
+
+// 단일 노드의 '내용'만 갱신(text/ref/inLabel/kind/col/table). 위상(pos·edges)·insight 는 불변.
+//   → 서로 다른 노드 편집은 절대 충돌하지 않으므로 버전검사 없음. flow.updatedAt 만 올려
+//     클라가 그 값을 되받아 다음 '구조 저장'(POST /flows, 버전가드 A)의 baseVersion 을 최신으로 유지.
+export interface NodeContentPatch {
+  kind?: string;
+  inLabel?: string | null;
+  text?: string;
+  ref?: string | null;
+  col?: string | null;
+  table?: CapTableData | null;
+}
+export async function patchNode(slug: string, nodeKey: string, patch: NodeContentPatch): Promise<{ updatedAt: number }> {
+  const now = Date.now();
+  return await db.transaction(async (tx) => {
+    const flow = (await tx.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
+    if (!flow) throw new Error("존재하지 않는 카드입니다.");
+    const set: Partial<typeof capNodes.$inferInsert> = {};
+    if (patch.text !== undefined) set.text = patch.text;
+    if (patch.ref !== undefined) set.ref = patch.ref ?? null;
+    if (patch.inLabel !== undefined) set.inLabel = patch.inLabel ?? null;
+    if (patch.kind !== undefined) set.kind = patch.kind;
+    if (patch.col !== undefined) set.col = patch.col ?? null;
+    if (patch.table !== undefined) set.tableData = patch.table ? JSON.stringify(sanitizeTable(patch.table)) : null;
+    const updated = Object.keys(set).length
+      ? await tx.update(capNodes).set(set).where(and(eq(capNodes.flowId, flow.id), eq(capNodes.nodeKey, nodeKey))).returning()
+      : await tx.select().from(capNodes).where(and(eq(capNodes.flowId, flow.id), eq(capNodes.nodeKey, nodeKey)));
+    if (updated.length === 0) {
+      // 폴백: 클라가 아직 서버에 없는 노드를 patch 로 보냄(경합/오라우팅). 손실 방지로 말미에 생성한다
+      //   (edges 등 위상은 다음 구조 저장이 정리 — content 저장은 위상을 만들지 않는 게 원칙).
+      const top = (await tx.select().from(capNodes).where(eq(capNodes.flowId, flow.id)).orderBy(desc(capNodes.pos)).limit(1)).at(0);
+      await tx.insert(capNodes).values({
+        flowId: flow.id, nodeKey, kind: patch.kind ?? "effect", inLabel: patch.inLabel ?? null,
+        text: patch.text ?? "", ref: patch.ref ?? null, col: patch.col ?? null,
+        tableData: patch.table ? JSON.stringify(sanitizeTable(patch.table)) : null, pos: top ? top.pos + 1 : 0,
+      });
+    }
+    await tx.update(capFlows).set({ updatedAt: now }).where(eq(capFlows.id, flow.id));
+    return { updatedAt: now };
+  });
+}
+
+// 인사이트 블롭만 갱신(노드·위상 불변). 이미지 등 큰 blocks 는 이 경로로만 오가고, 노드 저장에는 안 실린다.
+//   insight 는 라우트의 zod(capInsightSchema)로 이미 정제된 값이 들어온다. 빈 인사이트는 null 로 저장.
+export async function setInsight(slug: string, insight: CapInsight | null): Promise<{ updatedAt: number }> {
+  const now = Date.now();
+  const insightJson = insight && (insight.text.trim() || insight.charts.length || insight.tables?.length || insight.blocks?.length)
+    ? JSON.stringify(insight) : null;
+  const flow = (await db.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
+  if (!flow) throw new Error("존재하지 않는 카드입니다.");
+  await db.update(capFlows).set({ insight: insightJson, updatedAt: now }).where(eq(capFlows.id, flow.id));
+  return { updatedAt: now };
 }
 
 // ============================================================================

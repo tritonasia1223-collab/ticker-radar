@@ -4,7 +4,7 @@
 //   - stack: 위→아래 선형 체인
 //   - branch: center[0](출발) → left/right 각 컬럼 체인 → center[last](합류)로 합류
 import { apiRequest } from "@/lib/queryClient";
-import type { FlowDTO, FlowNodeDTO, FlowInputDTO } from "@/lib/capitalism-types";
+import type { FlowDTO, FlowNodeDTO, FlowInputDTO, NodeContentPatch, CapInsight } from "@/lib/capitalism-types";
 
 export function rebuildEdges(
   nodes: FlowNodeDTO[],
@@ -89,16 +89,33 @@ export function nodeHasContent(n: FlowNodeDTO): boolean {
 }
 
 // 플로우의 노드 배열을 통째로 저장. 진짜 빈 노드(텍스트·표·메모 모두 없음)만 제외.
-// 모든 노드가 비면 플로우 자체를 삭제한다. 반환: "deleted" | "saved".
+// 모든 노드가 비면 플로우 자체를 삭제한다. 반환: "deleted" | 저장된 최신 FlowDTO(버전 포함).
+//   baseVersion(불러온 시점 updatedAt)을 함께 보내 낙관적 동시성 검사를 받는다 — 그새 다른 곳에서
+//   먼저 저장됐으면 서버가 409 를 던지고, 여기서는 그 에러가 그대로 위로 전파된다(호출부가 처리).
 export async function persistNodes(
   flow: FlowDTO,
   nodes: FlowNodeDTO[]
-): Promise<"deleted" | "saved"> {
+): Promise<"deleted" | FlowDTO> {
   const clean = nodes.filter(nodeHasContent);
   if (clean.length === 0) {
     await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(flow.slug)}`);
     return "deleted";
   }
-  await apiRequest("POST", "/api/capitalism/flows", toInput(flow, clean));
-  return "saved";
+  const body: FlowInputDTO = { ...toInput(flow, clean), baseVersion: flow.updatedAt };
+  const res = await apiRequest("POST", "/api/capitalism/flows", body);
+  return (await res.json()) as FlowDTO;
+}
+
+// ── 세분화 저장(실시간 경량) ────────────────────────────────────────────────
+// 단일 노드 '내용'만 저장. insight·다른 노드·위상을 안 실으므로 페이로드가 수 KB로 작고(버벅임↓),
+// 서버가 '그 노드 1건'만 적용하므로 전체목록 덮어쓰기(스테일 스냅샷) 소실이 원천 차단된다.
+export async function patchNodeContent(slug: string, nodeId: string, patch: NodeContentPatch): Promise<{ updatedAt: number }> {
+  const res = await apiRequest("PATCH", `/api/capitalism/flows/${encodeURIComponent(slug)}/nodes/${encodeURIComponent(nodeId)}`, patch);
+  return (await res.json()) as { updatedAt: number };
+}
+
+// 인사이트 블롭만 저장(이미지 등 큰 blocks 는 이 경로로만 — 노드 저장에 안 실린다).
+export async function putInsight(slug: string, insight: CapInsight | null): Promise<{ updatedAt: number }> {
+  const res = await apiRequest("PUT", `/api/capitalism/flows/${encodeURIComponent(slug)}/insight`, { insight });
+  return (await res.json()) as { updatedAt: number };
 }

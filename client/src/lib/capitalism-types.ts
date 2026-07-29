@@ -66,6 +66,7 @@ export interface FlowNodeDTO {
 export interface FlowEdgeDTO { from: string; to: string }
 export interface FlowDTO {
   id: number;
+  updatedAt: number; // 낙관적 동시성 버전. 저장 시 baseVersion 으로 되돌려보내 충돌(다른 곳 선저장)을 감지한다.
   slug: string;
   date: string;
   endDate?: string | null; // 있으면 기간 이벤트(date~endDate), 없으면 단일 시점
@@ -88,8 +89,19 @@ export interface LinkDTO {
   toKey: string;
 }
 
+// 단일 노드 '내용'만 세분화 저장 (PATCH …/nodes/:key). 준 필드만 갱신, 위상·insight 불변.
+export interface NodeContentPatch {
+  kind?: string;
+  inLabel?: string | null;
+  text?: string;
+  ref?: string | null;
+  col?: string | null;
+  table?: CapTableData | null;
+}
+
 // 에디터 입력 (POST /api/capitalism/flows)
 export interface FlowInputDTO {
+  baseVersion?: number; // 낙관적 동시성: 불러온 시점의 updatedAt(없으면 서버가 검사 생략 = 강제 저장)
   slug: string;
   date: string;
   endDate?: string | null;

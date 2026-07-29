@@ -3,7 +3,7 @@ import { storage } from "./storage.js";
 import { collectAll } from "./apify.js";
 import { seedDummy } from "./seed.js";
 import { insertAccountSchema } from "../shared/schema.js";
-import { listFlows, upsertFlow, deleteFlow, listLinks, addLink, deleteLink, getSetting, setSetting, type FlowInput } from "./capitalism.js";
+import { listFlows, upsertFlow, deleteFlow, patchNode, setInsight, listLinks, addLink, deleteLink, getSetting, setSetting, FlowConflictError, type FlowInput } from "./capitalism.js";
 import { cloOverview } from "./clo.js";
 import { cloMacro } from "./clo-macro.js";
 import { fedOverview } from "./fed.js";
@@ -249,11 +249,13 @@ export function registerRoutes(app: Express) {
   });
   const capChartSchema = z.object({ series: z.string(), from: z.number(), to: z.number() });
   const capImageSchema = z.object({ src: z.string(), alt: z.string().optional() });
+  const capHtmlSchema = z.object({ src: z.string(), height: z.number().optional() });
   const capBlockSchema = z.discriminatedUnion("type", [
     z.object({ type: z.literal("text"), text: z.string() }),
     z.object({ type: z.literal("table"), table: capTableSchema }),
     z.object({ type: z.literal("image"), image: capImageSchema }),
     z.object({ type: z.literal("chart"), chart: capChartSchema }),
+    z.object({ type: z.literal("html"), html: capHtmlSchema }), // 미니앱(iframe srcDoc) 블록 — 빠져 있어 저장 400 나던 것 보정
   ]);
   const capInsightSchema = z.object({
     text: z.string(),
@@ -262,6 +264,7 @@ export function registerRoutes(app: Express) {
     blocks: z.array(capBlockSchema).optional(),
   });
   const capFlowInputSchema = z.object({
+    baseVersion: z.number().optional(), // 낙관적 동시성: 불러온 시점 버전(없으면 검사 생략)
     slug: z.string().min(1),
     date: z.string().min(1),
     endDate: z.string().nullable().optional(), // 있으면 기간 이벤트
@@ -274,6 +277,15 @@ export function registerRoutes(app: Express) {
     nodes: z.array(capNodeSchema),
     edges: z.array(z.object({ from: z.string(), to: z.string() })),
   });
+  // 세분화 저장: 단일 노드 '내용'만(위상·insight 불변). 모든 필드 optional — 준 것만 갱신.
+  const capNodePatchSchema = z.object({
+    kind: z.enum(["cause", "event", "effect", "result"]).optional(),
+    inLabel: z.string().nullable().optional(),
+    text: z.string().optional(),
+    ref: z.string().nullable().optional(),
+    col: z.enum(["center", "left", "right"]).nullable().optional(),
+    table: capTableSchema.nullable().optional(),
+  });
 
   app.get("/api/capitalism/flows", async (_req, res) => {
     res.json(await listFlows());
@@ -283,12 +295,35 @@ export function registerRoutes(app: Express) {
       const parsed = capFlowInputSchema.parse(req.body) as FlowInput;
       res.json(await upsertFlow(parsed));
     } catch (e: any) {
+      // 낙관적 동시성 충돌 → 409. 클라는 이걸 받고 최신본을 다시 불러온 뒤 사용자에게 알린다.
+      if (e instanceof FlowConflictError) {
+        res.status(409).json({ error: "이 카드가 다른 곳에서 먼저 수정됐습니다.", conflict: true, currentVersion: e.currentVersion });
+        return;
+      }
       res.status(400).json({ error: e?.errors ?? String(e?.message || e) });
     }
   });
   app.delete("/api/capitalism/flows/:slug", async (req, res) => {
     await deleteFlow(req.params.slug);
     res.status(204).end();
+  });
+  // 세분화 저장 ①: 단일 노드 내용만. 다른 노드 편집과 충돌 없음 → 버전검사 없음. { updatedAt } 반환.
+  app.patch("/api/capitalism/flows/:slug/nodes/:nodeKey", async (req, res) => {
+    try {
+      const patch = capNodePatchSchema.parse(req.body);
+      res.json(await patchNode(req.params.slug, req.params.nodeKey, patch));
+    } catch (e: any) {
+      res.status(400).json({ error: e?.errors ?? String(e?.message || e) });
+    }
+  });
+  // 세분화 저장 ②: 인사이트 블롭만(이미지 등 큰 blocks 는 이 경로로만). { updatedAt } 반환.
+  app.put("/api/capitalism/flows/:slug/insight", async (req, res) => {
+    try {
+      const insight = capInsightSchema.nullable().parse(req.body?.insight ?? null);
+      res.json(await setInsight(req.params.slug, insight));
+    } catch (e: any) {
+      res.status(400).json({ error: e?.errors ?? String(e?.message || e) });
+    }
   });
 
   // ---- 보드 전역 화살표(링크): 카드 내/간 드래그앤드롭 연결 ----
