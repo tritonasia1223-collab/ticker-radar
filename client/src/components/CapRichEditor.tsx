@@ -38,6 +38,16 @@ export function findScrollParent(el: HTMLElement | null): HTMLElement | null {
 const ZWSP = "\u200b";
 const stripZW = (s: string) => s.replace(/\u200b/g, "");
 
+// \uc22b\uc790 \u2192 \uc6d0\ubb38\uc790(\u2460\u2461\u2462\u2026). \uc9c0\uc6d0: 0(\u24ea) \u00b7 1~20(\u2460~\u2473) \u00b7 21~35(\u3251~\u325f) \u00b7 36~50(\u32b1~\u32bf). \ubc94\uc704 \ubc16\uc740 null.
+// '(n)' + \uc2a4\ud398\uc774\uc2a4 \uc785\ub825 \uc2dc \uce58\ud658\uc5d0 \uc0ac\uc6a9('->'\u2192'\u2192' \uc640 \ub3d9\uc77c\ud55c \uc778\ub77c\uc778 \uc790\ub3d9\uce58\ud658 \uacc4\uc5f4).
+function circledNumber(n: number): string | null {
+  if (n === 0) return "\u24ea";                                   // \u24ea
+  if (n >= 1 && n <= 20) return String.fromCodePoint(0x2460 + (n - 1));   // \u2460~\u2473
+  if (n >= 21 && n <= 35) return String.fromCodePoint(0x3251 + (n - 21)); // \u3251~\u325f
+  if (n >= 36 && n <= 50) return String.fromCodePoint(0x32b1 + (n - 36)); // \u32b1~\u32bf
+  return null;
+}
+
 // 한 줄 분량의 (마크 유지) 세그먼트 조각.
 interface LineSeg { text: string; mark?: string; linkSlug?: string; }
 
@@ -615,6 +625,23 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         // "->"(2자) → "→ "(2자)라 길이 변동 0 → 캐럿은 기존 caretInBody 위치 유지(삽입한 공백 뒤).
         replaceLine(info.index, newLineRaw, info.lineStartSerialize + prefixLen + info.caretInBody);
         return;
+      }
+      // '(n)' + 스페이스 → 원문자("① "). 예: "(1) "→"① ", "(12) "→"⑫ ". caretInBody>=3 라 불릿/화살표와 안 겹침.
+      if (info && info.caretInBody >= 3) {
+        const m = /\((\d{1,2})\)$/.exec(plainText(info.bodyRaw).slice(0, info.caretInBody));
+        const circ = m ? circledNumber(Number(m[1])) : null;
+        if (m && circ) {
+          ev.preventDefault();
+          const matchLen = m[0].length;                                       // "(1)"=3, "(12)"=4
+          const head = splitBodyAt(info.bodyRaw, info.caretInBody - matchLen).before; // "(n)" 앞(마크 유지)
+          const tail = splitBodyAt(info.bodyRaw, info.caretInBody).after;             // 캐럿 뒤(마크 유지)
+          const newBody = `${head}${circ} ${tail}`;                            // 원문자 + 방금 누른 공백
+          const prefixLen = info.bullet ? info.level + 2 : 0;
+          const newLineRaw = info.bullet ? makeBulletLine(info.level, newBody) : newBody;
+          // 새 캐럿 = "(n)" 시작 + 원문자 1자 + 공백 1자.
+          replaceLine(info.index, newLineRaw, info.lineStartSerialize + prefixLen + (info.caretInBody - matchLen) + 2);
+          return;
+        }
       }
       return;
     }
