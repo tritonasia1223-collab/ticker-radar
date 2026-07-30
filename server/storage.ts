@@ -563,6 +563,10 @@ export class DatabaseStorage implements IStorage {
     const priorStart = now - 2 * winMs;
 
     // Aliases are double-quoted to preserve camelCase (Postgres lowercases bare identifiers).
+    // ⚠ WHERE tweeted_at >= priorStart: 최근 2윈도우만 스캔(idx_mentions_tweeted_at 사용) — 없으면
+    //    mentions 전체를 매번 GROUP BY 하는 풀스캔이라 데이터가 쌓일수록 선형으로 느려졌다.
+    //    이로써 totalMentions/distinctAccounts/firstSeen 의 의미가 '전 기간'→'최근 2윈도우 내'로 바뀐다.
+    //    (이 세 필드는 현재 UI(Discover)에서 렌더하지 않아 표시상 영향 없음 — 필요해지면 별도 경량 쿼리로 분리.)
     const rows = (await db.execute(sql`
       SELECT m.symbol AS symbol,
              COUNT(*) AS "totalMentions",
@@ -574,6 +578,7 @@ export class DatabaseStorage implements IStorage {
              MAX(m.tweeted_at) AS "lastSeen",
              string_agg(DISTINCT m.handle, ',') AS handles
       FROM mentions m
+      WHERE m.tweeted_at >= ${priorStart}
       GROUP BY m.symbol
     `)) as unknown as any[];
 
