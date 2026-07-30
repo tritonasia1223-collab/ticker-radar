@@ -1,9 +1,35 @@
 // 자본주의 경제사 타임라인 — 격리된 인과 플로우 CRUD.
 // 기존 storage.ts(DatabaseStorage/IStorage) 비침습: 같은 lazy db만 재사용한다.
 import { db } from "./storage.js";
-import { capFlows, capNodes, capEdges, capLinks, capSettings } from "../shared/schema.js";
+import { capFlows, capNodes, capEdges, capLinks, capSettings, capFlowHistory } from "../shared/schema.js";
 import type { CapFlow, CapNode, CapEdge, CapLink } from "../shared/schema.js";
-import { eq, asc, desc, and, or } from "drizzle-orm";
+import { eq, asc, desc, and, or, lt } from "drizzle-orm";
+
+// ── version-on-write 히스토리 ────────────────────────────────────────────────
+// 카드를 덮어쓰기/삭제하기 '직전' 상태를 스냅샷으로 남긴다. 편집(저장) 순간에만 쌓이므로 유휴 시 낭비 0.
+// best-effort: 히스토리 실패는 절대 저장을 막지 않는다(로그만). 카드별 최근 HIST_KEEP개만 보관.
+const HIST_KEEP = 50;
+async function recordHistorySafe(slug: string, reason: string): Promise<void> {
+  try {
+    const flow = (await db.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
+    if (!flow) return; // 스냅샷할 이전 상태 없음(신규 생성 등)
+    const [nodes, edges] = await Promise.all([
+      db.select().from(capNodes).where(eq(capNodes.flowId, flow.id)),
+      db.select().from(capEdges).where(eq(capEdges.flowId, flow.id)),
+    ]);
+    await db.insert(capFlowHistory).values({
+      flowSlug: slug, takenAt: Date.now(), reason, snapshot: JSON.stringify({ flow, nodes, edges }),
+    });
+    // prune: 이 slug 의 최근 HIST_KEEP개만 남기고 오래된 것 삭제.
+    const recent = await db.select({ id: capFlowHistory.id }).from(capFlowHistory)
+      .where(eq(capFlowHistory.flowSlug, slug)).orderBy(desc(capFlowHistory.id)).limit(HIST_KEEP);
+    if (recent.length === HIST_KEEP) {
+      await db.delete(capFlowHistory).where(and(eq(capFlowHistory.flowSlug, slug), lt(capFlowHistory.id, recent[HIST_KEEP - 1].id)));
+    }
+  } catch (e) {
+    console.error("[cap-history] 기록 실패(저장은 정상 진행):", (e as Error).message);
+  }
+}
 
 // 노드별 표(메모와 같은 층위). 일반 텍스트 셀 + 열 너비(px). text 필드의 [[..]] 마커와 독립.
 export interface CapTableData {
@@ -187,6 +213,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
   // 본문도 그래프도 없는 인사이트는 null 로 저장(빈 인사이트 보존 안 함).
   const insightJson = input.insight && (input.insight.text.trim() || input.insight.charts.length || input.insight.tables?.length || input.insight.blocks?.length)
     ? JSON.stringify(input.insight) : null;
+  await recordHistorySafe(input.slug, "upsert"); // 덮어쓰기 직전 상태 보관(존재할 때만)
   return await db.transaction(async (tx) => {
     const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);
 
@@ -239,6 +266,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
 }
 
 export async function deleteFlow(slug: string): Promise<void> {
+  await recordHistorySafe(slug, "delete"); // 삭제 직전 상태 보관(되살릴 수 있게)
   await db.transaction(async (tx) => {
     const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
     if (!existing) return;
@@ -266,6 +294,7 @@ export interface NodeContentPatch {
 }
 export async function patchNode(slug: string, nodeKey: string, patch: NodeContentPatch): Promise<{ updatedAt: number }> {
   const now = Date.now();
+  await recordHistorySafe(slug, "patch"); // 노드 내용 덮어쓰기 직전 상태 보관
   return await db.transaction(async (tx) => {
     const flow = (await tx.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
     if (!flow) throw new Error("존재하지 않는 카드입니다.");
@@ -297,6 +326,7 @@ export async function setInsight(slug: string, insight: CapInsight | null): Prom
     ? JSON.stringify(insight) : null;
   const flow = (await db.select().from(capFlows).where(eq(capFlows.slug, slug))).at(0);
   if (!flow) throw new Error("존재하지 않는 카드입니다.");
+  await recordHistorySafe(slug, "insight"); // 인사이트 덮어쓰기 직전 상태 보관
   await db.update(capFlows).set({ insight: insightJson, updatedAt: now }).where(eq(capFlows.id, flow.id));
   return { updatedAt: now };
 }

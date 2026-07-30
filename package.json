@@ -39,6 +39,8 @@
     "cap:watch": "tsx script/cap-backup-watch.ts",
     "cap:history": "tsx script/cap-history.ts",
     "cap:find": "tsx script/cap-history-find.ts",
+    "cap:history:init": "tsx script/db-push-cap-history.ts",
+    "cap:versions": "tsx script/cap-versions.ts",
     "cap:integrity": "tsx script/cap-integrity-check.ts",
     "probe:cap:race": "tsx script/probe-cap-save-race.ts",
     "fed:push": "tsx script/db-push-fed.ts",

@@ -392,6 +392,21 @@ export const capSettings = pgTable("cap_settings", {
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
 
+// --- 카드 버전 히스토리(version-on-write). 저장/삭제로 카드를 덮어쓰기 '직전' 상태를 스냅샷으로
+//     남긴다(편집 순간에만 쌓임 → 유휴 시 낭비 0). 유실 시 카드별 직전 버전으로 복구.
+//     ⚠️ DDL 은 raw 스크립트(script/db-push-cap-history.ts)로만 — drizzle push 금지(#26). ---
+export const capFlowHistory = pgTable(
+  "cap_flow_history",
+  {
+    id: serial("id").primaryKey(),
+    flowSlug: text("flow_slug").notNull(),          // 카드 slug (삭제돼도 히스토리는 남음 → FK 없음)
+    takenAt: bigint("taken_at", { mode: "number" }).notNull(),
+    reason: text("reason").notNull(),               // upsert | patch | insight | delete
+    snapshot: text("snapshot").notNull(),           // JSON {flow, nodes, edges}
+  },
+  (t) => ({ bySlug: index("idx_cap_hist_slug").on(t.flowSlug, t.id) })
+);
+
 export const insertCapFlowSchema = createInsertSchema(capFlows).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCapFlow = z.infer<typeof insertCapFlowSchema>;
 export type CapFlow = typeof capFlows.$inferSelect;
@@ -399,6 +414,7 @@ export type CapNode = typeof capNodes.$inferSelect;
 export type CapEdge = typeof capEdges.$inferSelect;
 export type CapLink = typeof capLinks.$inferSelect;
 export type CapSetting = typeof capSettings.$inferSelect;
+export type CapFlowHistory = typeof capFlowHistory.$inferSelect;
 
 // ============================================================================
 // Fed 대차대조표(H.4.1) — 미국 유동성 전용. FRED 시리즈별 관측치를 million USD 로
