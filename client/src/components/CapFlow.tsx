@@ -9,6 +9,7 @@ import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { newNodeKey } from "@/lib/capitalism-flowops";
+import { applyInlineTextCommand } from "@/lib/capitalism-richtext";
 import type { FlowDTO, FlowNodeDTO, CapTableData, NodeContentPatch } from "@/lib/capitalism-types";
 
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
@@ -312,10 +313,25 @@ function MemoCard({
           onChange={(e) => { setDraft(e.target.value); grow(e.target); }}
           onBlur={finish}
           onKeyDown={(e) => {
+            // 스페이스 인라인 치환: "-> "→"→ ", "(1) "→"① " (본문 리치에디터와 동일 규칙). IME 조합 중엔 건너뜀.
+            if (e.key === " " && !e.nativeEvent.isComposing) {
+              const ta = e.currentTarget;
+              if (ta.selectionStart === ta.selectionEnd) {
+                const res = applyInlineTextCommand(ta.value, ta.selectionStart);
+                if (res) {
+                  e.preventDefault();
+                  setDraft(res.text);
+                  requestAnimationFrame(() => {
+                    if (taRef.current) { taRef.current.selectionStart = taRef.current.selectionEnd = res.caret; grow(taRef.current); }
+                  });
+                  return;
+                }
+              }
+            }
             if (e.key === "Escape") { cancel(); }
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
           }}
-          placeholder="메모 입력 (Esc 취소 · ⌘/Ctrl+Enter 저장 · 비워서 저장하면 삭제)"
+          placeholder="메모 입력 (Esc 취소 · ⌘/Ctrl+Enter 저장 · -> 화살표 · (1) 원문자 · 비워서 저장하면 삭제)"
           className="block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border border-amber-300/60 bg-background px-1.5 py-1 text-[12.5px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-amber-400"
           data-testid={`memo-input-${node.id}`}
         />

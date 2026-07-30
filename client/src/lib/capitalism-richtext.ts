@@ -145,3 +145,35 @@ export function makeBulletLine(level: number, body: string): string {
   const lv = Math.max(0, Math.min(level, MAX_BULLET_LEVEL));
   return "\t".repeat(lv) + BULLET_CHAR + " " + body;
 }
+
+// ── 인라인 자동치환 커맨드 (스페이스 트리거) ────────────────────────────────
+// 리치에디터(본문·인사이트)와 평문 메모(textarea) 가 같은 규칙을 쓰도록 여기 한 곳에 둔다(drift 방지).
+
+// 숫자 → 원문자(①②③…). 지원: 0(⓪) · 1~20(①~⑳) · 21~35(㉑~㉟) · 36~50(㊱~㊿). 범위 밖은 null.
+export function circledNumber(n: number): string | null {
+  if (n === 0) return "⓪";                                          // ⓪
+  if (n >= 1 && n <= 20) return String.fromCodePoint(0x2460 + (n - 1));  // ①~⑳
+  if (n >= 21 && n <= 35) return String.fromCodePoint(0x3251 + (n - 21)); // ㉑~㉟
+  if (n >= 36 && n <= 50) return String.fromCodePoint(0x32b1 + (n - 36)); // ㊱~㊿
+  return null;
+}
+
+// 평문 문자열 + 캐럿 위치에서 스페이스 직전 커맨드를 치환. 매치 없으면 null.
+//   "->" → "→ " · "(n)" → "원문자 ". (평문 textarea 용 — 마크 없는 순수 문자열 연산)
+export function applyInlineTextCommand(text: string, caret: number): { text: string; caret: number } | null {
+  const before = text.slice(0, caret);
+  const after = text.slice(caret);
+  if (before.endsWith("->")) {
+    const head = before.slice(0, -2) + "→ ";
+    return { text: head + after, caret: head.length };
+  }
+  const m = /\((\d{1,2})\)$/.exec(before);
+  if (m) {
+    const circ = circledNumber(Number(m[1]));
+    if (circ) {
+      const head = before.slice(0, m.index) + circ + " ";
+      return { text: head + after, caret: head.length };
+    }
+  }
+  return null;
+}
