@@ -10,16 +10,16 @@ import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { PANELS, toFracYear } from "@/lib/capitalism-config";
 import { plainText } from "@/lib/capitalism-richtext";
 import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, CapImageData, CapHtmlData, FlowNodeDTO } from "@/lib/capitalism-types";
-import seriesData from "@/data/capitalism-series.json";
+import { useCapSeries, type SeriesMap } from "@/lib/capitalism-series";
 
-const SERIES = seriesData as unknown as Record<string, [string, number][]>;
 const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? PANELS[0];
-function lastYearOf(key: string): number {
-  const arr = SERIES[key];
+// series 미로드 시(undefined) 안전 기본값. 로드 후엔 실제 데이터 범위.
+function lastYearOf(series: SeriesMap | undefined, key: string): number {
+  const arr = series?.[key];
   return arr && arr.length ? Math.ceil(toFracYear(arr[arr.length - 1][0])) : 2026;
 }
-function firstYearOf(key: string): number {
-  const arr = SERIES[key];
+function firstYearOf(series: SeriesMap | undefined, key: string): number {
+  const arr = series?.[key];
   return arr && arr.length ? Math.floor(toFracYear(arr[0][0])) : 1940;
 }
 // 인사이트 표를 노드용 TableCard 로 재사용하기 위한 합성 노드(id·table 만 사용).
@@ -115,6 +115,7 @@ function HtmlBlockView({ html }: { html: CapHtmlData }) {
 
 // 읽기 전용 참고 그래프(컨트롤 없이 차트 + 라벨). mark>0 이면 사건 시점 점선 마커.
 function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: number }) {
+  const { data: series } = useCapSeries();
   const panel = panelFor(chart.series);
   const from = Math.min(chart.from, chart.to);
   const to = Math.max(chart.from, chart.to);
@@ -125,7 +126,7 @@ function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: 
         <span className="text-[11px] font-medium">{panel.label}</span>
         <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit} · {from}~{to}</span>
       </div>
-      <PanelChart panel={panel} series={SERIES[chart.series]} fromYear={from} toYear={to} playYear={mark} yMode="window" height={150} unit={panel.unit} />
+      <PanelChart panel={panel} series={series?.[chart.series]} fromYear={from} toYear={to} playYear={mark} yMode="window" height={150} unit={panel.unit} />
     </div>
   );
 }
@@ -142,6 +143,7 @@ export function BlockStack({
   onChange: (next: CapBlock[], doCommit: boolean) => void;
   onJump?: (slug: string) => void;
 }) {
+  const { data: series } = useCapSeries(); // 차트 블록 편집의 연도 범위·렌더용(미로드 시 기본값)
   const fileRef = useRef<HTMLInputElement | null>(null);
   const pendingPosRef = useRef<number>(0);   // 파일 선택으로 이미지 추가 시 삽입 위치
   const focusedRef = useRef<number>(-1);      // 마지막 포커스 블록(붙여넣기 위치 기준)
@@ -165,7 +167,7 @@ export function BlockStack({
   const newChart = (): CapBlock => {
     const key = "dollar";
     const ey = Math.floor(eventFrac ?? 1980);
-    return { type: "chart", chart: { series: key, from: Math.max(firstYearOf(key), ey - 5), to: Math.min(lastYearOf(key), ey + 5) } };
+    return { type: "chart", chart: { series: key, from: Math.max(firstYearOf(series, key), ey - 5), to: Math.min(lastYearOf(series, key), ey + 5) } };
   };
   const newHtml = (): CapBlock => ({ type: "html", html: { src: "", height: 560 } });
 
@@ -308,8 +310,8 @@ export function BlockStack({
     // chart
     if (!editing) return <InsightChartView chart={b.chart} mark={eventFrac} />;
     const c = b.chart;
-    const lo = firstYearOf(c.series);
-    const hi = lastYearOf(c.series);
+    const lo = firstYearOf(series, c.series);
+    const hi = lastYearOf(series, c.series);
     const panel = panelFor(c.series);
     // series 변경은 단발이라 즉시 커밋. from/to 숫자는 입력 중 로컬만(commitFalse) → blur 시 커밋(POST 폭주 방지).
     const patch = (p: Partial<CapInsightChart>, doCommit: boolean) =>
@@ -332,7 +334,7 @@ export function BlockStack({
           <span className="text-[11px] font-medium">{panel.label}</span>
           <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit}</span>
         </div>
-        <PanelChart panel={panel} series={SERIES[c.series]} fromYear={Math.min(c.from, c.to)} toYear={Math.max(c.from, c.to)}
+        <PanelChart panel={panel} series={series?.[c.series]} fromYear={Math.min(c.from, c.to)} toYear={Math.max(c.from, c.to)}
           playYear={eventFrac ?? 0} yMode="window" height={130} unit={panel.unit} />
       </div>
     );

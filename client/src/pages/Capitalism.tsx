@@ -19,21 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
 import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
-import seriesData from "@/data/capitalism-series.json";
-
-type SeriesMap = Record<string, [string, number][]>;
-const SERIES = seriesData as unknown as SeriesMap;
-
-// 각 패널(시리즈)의 데이터 시작 소수 연도. 슬라이더 현재 시점이 이보다 이르면
-// 아직 데이터가 없으므로 체크박스 라벨을 회색으로 흐리게 표시한다.
-// (예: 연준 유동성 walcl/wresbal=2002년, rrp=2003년부터 시작)
-const PANEL_START_FRAC: Record<string, number> = Object.fromEntries(
-  PANELS.map((p) => {
-    const arr = SERIES[p.series];
-    const firstDate = arr && arr.length > 0 ? arr[0][0] : null;
-    return [p.id, firstDate ? toFracYear(firstDate) : -Infinity];
-  }),
-);
+import { useCapSeries } from "@/lib/capitalism-series";
 
 const YEAR_MIN = 1971;
 const YEAR_MAX = 1980;
@@ -50,6 +36,18 @@ function fracYearToDate(frac: number): string {
 export default function Capitalism() {
   const qc = useQueryClient();
   const { data: flows, isLoading } = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
+  // 거시 시계열(357KB)은 별도 에셋으로 분리 로드(코드 청크 다이어트). 로드 전엔 SERIES=undefined.
+  const { data: SERIES } = useCapSeries();
+  // 각 패널(시리즈)의 데이터 시작 소수 연도 — 슬라이더 현재 시점이 이보다 이르면 라벨을 흐리게.
+  //   (예: 연준 유동성 walcl/wresbal=2002, rrp=2003부터) 데이터 로드 후 계산(모듈 최상위 X → useMemo).
+  const PANEL_START_FRAC = useMemo<Record<string, number>>(() => {
+    if (!SERIES) return {};
+    return Object.fromEntries(PANELS.map((p) => {
+      const arr = SERIES[p.series];
+      const firstDate = arr && arr.length > 0 ? arr[0][0] : null;
+      return [p.id, firstDate ? toFracYear(firstDate) : -Infinity];
+    }));
+  }, [SERIES]);
   // 보드 전역 화살표(카드 내/간 드래그앤드롭 연결).
   const { data: links } = useQuery<LinkDTO[]>({ queryKey: ["/api/capitalism/links"] });
   // 메타 인사이트(전체 관통 논증) — 사건에 안 묶이는 app-level 카드들(표·이미지 포함).
@@ -1059,7 +1057,7 @@ export default function Capitalism() {
                     >
                       <CapChartPanel
                         panel={p}
-                        series={SERIES[p.series]}
+                        series={SERIES?.[p.series]}
                         fromYear={viewFrom}
                         toYear={viewTo}
                         playYear={playYear}
