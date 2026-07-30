@@ -61,6 +61,15 @@ export class FlowConflictError extends Error {
   }
 }
 
+// 세분화 노드 저장(patchNode)에서 대상 노드가 서버에 없을 때. 라우트가 404 로 변환 →
+// 클라는 구조 저장(full POST)으로 pos·col·edges 를 포함해 올바로 반영한다(patch 로 위상을 만들지 않음).
+export class NodeNotFoundError extends Error {
+  constructor() {
+    super("NODE_NOT_FOUND");
+    this.name = "NodeNotFoundError";
+  }
+}
+
 // 입력(에디터에서 저장): id 없는 합본 1건.
 export interface FlowInput {
   // 낙관적 동시성: 클라가 이 카드를 불러온 시점의 updatedAt. 생략하면(undo·복원 등) 검사 안 하고 강제 저장.
@@ -271,14 +280,9 @@ export async function patchNode(slug: string, nodeKey: string, patch: NodeConten
       ? await tx.update(capNodes).set(set).where(and(eq(capNodes.flowId, flow.id), eq(capNodes.nodeKey, nodeKey))).returning()
       : await tx.select().from(capNodes).where(and(eq(capNodes.flowId, flow.id), eq(capNodes.nodeKey, nodeKey)));
     if (updated.length === 0) {
-      // 폴백: 클라가 아직 서버에 없는 노드를 patch 로 보냄(경합/오라우팅). 손실 방지로 말미에 생성한다
-      //   (edges 등 위상은 다음 구조 저장이 정리 — content 저장은 위상을 만들지 않는 게 원칙).
-      const top = (await tx.select().from(capNodes).where(eq(capNodes.flowId, flow.id)).orderBy(desc(capNodes.pos)).limit(1)).at(0);
-      await tx.insert(capNodes).values({
-        flowId: flow.id, nodeKey, kind: patch.kind ?? "effect", inLabel: patch.inLabel ?? null,
-        text: patch.text ?? "", ref: patch.ref ?? null, col: patch.col ?? null,
-        tableData: patch.table ? JSON.stringify(sanitizeTable(patch.table)) : null, pos: top ? top.pos + 1 : 0,
-      });
+      // 서버에 없는 노드 → patch 로 만들지 않는다(과거: col=null·pos=맨아래로 삽입돼 우측 열 내용이
+      //   맨 아래로 떨어지던 버그의 원인). 404 를 던져 클라가 구조 저장(full POST)으로 올바로 반영하게 한다.
+      throw new NodeNotFoundError();
     }
     await tx.update(capFlows).set({ updatedAt: now }).where(eq(capFlows.id, flow.id));
     return { updatedAt: now };

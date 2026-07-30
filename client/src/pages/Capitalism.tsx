@@ -418,6 +418,10 @@ export default function Capitalism() {
   //   · 실패해도 편집을 '유지'하고 토스트로 알림(조용한 손실 금지). 캐시에서 사라진 카드는 서버 삭제.
   //   · withRetry(빠른 3회) 도 실패하면, 사용자가 손대지 않아도 몇 초 뒤 자동 재시도(콜드스타트·풀러
   //     히컵은 수 초면 회복). 자동 재시도도 소진되면 그제서야 토스트로 알림.
+  // 아직 서버에 저장 안 된 '신규 노드' id 집합(낙관적으로 캐시에만 추가된 것). 이 노드의 첫 편집은
+  //   patch 가 아니라 구조 저장(saveFlow)으로 보내 pos·col·edges 를 확립한다. (캐시 전체를 '저장됨'으로
+  //   표시하던 옛 방식은 낙관적 새 노드까지 저장됨으로 오인해 우측 열이 맨아래로 떨어지던 버그를 냈다.)
+  const newNodesRef = useRef<Set<string>>(new Set());
   const saveFlow = useCallback((slug: string, autoRetryLeft = 2) => {
     return enqueueSave(slug, () => withRetry(async () => {
       const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
@@ -464,6 +468,11 @@ export default function Capitalism() {
   // 카드 안에서 칸을 추가만 할 때(빈 칸) — 캐시에만 반영, 서버 저장은 입력 완료(commit) 시.
   // 전달된 flow의 layout도 함께 동기화(stack→branch 자동 전환 시 캐시 layout 갱신).
   const onAddLocal: MutateNodes = (flow, nextNodes) => {
+    // 새로 생긴(직전 캐시에 없던) 노드 id 를 '미저장 신규'로 기록 → 첫 편집이 구조 저장으로 가게 한다.
+    const prevIds = new Set(
+      (qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === flow.slug)?.nodes ?? []).map((n) => n.id)
+    );
+    for (const n of nextNodes) if (!prevIds.has(n.id)) newNodesRef.current.add(n.id);
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === flow.slug ? { ...f, layout: flow.layout, nodes: nextNodes } : f)) : prev
     );
@@ -542,12 +551,6 @@ export default function Capitalism() {
   // ── 세분화 콘텐츠 저장(실시간 경량 + 소실 차단) ────────────────────────────
   // 기존 노드의 text/메모/표 편집은 '그 노드 1건'만 PATCH 로 저장(디바운스로 묶음). insight·전체 노드를
   // 안 실으므로 가볍고, 전체목록 덮어쓰기가 없어 스테일 스냅샷 소실이 사라진다.
-  // 아직 서버에 없는 '신규 노드'의 첫 저장만 구조 저장(saveFlow)으로 보내 위상(pos·edges)을 확립한다.
-  const persistedNodesRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!flows) return;
-    for (const f of flows) for (const n of f.nodes) persistedNodesRef.current.add(n.id);
-  }, [flows]);
   const patchBufRef = useRef<Map<string, { slug: string; nodeId: string; patch: NodeContentPatch; timer: number }>>(new Map());
   const flushPatch = useCallback((key: string) => {
     const buf = patchBufRef.current.get(key);
@@ -555,17 +558,22 @@ export default function Capitalism() {
     patchBufRef.current.delete(key);
     const { slug, nodeId, patch } = buf;
     enqueueSave(slug, () => withRetry(() => patchNodeContent(slug, nodeId, patch)))
-      .then((r) => { if (r) { bumpVersion(slug, r.updatedAt); persistedNodesRef.current.add(nodeId); } })
-      .catch(reportSaveError);
-  }, [bumpVersion, reportSaveError]);
+      .then((r) => { if (r) bumpVersion(slug, r.updatedAt); })
+      .catch((err) => {
+        // 404 = 서버에 그 노드가 없음(신규 미저장/경합). patch 로 만들지 않고 구조 저장으로 pos·col·edges 포함 재반영.
+        if (/^404\b/.test(String((err as Error)?.message ?? err))) { newNodesRef.current.delete(nodeId); saveFlow(slug); return; }
+        reportSaveError(err);
+      });
+  }, [bumpVersion, reportSaveError, saveFlow]);
   const onEditContent = useCallback((flow: FlowDTO, nodeId: string, patch: NodeContentPatch) => {
     // 1) 캐시 즉시 반영(낙관적).
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug !== flow.slug ? f : { ...f, nodes: f.nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)) })) : prev
     );
-    // 2) 서버에 아직 없는 신규 노드 → 위상 확립 위해 구조 저장(버전가드 A).
-    if (!persistedNodesRef.current.has(nodeId)) {
-      persistedNodesRef.current.add(nodeId);
+    // 2) 아직 서버에 없는 신규 노드 → 구조 저장(saveFlow)으로 pos·col·edges 확립. 트리거 후 신규 표시 해제
+    //    (실패해도 이후 편집이 patch→404→saveFlow 로 자동 복구되므로 즉시 해제해도 안전).
+    if (newNodesRef.current.has(nodeId)) {
+      newNodesRef.current.delete(nodeId);
       saveFlow(flow.slug);
       return;
     }

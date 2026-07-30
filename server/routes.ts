@@ -3,7 +3,7 @@ import { storage } from "./storage.js";
 import { collectAll } from "./apify.js";
 import { seedDummy } from "./seed.js";
 import { insertAccountSchema } from "../shared/schema.js";
-import { listFlows, upsertFlow, deleteFlow, patchNode, setInsight, listLinks, addLink, deleteLink, getSetting, setSetting, FlowConflictError, type FlowInput } from "./capitalism.js";
+import { listFlows, upsertFlow, deleteFlow, patchNode, setInsight, listLinks, addLink, deleteLink, getSetting, setSetting, FlowConflictError, NodeNotFoundError, type FlowInput } from "./capitalism.js";
 import { cloOverview } from "./clo.js";
 import { cloMacro } from "./clo-macro.js";
 import { fedOverview } from "./fed.js";
@@ -313,6 +313,8 @@ export function registerRoutes(app: Express) {
       const patch = capNodePatchSchema.parse(req.body);
       res.json(await patchNode(req.params.slug, req.params.nodeKey, patch));
     } catch (e: any) {
+      // 대상 노드가 서버에 없음 → 404. 클라는 이걸 받고 구조 저장(full POST)으로 재반영한다.
+      if (e instanceof NodeNotFoundError) { res.status(404).json({ error: "노드 없음", notFound: true }); return; }
       res.status(400).json({ error: e?.errors ?? String(e?.message || e) });
     }
   });

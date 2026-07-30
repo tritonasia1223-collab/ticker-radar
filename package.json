@@ -37,6 +37,8 @@
     "probe:bdc": "tsx script/probe-bdc-nonaccrual.ts",
     "cap:backup": "tsx script/cap-backup.ts",
     "cap:watch": "tsx script/cap-backup-watch.ts",
+    "cap:history": "tsx script/cap-history.ts",
+    "cap:find": "tsx script/cap-history-find.ts",
     "cap:integrity": "tsx script/cap-integrity-check.ts",
     "probe:cap:race": "tsx script/probe-cap-save-race.ts",
     "fed:push": "tsx script/db-push-fed.ts",
