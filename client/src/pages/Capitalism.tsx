@@ -418,6 +418,25 @@ export default function Capitalism() {
   //   · 실패해도 편집을 '유지'하고 토스트로 알림(조용한 손실 금지). 캐시에서 사라진 카드는 서버 삭제.
   //   · withRetry(빠른 3회) 도 실패하면, 사용자가 손대지 않아도 몇 초 뒤 자동 재시도(콜드스타트·풀러
   //     히컵은 수 초면 회복). 자동 재시도도 소진되면 그제서야 토스트로 알림.
+  // 캐시의 그 카드 버전(updatedAt)만 서버 최신값으로 갱신 — 세분화 저장 뒤 '자기저장' 409 오탐 방지.
+  const bumpVersion = useCallback((slug: string, updatedAt: number) => {
+    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
+      prev ? prev.map((f) => (f.slug === slug ? { ...f, updatedAt } : f)) : prev
+    );
+  }, [qc]);
+
+  // 세분화 저장(patch/insight) 실패 알림 — withRetry 소진 후에도 실패하면 조용히 잃지 않고 토스트.
+  const reportSaveError = useCallback((err: unknown) => {
+    const msg = String((err as Error)?.message ?? err);
+    const tooLarge = /^413\b/.test(msg) || /too large|payloadtoolarge/i.test(msg);
+    toast({
+      description: tooLarge
+        ? "저장 실패: 내용(특히 붙여넣은 이미지)이 너무 커서 서버가 거부했어요. 이미지를 줄인 뒤 다시 저장하세요."
+        : "저장 실패(재시도도 안 됨). 편집 내용은 화면에만 있고 아직 저장되지 않았어요. ⚠ 새로고침하지 마세요 — 그 부분을 한 번 더 편집하면 재저장됩니다.",
+      variant: "destructive",
+    });
+  }, [toast]);
+
   // 아직 서버에 저장 안 된 '신규 노드' id 집합(낙관적으로 캐시에만 추가된 것). 이 노드의 첫 편집은
   //   patch 가 아니라 구조 저장(saveFlow)으로 보내 pos·col·edges 를 확립한다. (캐시 전체를 '저장됨'으로
   //   표시하던 옛 방식은 낙관적 새 노드까지 저장됨으로 오인해 우측 열이 맨아래로 떨어지던 버그를 냈다.)
@@ -439,14 +458,43 @@ export default function Capitalism() {
       // 413(요청이 너무 큼)은 재시도해도 결정적으로 실패한다 — 원인(대개 붙여넣은 이미지)이 그대로라
       // 자동 재시도로 시간 끌지 말고 즉시 '줄이라'고 정확히 안내한다(재편집 안내는 여기선 오답).
       const msg = String((err as Error)?.message ?? err);
-      // 409(동시편집 충돌): 그새 다른 곳에서 이 카드가 먼저 저장됨. 조용히 덮어쓰지 않고(핵심)
-      //   최신본을 강제로 다시 불러온 뒤 사용자에게 알린다. 스테일 버전으로 자동 재시도하면 또 409 라 금지.
+      // 409(동시편집 충돌): 스테일 baseVersion 으로 full-replace 를 시도했고 그새 다른 곳에서 저장됨.
+      //   '폐기(invalidate)' 하면 캐시에만 있던 미저장 신규 노드가 사라진다(=유실). 대신 '병합 재시도':
+      //   서버 최신 ∪ 로컬 캐시(로컬 우선, 양쪽 노드 모두 보존)를 서버 버전으로 딱 1회 재저장한다.
       if (/^409\b/.test(msg)) {
-        void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
-        toast({
-          description: "이 카드가 다른 곳에서 먼저 수정됐어요. 최신본을 다시 불러왔습니다 — 방금 편집분은 저장되지 않았으니 확인 후 다시 입력해 주세요.",
-          variant: "destructive",
-        });
+        void (async () => {
+          try {
+            const serverFlows = (await apiRequest("GET", "/api/capitalism/flows").then((r) => r.json())) as FlowDTO[];
+            const serverFlow = serverFlows.find((f) => f.slug === slug);
+            const localFlow = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === slug);
+            if (!serverFlow || !localFlow) { void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }); return; }
+            // 병합(applyFlowUndo 의 snapKeys/extras 패턴): 로컬 노드(내용·순서 우선, 로컬-only 포함) +
+            //   서버에만 있는 노드(상대가 추가) 를 뒤에 보존. 공통 nodeKey 는 로컬(지금 편집자) 내용 우선.
+            const localIds = new Set(localFlow.nodes.map((n) => n.id));
+            const mergedNodes = [...localFlow.nodes, ...serverFlow.nodes.filter((n) => !localIds.has(n.id))];
+            const mergedFlow: FlowDTO = {
+              ...serverFlow,
+              insight: localFlow.insight ?? serverFlow.insight, // 편집 중인 사람 기준(로컬 우선)
+              layout: localFlow.layout,
+              nodes: mergedNodes,
+              updatedAt: serverFlow.updatedAt,                  // 서버 최신 버전으로 재시도 → 가드 통과
+            };
+            qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
+              prev ? prev.map((f) => (f.slug === slug ? mergedFlow : f)) : prev
+            );
+            const saved = await persistNodes(mergedFlow, mergedFlow.nodes); // baseVersion = 서버 updatedAt, 1회만
+            if (saved !== "deleted") bumpVersion(slug, saved.updatedAt);
+          } catch (e) {
+            // 재시도도 409/실패 → 그때는 폐기 + 안내(무한루프 금지 — 여기서 재귀하지 않음).
+            const m = String((e as Error)?.message ?? e);
+            if (/^409\b/.test(m)) {
+              void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
+              toast({ description: "동시편집 충돌이 계속돼 최신본을 불러왔어요. 방금 편집분을 확인 후 다시 저장해 주세요.", variant: "destructive" });
+            } else {
+              reportSaveError(e);
+            }
+          }
+        })();
         return;
       }
       const tooLarge = /^413\b/.test(msg) || /too large|payloadtoolarge/i.test(msg);
@@ -463,7 +511,7 @@ export default function Capitalism() {
         variant: "destructive",
       });
     });
-  }, [qc, toast]);
+  }, [qc, toast, bumpVersion, reportSaveError]);
 
   // 카드 안에서 칸을 추가만 할 때(빈 칸) — 캐시에만 반영, 서버 저장은 입력 완료(commit) 시.
   // 전달된 flow의 layout도 함께 동기화(stack→branch 자동 전환 시 캐시 layout 갱신).
@@ -516,25 +564,6 @@ export default function Capitalism() {
     });
     saveFlow(flow.slug); // 낙관적 캐시(merged)를 직렬화·재시도 저장. invalidate 안 함(①).
   };
-
-  // 캐시의 그 카드 버전(updatedAt)만 서버 최신값으로 갱신 — 세분화 저장 뒤 '자기저장' 409 오탐 방지.
-  const bumpVersion = useCallback((slug: string, updatedAt: number) => {
-    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
-      prev ? prev.map((f) => (f.slug === slug ? { ...f, updatedAt } : f)) : prev
-    );
-  }, [qc]);
-
-  // 세분화 저장(patch/insight) 실패 알림 — withRetry 소진 후에도 실패하면 조용히 잃지 않고 토스트.
-  const reportSaveError = useCallback((err: unknown) => {
-    const msg = String((err as Error)?.message ?? err);
-    const tooLarge = /^413\b/.test(msg) || /too large|payloadtoolarge/i.test(msg);
-    toast({
-      description: tooLarge
-        ? "저장 실패: 내용(특히 붙여넣은 이미지)이 너무 커서 서버가 거부했어요. 이미지를 줄인 뒤 다시 저장하세요."
-        : "저장 실패(재시도도 안 됨). 편집 내용은 화면에만 있고 아직 저장되지 않았어요. ⚠ 새로고침하지 마세요 — 그 부분을 한 번 더 편집하면 재저장됩니다.",
-      variant: "destructive",
-    });
-  }, [toast]);
 
   // 사건 인사이트 저장 — insight 만 전송(PUT). 노드·위상은 안 실어 노드 저장과 완전 분리(①).
   const onCommitInsight = (slug: string, insight: CapInsight) => {
@@ -604,6 +633,19 @@ export default function Capitalism() {
       document.removeEventListener("visibilitychange", onHide);
     };
   }, [flushPatch]);
+
+  // 창 포커스 복귀 시 flows/links 를 서버본으로 갱신 → 두 사람의 캐시가 세션 내내 벌어져 409 나던 것을 줄인다.
+  //   가드: 편집 중(디바운스 저장 대기 patchBufRef 또는 편집 중 노드 editingId)이면 낙관적 캐시를 덮지 않게 스킵.
+  //   전역 refetchOnWindowFocus 는 false 유지(다른 모듈 탭 정책은 의도된 설계) — 여기 두 쿼리만 조건부 invalidate.
+  useEffect(() => {
+    const onFocus = () => {
+      if (patchBufRef.current.size > 0 || editingId) return;
+      void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
+      void qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [qc, editingId]);
 
   // 새 사건(플로우) 추가 — 팝업 없이 기본값으로 생성하고 첫 칸을 편집 모드로.
   // 낙관적으로 카드를 캐시에 추가(클라 slug = 서버 slug → temp→real 스왑/remount 없음, ④) 후

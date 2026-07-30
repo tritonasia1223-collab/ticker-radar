@@ -110,7 +110,8 @@ export async function persistNodes(
 // 단일 노드 '내용'만 저장. insight·다른 노드·위상을 안 실으므로 페이로드가 수 KB로 작고(버벅임↓),
 // 서버가 '그 노드 1건'만 적용하므로 전체목록 덮어쓰기(스테일 스냅샷) 소실이 원천 차단된다.
 export async function patchNodeContent(slug: string, nodeId: string, patch: NodeContentPatch): Promise<{ updatedAt: number }> {
-  const res = await apiRequest("PATCH", `/api/capitalism/flows/${encodeURIComponent(slug)}/nodes/${encodeURIComponent(nodeId)}`, patch);
+  // keepalive: 이탈(beforeunload) 중 flush 되는 마지막 PATCH 가 중단되지 않게(작은 페이로드라 안전).
+  const res = await apiRequest("PATCH", `/api/capitalism/flows/${encodeURIComponent(slug)}/nodes/${encodeURIComponent(nodeId)}`, patch, { keepalive: true });
   return (await res.json()) as { updatedAt: number };
 }
 

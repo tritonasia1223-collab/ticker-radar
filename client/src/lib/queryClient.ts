@@ -15,11 +15,15 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  // keepalive: 페이지 언로드(beforeunload/visibilitychange) 중에도 요청이 중단되지 않게 한다.
+  //   flushPatch 의 마지막 PATCH 유실 방지용. 페이로드는 수 KB라 keepalive 64KB 한도 안전.
+  opts?: { keepalive?: boolean },
 ): Promise<Response> {
   const res = await fetch(`${API_BASE}${url}`, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
+    keepalive: opts?.keepalive,
   });
 
   await throwIfResNotOk(res);

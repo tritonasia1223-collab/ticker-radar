@@ -219,16 +219,23 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
 
     let flowId: number;
     if (existing) {
-      // 낙관적 동시성 가드: 불러온 버전과 DB 현재 버전이 어긋나면 = 그새 다른 곳에서 먼저 저장됨.
-      // 여기서 막지 않으면 full-replace 가 앞선 저장을 통째로 덮어써 소실이 난다(이번 '국유' 건의 원인).
-      if (input.baseVersion != null && Number(existing.updatedAt) !== Number(input.baseVersion)) {
-        throw new FlowConflictError(Number(existing.updatedAt));
-      }
-      await tx.update(capFlows).set({
+      // 낙관적 동시성 가드 + TOCTOU 봉쇄: baseVersion 이 있으면 'updated_at 이 그대로일 때만' 조건부 UPDATE.
+      //   SELECT 로 검사만 하면 두 저장이 수십 ms 내 겹칠 때 둘 다 통과해 나중 것이 앞 것을 덮는다(레이스).
+      //   조건부 UPDATE 는 READ COMMITTED 에서 앞 트랜잭션 커밋 후 재평가되어 0행 → 충돌로 확정한다.
+      const setData = {
         date: input.date, endDate: normEndDate(input.endDate), year: input.year, title: input.title,
         category: input.category, layout: input.layout, insight: insightJson,
         sortOrder: input.sortOrder ?? existing.sortOrder, updatedAt: now,
-      }).where(eq(capFlows.id, existing.id));
+      };
+      if (input.baseVersion != null) {
+        const res = await tx.update(capFlows).set(setData)
+          .where(and(eq(capFlows.id, existing.id), eq(capFlows.updatedAt, Number(input.baseVersion))))
+          .returning({ id: capFlows.id });
+        if (res.length === 0) throw new FlowConflictError(Number(existing.updatedAt));
+      } else {
+        // baseVersion 미지정(undo·복원 등) = 강제 저장.
+        await tx.update(capFlows).set(setData).where(eq(capFlows.id, existing.id));
+      }
       flowId = existing.id;
       await tx.delete(capNodes).where(eq(capNodes.flowId, flowId));
       await tx.delete(capEdges).where(eq(capEdges.flowId, flowId));
