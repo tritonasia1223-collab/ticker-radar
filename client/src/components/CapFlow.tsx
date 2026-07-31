@@ -120,7 +120,7 @@ function Node({
           value={draft}
           onChange={setDraft}
           autoFocus
-          placeholder="내용 입력 (드래그하여 강조 · 비우면 삭제)"
+          placeholder="내용 입력 (드래그하여 강조 · 삭제는 우측 상단 X)"
           rows={2}
           onBlur={(v) => onCommit(node.id, v)}
           linkTargets={linkTargets}
@@ -505,15 +505,25 @@ export function FlowColumn({
     // 내용이 실제로 바뀌지 않았으면(=기존 텍스트 그대로 빠져나감) 서버 저장·Undo 푸시 없이 종료.
     const cur = flow.nodes.find((n) => n.id === id);
     if (cur && cur.text === text) return;
-    // 텍스트를 비웠어도 표/메모가 달려 있으면 노드를 삭제하지 않고 텍스트만 비운다(표·메모 보존).
-    const keepEvenIfEmpty = !!(cur && (cur.table || (cur.ref && cur.ref.trim())));
-    if (!trimmed && !keepEvenIfEmpty) {
-      onMutateNodes(flow, flow.nodes.filter((n) => n.id !== id)); // 진짜 빈 칸 → 삭제(구조)
-    } else if (onEditContent) {
-      onEditContent(flow, id, { text }); // 내용 변경 → 그 노드 1건만 세분화 저장
-    } else {
-      onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, text } : n))); // 폴백
+    if (!trimmed) {
+      // ⚠ 커밋 값이 빔. '직전 캐시에도 그 노드 텍스트가 비어 있었을 때'만 실제 반영(삭제/클리어)한다.
+      //   직전엔 내용이 있었는데 지금 빈값 = contentEditable 직렬화 글리치(한글 IME 조합 중 blur 등)로
+      //   실제 내용이 있는 노드가 삭제로 직결되던 증폭 구조 → 삭제·클리어하지 않고 '기존 내용 보존'.
+      //   의도적으로 지우려면 우측 상단 X(명시 삭제) 또는 한 번 더 비워 저장(그땐 직전도 비어 정상 반영).
+      if ((cur?.text ?? "").trim()) return;
+      const keepEvenIfEmpty = !!(cur && (cur.table || (cur.ref && cur.ref.trim())));
+      if (!keepEvenIfEmpty) {
+        onMutateNodes(flow, flow.nodes.filter((n) => n.id !== id)); // 직전에도 빈 노드 → 삭제(구조)
+      } else if (onEditContent) {
+        onEditContent(flow, id, { text: "" }); // 표/메모 보존, 텍스트만 비움
+      } else {
+        onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, text: "" } : n)));
+      }
+      return;
     }
+    // 내용 있는 정상 커밋 → 그 노드 1건만 세분화 저장.
+    if (onEditContent) onEditContent(flow, id, { text });
+    else onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, text } : n)));
   }
 
   function deleteNode(id: string) {
