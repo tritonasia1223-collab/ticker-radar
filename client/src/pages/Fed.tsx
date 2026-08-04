@@ -158,8 +158,8 @@ function flowSentence(key: string, name: string, own: number, eff: number): stri
     ? `대중이 현찰 ${amt}를 인출해 준비금에서 빠졌어요 → 준비금 −${e}`
     : `현찰 ${amt}가 은행으로 돌아와 준비금이 늘었어요 → 준비금 +${e}`;
   return eff >= 0
-    ? `${name}에서 ${amt}이 빠져나와 준비금으로 유입됐어요 → 준비금 +${e}`
-    : `${name}에 ${amt}이 주차되며 준비금에서 빠졌어요 → 준비금 −${e}`;
+    ? `${name}에서 ${amt} 나옴 · 준비금 +${e}`
+    : `${name}로 ${amt} 이동 · 준비금 −${e}`;
 }
 
 function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
@@ -254,12 +254,14 @@ function FlowSummary({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const moveTop = moves.reduce((m, x) => (Math.abs(x.eff) > Math.abs(m.eff) ? x : m), moves[0]);
   const netChip = <b style={{ color: netCol }}>{signed(net)}</b>;
 
-  // 자산(QE)이 작고 자리이동이 지배하면 별도 템플릿.
+  // 돈 총량 변화(자산)가 작고 자리이동이 지배하면 별도 템플릿.
+  //   ⚠ 단일 주 자산변화에 'QE' 라벨을 붙이지 않는다 — 음수면 오히려 회수(QT)라 모순. QE/QT 는 13주 국면 배지가 담당.
   if (Math.abs(assetEff) < Math.abs(moveTop.eff) * 0.5) {
     return (
       <p className="text-[12px] leading-relaxed text-muted-foreground">
-        이번 주 준비금 {netChip} — 새로 풀린 돈(QE)은 <b className="text-foreground">{signed(assetEff)}</b>뿐이고,
-        대부분은 <b className="text-foreground">{moveTop.name}</b>에서 옮겨온 돈이에요.
+        이번 주 준비금 {netChip} — 돈 총량(연준 자산)이 바뀐 건 <b className="text-foreground">{signed(assetEff)}</b>뿐이고,
+        준비금이 {net < 0 ? "줄어든" : "늘어난"} 건 대부분 돈이 <b className="text-foreground">{moveTop.name}</b>
+        {moveTop.eff < 0 ? "로 옮겨갔기" : "에서 나왔기"} 때문이에요.
       </p>
     );
   }
