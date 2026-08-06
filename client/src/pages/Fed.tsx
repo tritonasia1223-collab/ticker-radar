@@ -157,9 +157,12 @@ function flowSentence(key: string, name: string, own: number, eff: number): stri
   if (key === "cur") return own >= 0
     ? `대중이 현찰 ${amt}를 인출해 준비금에서 빠졌어요 → 준비금 −${e}`
     : `현찰 ${amt}가 은행으로 돌아와 준비금이 늘었어요 → 준비금 +${e}`;
+  // TGA·역레포·기타·자본 공용 — '지급준비금'과의 자리 이동을 방향으로 통일(현금통화·자산은 자체 문구 유지).
+  //   eff≥0: 그 계정에서 돈이 나와 준비금으로 / eff<0: 준비금에서 돈이 나가 그 계정으로.
+  //   (금액은 막대 라벨에 이미 표시되므로 문장은 방향만.)
   return eff >= 0
-    ? `${name}에서 ${amt} 나옴 · 준비금 +${e}`
-    : `${name}로 ${amt} 이동 · 준비금 −${e}`;
+    ? `${name}에서 꺼내서 → 지급준비금으로 들어감`
+    : `지급준비금에서 꺼내서 → ${name}에 들어감`;
 }
 
 function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
@@ -185,7 +188,9 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const y = (v: number) => yTop + ((hi - v) / (hi - lo)) * (yBot - yTop);
   const y0 = y(0);
 
-  const N = 6, x0 = 42, colW = 52, barW = 26;
+  // x0(왼쪽 여백): y축이 없는 워터폴이라 크게 둘 이유가 없다. 오른쪽 여백(~19)과 맞춰 가운데 정렬
+  //   (과거 x0=42 는 오른쪽보다 왼쪽 dead space 가 커서 차트가 오른쪽으로 쏠려 보였다).
+  const N = 6, x0 = 17, colW = 52, barW = 26;
   const cx = (i: number) => x0 + colW * i + colW / 2;
   const W = x0 + colW * N + 6;
 
