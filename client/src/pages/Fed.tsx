@@ -333,7 +333,18 @@ export default function Fed() {
       <Card className="p-3.5">
         <div className="mb-1 flex items-baseline justify-between flex-wrap gap-2">
           <div className="text-sm font-semibold">연준 대차대조표 규모 <span className="text-[11px] font-normal text-muted-foreground">2002 → 현재 · 그래프 클릭/드래그로 시점 선택</span></div>
-          <div className="text-[12px] tabular-nums"><b>{sel && weekLabel(sel.date)}</b> <span className="text-muted-foreground">({sel?.date})</span> · 총자산 <b>{sel && T(sel.total)}</b></div>
+          <div className="text-[12px] tabular-nums flex items-center gap-1.5">
+            {/* 주차 stepper — 슬라이더 미세조정 없이 1주씩 앞뒤로. 맨앞/맨뒤면 회색 비활성화. */}
+            <span className="flex items-center gap-0.5">
+              <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0}
+                aria-label="이전 주" title="이전 주"
+                className="px-0.5 text-[11px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">◀</button>
+              <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1}
+                aria-label="다음 주" title="다음 주"
+                className="px-0.5 text-[11px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
+            </span>
+            <span><b>{sel && weekLabel(sel.date)}</b> <span className="text-muted-foreground">({sel?.date})</span> · 총자산 <b>{sel && T(sel.total)}</b></span>
+          </div>
         </div>
         <div className="h-[136px] cursor-crosshair">
           <ResponsiveContainer width="100%" height="100%">
