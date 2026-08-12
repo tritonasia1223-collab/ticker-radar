@@ -1,7 +1,7 @@
 // 인라인 리치텍스트 에디터: 텍스트를 드래그 선택하면 색상/하이라이트 팝업 툴바가 떠서
 // 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
 // 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
-import { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef, type ClipboardEvent } from "react";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
   parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, type RichSeg,
@@ -37,6 +37,10 @@ export function findScrollParent(el: HTMLElement | null): HTMLElement | null {
 // 캐럿이 그 노드 안에 안착하고, 직렬화·길이 계산에서는 모두 제거한다.
 const ZWSP = "\u200b";
 const stripZW = (s: string) => s.replace(/\u200b/g, "");
+const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// \uce78\u2194\uce78 \ubcf5\ubd99 \uc2dc \ub9c8\ud06c(\uc0c9\u00b7\ud558\uc774\ub77c\uc774\ud2b8) \ubcf4\uc874\uc6a9 \u2014 \ub9c8\ucee4 \ubb38\uc790\uc5f4\uc744 text/html \uc758 data \uc18d\uc131\uc5d0 \uc2e4\uc5b4 \ub098\ub978\ub2e4
+// (\ucee4\uc2a4\ud140 MIME \uc740 \uc0ac\ud30c\ub9ac \ub4f1\uc5d0\uc11c \uc720\uc2e4\ub420 \uc218 \uc788\uc5b4, \ubaa8\ub4e0 \ube0c\ub77c\uc6b0\uc800\uac00 \ubcf4\uc874\ud558\ub294 text/html \uc744 \ub9e4\uac1c\ub85c \uc0ac\uc6a9).
+const CAP_RICH_ATTR = "data-cap-rich";
 
 // 한 줄 분량의 (마크 유지) 세그먼트 조각.
 interface LineSeg { text: string; mark?: string; linkSlug?: string; }
@@ -453,6 +457,70 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     }
   }
 
+  // ──────── 복사/붙여넣기 (마크 보존 + 저장 안정화) ────────
+  // 선택 구간의 마커 문자열(마크 보존)·평문·오프셋을 함께 뽑는다.
+  function selectionRich(el: HTMLElement): { marker: string; plain: string; start: number; end: number } | null {
+    const r = selectionOffsets(el);
+    if (!r) return null;
+    const value = serializeEl(el);
+    // 값에서 [start,end] 구간만 마크 보존해 잘라낸다: start 로 자른 뒤(after), (end-start) 로 다시 자름(before).
+    const marker = splitRichTextAt(splitRichTextAt(value, r.start).after, r.end - r.start).before;
+    return { marker, plain: plainText(marker), start: r.start, end: r.end };
+  }
+  // 캐럿(또는 선택)을 평문 좌표 [start,end] 로. 선택 없으면 접힌 캐럿, 캐럿도 없으면 맨끝.
+  function caretRange(el: HTMLElement): { start: number; end: number } {
+    const r = selectionOffsets(el);
+    if (r) return r;
+    const s = window.getSelection();
+    if (s && s.rangeCount && el.contains(s.getRangeAt(0).startContainer)) {
+      const off = caretSerializeOffsetOf(el, s.getRangeAt(0).startContainer, s.getRangeAt(0).startOffset);
+      return { start: off, end: off };
+    }
+    const len = plainText(serializeEl(el)).length;
+    return { start: len, end: len };
+  }
+  function writeClipboard(e: ClipboardEvent<HTMLDivElement>, picked: { marker: string; plain: string }) {
+    e.clipboardData.setData("text/plain", picked.plain); // 외부 앱용(순수 텍스트)
+    e.clipboardData.setData("text/html", `<span ${CAP_RICH_ATTR}="${encodeURIComponent(picked.marker)}">${escapeHtml(picked.plain)}</span>`);
+  }
+  // 붙여넣기: 브라우저 기본(임의 DOM 투척)을 막고 마커/평문을 캐럿에 '직접' 삽입.
+  //   → 줄넘김·띄어쓰기 보존 + serializeEl 이 늘 정상 구조를 봐 저장 안정화(복붙 후 이탈해도 안 사라짐).
+  //     우리 복사본이면 색까지 보존, 외부면 깨끗한 텍스트+줄넘김.
+  function onPaste(e: ClipboardEvent<HTMLDivElement>) {
+    const el = ref.current;
+    if (!el) return;
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    const m = html.match(new RegExp(`${CAP_RICH_ATTR}="([^"]*)"`));
+    const insert = m
+      ? decodeURIComponent(m[1])                                              // 우리 복사본 → 마크 보존
+      : (e.clipboardData.getData("text/plain") || "").replace(/\r\n?/g, "\n"); // 외부 → 텍스트+줄넘김
+    if (!insert) return;
+    const { start, end } = caretRange(el);
+    const value = serializeEl(el);
+    renderToEl(el, splitRichTextAt(value, start).before + insert + splitRichTextAt(value, end).after);
+    setCaretAtSerializeOffset(el, start + plainText(insert).length);
+    emit();
+  }
+  function onCopy(e: ClipboardEvent<HTMLDivElement>) {
+    const el = ref.current;
+    const picked = el && selectionRich(el);
+    if (!picked) return; // 선택 없음 → 기본 동작
+    e.preventDefault();
+    writeClipboard(e, picked);
+  }
+  function onCut(e: ClipboardEvent<HTMLDivElement>) {
+    const el = ref.current;
+    const picked = el && selectionRich(el);
+    if (!el || !picked) return;
+    e.preventDefault();
+    writeClipboard(e, picked);
+    const value = serializeEl(el);
+    renderToEl(el, splitRichTextAt(value, picked.start).before + splitRichTextAt(value, picked.end).after);
+    setCaretAtSerializeOffset(el, picked.start);
+    emit();
+  }
+
   // 현재 캐럿이 속한 최상위 줄 DIV 의 인덱스.
   function currentLineIndex(el: HTMLElement): number {
     const sel = window.getSelection();
@@ -810,6 +878,9 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         className={`w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words ${align === "left" ? "text-left" : "text-center"}`}
         style={{ minHeight: `${rows * 1.4 + 1}rem` }}
         onKeyDown={handleKeyDown}
+        onPaste={onPaste}
+        onCopy={onCopy}
+        onCut={onCut}
         onInput={() => { if (!composingRef.current) emit(); }}
         onCompositionStart={() => { composingRef.current = true; }}
         onCompositionEnd={() => { composingRef.current = false; emit(); }}
