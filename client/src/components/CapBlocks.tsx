@@ -2,7 +2,7 @@
 // 배치한다. 블록 사이/끝에 삽입, 각 블록 ↑↓ 재배치·삭제, 이미지 붙여넣기(Ctrl+V) 지원.
 // 사건 인사이트와 메타카드가 공유(allow 로 허용 블록 타입만 노출).
 import { useRef, useState } from "react";
-import { ArrowUp, ArrowDown, X, Plus, Type as TypeIcon, Table as TableIcon, ImagePlus, LineChart as ChartIcon, Code2 } from "lucide-react";
+import { ArrowUp, ArrowDown, X, Plus, Type as TypeIcon, Table as TableIcon, ImagePlus, LineChart as ChartIcon, Code2, Minus } from "lucide-react";
 import { CapRichEditor, type CapRichEditorHandle } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { PanelChart } from "@/components/CapChartPanel";
@@ -91,7 +91,7 @@ export function blocksToMetaFields(blocks: CapBlock[]): Pick<CapMetaCard, "text"
   };
 }
 
-interface AllowBlocks { text?: boolean; table?: boolean; image?: boolean; chart?: boolean; html?: boolean }
+interface AllowBlocks { text?: boolean; table?: boolean; image?: boolean; chart?: boolean; html?: boolean; divider?: boolean }
 
 // ──────── HTML 미니앱 뷰 ──────── 임의 HTML/JS 를 sandbox iframe 으로 렌더.
 //   ⚠ sandbox 에 allow-same-origin 이 필요한 이유: 이 미니앱들은 외부 데이터를 fetch 한다(예: D3 지도가
@@ -170,6 +170,7 @@ export function BlockStack({
     return { type: "chart", chart: { series: key, from: Math.max(firstYearOf(series, key), ey - 5), to: Math.min(lastYearOf(series, key), ey + 5) } };
   };
   const newHtml = (): CapBlock => ({ type: "html", html: { src: "", height: 560 } });
+  const newDivider = (): CapBlock => ({ type: "divider" });
 
   // 파일 선택 → 축소 후 pendingPos 에 이미지 블록(여러 장) 삽입.
   const openFilePicker = (pos: number) => { pendingPosRef.current = pos; fileRef.current?.click(); };
@@ -249,6 +250,7 @@ export function BlockStack({
         {allow.image ? <button type="button" onClick={() => openFilePicker(pos)} className={btn} data-testid={`block-add-image-${pos}`}><ImagePlus className="h-3.5 w-3.5" /> 이미지</button> : null}
         {allow.chart ? <button type="button" onClick={() => insertAt(pos, newChart())} className={btn} data-testid={`block-add-chart-${pos}`}><ChartIcon className="h-3.5 w-3.5" /> 그래프</button> : null}
         {allow.html ? <button type="button" onClick={() => insertAt(pos, newHtml())} className={btn} data-testid={`block-add-html-${pos}`}><Code2 className="h-3.5 w-3.5" /> 미니앱</button> : null}
+        {allow.divider ? <button type="button" onClick={() => insertAt(pos, newDivider())} className={btn} data-testid={`block-add-divider-${pos}`}><Minus className="h-3.5 w-3.5" /> 구분선</button> : null}
       </>
     );
     if (main) return <div className="flex flex-wrap items-center justify-center gap-1 pt-0.5">{buttons}{allow.image ? <span className="ml-1 text-[10px] text-muted-foreground/60">또는 Ctrl+V 붙여넣기</span> : null}</div>;
@@ -306,6 +308,10 @@ export function BlockStack({
           {h.src.trim() ? <HtmlBlockView html={h} /> : <div className="py-3 text-center text-[11px] text-muted-foreground">미리보기 — HTML을 입력하세요</div>}
         </div>
       );
+    }
+    if (b.type === "divider") {
+      // 내용 구획용 가로 구분선 — 편집/읽기 동일. (편집 시 이동·삭제 컨트롤은 바깥 래퍼가 담당)
+      return <hr className="my-1.5 border-0 border-t border-border/70" />;
     }
     // chart
     if (!editing) return <InsightChartView chart={b.chart} mark={eventFrac} />;
@@ -380,7 +386,7 @@ export function BlockStack({
             {/* 커서 위치 삽입 툴바 — 포커스한 텍스트 블록 아래. mousedown preventDefault 로 캐럿 유지.
                 마지막 블록에선 바로 밑 하단 고정바와 표/이미지/그래프가 중복돼 지저분하므로 숨긴다
                 (중간 블록은 안 겹치니 유지 — 글 중간 커서 삽입 기능 보존). */}
-            {b.type === "text" && activeText === i && i !== last && (allow.table || allow.image || allow.chart) ? (
+            {b.type === "text" && activeText === i && i !== last && (allow.table || allow.image || allow.chart || allow.divider) ? (
               <div className="flex flex-wrap items-center gap-1 pt-0.5" onMouseDown={(e) => e.preventDefault()}>
                 <span className="text-[10px] text-muted-foreground/60">커서 위치에 삽입:</span>
                 {allow.table ? <button type="button" onClick={() => splitInsert(i, newTable())}
@@ -392,6 +398,9 @@ export function BlockStack({
                 {allow.chart ? <button type="button" onClick={() => splitInsert(i, newChart())}
                   className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-chart-${i}`}><ChartIcon className="h-3 w-3" /> 그래프</button> : null}
+                {allow.divider ? <button type="button" onClick={() => splitInsert(i, newDivider())}
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  data-testid={`block-caret-divider-${i}`}><Minus className="h-3 w-3" /> 구분선</button> : null}
               </div>
             ) : null}
           </div>

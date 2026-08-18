@@ -28,7 +28,8 @@ export type CapBlock =
   | { type: "table"; table: CapTableData }
   | { type: "image"; image: CapImageData }
   | { type: "chart"; chart: CapInsightChart }
-  | { type: "html"; html: CapHtmlData };
+  | { type: "html"; html: CapHtmlData }
+  | { type: "divider" };                       // 구분선(내용 구획용, 데이터 없음)
 
 export interface CapInsight {
   text: string;              // 리치텍스트 마커 문자열(레거시·검색용; blocks 의 텍스트 블록 합본)

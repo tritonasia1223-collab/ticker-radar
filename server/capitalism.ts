@@ -58,7 +58,8 @@ export type CapBlock =
   | { type: "table"; table: CapTableData }
   | { type: "image"; image: CapImageData }
   | { type: "chart"; chart: CapInsightChart }
-  | { type: "html"; html: CapHtmlData };
+  | { type: "html"; html: CapHtmlData }
+  | { type: "divider" };
 export interface CapInsight { text: string; charts: CapInsightChart[]; tables?: CapTableData[]; blocks?: CapBlock[] }
 export interface FlowDTO {
   id: number;
@@ -147,6 +148,7 @@ function sanitizeBlock(b: any): CapBlock | null {
     ? { type: "chart", chart: { series: String(b.chart.series), from: Number(b.chart.from) || 0, to: Number(b.chart.to) || 0 } } : null;
   if (b.type === "html") return b.html && typeof b.html.src === "string"
     ? { type: "html", html: { src: String(b.html.src), ...(Number(b.html.height) ? { height: Number(b.html.height) } : {}) } } : null;
+  if (b.type === "divider") return { type: "divider" };
   return null;
 }
 

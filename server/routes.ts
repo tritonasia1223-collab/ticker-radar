@@ -256,6 +256,7 @@ export function registerRoutes(app: Express) {
     z.object({ type: z.literal("image"), image: capImageSchema }),
     z.object({ type: z.literal("chart"), chart: capChartSchema }),
     z.object({ type: z.literal("html"), html: capHtmlSchema }), // 미니앱(iframe srcDoc) 블록 — 빠져 있어 저장 400 나던 것 보정
+    z.object({ type: z.literal("divider") }),                   // 구분선(데이터 없음)
   ]);
   const capInsightSchema = z.object({
     text: z.string(),
