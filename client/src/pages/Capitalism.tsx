@@ -12,6 +12,7 @@ import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
+import { useEditMode } from "@/components/EditModeProvider";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
 import { persistNodes, toInput, newNodeKey, nodeHasContent, enqueueSave, withRetry, patchNodeContent, putInsight } from "@/lib/capitalism-flowops";
 import type { NodeContentPatch } from "@/lib/capitalism-types";
@@ -35,6 +36,7 @@ function fracYearToDate(frac: number): string {
 
 export default function Capitalism() {
   const qc = useQueryClient();
+  const { editable } = useEditMode(); // 보기/편집 모드 — 편집 UI(에디터·추가·저장) 게이트
   const { data: flows, isLoading } = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
   // 거시 시계열(357KB)은 별도 에셋으로 분리 로드(코드 청크 다이어트). 로드 전엔 SERIES=undefined.
   const { data: SERIES } = useCapSeries();
@@ -746,6 +748,7 @@ export default function Capitalism() {
             onSaveMetaCards={saveMetaCards}
             onOpenInsight={(slug) => { setActiveInsightSlug(slug); setPendingJump(slug); setViewMode("timeline"); }}
             onJump={jumpToSlug}
+            editable={editable}
           />
         </div>
       ) : (
@@ -777,8 +780,8 @@ export default function Capitalism() {
             >
               {/* 세로 중심 레일은 각 연도 그룹 내부에서 세그먼트로 그려 콘텐츠 전체 높이를 끊김 없이 관통한다(아래 그룹 div 참고) */}
 
-              {/* 중간 삽입: 맨 앞(첫 그룹 위)에 + 존 */}
-              {groups.length > 0 ? (
+              {/* 중간 삽입: 맨 앞(첫 그룹 위)에 + 존 (편집 모드에서만) */}
+              {editable && groups.length > 0 ? (
                 <InsertZone
                   onInsert={() => addFlowAt.mutate(groups[0].year - 1)}
                   disabled={addFlowAt.isPending}
@@ -858,7 +861,7 @@ export default function Capitalism() {
                               onLink={onLink}
                               editingId={editingId}
                               setEditingId={setEditingId}
-                              editable
+                              editable={editable}
                               linkTargets={linkTargets}
                               onJump={jumpWithHistory}
                               onInsightClick={(slug) => setActiveInsightSlug((prev) => (prev ? null : slug))}
@@ -867,7 +870,7 @@ export default function Capitalism() {
                           {/* 카드 옆 인사이트(메모형) — 블러된 그래프 위에 얹힌다 */}
                           {showBesideInsight ? (
                             <div className="relative z-10 flex-1 min-w-[900px] max-w-[1400px] pt-6">
-                              <InsightPanel flow={f} variant="inline" onCommit={onCommitInsight} onClose={exitInsightMode} />
+                              <InsightPanel flow={f} variant="inline" onCommit={onCommitInsight} onClose={exitInsightMode} editable={editable} />
                             </div>
                           ) : null}
                           </div>
@@ -881,19 +884,20 @@ export default function Capitalism() {
                     const nextYear = groups[gi + 1].year;
                     const mid = Math.floor((g.year + nextYear) / 2);
                     const target = mid > g.year && mid < nextYear ? mid : g.year;
-                    return (
+                    return editable ? (
                       <InsertZone
                         onInsert={() => addFlowAt.mutate(target)}
                         disabled={addFlowAt.isPending}
                         label={`${target}년에 사건 추가`}
                         testid={`insert-${g.year}-${nextYear}`}
                       />
-                    );
+                    ) : null;
                   })() : null}
                 </Fragment>
               ))}
 
-              {/* ── 맨 아래 “+ 사건 추가” — 클릭 시 현재 연도에 새 사건 생성 ── */}
+              {/* ── 맨 아래 “+ 사건 추가” — 클릭 시 현재 연도에 새 사건 생성 (편집 모드에서만) ── */}
+              {editable ? (
               <div className="relative pl-12 pr-2 pb-4">
                 <button
                   type="button"
@@ -909,6 +913,7 @@ export default function Capitalism() {
                   <span className="text-xs font-medium">사건 추가</span>
                 </button>
               </div>
+              ) : null}
 
               {/* 곡선 화살표 오버레이 — 노드 DOM 좌표를 측정해 그린다. 보드 전체를 덮는 절대 레이어. */}
               <CapLinkOverlay boardRef={boardRef} links={links ?? []} flows={flows ?? []} onDeleteLink={onDeleteLink} />
@@ -928,20 +933,22 @@ export default function Capitalism() {
           {/* ── 연도 슬라이더 + 시대 네비 + 되돌리기 ── */}
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
-              <motion.button
-                type="button"
-                onClick={() => void doUndo()}
-                disabled={!canUndo || undoBusy}
-                title="되돌리기 (Ctrl+Z)"
-                aria-label="되돌리기"
-                whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                transition={spring.snappy}
-                className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                data-testid="button-undo"
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-                되돌리기
-              </motion.button>
+              {editable ? (
+                <motion.button
+                  type="button"
+                  onClick={() => void doUndo()}
+                  disabled={!canUndo || undoBusy}
+                  title="되돌리기 (Ctrl+Z)"
+                  aria-label="되돌리기"
+                  whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                  transition={spring.snappy}
+                  className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  data-testid="button-undo"
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                  되돌리기
+                </motion.button>
+              ) : null}
               <span className="text-sm font-medium">연도</span>
               {decades.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-1" data-testid="decade-nav">

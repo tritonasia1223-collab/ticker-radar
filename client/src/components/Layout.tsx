@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Pencil, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
+import { useEditMode } from "@/components/EditModeProvider";
 
 const NAV = [
   { href: "/capitalism", label: "자본주의 경제사", icon: History },
@@ -39,6 +40,7 @@ function Logo() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { theme, toggle } = useTheme();
+  const { mode, toggle: toggleMode } = useEditMode();
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -60,7 +62,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border space-y-2">
+          <Button
+            variant={mode === "edit" ? "default" : "outline"}
+            onClick={toggleMode}
+            className="w-full"
+            data-testid="button-edit-mode"
+            title={mode === "edit" ? "편집 모드 — 클릭하면 보기 전용으로" : "보기 전용 — 클릭하면 편집 모드로"}
+          >
+            {mode === "edit" ? <Pencil className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {mode === "edit" ? "편집 모드" : "보기 전용"}
+          </Button>
           <Button variant="outline" onClick={toggle} className="w-full" data-testid="button-theme">
             {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
             {theme === "dark" ? "라이트" : "다크"}

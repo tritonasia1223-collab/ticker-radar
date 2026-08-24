@@ -12,7 +12,7 @@ import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalis
 const hasVisibleBlock = (blocks: CapBlock[]) => blocks.some((b) => (b.type === "text" ? !!b.text.trim() : true));
 
 export function InsightPanel({
-  flow, onCommit, onClose, variant = "panel",
+  flow, onCommit, onClose, variant = "panel", editable = true,
 }: {
   flow: FlowDTO;
   onCommit: (slug: string, insight: CapInsight) => void;
@@ -20,6 +20,7 @@ export function InsightPanel({
   // "panel" = 우측 단일 패널(✕그래프 닫기 버튼 노출).
   // "inline" = 사건 카드 옆 메모형(닫기는 전역 종료라 카드별 버튼 숨김).
   variant?: "panel" | "inline";
+  editable?: boolean; // false(보기 모드)면 편집 버튼·에디터 숨김(읽기 전용)
 }) {
   // 새 인사이트면 빈 텍스트 블록 1개로 시작(바로 입력 가능).
   const seedBlocks = (f: FlowDTO): CapBlock[] => {
@@ -29,16 +30,17 @@ export function InsightPanel({
   const [blocks, setBlocks] = useState<CapBlock[]>(() => seedBlocks(flow));
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
-  // 내용이 있으면 읽기 뷰로(가독성), 비어 있으면(새 인사이트) 바로 편집.
-  const [editing, setEditing] = useState(!hasVisibleBlock(insightToBlocks(flow.insight)));
+  // 내용이 있으면 읽기 뷰로(가독성), 비어 있으면(새 인사이트) 바로 편집. 보기 모드면 항상 읽기.
+  const [editing, setEditing] = useState(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
+  const showEditor = editing && editable;
 
   // 다른 카드의 별을 누르면 그 사건 인사이트로 재시드.
   useEffect(() => {
     const b = seedBlocks(flow);
     setBlocks(b); blocksRef.current = b;
-    setEditing(!hasVisibleBlock(insightToBlocks(flow.insight)));
+    setEditing(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flow.slug]);
+  }, [flow.slug, editable]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
   const eventFrac = toFracYear(flow.date);
@@ -64,7 +66,7 @@ export function InsightPanel({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {editing ? (
+          {editable ? (showEditor ? (
             <button
               type="button"
               onClick={finishEditing}
@@ -84,7 +86,7 @@ export function InsightPanel({
             >
               <Pencil className="h-3 w-3" /> 편집
             </button>
-          )}
+          )) : null}
           {variant !== "inline" ? (
             <button
               type="button"
@@ -99,7 +101,7 @@ export function InsightPanel({
         </div>
       </div>
 
-      {editing ? (
+      {showEditor ? (
         <>
           <div className="text-[11px] text-muted-foreground/70">
             이 사건과 <b className="text-foreground/80">지금</b>을 어떻게 연결할 수 있을까? — 과거↔현재 인사이트
@@ -113,7 +115,7 @@ export function InsightPanel({
         <BlockStack blocks={blocks} editing={false} allow={{}} eventFrac={eventFrac} onChange={() => {}} />
       ) : (
         <div className="py-2 text-[12px] italic text-muted-foreground/60">
-          아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요.
+          {editable ? "아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요." : "아직 인사이트가 없습니다."}
         </div>
       )}
     </div>
@@ -124,11 +126,12 @@ const newMetaCard = (): CapMetaCard =>
   ({ id: `meta-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`, title: "", text: "", tables: [], images: [], blocks: [] });
 
 // 메타 인사이트 카드 1장 — 소제목 + 블록 스택(텍스트·표·이미지). 읽기/편집 토글.
-function MetaCard({ card, onChange, onDelete, onJump }: {
+function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   card: CapMetaCard;
   onChange: (next: CapMetaCard) => void;
   onDelete: () => void;
   onJump?: (slug: string) => void;
+  editable?: boolean;
 }) {
   const seedBlocks = (c: CapMetaCard): CapBlock[] => {
     const b = metaCardToBlocks(c);
@@ -139,7 +142,8 @@ function MetaCard({ card, onChange, onDelete, onJump }: {
   const [blocks, setBlocks] = useState<CapBlock[]>(() => seedBlocks(card));
   const blocksRef = useRef(blocks); blocksRef.current = blocks;
   const hasContent = !!(card.title ?? "").trim() || hasVisibleBlock(metaCardToBlocks(card));
-  const [editing, setEditing] = useState(!hasContent);
+  const [editing, setEditing] = useState(editable && !hasContent);
+  const showEditor = editing && editable;
 
   const commit = (nextBlocks: CapBlock[] = blocksRef.current, nextTitle: string = titleRef.current) =>
     onChange({ ...card, title: nextTitle, ...blocksToMetaFields(nextBlocks) });
@@ -152,7 +156,7 @@ function MetaCard({ card, onChange, onDelete, onJump }: {
   return (
     <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        {editing ? (
+        {showEditor ? (
           <input
             type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => commit()}
             placeholder="소제목 (선택)"
@@ -164,56 +168,62 @@ function MetaCard({ card, onChange, onDelete, onJump }: {
         ) : (
           <div className="min-w-0 flex-1" />
         )}
-        <div className="flex shrink-0 items-center gap-1.5">
-          {editing ? (
-            <button type="button" onClick={finishEditing}
-              className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
-              data-testid="meta-done"><Check className="h-3.5 w-3.5" /> 완료</button>
-          ) : (
-            <button type="button" onClick={() => setEditing(true)}
-              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-              data-testid="meta-edit"><Pencil className="h-3 w-3" /> 편집</button>
-          )}
-          <button type="button" onClick={onDelete} title="카드 삭제"
-            className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground/70 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
-            data-testid="meta-delete"><Trash2 className="h-3 w-3" /></button>
-        </div>
+        {editable ? (
+          <div className="flex shrink-0 items-center gap-1.5">
+            {showEditor ? (
+              <button type="button" onClick={finishEditing}
+                className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+                data-testid="meta-done"><Check className="h-3.5 w-3.5" /> 완료</button>
+            ) : (
+              <button type="button" onClick={() => setEditing(true)}
+                className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                data-testid="meta-edit"><Pencil className="h-3 w-3" /> 편집</button>
+            )}
+            <button type="button" onClick={onDelete} title="카드 삭제"
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground/70 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+              data-testid="meta-delete"><Trash2 className="h-3 w-3" /></button>
+          </div>
+        ) : null}
       </div>
 
-      {editing ? (
+      {showEditor ? (
         <BlockStack
           blocks={blocks} editing allow={{ text: true, table: true, image: true, html: true, divider: true }}
           onChange={handleChange} onJump={onJump}
         />
       ) : hasVisibleBlock(blocks) ? (
         <BlockStack blocks={blocks} editing={false} allow={{}} onChange={() => {}} onJump={onJump} />
-      ) : (
+      ) : editable ? (
         <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
-      )}
+      ) : null}
     </section>
   );
 }
 
 // 메타 인사이트 카드 묶음 — 모아보기 최상단. 카드 추가/삭제/편집.
-function MetaCards({ cards, onSave, onJump }: {
+function MetaCards({ cards, onSave, onJump, editable = true }: {
   cards: CapMetaCard[];
   onSave: (next: CapMetaCard[]) => void;
   onJump?: (slug: string) => void;
+  editable?: boolean;
 }) {
   const updateAt = (i: number, next: CapMetaCard) => onSave(cards.map((c, j) => (j === i ? next : c)));
   const removeAt = (i: number) => onSave(cards.filter((_, j) => j !== i));
   const addCard = () => onSave([...cards, newMetaCard()]);
+  if (!editable && cards.length === 0) return null; // 보기 모드 + 내용 없음 → 섹션 숨김
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-bold text-primary">전체 관통 — 메타 인사이트</h2>
       {cards.map((c, i) => (
-        <MetaCard key={c.id} card={c} onChange={(n) => updateAt(i, n)} onDelete={() => removeAt(i)} onJump={onJump} />
+        <MetaCard key={c.id} card={c} onChange={(n) => updateAt(i, n)} onDelete={() => removeAt(i)} onJump={onJump} editable={editable} />
       ))}
-      <button type="button" onClick={addCard}
-        className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 py-2.5 text-[12px] font-medium text-primary/80 transition-colors hover:border-primary/70 hover:bg-primary/[0.04] hover:text-primary"
-        data-testid="meta-add-card">
-        <Plus className="h-4 w-4" /> 메타 인사이트 카드 추가
-      </button>
+      {editable ? (
+        <button type="button" onClick={addCard}
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 py-2.5 text-[12px] font-medium text-primary/80 transition-colors hover:border-primary/70 hover:bg-primary/[0.04] hover:text-primary"
+          data-testid="meta-add-card">
+          <Plus className="h-4 w-4" /> 메타 인사이트 카드 추가
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -224,13 +234,14 @@ const hasInsightContent = (i?: CapInsight | null) =>
 
 // 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰 + 메타 테제.
 export function InsightsCollection({
-  flows, metaCards, onSaveMetaCards, onOpenInsight, onJump,
+  flows, metaCards, onSaveMetaCards, onOpenInsight, onJump, editable = true,
 }: {
   flows: FlowDTO[];
   metaCards: CapMetaCard[];
   onSaveMetaCards: (next: CapMetaCard[]) => void;
   onOpenInsight: (slug: string) => void;
   onJump?: (slug: string) => void;
+  editable?: boolean;
 }) {
   const items = flows
     .filter((f) => hasInsightContent(f.insight))
@@ -238,7 +249,7 @@ export function InsightsCollection({
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 py-2">
-      <MetaCards cards={metaCards} onSave={onSaveMetaCards} onJump={onJump} />
+      <MetaCards cards={metaCards} onSave={onSaveMetaCards} onJump={onJump} editable={editable} />
 
       {items.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
@@ -256,15 +267,17 @@ export function InsightsCollection({
                 {f.title}
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenInsight(f.slug)}
-              className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-              title="타임라인에서 편집"
-              data-testid={`insight-edit-${f.slug}`}
-            >
-              <Pencil className="h-3 w-3" /> 편집
-            </button>
+            {editable ? (
+              <button
+                type="button"
+                onClick={() => onOpenInsight(f.slug)}
+                className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                title="타임라인에서 편집"
+                data-testid={`insight-edit-${f.slug}`}
+              >
+                <Pencil className="h-3 w-3" /> 편집
+              </button>
+            ) : null}
           </header>
           <BlockStack
             blocks={insightToBlocks(f.insight)} editing={false} allow={{}}
