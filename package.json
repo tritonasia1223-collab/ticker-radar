@@ -41,6 +41,7 @@
     "cap:find": "tsx script/cap-history-find.ts",
     "cap:history:init": "tsx script/db-push-cap-history.ts",
     "cap:versions": "tsx script/cap-versions.ts",
+    "cap:export": "tsx script/cap-export.ts",
     "cap:integrity": "tsx script/cap-integrity-check.ts",
     "probe:cap:race": "tsx script/probe-cap-save-race.ts",
     "fed:push": "tsx script/db-push-fed.ts",

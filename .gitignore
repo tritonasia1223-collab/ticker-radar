@@ -22,3 +22,6 @@ script/clo-probe-observations.json
 # 자본주의 로컬 백업(데이터 덤프, 커밋 금지)
 script/cap-backup.*.json
 script/cap-history/
+
+# 카드 데이터 내보내기(Claude Project 업로드용, 커밋 금지)
+script/cap-export/
