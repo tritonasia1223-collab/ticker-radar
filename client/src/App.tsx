@@ -7,7 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { EditModeProvider } from "@/components/EditModeProvider";
+import { EditModeProvider, useEditMode } from "@/components/EditModeProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Layout from "@/components/Layout";
 
@@ -38,11 +38,12 @@ function PageFallback() {
 }
 
 // 페이지 렌더 예외를 여기서 가둔다 — 사이드바(Layout)는 살리고 크래시한 페이지만 폴백.
-// resetKey=location 이라 다른 탭으로 이동하면 자동 복구.
+// resetKey=location+mode 라 다른 탭 이동 또는 발표↔편집 전환 시 자동 복구(편집 모드 크래시 → 발표 모드로 탈출).
 function BoundedRouter() {
   const [location] = useLocation();
+  const { mode } = useEditMode();
   return (
-    <ErrorBoundary resetKey={location}>
+    <ErrorBoundary resetKey={`${location}:${mode}`}>
       <AppRouter />
     </ErrorBoundary>
   );

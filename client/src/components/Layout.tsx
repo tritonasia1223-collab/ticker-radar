@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Pencil, Eye } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Presentation, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { useEditMode } from "@/components/EditModeProvider";
@@ -40,7 +40,25 @@ function Logo() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { theme, toggle } = useTheme();
-  const { mode, toggle: toggleMode } = useEditMode();
+  const { present, toggle: toggleMode } = useEditMode();
+
+  // 발표 모드: 네비 숨김 + 본문 확대(zoom) + 나가는 플로팅 버튼(네비가 없으니 여기서 나감).
+  if (present) {
+    return (
+      <div className="relative h-screen overflow-hidden bg-background text-foreground">
+        <main className="h-full overflow-auto" style={{ zoom: 1.2 }}>{children}</main>
+        <button
+          type="button"
+          onClick={toggleMode}
+          className="fixed right-4 top-4 z-50 flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-md backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
+          data-testid="button-exit-present"
+          title="발표 모드 종료 → 편집 모드"
+        >
+          <Pencil className="h-3.5 w-3.5" /> 편집 모드
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -64,14 +82,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="p-3 border-t border-sidebar-border space-y-2">
           <Button
-            variant={mode === "edit" ? "default" : "outline"}
+            variant="outline"
             onClick={toggleMode}
             className="w-full"
-            data-testid="button-edit-mode"
-            title={mode === "edit" ? "편집 모드 — 클릭하면 보기 전용으로" : "보기 전용 — 클릭하면 편집 모드로"}
+            data-testid="button-present-mode"
+            title="발표 모드 — 네비를 숨기고 본문을 크게 (읽기 전용)"
           >
-            {mode === "edit" ? <Pencil className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-            {mode === "edit" ? "편집 모드" : "보기 전용"}
+            <Presentation className="h-4 w-4 mr-2" /> 발표 모드
           </Button>
           <Button variant="outline" onClick={toggle} className="w-full" data-testid="button-theme">
             {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
