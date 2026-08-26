@@ -26,14 +26,6 @@ const YEAR_MIN = 1971;
 const YEAR_MAX = 1980;
 
 // 소수 연도 → YYYY-MM-DD (월 1일). 새 사건 기본 날짜 산출용.
-function fracYearToDate(frac: number): string {
-  const year = Math.floor(frac);
-  let month = Math.floor((frac - year) * 12) + 1;
-  if (month < 1) month = 1;
-  if (month > 12) month = 12;
-  return `${year}-${String(month).padStart(2, "0")}-01`;
-}
-
 export default function Capitalism() {
   const qc = useQueryClient();
   const { editable } = useEditMode(); // 보기/편집 모드 — 편집 UI(에디터·추가·저장) 게이트
@@ -652,7 +644,9 @@ export default function Capitalism() {
   // 직렬화·재시도 저장(saveFlow). invalidate 안 함(①). setEditingId 는 즉시.
   const addFlow = useMutation({
     mutationFn: async () => {
-      const date = fracYearToDate(playYear);
+      // 새 사건은 '현재 연도의 마지막 날'로 생성 → 날짜순 정렬에서 그 해 그룹 맨 아래로 붙는다
+      // (슬라이더 위치와 무관, 동일 날짜여도 sortOrder=maxOrder+1 이라 뒤로). 위로 스크롤할 필요 없음.
+      const date = `${Math.floor(playYear)}-12-31`;
       const slug = `flow-${Date.now().toString(36)}`;
       pushUndo(makeFlowEntry("사건 추가", slug, flows)); // prev=null → Undo 는 삭제
       const firstKey = newNodeKey();
