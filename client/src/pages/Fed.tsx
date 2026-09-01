@@ -304,55 +304,45 @@ function Legend({ items }: { items: [string, string][] }) {
   );
 }
 
-// ── 국채 수급: 재무부 발행(종류별) ↔ 연준 흡수(SOMA) ──
-function TreasurySupply({ t }: { t: Treasury }) {
+// ── 국채 종류(만기 기준) — 온커서 설명 · 잔액키(k)/순발행키(nk)/색 ──
+const TB_TYPES = [
+  { k: "bills", nk: "netBills", label: "단기 Bills", color: TB.bill, desc: "만기 1년 이하(4·8·13·17·26·52주). 이자 없이 할인발행 → 만기에 액면가 상환. 단기 자금조달·유동성 조절." },
+  { k: "notes", nk: "netNotes", label: "중기 Notes", color: TB.note, desc: "만기 2~10년(2·3·5·7·10년). 반기마다 고정 이표 지급. 시장성 국채 중 잔액 최대." },
+  { k: "bonds", nk: "netBonds", label: "장기 Bonds", color: TB.bond, desc: "만기 20·30년. 반기 고정 이표. 장기 금리·재정 이자부담의 핵심." },
+  { k: "tips", nk: "netTips", label: "TIPS", color: TB.tips, desc: "물가연동국채(만기 5·10·30년). 원금이 CPI에 연동 → 인플레만큼 불어남." },
+  { k: "frn", nk: "netFrn", label: "FRN", color: TB.frn, desc: "변동금리채(만기 2년). 금리가 13주 Bill 경매금리에 연동돼 분기마다 재설정. 2014년 도입." },
+] as const;
+
+// ── 연준의 국채 흡수(SOMA 만기별 보유·매입 + 흡수율) — 상단 T-계정의 '국채 매입'을 만기별로 확장 ──
+function FedAbsorption({ t }: { t: Treasury }) {
   const tm = t.monthly, fw = t.fedWeekly;
   const last = tm.at(-1);
   const fwLast = fw.at(-1);
   const fwP4 = fw.length > 4 ? fw[fw.length - 5] : null;
-  if (!last) return null;
+  if (!last || !fwLast) return null;
   const pct = (v: number) => (v * 100).toFixed(1) + "%";
-  const ym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
   const peak = tm.reduce((m, p) => (p.fedShare > m.fedShare ? p : m), tm[0]); // 흡수율 정점(참고)
-  const recentNet = tm.slice(-30);
-  const fedBuy4 = fwP4 && fwLast ? {
-    bills: fwLast.bills - fwP4.bills, nb: fwLast.notesBonds - fwP4.notesBonds,
-    tips: fwLast.tips - fwP4.tips, total: fwLast.total - fwP4.total,
-  } : null;
-
+  const fedBuy4 = fwP4 ? { bills: fwLast.bills - fwP4.bills, nb: fwLast.notesBonds - fwP4.notesBonds, tips: fwLast.tips - fwP4.tips, total: fwLast.total - fwP4.total } : null;
+  const cards = [
+    ["단기 Bills", "bills", "bill", "만기 1년 이하", fedBuy4?.bills],
+    ["중장기 N&B", "notesBonds", "note", "Notes 2~10년 + Bonds 20·30년", fedBuy4?.nb],
+    ["TIPS", "tips", "tips", "물가연동채(만기 5·10·30년)", fedBuy4?.tips],
+  ] as const;
   return (
     <Card className="p-3.5">
-      <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
+      <div className="mb-1.5 flex items-start justify-between flex-wrap gap-2">
         <div>
-          <div className="text-sm font-semibold">재무부 국채 발행 &amp; 연준 흡수 <span className="text-[11px] font-normal text-muted-foreground">시장성 국채 종류별 · 연준 SOMA · {last.date.slice(0, 7)}</span></div>
-          <div className="text-[11px] text-muted-foreground">재무부가 얼마를(어떤 만기로) 찍어내고, 그중 연준이 얼마나 사서 들고 있는지(흡수율). QT로 연준 비중이 줄면 그만큼 민간이 더 받쳐야 한다.</div>
+          <div className="text-sm font-semibold">연준의 국채 흡수 <span className="text-[11px] font-normal text-muted-foreground">SOMA 만기별 보유 · 흡수율 · {fwLast.date}</span></div>
+          <div className="text-[11px] text-muted-foreground">위 T-계정의 ‘국채(SOMA)’를 만기별로 쪼갠 것. 연준이 시장에 나온 국채의 몇 %를 사서 들고 있나(흡수율) — QT로 줄면 그만큼 민간이 더 받쳐야 한다.</div>
         </div>
         <div className="text-right shrink-0 text-[12px] tabular-nums">
-          <div>시장성 총 <b>{T(last.total)}</b> · 연준 보유 <b>{T(last.fedTotal)}</b></div>
-          <div>연준 흡수율 <b className="text-rose-500">{pct(last.fedShare)}</b> <span className="text-muted-foreground">(정점 {pct(peak.fedShare)} · {peak.date.slice(0, 7)})</span></div>
+          <div>연준 국채보유 <b className="text-rose-500">{T(fwLast.total)}</b></div>
+          <div>흡수율 <b className="text-rose-500">{pct(last.fedShare)}</b> <span className="text-muted-foreground">(정점 {pct(peak.fedShare)} · {peak.date.slice(0, 7)})</span></div>
         </div>
       </div>
-
-      {/* 종류별 잔액 스택 */}
-      <Legend items={[["단기 Bills", TB.bill], ["중기 Notes", TB.note], ["장기 Bonds", TB.bond], ["TIPS", TB.tips], ["FRN", TB.frn]]} />
-      <div className="h-[190px] mt-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
-            <Area dataKey="bills" name="단기 Bills" stackId="1" stroke={TB.bill} fill={TB.bill} fillOpacity={0.55} />
-            <Area dataKey="notes" name="중기 Notes" stackId="1" stroke={TB.note} fill={TB.note} fillOpacity={0.55} />
-            <Area dataKey="bonds" name="장기 Bonds" stackId="1" stroke={TB.bond} fill={TB.bond} fillOpacity={0.55} />
-            <Area dataKey="tips" name="TIPS" stackId="1" stroke={TB.tips} fill={TB.tips} fillOpacity={0.55} />
-            <Area dataKey="frn" name="FRN" stackId="1" stroke={TB.frn} fill={TB.frn} fillOpacity={0.55} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
-        <div>
-          <div className="text-[12px] font-semibold mb-0.5">연준 흡수율 <span className="text-[10.5px] font-normal text-muted-foreground">= 연준 보유 / 시장성 총액</span></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+        <div className="lg:col-span-2">
+          <div className="text-[12px] font-semibold mb-0.5">연준 흡수율 <span className="text-[10.5px] font-normal text-muted-foreground">= 연준 보유 / 시장성 국채 총액 · 2014→현재</span></div>
           <div className="h-[150px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={tm} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
@@ -360,48 +350,89 @@ function TreasurySupply({ t }: { t: Treasury }) {
                 <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
                 <YAxis tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} domain={[0, "auto"]} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={34} className="text-muted-foreground" />
                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [pct(v), "흡수율"]} labelFormatter={(l) => String(l).slice(0, 7)} />
-                <Area dataKey="fedShare" stroke={FED_ABS} strokeWidth={1.5} fill="url(#absg)" />
+                <Area dataKey="fedShare" stroke={FED_ABS} strokeWidth={1.5} fill="url(#absg)" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div>
-          <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">종류별 · 잔액 MoM 변화 · 최근 30개월</span></div>
-          <div className="h-[150px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }} stackOffset="sign">
-                <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-                <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [signed(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
-                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
-                <Bar dataKey="netBills" name="단기 Bills" stackId="n" fill={TB.bill} />
-                <Bar dataKey="netNotes" name="중기 Notes" stackId="n" fill={TB.note} />
-                <Bar dataKey="netBonds" name="장기 Bonds" stackId="n" fill={TB.bond} />
-                <Bar dataKey="netTips" name="TIPS" stackId="n" fill={TB.tips} />
-                <Bar dataKey="netFrn" name="FRN" stackId="n" fill={TB.frn} />
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="grid grid-cols-2 gap-2 text-[12px] tabular-nums">
+          {cards.map(([lbl, k, c, tip, buy]) => (
+            <div key={lbl} title={tip} className="rounded-md border border-border/60 px-2 py-1.5 cursor-help">
+              <div className="flex items-center gap-1 text-muted-foreground text-[10.5px]"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: (TB as any)[c] }} />{lbl}</div>
+              <div className="font-semibold">{T((fwLast as any)[k])}</div>
+              <div className={(buy ?? 0) >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(buy) ? `4주 ${signed(buy as number)}` : ""}</div>
+            </div>
+          ))}
+          <div className="rounded-md border border-border/60 px-2 py-1.5 bg-muted/30">
+            <div className="text-muted-foreground text-[10.5px]">국채 총보유</div>
+            <div className="font-semibold text-rose-500">{T(fwLast.total)}</div>
+            <div className={fedBuy4 && fedBuy4.total >= 0 ? "text-emerald-500" : "text-red-500"}>{fedBuy4 ? `4주 ${signed(fedBuy4.total)}` : ""}</div>
           </div>
         </div>
       </div>
+    </Card>
+  );
+}
 
-      {/* 연준 SOMA 만기별 보유 + 최근 4주 매입(Δ) */}
-      <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px] tabular-nums">
-        {([["단기 Bills", "bills", "bill"], ["중장기 N&B", "notesBonds", "note"], ["TIPS", "tips", "tips"]] as const).map(([lbl, k, c]) => {
-          const cur = fwLast ? (fwLast as any)[k] as number : NaN;
-          const buy = fedBuy4 ? (k === "bills" ? fedBuy4.bills : k === "notesBonds" ? fedBuy4.nb : fedBuy4.tips) : NaN;
-          return (
-            <div key={lbl} className="rounded-md border border-border/60 px-2 py-1.5">
-              <div className="flex items-center gap-1 text-muted-foreground text-[10.5px]"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: (TB as any)[c] }} />{lbl}</div>
-              <div className="font-semibold">{T(cur)}</div>
-              <div className={buy >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(buy) ? `4주 ${signed(buy)}` : ""}</div>
-            </div>
-          );
-        })}
-        <div className="rounded-md border border-border/60 px-2 py-1.5 bg-muted/30">
-          <div className="text-muted-foreground text-[10.5px]">연준 국채 총보유</div>
-          <div className="font-semibold text-rose-500">{fwLast && T(fwLast.total)}</div>
-          <div className={fedBuy4 && fedBuy4.total >= 0 ? "text-emerald-500" : "text-red-500"}>{fedBuy4 ? `4주 ${signed(fedBuy4.total)}` : ""}</div>
+// ── 재무부 국채 발행(종류별 잔액·순발행) — 공급 측. 각 종류에 온커서 만기 설명 ──
+function TreasuryIssuance({ t }: { t: Treasury }) {
+  const tm = t.monthly;
+  const last = tm.at(-1);
+  const [hoverK, setHoverK] = useState<string | null>(null);
+  if (!last) return null;
+  const ym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
+  const recentNet = tm.slice(-30);
+  const active = TB_TYPES.find((x) => x.k === hoverK) ?? null;
+  const dim = (k: string) => (active && active.k !== k ? true : false);
+  return (
+    <Card className="p-3.5">
+      <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-sm font-semibold">재무부 국채 발행 <span className="text-[11px] font-normal text-muted-foreground">시장성 국채 종류별 · {last.date.slice(0, 7)}</span></div>
+          <div className="text-[11px] text-muted-foreground">재무부가 자금을 어떤 만기로 조달하는지 — 종류별 잔액과 월별 순발행(발행−상환). 위 ‘연준의 국채 흡수’가 이 공급의 일부를 받아준다.</div>
+        </div>
+        <div className="text-right shrink-0 text-[12px] tabular-nums"><div>시장성 총 <b>{T(last.total)}</b></div></div>
+      </div>
+
+      {/* 종류 칩 — 온커서 설명(만기 기준) */}
+      <div className="flex flex-wrap gap-1.5">
+        {TB_TYPES.map((x) => (
+          <span key={x.k} title={x.desc} onMouseEnter={() => setHoverK(x.k)} onMouseLeave={() => setHoverK(null)}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-help transition-colors ${active?.k === x.k ? "border-foreground/40 bg-muted" : "border-border/60"}`}>
+            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: x.color }} />{x.label}
+            <span className="tabular-nums text-muted-foreground">{T((last as any)[x.k])}</span>
+          </span>
+        ))}
+      </div>
+      <div className="mt-1 min-h-[2.4em] text-[11px] leading-snug text-muted-foreground">
+        {active ? <><b className="text-foreground">{active.label}</b> · {active.desc}</> : "각 종류에 커서를 올리면 기준(만기 등) 설명이 나옵니다."}
+      </div>
+
+      {/* 종류별 잔액 스택 */}
+      <div className="h-[190px] mt-0.5">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
+            {TB_TYPES.map((x) => <Area key={x.k} dataKey={x.k} name={x.label} stackId="1" stroke={x.color} fill={x.color} fillOpacity={dim(x.k) ? 0.15 : 0.55} isAnimationActive={false} />)}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 월별 순발행 */}
+      <div className="mt-2">
+        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">종류별 · 잔액 MoM 변화(발행−상환) · 최근 30개월</span></div>
+        <div className="h-[150px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }} stackOffset="sign">
+              <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [signed(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
+              <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
+              {TB_TYPES.map((x) => <Bar key={x.k} dataKey={x.nk} name={x.label} stackId="n" fill={x.color} fillOpacity={dim(x.k) ? 0.25 : 1} isAnimationActive={false} />)}
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </Card>
@@ -523,6 +554,9 @@ export default function Fed() {
         </Card>
       </div>
 
+      {/* 연준의 국채 흡수 — T-계정의 '국채(SOMA)' 확장(만기별 보유·흡수율). 슬라이더 무관 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <FedAbsorption t={data.treasury} />}
+
       {/* 위기 감지기 (전체기간 · 슬라이더 무관) */}
       <Card className="p-3.5">
         <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
@@ -554,8 +588,8 @@ export default function Fed() {
         </div>
       </Card>
 
-      {/* 국채 수급: 재무부 발행(종류별) ↔ 연준 흡수(SOMA) — 전체기간, 슬라이더 무관 */}
-      {data?.treasury && data.treasury.monthly.length > 0 && <TreasurySupply t={data.treasury} />}
+      {/* 재무부 국채 발행(종류별 잔액·순발행) — 공급 측, 별도 칸. 슬라이더 무관 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} />}
     </div>
   );
 }
