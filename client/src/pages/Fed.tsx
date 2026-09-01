@@ -362,15 +362,12 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
   ] as const;
   return (
     <Card className="p-3.5">
-      <div className="mb-1.5 flex items-start justify-between flex-wrap gap-2">
-        <div>
+      <div className="mb-1.5">
+        <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-0.5">
           <div className="text-sm font-semibold">연준의 국채 흡수 <span className="text-[11px] font-normal text-muted-foreground">SOMA 만기별 보유 · 흡수율 · {weekLabel(cur.date)} ({cur.date})</span></div>
-          <div className="text-[11px] text-muted-foreground">위 T-계정의 ‘국채(SOMA)’를 만기별로 쪼갠 것. 연준이 시장에 나온 국채의 몇 %를 사서 들고 있나(흡수율). <span className="text-muted-foreground/80">상단 슬라이더로 주간 이동 · 연준은 Notes/Bonds를 합산 보고(분리·FRN 별도표기는 H.4.1 미제공).</span></div>
+          <div className="text-[12px] tabular-nums">연준 국채보유 <b className="text-rose-500">{T(cur.total)}</b> · 흡수율 <b className="text-rose-500">{Number.isFinite(cur.share) ? pct(cur.share) : "—"}</b> <span className="text-muted-foreground">(정점 {pct(peak.share)} · {peak.date.slice(0, 7)})</span></div>
         </div>
-        <div className="text-right shrink-0 text-[12px] tabular-nums">
-          <div>연준 국채보유 <b className="text-rose-500">{T(cur.total)}</b></div>
-          <div>흡수율 <b className="text-rose-500">{Number.isFinite(cur.share) ? pct(cur.share) : "—"}</b> <span className="text-muted-foreground">(정점 {pct(peak.share)} · {peak.date.slice(0, 7)})</span></div>
-        </div>
+        <div className="text-[11px] text-muted-foreground mt-0.5">위 T-계정의 ‘국채(SOMA)’를 만기별로 쪼갠 것. 연준이 시장에 나온 국채의 몇 %를 사서 들고 있나(흡수율).</div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
         <div className="lg:col-span-2">
