@@ -22,14 +22,6 @@ function Hint({ content, children, side = "top", className }: {
     </UITooltip>
   );
 }
-// 라벨 옆 작은 '?' 배지(단독 설명용).
-function InfoDot({ content, className }: { content: ReactNode; className?: string }) {
-  return (
-    <Hint content={content}>
-      <span className={cn("ml-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current text-[9px] font-semibold leading-none text-muted-foreground cursor-help align-middle select-none", className)}>?</span>
-    </Hint>
-  );
-}
 
 // server/fed.ts 의 응답 형태(모든 수치 million USD).
 interface WeekPoint {
@@ -106,30 +98,18 @@ function StackColumn({ segs, total, align, group }: {
         const h = Math.max(0, (s.val / total) * STACK_H);
         const pct = ((s.val / total) * 100).toFixed(1);
         const fg = textOn(s.color);
-        const tip = (
-          <div>
-            <div className="font-semibold text-[12.5px] flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: s.color }} />{s.label}
-            </div>
-            <div className="tabular-nums text-muted-foreground mt-0.5">{asMoney(s.val)} · 전체의 {pct}%</div>
-            {s.sub && <div className="tabular-nums text-muted-foreground">{s.sub.map(([n, v]) => `${n} ${asMoney(v)}`).join(" · ")}</div>}
-            {s.desc && <div className="mt-1 text-popover-foreground">{s.desc}</div>}
-          </div>
-        );
         return (
-          <Hint key={i} content={tip} side={align === "right" ? "left" : "right"}>
-            <div style={{ height: h, background: s.color, color: fg }}
-              className={`flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 cursor-help ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
-              {h >= 34 ? (
-                <>
-                  <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
-                  <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
-                </>
-              ) : h >= 17 ? (
-                <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
-              ) : null}
-            </div>
-          </Hint>
+          <div key={i} style={{ height: h, background: s.color, color: fg }}
+            className={`flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
+            {h >= 34 ? (
+              <>
+                <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
+                <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
+              </>
+            ) : h >= 17 ? (
+              <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
+            ) : null}
+          </div>
         );
       })}
     </div>
@@ -271,18 +251,22 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
         const color = b.net ? FLOW_NET : b.eff >= 0 ? FLOW_UP : FLOW_DN;
         const rises = b.eff >= 0;
         const valY = rises ? yA - 4 : yB + 11;          // 값 라벨은 막대 바깥쪽 끝(작은 막대도 안전)
+        const tip = b.net
+          ? `이번 주 지급준비금은 전주 대비 ${signed(net)} 변했어요 (전주 ${asMoney(prev.reserves)} → ${asMoney(now.reserves)})`
+          : flowSentence(b.key, b.name, b.own, b.eff);
         return (
-          <g key={b.key}>
-            <title>{b.net
-              ? `이번 주 지급준비금은 전주 대비 ${signed(net)} 변했어요 (전주 ${asMoney(prev.reserves)} → ${asMoney(now.reserves)})`
-              : flowSentence(b.key, b.name, b.own, b.eff)}</title>
-            <rect x={cx(b.i) - barW / 2} y={yA} width={barW} height={h} rx={2} fill={color}
-              opacity={b.net ? 0.95 : 0.9} style={{ transition: "y 0.3s ease, height 0.3s ease" }} />
-            {/* 준비금 효과값(단일부호) */}
-            <text x={cx(b.i)} y={valY} textAnchor="middle" fontSize={10.5} fontWeight={700} fill={color}>{signed(b.eff)}</text>
-            {/* 이름만 — 화살표·해설줄 제거(상세는 hover 툴팁). */}
-            <text x={cx(b.i)} y={138} textAnchor="middle" fontSize={10} fill="hsl(var(--foreground))">{b.name}</text>
-          </g>
+          <Hint key={b.key} content={tip} side="top">
+            <g style={{ cursor: "help" }}>
+              {/* 히트영역(투명) — 막대가 작아도 열 전체가 호버되게 */}
+              <rect x={cx(b.i) - colW / 2} y={yTop} width={colW} height={yBot - yTop + 22} fill="transparent" />
+              <rect x={cx(b.i) - barW / 2} y={yA} width={barW} height={h} rx={2} fill={color}
+                opacity={b.net ? 0.95 : 0.9} style={{ transition: "y 0.3s ease, height 0.3s ease" }} />
+              {/* 준비금 효과값(단일부호) */}
+              <text x={cx(b.i)} y={valY} textAnchor="middle" fontSize={10.5} fontWeight={700} fill={color}>{signed(b.eff)}</text>
+              {/* 이름만 — 화살표·해설줄 제거(상세는 hover 툴팁). */}
+              <text x={cx(b.i)} y={138} textAnchor="middle" fontSize={10} fill="hsl(var(--foreground))">{b.name}</text>
+            </g>
+          </Hint>
         );
       })}
     </svg>
@@ -341,69 +325,83 @@ function Legend({ items }: { items: [string, string][] }) {
 
 // ── 국채 종류(만기 기준) — 온커서 설명 · 잔액키(k)/순발행키(nk)/색 ──
 const TB_TYPES = [
-  { k: "bills", nk: "netBills", label: "단기 Bills", color: TB.bill, desc: "만기 1년 이하(4·8·13·17·26·52주). 이자 없이 할인발행 → 만기에 액면가 상환. 단기 자금조달·유동성 조절." },
-  { k: "notes", nk: "netNotes", label: "중기 Notes", color: TB.note, desc: "만기 2~10년(2·3·5·7·10년). 반기마다 고정 이표 지급. 시장성 국채 중 잔액 최대." },
-  { k: "bonds", nk: "netBonds", label: "장기 Bonds", color: TB.bond, desc: "만기 20·30년. 반기 고정 이표. 장기 금리·재정 이자부담의 핵심." },
-  { k: "tips", nk: "netTips", label: "TIPS", color: TB.tips, desc: "물가연동국채(만기 5·10·30년). 원금이 CPI에 연동 → 인플레만큼 불어남." },
-  { k: "frn", nk: "netFrn", label: "FRN", color: TB.frn, desc: "변동금리채(만기 2년). 금리가 13주 Bill 경매금리에 연동돼 분기마다 재설정. 2014년 도입." },
+  { k: "bills", nk: "netBills", label: "단기 Bills", color: TB.bill, desc: "만기 1년 이하 (4·8·13·17·26·52주)." },
+  { k: "notes", nk: "netNotes", label: "중기 Notes", color: TB.note, desc: "만기 2~10년 (2·3·5·7·10년)." },
+  { k: "bonds", nk: "netBonds", label: "장기 Bonds", color: TB.bond, desc: "만기 20·30년." },
+  { k: "tips", nk: "netTips", label: "TIPS", color: TB.tips, desc: "물가연동국채 · 만기 5·10·30년." },
+  { k: "frn", nk: "netFrn", label: "FRN", color: TB.frn, desc: "변동금리채 · 만기 2년." },
 ] as const;
 
 // ── 연준의 국채 흡수(SOMA 만기별 보유·매입 + 흡수율) — 상단 T-계정의 '국채 매입'을 만기별로 확장 ──
-function FedAbsorption({ t }: { t: Treasury }) {
-  const tm = t.monthly, fw = t.fedWeekly;
-  const last = tm.at(-1);
-  const fwLast = fw.at(-1);
-  const fwP4 = fw.length > 4 ? fw[fw.length - 5] : null;
-  if (!last || !fwLast) return null;
+//   상단 슬라이더(selDate)와 연동해 '선택 주' 기준으로 표시. 매입 = 그 주의 전주 대비 Δ(주간).
+//   ⚠ 연준 H.4.1 은 Bills / 중장기(Notes+Bonds 합산) / TIPS 3개 라인만 공개 — Notes·Bonds 분리·FRN 별도표기는 불가.
+//     TIPS = 총보유 − 단기 − 중장기 (물가보정분 포함 → 3버킷이 총계와 정확히 합치).
+function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
+  const { monthly: tm, fedWeekly: fw } = t;
   const pct = (v: number) => (v * 100).toFixed(1) + "%";
-  const peak = tm.reduce((m, p) => (p.fedShare > m.fedShare ? p : m), tm[0]); // 흡수율 정점(참고)
-  const fedBuy4 = fwP4 ? { bills: fwLast.bills - fwP4.bills, nb: fwLast.notesBonds - fwP4.notesBonds, tips: fwLast.tips - fwP4.tips, total: fwLast.total - fwP4.total } : null;
+  // 주간 흡수율 = 연준 국채보유(주간) / 재무부 시장성 총액(월간, 해당 주의 최근 월로 ffill).
+  const weekly = useMemo(() => {
+    let ti = 0, mkt = NaN;
+    return fw.map((w) => {
+      while (ti < tm.length && tm[ti].date <= w.date) { mkt = tm[ti].total; ti++; }
+      return { date: w.date, bills: w.bills, nb: w.notesBonds, tips: w.total - w.bills - w.notesBonds, total: w.total, share: Number.isFinite(mkt) && mkt ? w.total / mkt : NaN };
+    });
+  }, [fw, tm]);
+  const finite = weekly.filter((x) => Number.isFinite(x.share));
+  if (!finite.length) return null;
+  // 선택 주(상단 슬라이더 연동): selDate 이하 최근 주. 없으면 최신.
+  let selIdx = weekly.length - 1;
+  if (selDate) { for (let i = 0; i < weekly.length; i++) { if (weekly[i].date <= selDate) selIdx = i; else break; } }
+  const cur = weekly[selIdx], prev = selIdx > 0 ? weekly[selIdx - 1] : null;
+  const buy = prev ? { bills: cur.bills - prev.bills, nb: cur.nb - prev.nb, tips: cur.tips - prev.tips, total: cur.total - prev.total } : null;
+  const peak = finite.reduce((m, x) => (x.share > m.share ? x : m), finite[0]);
   const cards = [
-    ["단기 Bills", "bills", "bill", "연준 보유 단기국채(만기 1년 이하). QT 국면에도 재투자로 일부 유지.", fedBuy4?.bills],
-    ["중장기 N&B", "notesBonds", "note", "연준 보유 중장기국채 — Notes(2~10년) + Bonds(20·30년). 보유의 대부분.", fedBuy4?.nb],
-    ["TIPS", "tips", "tips", "연준 보유 물가연동국채(만기 5·10·30년).", fedBuy4?.tips],
+    ["단기 Bills", "bills", "bill", "만기 1년 이하.", buy?.bills],
+    ["중장기 N&B", "nb", "note", "Notes(2~10년) + Bonds(20·30년).", buy?.nb],
+    ["TIPS", "tips", "tips", "물가연동국채 (만기 5·10·30년).", buy?.tips],
   ] as const;
   return (
     <Card className="p-3.5">
       <div className="mb-1.5 flex items-start justify-between flex-wrap gap-2">
         <div>
-          <div className="text-sm font-semibold">연준의 국채 흡수 <span className="text-[11px] font-normal text-muted-foreground">SOMA 만기별 보유 · 흡수율 · {fwLast.date}</span></div>
-          <div className="text-[11px] text-muted-foreground">위 T-계정의 ‘국채(SOMA)’를 만기별로 쪼갠 것. 연준이 시장에 나온 국채의 몇 %를 사서 들고 있나(흡수율) — QT로 줄면 그만큼 민간이 더 받쳐야 한다.</div>
+          <div className="text-sm font-semibold">연준의 국채 흡수 <span className="text-[11px] font-normal text-muted-foreground">SOMA 만기별 보유 · 흡수율 · {weekLabel(cur.date)} ({cur.date})</span></div>
+          <div className="text-[11px] text-muted-foreground">위 T-계정의 ‘국채(SOMA)’를 만기별로 쪼갠 것. 연준이 시장에 나온 국채의 몇 %를 사서 들고 있나(흡수율). <span className="text-muted-foreground/80">상단 슬라이더로 주간 이동 · 연준은 Notes/Bonds를 합산 보고(분리·FRN 별도표기는 H.4.1 미제공).</span></div>
         </div>
         <div className="text-right shrink-0 text-[12px] tabular-nums">
-          <div>연준 국채보유 <b className="text-rose-500">{T(fwLast.total)}</b></div>
-          <div>흡수율 <b className="text-rose-500">{pct(last.fedShare)}</b> <span className="text-muted-foreground">(정점 {pct(peak.fedShare)} · {peak.date.slice(0, 7)})</span></div>
+          <div>연준 국채보유 <b className="text-rose-500">{T(cur.total)}</b></div>
+          <div>흡수율 <b className="text-rose-500">{Number.isFinite(cur.share) ? pct(cur.share) : "—"}</b> <span className="text-muted-foreground">(정점 {pct(peak.share)} · {peak.date.slice(0, 7)})</span></div>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
         <div className="lg:col-span-2">
-          <div className="text-[12px] font-semibold mb-0.5">연준 흡수율 <span className="text-[10.5px] font-normal text-muted-foreground">= 연준 보유 / 시장성 국채 총액 · 2014→현재</span></div>
+          <div className="text-[12px] font-semibold mb-0.5">연준 흡수율 <span className="text-[10.5px] font-normal text-muted-foreground">= 연준 보유 / 시장성 국채 총액 · 주간 · 2014→현재</span></div>
           <div className="h-[150px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={tm} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
+              <AreaChart data={finite} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
                 <defs><linearGradient id="absg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={FED_ABS} stopOpacity={0.35} /><stop offset="100%" stopColor={FED_ABS} stopOpacity={0.03} /></linearGradient></defs>
                 <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
                 <YAxis tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} domain={[0, "auto"]} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={34} className="text-muted-foreground" />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [pct(v), "흡수율"]} labelFormatter={(l) => String(l).slice(0, 7)} />
-                <Area dataKey="fedShare" stroke={FED_ABS} strokeWidth={1.5} fill="url(#absg)" isAnimationActive={false} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [pct(v), "흡수율"]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
+                <Area dataKey="share" stroke={FED_ABS} strokeWidth={1.5} fill="url(#absg)" isAnimationActive={false} />
+                <ReferenceLine x={cur.date} stroke={FED_ABS} strokeWidth={1} strokeOpacity={0.5} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-[12px] tabular-nums">
-          {cards.map(([lbl, k, c, tip, buy]) => (
-            <Hint key={lbl} content={<><span className="font-semibold">{lbl}</span> · {tip}<div className="mt-1 text-muted-foreground">최근 4주 매입(Δ): {Number.isFinite(buy) ? signed(buy as number) : "—"}</div></>}>
+          {cards.map(([lbl, k, c, tip, b]) => (
+            <Hint key={lbl} content={<><span className="font-semibold">{lbl}</span> · {tip}<div className="mt-1 text-muted-foreground">이번 주 매입(Δ): {Number.isFinite(b) ? signed(b as number) : "—"}</div></>}>
               <div className="rounded-md border border-border/60 px-2 py-1.5 cursor-help">
                 <div className="flex items-center gap-1 text-muted-foreground text-[10.5px]"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: (TB as any)[c] }} />{lbl}</div>
-                <div className="font-semibold">{T((fwLast as any)[k])}</div>
-                <div className={(buy ?? 0) >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(buy) ? `4주 ${signed(buy as number)}` : ""}</div>
+                <div className="font-semibold">{T((cur as any)[k])}</div>
+                <div className={(b ?? 0) >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(b) ? `주간 ${signed(b as number)}` : ""}</div>
               </div>
             </Hint>
           ))}
           <div className="rounded-md border border-border/60 px-2 py-1.5 bg-muted/30">
             <div className="text-muted-foreground text-[10.5px]">국채 총보유</div>
-            <div className="font-semibold text-rose-500">{T(fwLast.total)}</div>
-            <div className={fedBuy4 && fedBuy4.total >= 0 ? "text-emerald-500" : "text-red-500"}>{fedBuy4 ? `4주 ${signed(fedBuy4.total)}` : ""}</div>
+            <div className="font-semibold text-rose-500">{T(cur.total)}</div>
+            <div className={buy && buy.total >= 0 ? "text-emerald-500" : "text-red-500"}>{buy ? `주간 ${signed(buy.total)}` : ""}</div>
           </div>
         </div>
       </div>
@@ -552,7 +550,7 @@ export default function Fed() {
       {/* T-계정 ↔ 준비금 변화 분해 (한 화면 2단) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <Card className="p-3.5">
-          <div className="mb-2 text-sm font-semibold">T-계정<InfoDot content={<>연준의 자산=부채. 왼쪽(자산)은 연준이 사서 보유한 것, 오른쪽(부채)은 그 돈이 지금 어디 있나. <span className="text-muted-foreground">각 칸에 커서를 올리면 설명이 나옵니다.</span></>} /> <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비</span></div>
+          <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비</span></div>
           {sel && <TAccount w={sel} />}
         </Card>
         <Card className="p-3.5 flex flex-col">
@@ -591,8 +589,8 @@ export default function Fed() {
         </Card>
       </div>
 
-      {/* 연준의 국채 흡수 — T-계정의 '국채(SOMA)' 확장(만기별 보유·흡수율). 슬라이더 무관 */}
-      {data?.treasury && data.treasury.monthly.length > 0 && <FedAbsorption t={data.treasury} />}
+      {/* 연준의 국채 흡수 — T-계정의 '국채(SOMA)' 확장(만기별 보유·흡수율). 상단 슬라이더(sel)와 연동 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <FedAbsorption t={data.treasury} selDate={sel?.date} />}
 
       {/* 위기 감지기 (전체기간 · 슬라이더 무관) */}
       <Card className="p-3.5">
