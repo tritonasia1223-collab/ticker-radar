@@ -1,8 +1,11 @@
 name: Fed balance sheet — collect + verify
 
-# Fed 대차대조표(H.4.1) FRED 수집. 키 없는 공개 CSV(fredgraph.csv) — Secret 은 DATABASE_URL 뿐.
-# 비대칭 주기: 주간 H.4.1(목 발표) + 일간(RRP·SP500). upsert 라 재실행 멱등.
-# 수집 직후 fed:verify(F1~F5) 로 게이트 — 단위/항등식/네거티브컨트롤 깨지면 job 실패(RED).
+# Fed 대차대조표(H.4.1) + 재무부 국채(MSPD) 수집. 키 없는 공개 CSV/JSON — Secret 은 DATABASE_URL 뿐.
+# 단일 주간 리듬(연준 기준): 매주 목요일 H.4.1 발표 직후 1회. upsert 라 재실행 멱등.
+#   - 페이지에 그려지는 데이터는 전부 주간 H.4.1(연준) + 월간 MSPD(재무부) 뿐 → 일간 크론 불필요(제거).
+#   - MSPD 는 재무부가 '월간'만 공개하지만 매주 돌려도 멱등(새 달 없으면 무변화) → 월초 발표분을 그 주 목요일에 자동 반영.
+#   - (미래에 일간 순유동성 차트를 붙이면 run 블록에 `--only daily --recent 10` 한 줄 추가)
+# 수집 직후 fed:verify(F1~F6) 로 게이트 — 단위/항등식/네거티브컨트롤 깨지면 job 실패(RED).
 #
 # ⚠️ GitHub schedule 트리거는 기본 브랜치에서만 실행됨 — 이 파일이 병합돼야 정기 실행 시작.
 #    필요한 레포 Secret: DATABASE_URL
@@ -10,8 +13,6 @@ name: Fed balance sheet — collect + verify
 on:
   schedule:
     - cron: "30 22 * * 4"   # 주간: 목 22:30 UTC (H.4.1 목 16:30 ET 발표 후, EDT/EST 연중 안전)
-    - cron: "0 23 * * 1-5"  # 일간: 평일 23:00 UTC (RRP·SP500)
-    - cron: "0 13 3 * *"    # 월간: 매월 3일 13:00 UTC (재무부 MSPD — 국채 종류별 잔액, 월초 며칠 뒤 공개)
   workflow_dispatch: {}
 
 concurrency:
@@ -28,19 +29,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install --no-audit --no-fund
-      # 주간 트리거면 주간 시리즈(최근 5주 재요청=수정치 반영), 그 외(일간·수동)엔 일간 시리즈.
-      # 수동 실행(workflow_dispatch)은 일간 세트로 가볍게 — 전체 백필은 로컬 npm run fed:backfill.
-      - name: Collect FRED (H.4.1 + daily) + verify
+      # 주간 리듬: 연준 H.4.1(전 지표, 최근 5주 재요청=수정치 반영) + 재무부 MSPD(새 달 있으면 반영) + 검증.
+      - name: Collect H.4.1 + MSPD + verify
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ "${{ github.event.schedule }}" = "0 13 3 * *" ]; then
-            npm run fed:backfill -- --only mspd --recent 70   # 재무부 국채 종류별(MSPD, 월간) — verify 무관
-          else
-            if [ "${{ github.event.schedule }}" = "30 22 * * 4" ]; then
-              npm run fed:backfill -- --only weekly --recent 35
-            else
-              npm run fed:backfill -- --only daily --recent 10
-            fi
-            npm run fed:verify
-          fi
+          npm run fed:backfill -- --only weekly --recent 35   # 연준 H.4.1
+          npm run fed:backfill -- --only mspd   --recent 70    # 재무부 MSPD(국채 종류별 잔액, 멱등)
+          npm run fed:verify
