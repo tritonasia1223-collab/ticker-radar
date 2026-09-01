@@ -506,7 +506,7 @@ export default function Fed() {
   return (
     <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-bold">Fed 대차대조표 <span className="text-sm font-normal text-muted-foreground">H.4.1 · 미국 유동성</span></h1>
+        <h1 className="text-xl font-bold">미국 유동성 <span className="text-sm font-normal text-muted-foreground">연준 H.4.1 · 재무부 국채 수급</span></h1>
         <span className="text-[11px] text-muted-foreground tabular-nums">최신 {latest.date} · 자료 FRED</span>
       </div>
 
@@ -592,7 +592,10 @@ export default function Fed() {
       {/* 연준의 국채 흡수 — T-계정의 '국채(SOMA)' 확장(만기별 보유·흡수율). 상단 슬라이더(sel)와 연동 */}
       {data?.treasury && data.treasury.monthly.length > 0 && <FedAbsorption t={data.treasury} selDate={sel?.date} />}
 
-      {/* 위기 감지기 (전체기간 · 슬라이더 무관) */}
+      {/* 재무부 국채 발행(종류별 잔액·순발행) — 공급 측, 별도 칸. 슬라이더 무관 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} />}
+
+      {/* 위기 감지기 (전체기간 · 슬라이더 무관) — 맨 아래 */}
       <Card className="p-3.5">
         <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
           <div>
@@ -622,9 +625,6 @@ export default function Fed() {
           </ResponsiveContainer>
         </div>
       </Card>
-
-      {/* 재무부 국채 발행(종류별 잔액·순발행) — 공급 측, 별도 칸. 슬라이더 무관 */}
-      {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} />}
     </div>
   );
 }
