@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -6,6 +6,30 @@ import {
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+// 온커서 설명(스타일 툴팁) — native title 대체. 커서 위 항목에 '?'(cursor-help) + 깔끔한 팝오버.
+function Hint({ content, children, side = "top", className }: {
+  content: ReactNode; children: ReactNode; side?: "top" | "bottom" | "left" | "right"; className?: string;
+}) {
+  return (
+    <UITooltip delayDuration={80}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side} className={cn("max-w-[248px] text-[12px] leading-relaxed font-normal", className)}>
+        {content}
+      </TooltipContent>
+    </UITooltip>
+  );
+}
+// 라벨 옆 작은 '?' 배지(단독 설명용).
+function InfoDot({ content, className }: { content: ReactNode; className?: string }) {
+  return (
+    <Hint content={content}>
+      <span className={cn("ml-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current text-[9px] font-semibold leading-none text-muted-foreground cursor-help align-middle select-none", className)}>?</span>
+    </Hint>
+  );
+}
 
 // server/fed.ts 의 응답 형태(모든 수치 million USD).
 interface WeekPoint {
@@ -70,7 +94,7 @@ const nearestIdx = (weeks: WeekPoint[], date: string) => {
 };
 
 // ── T-계정 한쪽 컬럼(꽉 찬 구성비 스택) ──
-interface Seg { label: string; val: number; color: string; sub?: [string, number][] }
+interface Seg { label: string; val: number; color: string; sub?: [string, number][]; desc?: string }
 const STACK_H = 320;
 function StackColumn({ segs, total, align, group }: {
   segs: Seg[]; total: number; align: "left" | "right";
@@ -82,19 +106,30 @@ function StackColumn({ segs, total, align, group }: {
         const h = Math.max(0, (s.val / total) * STACK_H);
         const pct = ((s.val / total) * 100).toFixed(1);
         const fg = textOn(s.color);
-        const title = `${s.label} ${asMoney(s.val)} (${pct}%)${s.sub ? "\n" + s.sub.map(([n, v]) => `  ${n} ${asMoney(v)}`).join("\n") : ""}`;
-        return (
-          <div key={i} title={title} style={{ height: h, background: s.color, color: fg }}
-            className={`flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
-            {h >= 34 ? (
-              <>
-                <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
-                <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
-              </>
-            ) : h >= 17 ? (
-              <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
-            ) : null}
+        const tip = (
+          <div>
+            <div className="font-semibold text-[12.5px] flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: s.color }} />{s.label}
+            </div>
+            <div className="tabular-nums text-muted-foreground mt-0.5">{asMoney(s.val)} · 전체의 {pct}%</div>
+            {s.sub && <div className="tabular-nums text-muted-foreground">{s.sub.map(([n, v]) => `${n} ${asMoney(v)}`).join(" · ")}</div>}
+            {s.desc && <div className="mt-1 text-popover-foreground">{s.desc}</div>}
           </div>
+        );
+        return (
+          <Hint key={i} content={tip} side={align === "right" ? "left" : "right"}>
+            <div style={{ height: h, background: s.color, color: fg }}
+              className={`flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 cursor-help ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
+              {h >= 34 ? (
+                <>
+                  <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
+                  <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
+                </>
+              ) : h >= 17 ? (
+                <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
+              ) : null}
+            </div>
+          </Hint>
         );
       })}
     </div>
@@ -125,18 +160,18 @@ function StackColumn({ segs, total, align, group }: {
 function TAccount({ w }: { w: WeekPoint }) {
   // SOMA 를 국채/MBS/기관채로 분할 표시(캡처 요청). 기관채는 잔존 미미해 얇은 띠.
   const assets: Seg[] = [
-    { label: "국채", val: w.treast, color: A_SOMA },
-    { label: "MBS", val: w.mbs, color: A_MBS },
-    { label: "기관채", val: w.agency, color: A_AGENCY },
-    { label: "대출·스왑", val: w.loans, color: A_LOAN, sub: [["할인창구", w.discount], ["BTFP", w.btfp], ["레포", w.repo], ["스왑", w.swap]] },
-    { label: "기타자산", val: Math.max(0, w.assetResidual), color: A_RESID },
+    { label: "국채", val: w.treast, color: A_SOMA, desc: "연준이 사서 보유한 미국 국채(SOMA). 양적완화(QE)의 핵심 — 돈을 풀며 매입, QT 땐 만기분을 재투자 안 하고 축소." },
+    { label: "MBS", val: w.mbs, color: A_MBS, desc: "주택저당증권. 연준이 보유한 모기지 채권 — 2008·2020 위기 때 주택시장 지원 위해 대량 매입." },
+    { label: "기관채", val: w.agency, color: A_AGENCY, desc: "연방기관(패니메이 등) 발행 채권. 현재 잔액은 미미." },
+    { label: "대출·스왑", val: w.loans, color: A_LOAN, sub: [["할인창구", w.discount], ["BTFP", w.btfp], ["레포", w.repo], ["스왑", w.swap]], desc: "은행에 빌려준 긴급대출(할인창구·BTFP·레포)과 외국 중앙은행 통화스왑. 평상시 바닥, 위기 때 급증." },
+    { label: "기타자산", val: Math.max(0, w.assetResidual), color: A_RESID, desc: "금·SDR·미수이자 등 나머지 자산(잔차)." },
   ];
   const liabs: Seg[] = [
-    { label: "지급준비금", val: w.reserves, color: L_RES },
-    { label: "역레포", val: w.rrp, color: L_RRP },
-    { label: "TGA", val: w.tga, color: L_TGA },
-    { label: "현금통화", val: w.currency, color: L_CUR },
-    { label: "기타·자본", val: Math.max(0, w.liabResidual), color: L_RESID },
+    { label: "지급준비금", val: w.reserves, color: L_RES, desc: "은행들이 연준에 맡긴 예치금. 시중 유동성의 핵심 지표 — 연준 자산의 반대편(부채)." },
+    { label: "역레포", val: w.rrp, color: L_RRP, desc: "MMF 등이 연준에 하룻밤 맡기고 이자 받는 자금(ON RRP). 늘면 시중에서 돈이 빠져 준비금 감소." },
+    { label: "TGA", val: w.tga, color: L_TGA, desc: "재무부의 연준 당좌계좌(정부 지갑). 세금 걷히면↑·지출하면↓. 늘면 시중 유동성 흡수." },
+    { label: "현금통화", val: w.currency, color: L_CUR, desc: "시중에 유통되는 지폐(연준 부채). 완만히 증가." },
+    { label: "기타·자본", val: Math.max(0, w.liabResidual), color: L_RESID, desc: "해외공식예금·기타부채·자본금 등 나머지(잔차)." },
   ];
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
@@ -324,9 +359,9 @@ function FedAbsorption({ t }: { t: Treasury }) {
   const peak = tm.reduce((m, p) => (p.fedShare > m.fedShare ? p : m), tm[0]); // 흡수율 정점(참고)
   const fedBuy4 = fwP4 ? { bills: fwLast.bills - fwP4.bills, nb: fwLast.notesBonds - fwP4.notesBonds, tips: fwLast.tips - fwP4.tips, total: fwLast.total - fwP4.total } : null;
   const cards = [
-    ["단기 Bills", "bills", "bill", "만기 1년 이하", fedBuy4?.bills],
-    ["중장기 N&B", "notesBonds", "note", "Notes 2~10년 + Bonds 20·30년", fedBuy4?.nb],
-    ["TIPS", "tips", "tips", "물가연동채(만기 5·10·30년)", fedBuy4?.tips],
+    ["단기 Bills", "bills", "bill", "연준 보유 단기국채(만기 1년 이하). QT 국면에도 재투자로 일부 유지.", fedBuy4?.bills],
+    ["중장기 N&B", "notesBonds", "note", "연준 보유 중장기국채 — Notes(2~10년) + Bonds(20·30년). 보유의 대부분.", fedBuy4?.nb],
+    ["TIPS", "tips", "tips", "연준 보유 물가연동국채(만기 5·10·30년).", fedBuy4?.tips],
   ] as const;
   return (
     <Card className="p-3.5">
@@ -357,11 +392,13 @@ function FedAbsorption({ t }: { t: Treasury }) {
         </div>
         <div className="grid grid-cols-2 gap-2 text-[12px] tabular-nums">
           {cards.map(([lbl, k, c, tip, buy]) => (
-            <div key={lbl} title={tip} className="rounded-md border border-border/60 px-2 py-1.5 cursor-help">
-              <div className="flex items-center gap-1 text-muted-foreground text-[10.5px]"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: (TB as any)[c] }} />{lbl}</div>
-              <div className="font-semibold">{T((fwLast as any)[k])}</div>
-              <div className={(buy ?? 0) >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(buy) ? `4주 ${signed(buy as number)}` : ""}</div>
-            </div>
+            <Hint key={lbl} content={<><span className="font-semibold">{lbl}</span> · {tip}<div className="mt-1 text-muted-foreground">최근 4주 매입(Δ): {Number.isFinite(buy) ? signed(buy as number) : "—"}</div></>}>
+              <div className="rounded-md border border-border/60 px-2 py-1.5 cursor-help">
+                <div className="flex items-center gap-1 text-muted-foreground text-[10.5px]"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: (TB as any)[c] }} />{lbl}</div>
+                <div className="font-semibold">{T((fwLast as any)[k])}</div>
+                <div className={(buy ?? 0) >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(buy) ? `4주 ${signed(buy as number)}` : ""}</div>
+              </div>
+            </Hint>
           ))}
           <div className="rounded-md border border-border/60 px-2 py-1.5 bg-muted/30">
             <div className="text-muted-foreground text-[10.5px]">국채 총보유</div>
@@ -397,7 +434,7 @@ function TreasuryIssuance({ t }: { t: Treasury }) {
       {/* 종류 칩 — 온커서 설명(만기 기준) */}
       <div className="flex flex-wrap gap-1.5">
         {TB_TYPES.map((x) => (
-          <span key={x.k} title={x.desc} onMouseEnter={() => setHoverK(x.k)} onMouseLeave={() => setHoverK(null)}
+          <span key={x.k} onMouseEnter={() => setHoverK(x.k)} onMouseLeave={() => setHoverK(null)}
             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-help transition-colors ${active?.k === x.k ? "border-foreground/40 bg-muted" : "border-border/60"}`}>
             <span className="inline-block w-2 h-2 rounded-sm" style={{ background: x.color }} />{x.label}
             <span className="tabular-nums text-muted-foreground">{T((last as any)[x.k])}</span>
@@ -515,7 +552,7 @@ export default function Fed() {
       {/* T-계정 ↔ 준비금 변화 분해 (한 화면 2단) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <Card className="p-3.5">
-          <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비</span></div>
+          <div className="mb-2 text-sm font-semibold">T-계정<InfoDot content={<>연준의 자산=부채. 왼쪽(자산)은 연준이 사서 보유한 것, 오른쪽(부채)은 그 돈이 지금 어디 있나. <span className="text-muted-foreground">각 칸에 커서를 올리면 설명이 나옵니다.</span></>} /> <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비</span></div>
           {sel && <TAccount w={sel} />}
         </Card>
         <Card className="p-3.5 flex flex-col">
