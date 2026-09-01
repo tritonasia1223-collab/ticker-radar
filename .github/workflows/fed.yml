@@ -11,6 +11,7 @@ on:
   schedule:
     - cron: "30 22 * * 4"   # 주간: 목 22:30 UTC (H.4.1 목 16:30 ET 발표 후, EDT/EST 연중 안전)
     - cron: "0 23 * * 1-5"  # 일간: 평일 23:00 UTC (RRP·SP500)
+    - cron: "0 13 3 * *"    # 월간: 매월 3일 13:00 UTC (재무부 MSPD — 국채 종류별 잔액, 월초 며칠 뒤 공개)
   workflow_dispatch: {}
 
 concurrency:
@@ -33,9 +34,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ "${{ github.event.schedule }}" = "30 22 * * 4" ]; then
-            npm run fed:backfill -- --only weekly --recent 35
+          if [ "${{ github.event.schedule }}" = "0 13 3 * *" ]; then
+            npm run fed:backfill -- --only mspd --recent 70   # 재무부 국채 종류별(MSPD, 월간) — verify 무관
           else
-            npm run fed:backfill -- --only daily --recent 10
+            if [ "${{ github.event.schedule }}" = "30 22 * * 4" ]; then
+              npm run fed:backfill -- --only weekly --recent 35
+            else
+              npm run fed:backfill -- --only daily --recent 10
+            fi
+            npm run fed:verify
           fi
-          npm run fed:verify

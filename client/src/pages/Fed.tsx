@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,15 @@ interface WeekPoint {
   discount: number; btfp: number; repo: number; swap: number; loans: number; assetResidual: number;
   reserves: number; rrp: number; tga: number; currency: number; liabResidual: number;
 }
-interface Overview { weeks: WeekPoint[]; updatedAt: string }
+// 국채 수급(재무부 시장성 국채 + 연준 SOMA 만기별). server/fed.ts buildTreasury.
+interface TreasuryMonth {
+  date: string; bills: number; notes: number; bonds: number; tips: number; frn: number; total: number;
+  netBills: number; netNotes: number; netBonds: number; netTips: number; netFrn: number; netTotal: number;
+  fedBills: number; fedNotesBonds: number; fedTips: number; fedTotal: number; fedShare: number;
+}
+interface FedMatWeek { date: string; bills: number; notesBonds: number; tips: number; total: number }
+interface Treasury { monthly: TreasuryMonth[]; fedWeekly: FedMatWeek[] }
+interface Overview { weeks: WeekPoint[]; treasury?: Treasury; updatedAt: string }
 
 // ── 색 ── SOMA 세분(국채·MBS·기관채)=teal 3단 / 대출=amber / 기타=slate / 부채=purple+gray
 const A_SOMA = "#0d9488", A_MBS = "#14b8a6", A_AGENCY = "#5eead4"; // 국채·MBS·기관채
@@ -22,6 +30,9 @@ const A_LOAN = "#f59e0b", A_RESID = "#94a3b8";                     // 대출·�
 const L_RES = "#7c3aed", L_RRP = "#a855f7", L_TGA = "#d8b4fe", L_CUR = "#9ca3af", L_RESID = "#6b7280";
 const POS = "#16a34a", NEG = "#dc2626";
 const LEND = { discount: "#f59e0b", btfp: "#ef4444", repo: "#3b82f6", swap: "#8b5cf6" };
+// 국채 종류별(재무부) — 단기(파랑)→장기(보라) 그라데이션 + TIPS(teal)·FRN(amber). 연준 흡수율=rose.
+const TB = { bill: "#3b82f6", note: "#6366f1", bond: "#8b5cf6", tips: "#14b8a6", frn: "#f59e0b" };
+const FED_ABS = "#e11d48";
 
 const PHASES: { date: string; label: string; desc: string }[] = [
   { date: "2008-11-25", label: "QE1", desc: "금융위기 — MBS·국채 대량매입 시작" },
@@ -293,6 +304,110 @@ function Legend({ items }: { items: [string, string][] }) {
   );
 }
 
+// ── 국채 수급: 재무부 발행(종류별) ↔ 연준 흡수(SOMA) ──
+function TreasurySupply({ t }: { t: Treasury }) {
+  const tm = t.monthly, fw = t.fedWeekly;
+  const last = tm.at(-1);
+  const fwLast = fw.at(-1);
+  const fwP4 = fw.length > 4 ? fw[fw.length - 5] : null;
+  if (!last) return null;
+  const pct = (v: number) => (v * 100).toFixed(1) + "%";
+  const ym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
+  const peak = tm.reduce((m, p) => (p.fedShare > m.fedShare ? p : m), tm[0]); // 흡수율 정점(참고)
+  const recentNet = tm.slice(-30);
+  const fedBuy4 = fwP4 && fwLast ? {
+    bills: fwLast.bills - fwP4.bills, nb: fwLast.notesBonds - fwP4.notesBonds,
+    tips: fwLast.tips - fwP4.tips, total: fwLast.total - fwP4.total,
+  } : null;
+
+  return (
+    <Card className="p-3.5">
+      <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-sm font-semibold">재무부 국채 발행 &amp; 연준 흡수 <span className="text-[11px] font-normal text-muted-foreground">시장성 국채 종류별 · 연준 SOMA · {last.date.slice(0, 7)}</span></div>
+          <div className="text-[11px] text-muted-foreground">재무부가 얼마를(어떤 만기로) 찍어내고, 그중 연준이 얼마나 사서 들고 있는지(흡수율). QT로 연준 비중이 줄면 그만큼 민간이 더 받쳐야 한다.</div>
+        </div>
+        <div className="text-right shrink-0 text-[12px] tabular-nums">
+          <div>시장성 총 <b>{T(last.total)}</b> · 연준 보유 <b>{T(last.fedTotal)}</b></div>
+          <div>연준 흡수율 <b className="text-rose-500">{pct(last.fedShare)}</b> <span className="text-muted-foreground">(정점 {pct(peak.fedShare)} · {peak.date.slice(0, 7)})</span></div>
+        </div>
+      </div>
+
+      {/* 종류별 잔액 스택 */}
+      <Legend items={[["단기 Bills", TB.bill], ["중기 Notes", TB.note], ["장기 Bonds", TB.bond], ["TIPS", TB.tips], ["FRN", TB.frn]]} />
+      <div className="h-[190px] mt-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
+            <Area dataKey="bills" name="단기 Bills" stackId="1" stroke={TB.bill} fill={TB.bill} fillOpacity={0.55} />
+            <Area dataKey="notes" name="중기 Notes" stackId="1" stroke={TB.note} fill={TB.note} fillOpacity={0.55} />
+            <Area dataKey="bonds" name="장기 Bonds" stackId="1" stroke={TB.bond} fill={TB.bond} fillOpacity={0.55} />
+            <Area dataKey="tips" name="TIPS" stackId="1" stroke={TB.tips} fill={TB.tips} fillOpacity={0.55} />
+            <Area dataKey="frn" name="FRN" stackId="1" stroke={TB.frn} fill={TB.frn} fillOpacity={0.55} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
+        <div>
+          <div className="text-[12px] font-semibold mb-0.5">연준 흡수율 <span className="text-[10.5px] font-normal text-muted-foreground">= 연준 보유 / 시장성 총액</span></div>
+          <div className="h-[150px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={tm} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
+                <defs><linearGradient id="absg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={FED_ABS} stopOpacity={0.35} /><stop offset="100%" stopColor={FED_ABS} stopOpacity={0.03} /></linearGradient></defs>
+                <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+                <YAxis tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} domain={[0, "auto"]} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={34} className="text-muted-foreground" />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [pct(v), "흡수율"]} labelFormatter={(l) => String(l).slice(0, 7)} />
+                <Area dataKey="fedShare" stroke={FED_ABS} strokeWidth={1.5} fill="url(#absg)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div>
+          <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">종류별 · 잔액 MoM 변화 · 최근 30개월</span></div>
+          <div className="h-[150px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }} stackOffset="sign">
+                <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+                <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [signed(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
+                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
+                <Bar dataKey="netBills" name="단기 Bills" stackId="n" fill={TB.bill} />
+                <Bar dataKey="netNotes" name="중기 Notes" stackId="n" fill={TB.note} />
+                <Bar dataKey="netBonds" name="장기 Bonds" stackId="n" fill={TB.bond} />
+                <Bar dataKey="netTips" name="TIPS" stackId="n" fill={TB.tips} />
+                <Bar dataKey="netFrn" name="FRN" stackId="n" fill={TB.frn} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* 연준 SOMA 만기별 보유 + 최근 4주 매입(Δ) */}
+      <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px] tabular-nums">
+        {([["단기 Bills", "bills", "bill"], ["중장기 N&B", "notesBonds", "note"], ["TIPS", "tips", "tips"]] as const).map(([lbl, k, c]) => {
+          const cur = fwLast ? (fwLast as any)[k] as number : NaN;
+          const buy = fedBuy4 ? (k === "bills" ? fedBuy4.bills : k === "notesBonds" ? fedBuy4.nb : fedBuy4.tips) : NaN;
+          return (
+            <div key={lbl} className="rounded-md border border-border/60 px-2 py-1.5">
+              <div className="flex items-center gap-1 text-muted-foreground text-[10.5px]"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: (TB as any)[c] }} />{lbl}</div>
+              <div className="font-semibold">{T(cur)}</div>
+              <div className={buy >= 0 ? "text-emerald-500" : "text-red-500"}>{Number.isFinite(buy) ? `4주 ${signed(buy)}` : ""}</div>
+            </div>
+          );
+        })}
+        <div className="rounded-md border border-border/60 px-2 py-1.5 bg-muted/30">
+          <div className="text-muted-foreground text-[10.5px]">연준 국채 총보유</div>
+          <div className="font-semibold text-rose-500">{fwLast && T(fwLast.total)}</div>
+          <div className={fedBuy4 && fedBuy4.total >= 0 ? "text-emerald-500" : "text-red-500"}>{fedBuy4 ? `4주 ${signed(fedBuy4.total)}` : ""}</div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function Fed() {
   const { data, isLoading } = useQuery<Overview>({ queryKey: ["/api/fed/overview"] });
   const [idx, setIdx] = useState<number>(-1);
@@ -438,6 +553,9 @@ export default function Fed() {
           </ResponsiveContainer>
         </div>
       </Card>
+
+      {/* 국채 수급: 재무부 발행(종류별) ↔ 연준 흡수(SOMA) — 전체기간, 슬라이더 무관 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <TreasurySupply t={data.treasury} />}
     </div>
   );
 }

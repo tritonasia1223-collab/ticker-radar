@@ -27,6 +27,12 @@ export const SERIES: SeriesSpec[] = [
   { id: "TREAST",  label: "국채(SOMA)",   unit: "millions", freq: "weekly", role: "asset", group: "soma" },
   { id: "WSHOMCB", label: "MBS(SOMA)",    unit: "millions", freq: "weekly", role: "asset", group: "soma" },
   { id: "WSHOFADSL", label: "연방기관채", unit: "millions", freq: "weekly", role: "asset", group: "soma", optionalZero: true },
+  // 연준 SOMA 국채 '만기별' 세부(국채 수급 섹션 전용). ⚠ deriveAssets/buildWeekly 의 soma 합에는 넣지 않음
+  //   (TREAST 총계로 이미 계상 → 중복 방지). WSHOTSL 은 TREAST 와 동일 총계(교차검증·앵커용).
+  { id: "WSHOBL",   label: "연준 단기채(Bills)",     unit: "millions", freq: "weekly", role: "asset", group: "soma-mat", optionalZero: true },
+  { id: "WSHONBNL", label: "연준 중장기채(Notes·Bonds)", unit: "millions", freq: "weekly", role: "asset", group: "soma-mat", optionalZero: true },
+  { id: "WSHONBIIL", label: "연준 물가연동(TIPS)",     unit: "millions", freq: "weekly", role: "asset", group: "soma-mat", optionalZero: true },
+  { id: "WSHOTSL",  label: "연준 국채 총계(만기별 앵커)", unit: "millions", freq: "weekly", role: "asset", group: "soma-mat", optionalZero: true },
   { id: "WLCFLPCL", label: "할인창구",    unit: "millions", freq: "weekly", role: "asset", group: "loans", optionalZero: true },
   { id: "H41RESPPALDKNWW", label: "BTFP", unit: "millions", freq: "weekly", role: "asset", group: "loans", optionalZero: true },
   { id: "WORAL",   label: "레포",         unit: "millions", freq: "weekly", role: "asset", group: "loans", optionalZero: true },
@@ -210,10 +216,84 @@ export function buildDaily(all: Map<string, Map<string, number>>): DailyPoint[] 
   return out;
 }
 
+// ============================================================================
+// 국채 수급 — 재무부 시장성 국채 잔액(종류별) + 연준 흡수(SOMA 만기별) + 흡수율.
+//   재무부: MSPD(Monthly Statement of the Public Debt) — 월말 잔액, FiscalData API(별도 수집).
+//     fed_balance_sheet 에 합성 seriesId(MKT_*)로 저장(million USD). MoM 변화 = 순발행량(월간).
+//   연준: WSHOBL/WSHONBNL/WSHONBIIL(주간, FRED) — 월말 기준 forward-fill 로 매칭. 주간 Δ = 매입량.
+//   흡수율 = 연준 국채보유 / 재무부 시장성 국채 총액.  (QE 정점 ~25% → QT 로 하락)
+// ============================================================================
+export interface MspdSpec { id: string; label: string; cls: string } // cls = MSPD security_class_desc
+export const MSPD_SERIES: MspdSpec[] = [
+  { id: "MKT_BILLS", label: "재정증권(Bills)",  cls: "Bills" },
+  { id: "MKT_NOTES", label: "중기채(Notes)",    cls: "Notes" },
+  { id: "MKT_BONDS", label: "장기채(Bonds)",    cls: "Bonds" },
+  { id: "MKT_TIPS",  label: "물가연동(TIPS)",   cls: "Treasury Inflation-Protected Securities" },
+  { id: "MKT_FRN",   label: "변동금리채(FRN)",  cls: "Floating Rate Notes" },
+];
+export const MSPD_IDS = MSPD_SERIES.map((s) => s.id);
+
+export interface TreasuryMonthPoint {
+  date: string;                                              // 월말(YYYY-MM-DD)
+  bills: number; notes: number; bonds: number; tips: number; frn: number; total: number; // 잔액
+  netBills: number; netNotes: number; netBonds: number; netTips: number; netFrn: number; netTotal: number; // MoM 순발행
+  fedBills: number; fedNotesBonds: number; fedTips: number; fedTotal: number; // 연준 보유(월말 ffill)
+  fedShare: number;                                         // 연준보유/시장성총액
+}
+export interface FedMatWeek { date: string; bills: number; notesBonds: number; tips: number; total: number }
+export interface TreasuryView { monthly: TreasuryMonthPoint[]; fedWeekly: FedMatWeek[] }
+
+// ≤ date 인 마지막 관측(forward-fill). 정렬된 [date,val] 배열 가정.
+function ffillAt(arr: [string, number][], date: string): number {
+  let v = NaN;
+  for (const [d, x] of arr) { if (d <= date) v = x; else break; }
+  return v;
+}
+
+export function buildTreasury(all: Map<string, Map<string, number>>): TreasuryView {
+  const g = (id: string) => all.get(id) ?? new Map<string, number>();
+  const [mB, mN, mBo, mT, mF] = ["MKT_BILLS", "MKT_NOTES", "MKT_BONDS", "MKT_TIPS", "MKT_FRN"].map(g);
+  const fedBillsArr = seriesSorted(all, "WSHOBL");
+  const fedNBArr = seriesSorted(all, "WSHONBNL");
+  const fedTipsArr = seriesSorted(all, "WSHONBIIL");
+  const fedTotArr = seriesSorted(all, "WSHOTSL");
+
+  const dates = [...mB.keys()].sort();
+  const monthly: TreasuryMonthPoint[] = [];
+  let prev: TreasuryMonthPoint | null = null;
+  for (const d of dates) {
+    const bills = mB.get(d)!, notes = mN.get(d)!, bonds = mBo.get(d)!, tips = mT.get(d)!, frn = mF.get(d)!;
+    if (![bills, notes, bonds, tips, frn].every(Number.isFinite)) continue;
+    const total = bills + notes + bonds + tips + frn;
+    const fedBills = ffillAt(fedBillsArr, d), fedNotesBonds = ffillAt(fedNBArr, d), fedTips = ffillAt(fedTipsArr, d);
+    const fedTotal = ffillAt(fedTotArr, d);
+    const pt: TreasuryMonthPoint = {
+      date: d, bills, notes, bonds, tips, frn, total,
+      netBills: prev ? bills - prev.bills : NaN, netNotes: prev ? notes - prev.notes : NaN,
+      netBonds: prev ? bonds - prev.bonds : NaN, netTips: prev ? tips - prev.tips : NaN,
+      netFrn: prev ? frn - prev.frn : NaN, netTotal: prev ? total - prev.total : NaN,
+      fedBills, fedNotesBonds, fedTips, fedTotal,
+      fedShare: Number.isFinite(fedTotal) && total ? fedTotal / total : NaN,
+    };
+    monthly.push(pt); prev = pt;
+  }
+
+  // 연준 SOMA 만기별 주간(매입량 = 주간 Δ 를 클라에서 계산). WSHOTSL 관측일을 축으로.
+  const fedWeekly: FedMatWeek[] = fedTotArr.map(([date, total]) => ({
+    date,
+    bills: g("WSHOBL").get(date) ?? NaN,
+    notesBonds: g("WSHONBNL").get(date) ?? NaN,
+    tips: g("WSHONBIIL").get(date) ?? NaN,
+    total,
+  }));
+
+  return { monthly, fedWeekly };
+}
+
 // /api/fed/overview 페이로드.
-export interface FedOverview { weeks: WeekPoint[]; daily: DailyPoint[]; updatedAt: string }
+export interface FedOverview { weeks: WeekPoint[]; daily: DailyPoint[]; treasury: TreasuryView; updatedAt: string }
 export async function fedOverview(): Promise<FedOverview> {
   const all = await loadAll();
   const weeks = buildWeekly(all);
-  return { weeks, daily: buildDaily(all), updatedAt: weeks.at(-1)?.date ?? "" };
+  return { weeks, daily: buildDaily(all), treasury: buildTreasury(all), updatedAt: weeks.at(-1)?.date ?? "" };
 }
