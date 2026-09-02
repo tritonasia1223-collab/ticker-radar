@@ -382,7 +382,7 @@ function NodeCanvas({ node, weeks, sel, selPrev, treasury }: {
           </div>
         )}
         {sel && selPrev ? (
-          <div data-canvas="1"><DeltaWaterfall prev={selPrev} now={sel} /><div className="mt-1"><FlowSummary prev={selPrev} now={sel} /></div></div>
+          <div data-canvas="1" className="mt-2"><DeltaWaterfall prev={selPrev} now={sel} /><div className="mt-2"><FlowSummary prev={selPrev} now={sel} /></div></div>
         ) : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
       </div>
     );
@@ -402,7 +402,7 @@ function NodeCanvas({ node, weeks, sel, selPrev, treasury }: {
     return (
       <div>
         <div className="mb-0.5 text-sm font-semibold" style={{ color: A_SOMA }}>국채(SOMA) <span className="text-[11px] font-normal text-muted-foreground">연준 보유 만기별 분해 · {cur.date}</span></div>
-        <div className="text-[11px] text-muted-foreground mb-2.5">총 <b className="text-foreground">{T(cur.total)}</b> = 좌측 T-계정 ‘국채’와 <b style={{ color: A_SOMA }}>같은 값</b> — 같은 막대의 확대. 시장 대비 흡수율은 아래.</div>
+        <div className="text-[11px] text-muted-foreground mb-4">총 <b className="text-foreground">{T(cur.total)}</b> = 좌측 T-계정 ‘국채’와 <b style={{ color: A_SOMA }}>같은 값</b> — 같은 막대의 확대. 시장 대비 흡수율은 아래.</div>
         <div className="flex gap-3" style={{ height: H }}>
           {/* 세로 누적 막대 = T-계정 '국채' 막대의 확대(같은 색) */}
           <div data-canvas="1" className="w-16 shrink-0 flex flex-col rounded-md overflow-hidden">
@@ -428,7 +428,7 @@ function NodeCanvas({ node, weeks, sel, selPrev, treasury }: {
   return (
     <div>
       <div className="mb-0.5 text-sm font-semibold" style={{ color: meta.color }}>{meta.label} <span className="text-[11px] font-normal text-muted-foreground">잔액 추이</span></div>
-      <div className="text-[11px] text-muted-foreground mb-1">선택 주 <b style={{ color: meta.color }} className="tabular-nums">{sel ? T(sel[key] as number) : "—"}</b> · {sel?.date}</div>
+      <div className="text-[11px] text-muted-foreground mb-3">선택 주 <b style={{ color: meta.color }} className="tabular-nums">{sel ? T(sel[key] as number) : "—"}</b> · {sel?.date}</div>
       <div className="h-[188px]" data-canvas="1">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={weeks} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}>
@@ -728,7 +728,7 @@ export default function Fed() {
           <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비 · <span style={{ color: NODE_META[node]?.color }}>항목을 클릭</span>하면 우측에 분해/추이</span></div>
           {sel && <TAccount w={sel} selected={node} onSelect={setNode} />}
         </Card>
-        <Card className="p-3.5">
+        <Card className="p-3.5 flex flex-col justify-center">
           {sel && <NodeCanvas node={node} weeks={weeks} sel={sel} selPrev={selPrev} treasury={data?.treasury} />}
         </Card>
       </div>
