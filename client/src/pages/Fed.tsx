@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
+  AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
@@ -191,6 +191,9 @@ function flowSentence(key: string, name: string, own: number, eff: number): stri
     : `지급준비금에서 꺼내서 → ${name}에 들어감`;
 }
 
+// §5.3 앵커형 워터폴: 전주 준비금(보라 앵커) → 기여도 계단 → 이번주 준비금(보라 앵커).
+//   축을 준비금 레벨 근방으로 줌(억 단위 기여도가 보이게) + 앵커 하단 빗금으로 '조 단위 축약' 정직 표시.
+//   기여도 = 항등식 각 항(자산 동부호 / 부채 반대부호). 유입=청록 / 유출=적색 (1규칙).
 function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   const factors = [
     { key: "assets", name: "자산", own: now.total - prev.total, asset: true },
@@ -198,73 +201,79 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
     { key: "rrp", name: "역레포", own: now.rrp - prev.rrp, asset: false },
     { key: "cur", name: "현금통화", own: now.currency - prev.currency, asset: false },
     { key: "other", name: "기타·자본", own: now.liabResidual - prev.liabResidual, asset: false },
-  ].map((f) => ({ ...f, eff: f.asset ? f.own : -f.own })); // 준비금 효과: 자산은 동부호, 부채는 반대부호
-  const net = now.reserves - prev.reserves;
+  ].map((f) => ({ ...f, eff: f.asset ? f.own : -f.own }));
+  const start = prev.reserves, end = now.reserves, net = end - start;
+  // 검산 가드: Σ기여도 == Δ준비금(±반올림). 잔차는 '기타'에 흡수해 합을 정확히 맞춘다.
+  const resid = net - factors.reduce((s, f) => s + f.eff, 0);
+  if (Math.abs(resid) > 50) console.warn(`[waterfall] Σ기여도 != Δ준비금, 잔차 ${resid} → 기타 흡수`);
+  factors[4] = { ...factors[4], eff: factors[4].eff + resid };
 
-  // 누적 레벨(delta-only): 0에서 출발, 요인별 효과 누적.
-  const from: number[] = [], to: number[] = [];
-  let acc = 0;
-  for (const f of factors) { from.push(acc); acc += f.eff; to.push(acc); }
-  const levels = [0, ...to, net];
-  const domMax = Math.max(...levels, 0), domMin = Math.min(...levels, 0);
-  const span = Math.max(domMax - domMin, 1);
-  const pad = span * 0.16;
-  const hi = domMax + pad, lo = domMin - pad;
-  const yTop = 26, yBot = 120;
+  // 누적 레벨: 전주 준비금에서 기여도만큼 계단, cum[5] == 이번주 준비금.
+  const cum: number[] = [start];
+  for (const f of factors) cum.push(cum[cum.length - 1] + f.eff);
+  const dMax = Math.max(...cum), dMin = Math.min(...cum);
+  const span = Math.max(dMax - dMin, 1);
+  const hi = dMax + span * 0.5, lo = dMin - span * 1.1; // 하단 여유(앵커·빗금)
+  const yTop = 22, yBot = 116, anchorBase = yBot - 6;
   const y = (v: number) => yTop + ((hi - v) / (hi - lo)) * (yBot - yTop);
-  const y0 = y(0);
 
-  // x0(왼쪽 여백): y축이 없는 워터폴이라 크게 둘 이유가 없다. 오른쪽 여백(~19)과 맞춰 가운데 정렬
-  //   (과거 x0=42 는 오른쪽보다 왼쪽 dead space 가 커서 차트가 오른쪽으로 쏠려 보였다).
-  const N = 6, x0 = 17, colW = 52, barW = 26;
+  const N = 7, x0 = 6, colW = 46, barW = 24;
   const cx = (i: number) => x0 + colW * i + colW / 2;
-  const W = x0 + colW * N + 6;
+  const W = x0 + colW * N + 4;
 
-  // 밴드 배경: A=col0(자산), B=col1..4(자리이동).
-  const bandA = { x: x0 + 2, w: colW - 4 };
-  const bandB = { x: x0 + colW + 2, w: colW * 4 - 4 };
-
-  type Bar = { i: number; key: string; name: string; own: number; eff: number; net?: boolean };
-  const bars: Bar[] = factors.map((f, i) => ({ i, ...f }));
-  bars.push({ i: 5, key: "net", name: "준비금 변화", own: net, eff: net, net: true });
+  type Col = { i: number; kind: "anchor" | "flow"; key: string; name: string; level?: number; own?: number; eff?: number };
+  const cols: Col[] = [
+    { i: 0, kind: "anchor", key: "prev", name: "전주", level: start },
+    ...factors.map((f, k) => ({ i: k + 1, kind: "flow" as const, key: f.key, name: f.name, own: f.own, eff: f.eff })),
+    { i: 6, kind: "anchor", key: "now", name: "이번주", level: end },
+  ];
 
   return (
-    <svg viewBox={`0 0 ${W} 146`} className="w-full" style={{ maxHeight: 210 }}>
-      {/* 밴드 배경 + 헤더 */}
-      <rect x={bandA.x} y={12} width={bandA.w} height={yBot - 12 + 4} rx={4} fill={A_SOMA} opacity={0.07} />
-      <rect x={bandB.x} y={12} width={bandB.w} height={yBot - 12 + 4} rx={4} fill="#64748b" opacity={0.08} />
-      <text x={cx(0)} y={9} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">돈 총량</text>
-      <text x={(bandB.x + bandB.w / 2)} y={9} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">자리 이동 (총량 그대로)</text>
-      {/* 0 기준선 */}
-      <line x1={x0} y1={y0} x2={W - 4} y2={y0} stroke="hsl(var(--border))" strokeWidth={1} strokeDasharray="3 3" />
+    <svg viewBox={`0 0 ${W} 138`} className="w-full" style={{ maxHeight: 210 }}>
+      {/* 상단 캡션 — 자산=돈 총량, 나머지=자리이동. 색 규칙 1개(유입 청록/유출 적색). */}
+      <text x={cx(1)} y={9} textAnchor="middle" fontSize={8.5} fill="hsl(var(--muted-foreground))">돈 총량</text>
+      <text x={(cx(2) + cx(5)) / 2} y={9} textAnchor="middle" fontSize={8.5} fill="hsl(var(--muted-foreground))">자리 이동 (준비금 ↔ 계정)</text>
 
-      {/* 커넥터(누적 레벨 점선) — 요인 막대 사이 */}
-      {factors.slice(0, -1).map((_, i) => (
-        <line key={`c${i}`} x1={cx(i) + barW / 2} y1={y(to[i])} x2={cx(i + 1) - barW / 2} y2={y(to[i])}
-          stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.6} />
+      {/* 레벨 커넥터 점선 */}
+      {cols.slice(0, -1).map((c, i) => (
+        <line key={`c${i}`} x1={cx(c.i) + barW / 2} y1={y(cum[i])} x2={cx(cols[i + 1].i) - barW / 2} y2={y(cum[i])}
+          stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} strokeDasharray="3 3" opacity={0.55} />
       ))}
 
-      {bars.map((b) => {
-        const f0 = b.net ? 0 : from[b.i], f1 = b.net ? net : to[b.i];
+      {cols.map((c, idx) => {
+        if (c.kind === "anchor") {
+          const yl = y(c.level!);
+          const bx = cx(c.i) - barW / 2;
+          const tip = c.key === "prev"
+            ? `전주 지급준비금 ${asMoney(c.level!)}`
+            : `이번주 지급준비금 ${asMoney(c.level!)} · 전주 대비 ${signed(net)}`;
+          return (
+            <Hint key={c.key} content={tip} side="top">
+              <g style={{ cursor: "help" }}>
+                <rect x={cx(c.i) - colW / 2} y={0} width={colW} height={138} fill="transparent" />
+                <rect x={bx} y={yl} width={barW} height={Math.max(anchorBase - yl, 2)} rx={2} fill={L_RES} opacity={0.9} />
+                {/* 빗금(축 축약: 수준=조, 변화=억) */}
+                <line x1={bx - 1} y1={anchorBase + 3} x2={bx + 7} y2={anchorBase - 3} stroke={L_RES} strokeWidth={1} />
+                <line x1={bx + 4} y1={anchorBase + 3} x2={bx + 12} y2={anchorBase - 3} stroke={L_RES} strokeWidth={1} />
+                <text x={cx(c.i)} y={yl - 4} textAnchor="middle" fontSize={9} fontWeight={700} fill={L_RES}>{asMoney(c.level!)}</text>
+                <text x={cx(c.i)} y={130} textAnchor="middle" fontSize={8.5} fontWeight={600} fill={L_RES}>{c.name}</text>
+              </g>
+            </Hint>
+          );
+        }
+        const fi = c.i - 1, f0 = cum[fi], f1 = cum[fi + 1];
         const yA = y(Math.max(f0, f1)), yB = y(Math.min(f0, f1));
         const h = Math.max(Math.abs(yB - yA), 1.5);
-        const color = b.net ? FLOW_NET : b.eff >= 0 ? FLOW_UP : FLOW_DN;
-        const rises = b.eff >= 0;
-        const valY = rises ? yA - 4 : yB + 11;          // 값 라벨은 막대 바깥쪽 끝(작은 막대도 안전)
-        const tip = b.net
-          ? `이번 주 지급준비금은 전주 대비 ${signed(net)} 변했어요 (전주 ${asMoney(prev.reserves)} → ${asMoney(now.reserves)})`
-          : flowSentence(b.key, b.name, b.own, b.eff);
+        const rises = (c.eff ?? 0) >= 0;
+        const color = rises ? FLOW_UP : FLOW_DN;
+        const valY = rises ? yA - 3 : yB + 10;
         return (
-          <Hint key={b.key} content={tip} side="top">
+          <Hint key={c.key} content={flowSentence(c.key, c.name, c.own!, c.eff!)} side="top">
             <g style={{ cursor: "help" }}>
-              {/* 히트영역(투명) — 막대가 작아도 열 전체가 호버되게 */}
-              <rect x={cx(b.i) - colW / 2} y={yTop} width={colW} height={yBot - yTop + 22} fill="transparent" />
-              <rect x={cx(b.i) - barW / 2} y={yA} width={barW} height={h} rx={2} fill={color}
-                opacity={b.net ? 0.95 : 0.9} style={{ transition: "y 0.3s ease, height 0.3s ease" }} />
-              {/* 준비금 효과값(단일부호) */}
-              <text x={cx(b.i)} y={valY} textAnchor="middle" fontSize={10.5} fontWeight={700} fill={color}>{signed(b.eff)}</text>
-              {/* 이름만 — 화살표·해설줄 제거(상세는 hover 툴팁). */}
-              <text x={cx(b.i)} y={138} textAnchor="middle" fontSize={10} fill="hsl(var(--foreground))">{b.name}</text>
+              <rect x={cx(c.i) - colW / 2} y={0} width={colW} height={138} fill="transparent" />
+              <rect x={cx(c.i) - barW / 2} y={yA} width={barW} height={h} rx={2} fill={color} opacity={0.9} style={{ transition: "y 0.3s ease, height 0.3s ease" }} />
+              <text x={cx(c.i)} y={valY} textAnchor="middle" fontSize={9.5} fontWeight={700} fill={color}>{signed(c.eff!)}</text>
+              <text x={cx(c.i)} y={130} textAnchor="middle" fontSize={8.5} fill="hsl(var(--foreground))">{c.name}</text>
             </g>
           </Hint>
         );
@@ -418,11 +427,24 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
   );
 }
 
+// 월별 순발행 단일막대 툴팁 — 순액 + 종류별 분해(§6.3).
+function NetTip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rounded-md border bg-popover px-2.5 py-1.5 text-[12px] text-popover-foreground shadow-md">
+      <div className="font-semibold">{String(d.date).slice(0, 7)} 순발행 <span style={{ color: d.netTotal >= 0 ? "#7c3aed" : "#f97316" }}>{signed(d.netTotal)}</span></div>
+      <div className="text-muted-foreground mt-0.5 leading-snug">{TB_TYPES.map((x) => `${x.label.replace(/^(단기|중기|장기) /, "")} ${signed(d[x.nk])}`).join(" · ")}</div>
+    </div>
+  );
+}
+
 // ── 재무부 국채 발행(종류별 잔액·순발행) — 공급 측. 각 종류에 온커서 만기 설명 ──
 function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
   const tm = t.monthly;
   const last = tm.at(-1);
   const [hoverK, setHoverK] = useState<string | null>(null);
+  const [pctMode, setPctMode] = useState(false); // 절대액 ↔ 구성비(%) — '단기화 여부'는 비중으로
   if (!last) return null;
   const ym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
   const recentNet = tm.slice(-30);
@@ -455,12 +477,19 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
         {active ? <><b className="text-foreground">{active.label}</b> · {active.desc}</> : "각 종류에 커서를 올리면 기준(만기 등) 설명이 나옵니다."}
       </div>
 
-      {/* 종류별 잔액 스택 */}
-      <div className="h-[190px] mt-0.5">
+      {/* 종류별 잔액 스택 + 절대액/구성비 토글 */}
+      <div className="mt-0.5 flex items-center justify-between gap-2">
+        <div className="text-[12px] font-semibold">종류별 잔액 <span className="text-[10.5px] font-normal text-muted-foreground">{pctMode ? "구성비(%) · 단기화 여부" : "시장성 국채 잔액"}</span></div>
+        <div className="flex rounded border border-border overflow-hidden text-[10.5px]">
+          <button type="button" onClick={() => setPctMode(false)} className={`px-1.5 py-0.5 ${!pctMode ? "bg-muted font-semibold" : "text-muted-foreground"}`}>절대액</button>
+          <button type="button" onClick={() => setPctMode(true)} className={`px-1.5 py-0.5 border-l border-border ${pctMode ? "bg-muted font-semibold" : "text-muted-foreground"}`}>구성비%</button>
+        </div>
+      </div>
+      <div className="h-[180px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+          <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} stackOffset={pctMode ? "expand" : "none"}>
             <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+            <YAxis tickFormatter={pctMode ? (v) => `${Math.round(v * 100)}%` : (v) => `$${(v / 1e6).toFixed(0)}조`} domain={pctMode ? [0, 1] : undefined} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
             {TB_TYPES.map((x) => <Area key={x.k} dataKey={x.k} name={x.label} stackId="1" stroke={x.color} fill={x.color} fillOpacity={dim(x.k) ? 0.15 : 0.55} isAnimationActive={false} />)}
             {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
@@ -468,18 +497,20 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
         </ResponsiveContainer>
       </div>
 
-      {/* 월별 순발행 */}
+      {/* 월별 순발행 — 순액 단일 막대(양수 보라 / 음수 코럴), 종류 분해는 hover(§6.3) */}
       <div className="mt-2">
-        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">종류별 · 잔액 MoM 변화(발행−상환) · 최근 30개월</span></div>
+        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">발행−상환 순액 · <span style={{ color: "#7c3aed" }}>증가</span>/<span style={{ color: "#f97316" }}>감소</span> · 최근 30개월 · 막대 hover=종류별</span></div>
         <div className="h-[150px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }} stackOffset="sign">
+            <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
               <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
               <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [signed(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
+              <Tooltip cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.4 }} content={<NetTip />} />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
               {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
-              {TB_TYPES.map((x) => <Bar key={x.k} dataKey={x.nk} name={x.label} stackId="n" fill={x.color} fillOpacity={dim(x.k) ? 0.25 : 1} isAnimationActive={false} />)}
+              <Bar dataKey="netTotal" isAnimationActive={false}>
+                {recentNet.map((d, i) => <Cell key={i} fill={d.netTotal >= 0 ? "#7c3aed" : "#f97316"} />)}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -491,6 +522,7 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
 export default function Fed() {
   const { data, isLoading } = useQuery<Overview>({ queryKey: ["/api/fed/overview"] });
   const [idx, setIdx] = useState<number>(-1);
+  const [crisisOpen, setCrisisOpen] = useState<boolean>(false); // L4 위기감지기 수동 펼침
 
   const weeks = data?.weeks ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
@@ -510,21 +542,59 @@ export default function Fed() {
 
   const latest = weeks[weeks.length - 1];
   const selLoans = sel ? sel.loans : latest.loans;          // 위기감지기도 선택 주 기준(Phase 1 timeState 연동)
-  const lendAlert = selLoans > 100_000; // >$1000억이면 경보(평상시 <$300억)
+  // L4 상태(§7): 2단계 임계 — 경계 $500억 / 위기 $2,000억(2008·2020·2023 피크 대비, 설정 상수).
+  const CRISIS_CAUTION = 50_000, CRISIS_ALERT = 200_000;
+  const crisisLevel = selLoans >= CRISIS_ALERT ? "위기" : selLoans >= CRISIS_CAUTION ? "경계" : "평상시";
+  const crisisDot = crisisLevel === "위기" ? "#dc2626" : crisisLevel === "경계" ? "#f59e0b" : "#16a34a";
+  const crisisAuto = selLoans >= CRISIS_CAUTION;             // 임계 초과 시 자동 펼침
   // QT/QE 속도 = 선택 주차의 총자산 분기(13주) 변화를 월평균으로(musd/월). 기본=최신=현재.
   //   국면(배지·푸터 공통 단일출처, §2.5): 월평균 ≥+$50억=QE / ≤−$50억=QT / 사이=중립.
   //   임계 $50억(=5,000musd)은 0 근처에서 배지가 깜빡이지 않게 하는 데드밴드.
+  const REGIME_BAND = 5_000; // ±$50억/월 데드밴드(설정 상수)
   const paceSel = curIdx >= 13 ? (weeks[curIdx].total - weeks[curIdx - 13].total) / 3 : NaN;
-  const phase = !Number.isFinite(paceSel) ? "unknown" : paceSel >= 5_000 ? "QE" : paceSel <= -5_000 ? "QT" : "중립";
+  const phase = !Number.isFinite(paceSel) ? "unknown" : paceSel >= REGIME_BAND ? "QE" : paceSel <= -REGIME_BAND ? "QT" : "중립";
   const phaseCol = phase === "QE" ? "text-emerald-500" : phase === "QT" ? "text-red-500" : "text-muted-foreground";
+  // ── L0 이중 판정(§3) ── 주=유동성(준비금 13주 평활 월율, =워터폴 Δ준비금의 13주 누적), 보조=정책(총자산=phase)
+  const liqRate = curIdx >= 13 ? (weeks[curIdx].reserves - weeks[curIdx - 13].reserves) / 3 : NaN;
+  const liq = !Number.isFinite(liqRate) ? "unknown" : liqRate >= REGIME_BAND ? "확장" : liqRate <= -REGIME_BAND ? "수축" : "중립";
+  const dReserves = sel && selPrev ? sel.reserves - selPrev.reserves : NaN; // 이번 주 준비금 변화
+  const isPast = curIdx < weeks.length - 1;                                 // 과거 시점 보는 중
+  // L1 국면 배경 밴드: 총자산 13주 흐름으로 QE(청록)/QT(적색) 구간 병합(플레인, 렌더당 1회).
+  const regimeBands: { x1: string; x2: string; kind: "QE" | "QT" }[] = [];
+  { let curB: { x1: string; x2: string; kind: "QE" | "QT" } | null = null;
+    for (let i = 13; i < weeks.length; i++) {
+      const r = (weeks[i].total - weeks[i - 13].total) / 3;
+      const k = r >= REGIME_BAND ? "QE" : r <= -REGIME_BAND ? "QT" : null;
+      if (k && curB && curB.kind === k) curB.x2 = weeks[i].date;
+      else { if (curB) regimeBands.push(curB); curB = k ? { x1: weeks[i].date, x2: weeks[i].date, kind: k } : null; }
+    }
+    if (curB) regimeBands.push(curB); }
 
   return (
     <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
-      {/* 스티키 시점바 — 어느 섹션을 보든 시점(주) 이동. 슬라이더가 저 아래 '연준 흡수'까지 제어하므로 상단 고정. */}
-      <div className="sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-background/85 backdrop-blur border-b border-border">
-        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
-          <h1 className="text-base font-bold shrink-0">미국 유동성 <span className="text-[11px] font-normal text-muted-foreground">연준 H.4.1 · 재무부 국채 수급</span></h1>
-          <span className="flex items-center gap-0.5 shrink-0">
+      {/* L0 판정 헤드라인 + 시점 컨트롤 (스티키). 과거 시점이면 점선 테두리로 '지금이 아님' 표시. */}
+      <div className={`sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 backdrop-blur border-b ${isPast ? "bg-amber-500/5 border-dashed border-amber-500/50" : "bg-background/90 border-border"}`}>
+        <div className="flex items-center gap-x-2.5 gap-y-1 flex-wrap">
+          <h1 className="text-base font-bold shrink-0">미국 유동성 <span className="text-[11px] font-normal text-muted-foreground">연준 H.4.1</span></h1>
+          <span className="text-[12px] tabular-nums shrink-0"><b>{sel && weekLabel(sel.date)}</b> <span className="text-muted-foreground">({sel?.date})</span>{isPast && <span className="ml-1 text-[10px] font-semibold text-amber-600">과거</span>}</span>
+
+          {/* 주 뱃지 — 유동성(준비금 13주). 이 탭의 핵심 질문에 답. */}
+          <Hint content={<div>유동성 판정 = <b>준비금</b>(자산−TGA−역레포−현금−기타)의 13주 평활 월율. 워터폴 Δ준비금의 13주 누적과 같은 계산.<div className="mt-1 text-muted-foreground">최근 13주 Δ준비금 {Number.isFinite(liqRate) ? signed(liqRate * 3) : "—"} → 월율 {Number.isFinite(liqRate) ? signed(liqRate) : "—"}</div></div>}>
+            <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-bold cursor-help border ${liq === "확장" ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" : liq === "수축" ? "bg-red-500/15 text-red-600 border-red-500/30" : "bg-muted text-muted-foreground border-border"}`}>
+              {liq === "확장" ? "유동성 확장" : liq === "수축" ? "유동성 수축" : liq === "중립" ? "유동성 중립" : "유동성 —"}{Number.isFinite(liqRate) ? ` · ${signed(liqRate)}/월` : ""}
+            </span>
+          </Hint>
+
+          {/* 보조 뱃지 — 정책 스탠스(총자산 13주). 주 판정과 갈리는 순간이 신호. */}
+          <Hint content={<div>정책 스탠스 = <b>총자산</b> 13주 평활 월율(QE=매입 / QT=축소). ‘유동성’과 갈라지는 순간(예: QT인데 유동성 확장)이 이 탭 최고의 리서치 신호.<div className="mt-1 text-muted-foreground">{Number.isFinite(paceSel) ? `${signed(paceSel)}/월` : "—"}</div></div>}>
+            <span className={`rounded-full border border-border px-2 py-0.5 text-[11px] cursor-help ${phaseCol}`}>정책: {phase === "QE" ? "QE 진행" : phase === "QT" ? "QT 진행" : phase === "중립" ? "중립" : "—"}</span>
+          </Hint>
+
+          {/* 이번 주 준비금 변화 */}
+          <span className="text-[12px] tabular-nums shrink-0">준비금 <b style={{ color: Number.isFinite(dReserves) ? (dReserves >= 0 ? POS : NEG) : undefined }}>{Number.isFinite(dReserves) ? signed(dReserves) : "—"}</b></span>
+
+          {/* 시점 컨트롤 (우측) */}
+          <span className="flex items-center gap-0.5 shrink-0 ml-auto">
             <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0}
               aria-label="이전 주" title="이전 주"
               className="px-0.5 text-[12px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">◀</button>
@@ -532,30 +602,30 @@ export default function Fed() {
               aria-label="다음 주" title="다음 주"
               className="px-0.5 text-[12px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
           </span>
-          <span className="text-[12px] tabular-nums shrink-0"><b>{sel && weekLabel(sel.date)}</b> <span className="text-muted-foreground">({sel?.date})</span></span>
           <input type="range" min={0} max={weeks.length - 1} value={curIdx}
-            onChange={(e) => setIdx(Number(e.target.value))} className="flex-1 min-w-[140px] accent-primary" data-testid="fed-scrubber" />
-          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">총자산 <b className="text-foreground">{sel && T(sel.total)}</b></span>
+            onChange={(e) => setIdx(Number(e.target.value))} className="w-[150px] shrink-0 accent-primary" data-testid="fed-scrubber" />
+          <button type="button" onClick={() => setIdx(-1)} disabled={!isPast} title="현재(최신 주)로"
+            className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10.5px] text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-default">현재로</button>
         </div>
       </div>
 
       <BandLabel>연준 유동성 · 대차대조표</BandLabel>
 
-      {/* 규모 시계열 = 시점 스크러버(클릭/드래그) + QE/QT 국면 배경 */}
-      <Card className="p-3.5">
-        <div className="mb-1 text-sm font-semibold">연준 대차대조표 규모 <span className="text-[11px] font-normal text-muted-foreground">2002 → 현재 · 그래프 클릭/드래그로 시점 선택 (상단 슬라이더와 연동)</span></div>
-        <div className="h-[136px] cursor-crosshair">
+      {/* L1 스크러버 — 총자산 추이(압축) + QE청록/QT적색 국면 배경. 콘텐츠→컨트롤러로 강등. */}
+      <Card className="px-3.5 py-2">
+        <div className="mb-0.5 text-[11px] text-muted-foreground">총자산 추이 <span className="text-[10px]">· 클릭/드래그로 시점 선택 · <span style={{ color: POS }}>청록=QE</span> / <span style={{ color: NEG }}>적색=QT</span> 국면</span></div>
+        <div className="h-[64px] cursor-crosshair">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeks} margin={{ top: 20, right: 8, left: 6, bottom: 0 }}
+            <AreaChart data={weeks} margin={{ top: 14, right: 8, left: 6, bottom: 0 }}
               onClick={(e: any) => { if (e?.activeLabel) setIdx(nearestIdx(weeks, String(e.activeLabel))); }}>
               <defs><linearGradient id="fedsz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={A_SOMA} stopOpacity={0.4} /><stop offset="100%" stopColor={A_SOMA} stopOpacity={0.03} /></linearGradient></defs>
-              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+              {regimeBands.map((b, i) => <ReferenceArea key={i} x1={b.x1} x2={b.x2} fill={b.kind === "QE" ? POS : NEG} fillOpacity={0.07} />)}
+              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [T(v), "총자산"]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
               <Area dataKey="total" stroke={A_SOMA} strokeWidth={1.5} fill="url(#fedsz)" />
               {PHASES.map((p) => { const w = weeks[nearestIdx(weeks, p.date)]; return <ReferenceDot key={p.label} x={w.date} y={w.total} r={2.5} fill="hsl(var(--muted-foreground))" stroke="none" />; })}
               {activePhase && <ReferenceDot x={weeks[activePhase.i].date} y={weeks[activePhase.i].total} r={4.5} fill={NEG} stroke="hsl(var(--background))" strokeWidth={1.5}
-                label={{ value: `${activePhase.label} · ${activePhase.desc}`, position: "top", fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 600 }} />}
+                label={{ value: `${activePhase.label} · ${activePhase.desc}`, position: "top", fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: 600 }} />}
               {sel && <ReferenceLine x={sel.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.45} />}
             </AreaChart>
           </ResponsiveContainer>
@@ -569,16 +639,8 @@ export default function Fed() {
           {sel && <TAccount w={sel} />}
         </Card>
         <Card className="p-3.5 flex flex-col">
-          {/* 헤더 + 국면 배지(13주 속도 파생) */}
-          <div className="mb-0.5 flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold">주간 유동성 변화</div>
-            <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${
-              phase === "QE" ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
-              : phase === "QT" ? "border-red-500/40 text-red-500 bg-red-500/10"
-              : "border-border text-muted-foreground"}`}>
-              {phase === "QE" ? "QE 국면" : phase === "QT" ? "QT 국면" : "중립"}
-            </span>
-          </div>
+          {/* 헤더 — 국면 배지·월간 추세는 L0로 승격(중복 제거). 여기선 워터폴만. */}
+          <div className="mb-0.5 text-sm font-semibold">주간 유동성 변화 <span className="text-[11px] font-normal text-muted-foreground">준비금 분해 · 워터폴</span></div>
           {/* 서브: 전주 → 이번주 · 억 달러 */}
           {sel && selPrev && (
             <div className="mb-1.5 text-[11px] text-muted-foreground tabular-nums">
@@ -591,16 +653,6 @@ export default function Fed() {
               <div className="mt-1"><FlowSummary prev={selPrev} now={sel} /></div>
             </>
           ) : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
-          {/* QE/QT 속도 — 워터폴과 동일 층위의 별도 섹션(타이틀 부여, §2.5) */}
-          <div className="mt-auto border-t border-border pt-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold">월간 유동성 추세</div>
-              <div className={`text-[15px] font-bold tabular-nums ${phaseCol}`}>
-                {Number.isFinite(paceSel) ? `${signed(paceSel)}/월 · ${phase}` : "—"}
-              </div>
-            </div>
-            <div className="text-[11px] text-muted-foreground">총자산 13주 흐름 · 지금 QE인지 QT인지</div>
-          </div>
         </Card>
       </div>
 
@@ -612,36 +664,40 @@ export default function Fed() {
       {/* 재무부 국채 발행(종류별 잔액·순발행) — 선택 주차 가이드라인(월 매핑) 연동 */}
       {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} selDate={sel?.date} />}
 
-      {/* 위기 감지기 — 전체기간 차트 + 선택 주차 가이드라인·잔액(Phase 1 timeState 연동) */}
-      <Card className="p-3.5">
-        <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
-          <div>
-            <div className="text-sm font-semibold">위기 감지기 <span className="text-[11px] font-normal text-muted-foreground">Fed 긴급대출</span></div>
-            <div className="text-[11px] text-muted-foreground">평상시엔 바닥. 이 선들이 튀면 은행·자금시장 어딘가에 불이 났다는 신호 (2008·2020·2023).</div>
+      {/* L4 위기 감지기(§7) — 평상시 한 줄 상태바 / 클릭·자동(경계+) 펼침 시 차트 */}
+      <Card className="p-3">
+        <button type="button" onClick={() => setCrisisOpen((v) => !v)} className="w-full flex items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: crisisDot }} />
+            <span className="text-sm font-semibold">위기 감지기</span>
+            <span className="text-[11px] text-muted-foreground">Fed 긴급대출 · {sel && weekLabel(sel.date)}</span>
+            <span className="text-[12px] tabular-nums font-semibold" style={{ color: crisisDot }}>{asMoney(selLoans)} · {crisisLevel}</span>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-[10.5px] text-muted-foreground">긴급대출 잔액 · {sel && weekLabel(sel.date)}</div>
-            <div className={`tabular-nums font-semibold ${lendAlert ? "text-red-500" : "text-emerald-500"}`}>{asMoney(selLoans)} · {lendAlert ? "경보" : "평상시"}</div>
+          <span className="text-[11px] text-muted-foreground shrink-0">{(crisisOpen || crisisAuto) ? "접기 ▾" : "펼치기 ▸"}{crisisAuto && !crisisOpen ? " · 자동" : ""}</span>
+        </button>
+        {(crisisOpen || crisisAuto) && (
+          <div className="mt-2">
+            <div className="text-[11px] text-muted-foreground mb-1">평상시엔 바닥. 이 선들이 튀면 은행·자금시장 어딘가에 불이 났다는 신호 (2008·2020·2023). 임계: <b>경계 $500억</b> / <b>위기 $2,000억</b>.</div>
+            <Legend items={[["할인창구", LEND.discount], ["BTFP", LEND.btfp], ["레포", LEND.repo], ["통화스왑", LEND.swap]]} />
+            <div className="h-[190px] mt-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={weeks} margin={{ top: 12, right: 8, left: 8, bottom: 0 }}>
+                  <XAxis dataKey="date" tickFormatter={yr} minTickGap={40} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+                  <YAxis tickFormatter={(v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}조` : `$${Math.round(v / 100).toLocaleString()}억`)} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={52} className="text-muted-foreground" />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [asMoney(v), n]} labelFormatter={(l) => l} />
+                  <ReferenceArea x1="2008-09-01" x2="2009-06-01" fill={NEG} fillOpacity={0.07} label={{ value: "2008 GFC", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
+                  <ReferenceArea x1="2020-03-01" x2="2020-07-01" fill={NEG} fillOpacity={0.07} label={{ value: "2020 코로나", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
+                  <ReferenceArea x1="2023-03-01" x2="2023-06-01" fill={NEG} fillOpacity={0.07} label={{ value: "2023 SVB", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
+                  <Area dataKey="discount" name="할인창구" stackId="1" stroke={LEND.discount} fill={LEND.discount} fillOpacity={0.5} />
+                  <Area dataKey="btfp" name="BTFP" stackId="1" stroke={LEND.btfp} fill={LEND.btfp} fillOpacity={0.5} />
+                  <Area dataKey="repo" name="레포" stackId="1" stroke={LEND.repo} fill={LEND.repo} fillOpacity={0.5} />
+                  <Area dataKey="swap" name="통화스왑" stackId="1" stroke={LEND.swap} fill={LEND.swap} fillOpacity={0.5} />
+                  {sel && <ReferenceLine x={sel.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
-        <Legend items={[["할인창구", LEND.discount], ["BTFP", LEND.btfp], ["레포", LEND.repo], ["통화스왑", LEND.swap]]} />
-        <div className="h-[190px] mt-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeks} margin={{ top: 12, right: 8, left: 8, bottom: 0 }}>
-              <XAxis dataKey="date" tickFormatter={yr} minTickGap={40} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis tickFormatter={(v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}조` : `$${Math.round(v / 100).toLocaleString()}억`)} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={52} className="text-muted-foreground" />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [asMoney(v), n]} labelFormatter={(l) => l} />
-              <ReferenceArea x1="2008-09-01" x2="2009-06-01" fill={NEG} fillOpacity={0.07} label={{ value: "2008 GFC", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
-              <ReferenceArea x1="2020-03-01" x2="2020-07-01" fill={NEG} fillOpacity={0.07} label={{ value: "2020 코로나", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
-              <ReferenceArea x1="2023-03-01" x2="2023-06-01" fill={NEG} fillOpacity={0.07} label={{ value: "2023 SVB", fontSize: 9, fill: "hsl(var(--muted-foreground))", position: "insideTop" }} />
-              <Area dataKey="discount" name="할인창구" stackId="1" stroke={LEND.discount} fill={LEND.discount} fillOpacity={0.5} />
-              <Area dataKey="btfp" name="BTFP" stackId="1" stroke={LEND.btfp} fill={LEND.btfp} fillOpacity={0.5} />
-              <Area dataKey="repo" name="레포" stackId="1" stroke={LEND.repo} fill={LEND.repo} fillOpacity={0.5} />
-              <Area dataKey="swap" name="통화스왑" stackId="1" stroke={LEND.swap} fill={LEND.swap} fillOpacity={0.5} />
-              {sel && <ReferenceLine x={sel.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        )}
       </Card>
     </div>
   );
