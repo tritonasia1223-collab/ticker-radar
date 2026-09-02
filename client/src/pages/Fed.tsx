@@ -736,10 +736,9 @@ export default function Fed() {
               <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" title="다음 주"
                 className="px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
             </span>
-            {isPast && (
-              <button type="button" onClick={() => setIdx(-1)} title="현재(최신 주)로"
-                className="shrink-0 rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[10.5px] hover:bg-amber-500/10">현재로</button>
-            )}
+            {/* 현재로: 폭을 항상 예약(invisible) → 과거 전환 시 슬라이더가 밀리지 않게 */}
+            <button type="button" onClick={() => setIdx(-1)} title="현재(최신 주)로" aria-hidden={!isPast} tabIndex={isPast ? 0 : -1}
+              className={`shrink-0 rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[10.5px] hover:bg-amber-500/10 ${isPast ? "" : "invisible pointer-events-none"}`}>현재로</button>
           </span>
         </div>
       </div>
