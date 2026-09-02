@@ -526,9 +526,14 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
   // 선택 주차(timeState) → 그 달의 데이터 포인트 날짜. 월간 차트에 수직 가이드라인으로.
   const selMonth = selDate?.slice(0, 7);
   const guideDate = selMonth ? tm.find((p) => p.date.slice(0, 7) === selMonth)?.date : undefined;
-  // 순발행 창: '선택 월에서 끝나는 30개월'(타임라인 따라 이동, 과거까지). 선택월이 데이터에 없으면 최신 30.
-  const endMi = (() => { const i = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1; return i >= 0 ? i : tm.length - 1; })();
-  const recentNet = tm.slice(Math.max(0, endMi - 29), endMi + 1);
+  // 순발행 창: '선택 월에서 끝나는 30개월'. 데이터 시작(2014) 근처면 30개월을 시작에 고정(늘어남 방지),
+  //   선택월이 2014 이전이면 beforeData=true → 차트 대신 '데이터 없음'. 미래월(최신 MSPD 이후)은 최신 30.
+  const WINDOW = 30;
+  const firstMonth = tm[0]?.date.slice(0, 7);
+  const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
+  const beforeData = !!selMonth && !!firstMonth && selMonth < firstMonth;
+  const endMi = selMi >= 0 ? Math.max(selMi, Math.min(WINDOW - 1, tm.length - 1)) : tm.length - 1;
+  const recentNet = tm.slice(Math.max(0, endMi - (WINDOW - 1)), endMi + 1);
   return (
     <Card className="p-3.5">
       <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
@@ -575,20 +580,27 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
 
       {/* 월별 순발행 — 순액 단일 막대(양수 보라 / 음수 코럴), 종류 분해는 hover(§6.3) */}
       <div className="mt-2">
-        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">발행−상환 순액 · <span style={{ color: "#7c3aed" }}>증가</span>/<span style={{ color: "#f97316" }}>감소</span> · {recentNet[0]?.date.slice(0, 7)}~{recentNet.at(-1)?.date.slice(0, 7)}(선택 월까지) · 막대 hover=종류별</span></div>
+        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">발행−상환 순액 · <span style={{ color: "#7c3aed" }}>증가</span>/<span style={{ color: "#f97316" }}>감소</span>{beforeData ? "" : ` · ${recentNet[0]?.date.slice(0, 7)}~${recentNet.at(-1)?.date.slice(0, 7)}`} · 막대 hover=종류별</span></div>
         <div className="h-[150px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
-              <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-              <Tooltip cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.4 }} content={<NetTip />} />
-              <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
-              {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
-              <Bar dataKey="netTotal" isAnimationActive={false}>
-                {recentNet.map((d, i) => <Cell key={i} fill={d.netTotal >= 0 ? "#7c3aed" : "#f97316"} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {beforeData ? (
+            <div className="h-full flex flex-col items-center justify-center text-center text-[12px] text-muted-foreground">
+              <div>재무부 국채 종류별 데이터는 <b className="text-foreground">2014년</b>부터 제공됩니다.</div>
+              <div className="text-[11px] mt-0.5">더 과거 시점은 표시할 수 없어요. (재무부 MSPD 시작 = {firstMonth})</div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
+                <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+                <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+                <Tooltip cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.4 }} content={<NetTip />} />
+                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
+                {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
+                <Bar dataKey="netTotal" isAnimationActive={false}>
+                  {recentNet.map((d, i) => <Cell key={i} fill={d.netTotal >= 0 ? "#7c3aed" : "#f97316"} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </Card>
