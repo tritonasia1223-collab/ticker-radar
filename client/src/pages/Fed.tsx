@@ -701,7 +701,7 @@ export default function Fed() {
   return (
     <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
       {/* L0 판정 헤드라인(스티키). 과거 모드: 앰버 상단보더 + 날짜칩 + '현재로'. ◀▶·날짜칩은 스크러버가 화면 밖일 때만. */}
-      <div className={`sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 backdrop-blur border-b border-border ${isPast ? "border-t-2 border-t-amber-500 bg-amber-500/5" : "bg-background/90"}`}>
+      <div className="sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-1.5 backdrop-blur border-b border-border bg-background/90">
         <div className="flex items-center gap-x-2.5 gap-y-1 flex-wrap">
           <Hint content={<>연준 대차대조표(H.4.1 · 주간) + 재무부 국채 수급(MSPD · 월간)</>}>
             <h1 className="text-base font-bold shrink-0 cursor-help">미국 유동성</h1>
