@@ -418,12 +418,12 @@ function NodeCanvas({ node, weeks, sel, selPrev, treasury }: {
               <div key={lbl} style={{ height: sh, background: color }} className="flex items-center justify-center overflow-hidden border-t border-black/10 first:border-t-0 text-white text-[10px] font-semibold">{sh >= 16 ? T(val).replace("$", "") : ""}</div>
             ); })}
           </div>
-          <div className="flex-1 flex flex-col">
+          <div className="w-64 max-w-full flex flex-col">
             {rows.map(([lbl, val, color, tip]) => { const sh = (val / cur.total) * H; return (
               <div key={lbl} style={{ height: sh }} className="flex items-center gap-1.5 overflow-hidden border-t border-border/40 first:border-t-0">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: color }} />
                 <span className="text-[12px] leading-tight">{lbl} <span className="text-[10px] text-muted-foreground">{tip}</span></span>
-                <b className="ml-auto text-[12px] tabular-nums">{T(val)}</b>
+                <b className="ml-auto pl-2 text-[12px] tabular-nums">{T(val)}</b>
               </div>
             ); })}
           </div>
