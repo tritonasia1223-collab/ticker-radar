@@ -633,24 +633,7 @@ export default function Fed() {
   const [idx, setIdx] = useState<number>(-1);
   const [crisisOpen, setCrisisOpen] = useState<boolean>(false); // L4 위기감지기 수동 펼침
   const [node, setNode] = useState<string>("reserves");         // L2 선택 노드(우측 캔버스). 기본=준비금
-  const scrubberRef = useRef<HTMLDivElement>(null);             // L1 스크러버(가시성 관찰 대상)
-  const [scrubberOut, setScrubberOut] = useState(false);        // 스크러버가 뷰포트 밖 → 헤더에 ◀▶·날짜칩 노출
-  useEffect(() => {
-    const el = scrubberRef.current; if (!el) return;
-    // 스크롤 컨테이너 탐색(레이아웃이 flex-1 overflow-auto 안에서 스크롤됨).
-    let root: HTMLElement | null = el.parentElement;
-    while (root) { const s = getComputedStyle(root); if (/(auto|scroll)/.test(s.overflowY)) break; root = root.parentElement; }
-    const scroller: HTMLElement | Window = root ?? window;
-    const check = () => {
-      const r = el.getBoundingClientRect();
-      const topRef = (root ? root.getBoundingClientRect().top : 0) + 52; // 스티키 헤더 높이 보정
-      setScrubberOut(r.bottom < topRef); // 스크러버가 헤더 위로 올라가면 out
-    };
-    check();
-    scroller.addEventListener("scroll", check, { passive: true });
-    window.addEventListener("resize", check);
-    return () => { scroller.removeEventListener("scroll", check); window.removeEventListener("resize", check); };
-  }, [data?.weeks?.length]);
+  const scrubberRef = useRef<HTMLDivElement>(null);             // L1 스크러버(Card ref)
 
   const weeks = data?.weeks ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
@@ -707,12 +690,8 @@ export default function Fed() {
             <h1 className="text-base font-bold shrink-0 cursor-help">미국 유동성</h1>
           </Hint>
 
-          {/* 판정 알약 3세그먼트 — [날짜칩(과거·스크러버 밖)] 유동성(색) | 정책(무채) | 준비금(무채) */}
+          {/* 판정 알약 3세그먼트 — 유동성(색) | 정책(무채) | 준비금(무채) */}
           <div className="inline-flex items-stretch rounded-full overflow-hidden border border-border text-[12px] leading-none">
-            {isPast && scrubberOut && (
-              <button type="button" onClick={() => scrubberRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} title="스크러버 차트로 이동"
-                className="flex items-center px-2 tabular-nums bg-amber-500/25 text-amber-700 hover:bg-amber-500/40 border-r border-border animate-in fade-in">{sel?.date}</button>
-            )}
             <Hint content={<div>유동성 = <b>준비금</b>(자산−TGA−역레포−현금−기타)의 13주 평활 월율(= 워터폴 Δ준비금의 13주 누적). ‘정책’과 갈리는 순간이 핵심 신호.<div className="mt-1 text-muted-foreground">최근 13주 {Number.isFinite(liqRate) ? signed(liqRate * 3) : "—"} → 월율 {Number.isFinite(liqRate) ? signed(liqRate) : "—"}</div></div>}>
               <span className={`flex items-center px-2.5 py-1 font-bold cursor-help ${liq === "확장" ? "bg-emerald-500/25 text-emerald-700" : liq === "수축" ? "bg-red-500/20 text-red-700" : "bg-muted text-muted-foreground"}`}>
                 {liq === "확장" ? "유동성 확장" : liq === "수축" ? "유동성 수축" : liq === "중립" ? "유동성 중립" : "유동성 —"}{Number.isFinite(liqRate) ? ` · ${signed(liqRate)}/월` : ""}
@@ -724,8 +703,11 @@ export default function Fed() {
             <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border tabular-nums">준비금 {Number.isFinite(dReserves) ? signed(dReserves) : "—"}</span>
           </div>
 
-          {/* 우측: ◀ 미니슬라이더 ▶(항상 표시, 원거리+미세 이동) + 현재로(과거 모드) */}
+          {/* 우측: 날짜(년 월 주차) + ◀ 미니슬라이더 ▶(항상 표시) + 현재로(과거 모드) */}
           <span className="flex items-center gap-1.5 shrink-0 ml-auto">
+            <span className={`text-[11.5px] tabular-nums shrink-0 ${isPast ? "text-amber-700 font-semibold" : "text-muted-foreground"}`}>
+              {sel ? `${sel.date.slice(0, 4)}년 ${weekLabel(sel.date)}` : ""}
+            </span>
             <span className="flex items-center gap-1">
               <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" title="이전 주"
                 className="px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">◀</button>
