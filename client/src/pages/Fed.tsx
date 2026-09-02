@@ -724,12 +724,16 @@ export default function Fed() {
             <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border tabular-nums">준비금 {Number.isFinite(dReserves) ? signed(dReserves) : "—"}</span>
           </div>
 
-          {/* 우측: ◀▶(스크러버 밖일 때만, 미세 이동) + 현재로(과거 모드) */}
+          {/* 우측: ◀ 미니슬라이더 ▶(스크러버 밖일 때만, 원거리+미세 이동) + 현재로(과거 모드) */}
           <span className="flex items-center gap-1.5 shrink-0 ml-auto">
             {scrubberOut && (
-              <span className="flex items-center gap-0.5 animate-in fade-in">
+              <span className="flex items-center gap-1 animate-in fade-in">
                 <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" title="이전 주"
                   className="px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">◀</button>
+                <input type="range" min={0} max={weeks.length - 1} value={curIdx} step={1}
+                  onChange={(e) => setIdx(Number(e.target.value))}
+                  aria-label="시점 이동" title={`시점 이동 · ${sel?.date ?? ""}`}
+                  className="h-1.5 w-28 md:w-40 cursor-pointer accent-red-500 align-middle" />
                 <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" title="다음 주"
                   className="px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
               </span>
