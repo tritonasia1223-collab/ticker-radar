@@ -419,7 +419,7 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
 }
 
 // ── 재무부 국채 발행(종류별 잔액·순발행) — 공급 측. 각 종류에 온커서 만기 설명 ──
-function TreasuryIssuance({ t }: { t: Treasury }) {
+function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
   const tm = t.monthly;
   const last = tm.at(-1);
   const [hoverK, setHoverK] = useState<string | null>(null);
@@ -428,6 +428,9 @@ function TreasuryIssuance({ t }: { t: Treasury }) {
   const recentNet = tm.slice(-30);
   const active = TB_TYPES.find((x) => x.k === hoverK) ?? null;
   const dim = (k: string) => (active && active.k !== k ? true : false);
+  // 선택 주차(timeState) → 그 달의 데이터 포인트 날짜. 월간 차트에 수직 가이드라인으로.
+  const selMonth = selDate?.slice(0, 7);
+  const guideDate = selMonth ? tm.find((p) => p.date.slice(0, 7) === selMonth)?.date : undefined;
   return (
     <Card className="p-3.5">
       <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
@@ -460,6 +463,7 @@ function TreasuryIssuance({ t }: { t: Treasury }) {
             <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
             {TB_TYPES.map((x) => <Area key={x.k} dataKey={x.k} name={x.label} stackId="1" stroke={x.color} fill={x.color} fillOpacity={dim(x.k) ? 0.15 : 0.55} isAnimationActive={false} />)}
+            {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -474,6 +478,7 @@ function TreasuryIssuance({ t }: { t: Treasury }) {
               <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [signed(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
+              {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
               {TB_TYPES.map((x) => <Bar key={x.k} dataKey={x.nk} name={x.label} stackId="n" fill={x.color} fillOpacity={dim(x.k) ? 0.25 : 1} isAnimationActive={false} />)}
             </BarChart>
           </ResponsiveContainer>
@@ -504,7 +509,8 @@ export default function Fed() {
   if (!weeks.length) return <div className="p-6 text-sm text-muted-foreground">데이터가 없습니다.</div>;
 
   const latest = weeks[weeks.length - 1];
-  const lendAlert = latest.loans > 100_000; // >$1000억이면 경보(평상시 <$300억)
+  const selLoans = sel ? sel.loans : latest.loans;          // 위기감지기도 선택 주 기준(Phase 1 timeState 연동)
+  const lendAlert = selLoans > 100_000; // >$1000억이면 경보(평상시 <$300억)
   // QT/QE 속도 = 선택 주차의 총자산 분기(13주) 변화를 월평균으로(musd/월). 기본=최신=현재.
   //   국면(배지·푸터 공통 단일출처, §2.5): 월평균 ≥+$50억=QE / ≤−$50억=QT / 사이=중립.
   //   임계 $50억(=5,000musd)은 0 근처에서 배지가 깜빡이지 않게 하는 데드밴드.
@@ -603,10 +609,10 @@ export default function Fed() {
       {/* 연준의 국채 흡수 — T-계정의 '국채(SOMA)' 만기별 확장. 상단 슬라이더 연동 */}
       {data?.treasury && data.treasury.monthly.length > 0 && <FedAbsorption t={data.treasury} selDate={sel?.date} />}
 
-      {/* 재무부 국채 발행(종류별 잔액·순발행) — 공급 측. 슬라이더 무관 */}
-      {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} />}
+      {/* 재무부 국채 발행(종류별 잔액·순발행) — 선택 주차 가이드라인(월 매핑) 연동 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} selDate={sel?.date} />}
 
-      {/* 위기 감지기 (전체기간 · 슬라이더 무관) — 맨 아래 */}
+      {/* 위기 감지기 — 전체기간 차트 + 선택 주차 가이드라인·잔액(Phase 1 timeState 연동) */}
       <Card className="p-3.5">
         <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
           <div>
@@ -614,8 +620,8 @@ export default function Fed() {
             <div className="text-[11px] text-muted-foreground">평상시엔 바닥. 이 선들이 튀면 은행·자금시장 어딘가에 불이 났다는 신호 (2008·2020·2023).</div>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[10.5px] text-muted-foreground">현재 긴급대출 잔액</div>
-            <div className={`tabular-nums font-semibold ${lendAlert ? "text-red-500" : "text-emerald-500"}`}>{asMoney(latest.loans)} · {lendAlert ? "경보" : "평상시"}</div>
+            <div className="text-[10.5px] text-muted-foreground">긴급대출 잔액 · {sel && weekLabel(sel.date)}</div>
+            <div className={`tabular-nums font-semibold ${lendAlert ? "text-red-500" : "text-emerald-500"}`}>{asMoney(selLoans)} · {lendAlert ? "경보" : "평상시"}</div>
           </div>
         </div>
         <Legend items={[["할인창구", LEND.discount], ["BTFP", LEND.btfp], ["레포", LEND.repo], ["통화스왑", LEND.swap]]} />
@@ -632,6 +638,7 @@ export default function Fed() {
               <Area dataKey="btfp" name="BTFP" stackId="1" stroke={LEND.btfp} fill={LEND.btfp} fillOpacity={0.5} />
               <Area dataKey="repo" name="레포" stackId="1" stroke={LEND.repo} fill={LEND.repo} fillOpacity={0.5} />
               <Area dataKey="swap" name="통화스왑" stackId="1" stroke={LEND.swap} fill={LEND.swap} fillOpacity={0.5} />
+              {sel && <ReferenceLine x={sel.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
             </AreaChart>
           </ResponsiveContainer>
         </div>
