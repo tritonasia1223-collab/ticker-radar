@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useLayoutEffect, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, Tooltip,
@@ -521,12 +521,14 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
   const [pctMode, setPctMode] = useState(false); // 절대액 ↔ 구성비(%) — '단기화 여부'는 비중으로
   if (!last) return null;
   const ym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
-  const recentNet = tm.slice(-30);
   const active = TB_TYPES.find((x) => x.k === hoverK) ?? null;
   const dim = (k: string) => (active && active.k !== k ? true : false);
   // 선택 주차(timeState) → 그 달의 데이터 포인트 날짜. 월간 차트에 수직 가이드라인으로.
   const selMonth = selDate?.slice(0, 7);
   const guideDate = selMonth ? tm.find((p) => p.date.slice(0, 7) === selMonth)?.date : undefined;
+  // 순발행 창: '선택 월에서 끝나는 30개월'(타임라인 따라 이동, 과거까지). 선택월이 데이터에 없으면 최신 30.
+  const endMi = (() => { const i = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1; return i >= 0 ? i : tm.length - 1; })();
+  const recentNet = tm.slice(Math.max(0, endMi - 29), endMi + 1);
   return (
     <Card className="p-3.5">
       <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
@@ -537,18 +539,18 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
         <div className="text-right shrink-0 text-[12px] tabular-nums"><div>시장성 총 <b>{T(last.total)}</b></div></div>
       </div>
 
-      {/* 종류 칩 — 온커서 설명(만기 기준) */}
+      {/* 종류 칩 — 클릭 토글(고정). 선택 시 설명·차트 강조 유지, 다시 클릭 해제. */}
       <div className="flex flex-wrap gap-1.5">
         {TB_TYPES.map((x) => (
-          <span key={x.k} onMouseEnter={() => setHoverK(x.k)} onMouseLeave={() => setHoverK(null)}
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-help transition-colors ${active?.k === x.k ? "border-foreground/40 bg-muted" : "border-border/60"}`}>
+          <button key={x.k} type="button" onClick={() => setHoverK(hoverK === x.k ? null : x.k)}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] cursor-pointer transition-colors ${active?.k === x.k ? "border-foreground/50 bg-muted font-semibold" : "border-border/60 hover:bg-muted/50"}`}>
             <span className="inline-block w-2 h-2 rounded-sm" style={{ background: x.color }} />{x.label}
             <span className="tabular-nums text-muted-foreground">{T((last as any)[x.k])}</span>
-          </span>
+          </button>
         ))}
       </div>
       <div className="mt-1 min-h-[2.4em] text-[11px] leading-snug text-muted-foreground">
-        {active ? <><b className="text-foreground">{active.label}</b> · {active.desc}</> : "각 종류에 커서를 올리면 기준(만기 등) 설명이 나옵니다."}
+        {active ? <><b className="text-foreground">{active.label}</b> · {active.desc} <span className="text-muted-foreground/70">(다시 클릭 해제)</span></> : "종류를 클릭하면 고정되어 설명·강조가 유지됩니다."}
       </div>
 
       {/* 종류별 잔액 스택 + 절대액/구성비 토글 */}
@@ -573,7 +575,7 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
 
       {/* 월별 순발행 — 순액 단일 막대(양수 보라 / 음수 코럴), 종류 분해는 hover(§6.3) */}
       <div className="mt-2">
-        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">발행−상환 순액 · <span style={{ color: "#7c3aed" }}>증가</span>/<span style={{ color: "#f97316" }}>감소</span> · 최근 30개월 · 막대 hover=종류별</span></div>
+        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">발행−상환 순액 · <span style={{ color: "#7c3aed" }}>증가</span>/<span style={{ color: "#f97316" }}>감소</span> · {recentNet[0]?.date.slice(0, 7)}~{recentNet.at(-1)?.date.slice(0, 7)}(선택 월까지) · 막대 hover=종류별</span></div>
         <div className="h-[150px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
@@ -598,8 +600,6 @@ export default function Fed() {
   const [idx, setIdx] = useState<number>(-1);
   const [crisisOpen, setCrisisOpen] = useState<boolean>(false); // L4 위기감지기 수동 펼침
   const [node, setNode] = useState<string>("reserves");         // L2 선택 노드(우측 캔버스). 기본=준비금
-  const l2Ref = useRef<HTMLDivElement>(null);                    // L2 컨테이너(브래킷 좌표 기준)
-  const [bracket, setBracket] = useState<{ x1: number; ay: number; by: number; x2: number; cy1: number; cy2: number } | null>(null);
 
   const weeks = data?.weeks ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
@@ -612,24 +612,6 @@ export default function Fed() {
     const near = withI.reduce((m, p) => (Math.abs(p.i - curIdx) < Math.abs(m.i - curIdx) ? p : m), withI[0]);
     return Math.abs(near.i - curIdx) <= 26 ? near : null;
   }, [weeks, curIdx]);
-
-  // L2 브래킷: 선택 세그먼트 → 확장 캔버스를 잇는 점선 리더 2개(상·하). 위치는 DOM 측정(리사이즈 반응).
-  useLayoutEffect(() => {
-    const cont = l2Ref.current;
-    if (!cont) return;
-    const compute = () => {
-      const seg = cont.querySelector('[data-selseg="1"]') as HTMLElement | null;
-      const ta = cont.querySelector('[data-taccount="1"]') as HTMLElement | null;
-      const canv = cont.querySelector('[data-canvas="1"]') as HTMLElement | null;
-      if (!seg || !ta || !canv || window.innerWidth < 1024) { setBracket(null); return; }
-      const cr = cont.getBoundingClientRect(), sr = seg.getBoundingClientRect(), tar = ta.getBoundingClientRect(), kr = canv.getBoundingClientRect();
-      setBracket({ x1: tar.right - cr.left, ay: sr.top - cr.top, by: sr.bottom - cr.top, x2: kr.left - cr.left, cy1: kr.top - cr.top, cy2: kr.bottom - cr.top });
-    };
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(cont);
-    return () => ro.disconnect();
-  }, [node, curIdx, weeks.length]);
 
 
   if (isLoading) return <div className="p-6 space-y-4"><Skeleton className="h-40 w-full" /><Skeleton className="h-96 w-full" /></div>;
@@ -706,16 +688,17 @@ export default function Fed() {
 
       <BandLabel>연준 유동성 · 대차대조표</BandLabel>
 
-      {/* L1 스크러버 — 총자산 추이(압축) + QE청록/QT적색 국면 배경. 콘텐츠→컨트롤러로 강등. */}
-      <Card className="px-3.5 py-2">
-        <div className="mb-0.5 text-[11px] text-muted-foreground">총자산 추이 <span className="text-[10px]">· 클릭/드래그로 시점 선택 · <span style={{ color: POS }}>청록=QE</span> / <span style={{ color: NEG }}>적색=QT</span> 국면</span></div>
-        <div className="h-[64px] cursor-crosshair">
+      {/* L1 스크러버 — 총자산 추이 + QE청록/QT적색 국면 배경. 시점 선택 컨트롤러. */}
+      <Card className="p-3.5">
+        <div className="mb-1 text-sm font-semibold">연준 대차대조표 규모 <span className="text-[11px] font-normal text-muted-foreground">총자산 추이 · 클릭/드래그로 시점 선택 · <span style={{ color: POS }}>청록=QE</span> / <span style={{ color: NEG }}>적색=QT</span> 국면</span></div>
+        <div className="h-[196px] cursor-crosshair">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeks} margin={{ top: 14, right: 8, left: 6, bottom: 0 }}
+            <AreaChart data={weeks} margin={{ top: 18, right: 8, left: 6, bottom: 0 }}
               onClick={(e: any) => { if (e?.activeLabel) setIdx(nearestIdx(weeks, String(e.activeLabel))); }}>
               <defs><linearGradient id="fedsz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={A_SOMA} stopOpacity={0.4} /><stop offset="100%" stopColor={A_SOMA} stopOpacity={0.03} /></linearGradient></defs>
               {regimeBands.map((b, i) => <ReferenceArea key={i} x1={b.x1} x2={b.x2} fill={b.kind === "QE" ? POS : NEG} fillOpacity={0.07} />)}
-              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [T(v), "총자산"]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
               <Area dataKey="total" stroke={A_SOMA} strokeWidth={1.5} fill="url(#fedsz)" />
               {PHASES.map((p) => { const w = weeks[nearestIdx(weeks, p.date)]; return <ReferenceDot key={p.label} x={w.date} y={w.total} r={2.5} fill="hsl(var(--muted-foreground))" stroke="none" />; })}
@@ -727,25 +710,15 @@ export default function Fed() {
         </div>
       </Card>
 
-      {/* L2 — T-계정 마스터(세그먼트 선택) | 확장 캔버스. 사이 점선 브래킷 = '같은 막대의 확대' */}
-      <div ref={l2Ref} className="relative">
-        <svg className="pointer-events-none absolute inset-0 z-20 hidden lg:block w-full h-full" aria-hidden>
-          {bracket && (
-            <g stroke={NODE_META[node]?.color ?? "hsl(var(--muted-foreground))"} strokeWidth={1.25} strokeDasharray="4 3" fill="none" opacity={0.7}>
-              <line x1={bracket.x1} y1={bracket.ay} x2={bracket.x2} y2={bracket.cy1} />
-              <line x1={bracket.x1} y1={bracket.by} x2={bracket.x2} y2={bracket.cy2} />
-            </g>
-          )}
-        </svg>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-          <Card className="p-3.5" data-taccount="1">
-            <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비 · <span style={{ color: NODE_META[node]?.color }}>항목을 클릭</span>하면 우측에 분해/추이</span></div>
-            {sel && <TAccount w={sel} selected={node} onSelect={setNode} />}
-          </Card>
-          <Card className="p-3.5">
-            {sel && <NodeCanvas node={node} weeks={weeks} sel={sel} selPrev={selPrev} treasury={data?.treasury} />}
-          </Card>
-        </div>
+      {/* L2 — T-계정 마스터(세그먼트 선택) | 확장 캔버스(선택 노드의 이야기) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+        <Card className="p-3.5">
+          <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비 · <span style={{ color: NODE_META[node]?.color }}>항목을 클릭</span>하면 우측에 분해/추이</span></div>
+          {sel && <TAccount w={sel} selected={node} onSelect={setNode} />}
+        </Card>
+        <Card className="p-3.5">
+          {sel && <NodeCanvas node={node} weeks={weeks} sel={sel} selPrev={selPrev} treasury={data?.treasury} />}
+        </Card>
       </div>
 
       <BandLabel>국채 수급 · 재무부 발행(공급) → 연준 흡수</BandLabel>
