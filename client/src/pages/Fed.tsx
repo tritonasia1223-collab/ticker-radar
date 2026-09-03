@@ -73,8 +73,6 @@ const T = asMoney;
 const signed = (v: number) => (v >= 0 ? "+" : "−") + asMoney(Math.abs(v));
 const yr = (d: string) => d.slice(0, 4);
 const weekLabel = (d: string) => `${Number(d.slice(5, 7))}월 ${Math.ceil(Number(d.slice(8, 10)) / 7)}주차`;
-const weekRange = (a: string, b: string) =>
-  a.slice(0, 7) === b.slice(0, 7) ? `${weekLabel(a)} → ${weekLabel(b).replace(/^\d+월 /, "")}` : `${weekLabel(a)} → ${weekLabel(b)}`;
 const textOn = (hex: string) => {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? "#0f172a" : "#ffffff";
@@ -298,46 +296,64 @@ function DeltaWaterfall({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
   );
 }
 
-// 요약 문장(§2.4) — 순변화값에만 색.
-function FlowSummary({ prev, now }: { prev: WeekPoint; now: WeekPoint }) {
-  const factors = [
-    { key: "assets", name: "자산", eff: now.total - prev.total, asset: true },
-    { key: "tga", name: "TGA", eff: -(now.tga - prev.tga) },
-    { key: "rrp", name: "역레포", eff: -(now.rrp - prev.rrp) },
-    { key: "cur", name: "현금통화", eff: -(now.currency - prev.currency) },
-    { key: "other", name: "기타·자본", eff: -(now.liabResidual - prev.liabResidual) },
+// 요약 문장 — 자동 생성 템플릿(§1~§6). 문장 안 산수가 닫히고, 항목 표기는 막대 라벨과 동일 문법(유출/유입).
+//   기여도 = 항등식 각 항(자산 동부호 / 부채 반대부호). Σ기여도 ≡ Δ준비금(대수적 정확). 억 단위 정수.
+const FLOW_T = { FLAT: 30, ONE: 30, DOM: 0.75, TIE: 0.15 }; // §3 상수(보합/일방향/단일지배/팽팽)
+function FlowSummary({ prev, now, phase }: { prev: WeekPoint; now: WeekPoint; phase: string }) {
+  // §1 기여도(억, 정수). 항목명은 막대 라벨과 동일 상수(자산/TGA/역레포/현금통화/기타·자본).
+  const raw = [
+    { name: "자산", eff: now.total - prev.total },
+    { name: "TGA", eff: -(now.tga - prev.tga) },
+    { name: "역레포", eff: -(now.rrp - prev.rrp) },
+    { name: "현금통화", eff: -(now.currency - prev.currency) },
+    { name: "기타·자본", eff: -(now.liabResidual - prev.liabResidual) },
   ];
-  const net = now.reserves - prev.reserves;
-  const netCol = net >= 0 ? FLOW_UP : FLOW_DN;
-  const assetEff = factors[0].eff;
-  const moves = factors.slice(1);
-  const moveTop = moves.reduce((m, x) => (Math.abs(x.eff) > Math.abs(m.eff) ? x : m), moves[0]);
-  const netChip = <b style={{ color: netCol }}>{signed(net)}</b>;
+  const net = Math.round((now.reserves - prev.reserves) / 100);          // Δ준비금(억)
+  const items = raw.map((f) => ({ name: f.name, v: Math.round(f.eff / 100), eff: f.eff }));
+  // 반올림 드리프트를 최대 |기여도| 항목에 흡수 → Σv == net 정확히(문장 산수 폐합).
+  const drift = net - items.reduce((s, x) => s + x.v, 0);
+  if (drift !== 0) { const bi = items.reduce((mi, x, i, a) => (Math.abs(x.eff) > Math.abs(a[mi].eff) ? i : mi), 0); items[bi].v += drift; }
+  const I = items.filter((x) => x.v > 0).reduce((s, x) => s + x.v, 0);   // 유입 총액
+  const O = items.filter((x) => x.v < 0).reduce((s, x) => s - x.v, 0);   // 유출 총액(양수)
 
-  // 돈 총량 변화(자산)가 작고 자리이동이 지배하면 별도 템플릿.
-  //   ⚠ 단일 주 자산변화에 'QE' 라벨을 붙이지 않는다 — 음수면 오히려 회수(QT)라 모순. QE/QT 는 13주 국면 배지가 담당.
-  if (Math.abs(assetEff) < Math.abs(moveTop.eff) * 0.5) {
-    return (
-      <p className="text-[12px] leading-relaxed text-muted-foreground">
-        이번 주 준비금 {netChip} — 돈 총량(연준 자산)이 바뀐 건 <b className="text-foreground">{signed(assetEff)}</b>뿐이고,
-        준비금이 {net < 0 ? "줄어든" : "늘어난"} 건 대부분 돈이 <b className="text-foreground">{moveTop.name}</b>
-        {moveTop.eff < 0 ? "로 옮겨갔기" : "에서 나왔기"} 때문이에요.
-      </p>
-    );
+  const money = (v: number) => "$" + Math.abs(v).toLocaleString() + "억"; // 절대값 · 콤마 · 억
+  const P = "text-[12px] leading-relaxed text-muted-foreground";
+  const dir = net < 0 ? "감소" : "증가";
+  const netCol = net < 0 ? FLOW_DN : FLOW_UP;
+  const netChip = <b style={{ color: netCol }}>{money(net)} {dir}</b>; // 순변화(숫자+방향)에 색·굵게
+
+  // §1 검산 가드: I−O ≠ net(±1억)이면 상세 문장 포기 → 한 줄 + warn.
+  if (!Number.isFinite(net) || Math.abs(I - O - net) > 1) {
+    console.warn("[flow] 검산 실패 — I,O,net:", I, O, net);
+    return <p className={P}>이번 주 준비금 {netChip}</p>;
   }
-  const byAbs = [...factors].sort((a, b) => Math.abs(b.eff) - Math.abs(a.eff));
-  const top = byAbs[0];
-  const opp = factors.filter((c) => Math.sign(c.eff) === -Math.sign(top.eff) && c.eff !== 0)
-    .sort((a, b) => Math.abs(b.eff) - Math.abs(a.eff))[0];
-  const won = net === 0 || Math.sign(top.eff) === Math.sign(net);
-  return (
-    <p className="text-[12px] leading-relaxed text-muted-foreground">
-      이번 주 준비금 {netChip} — <b className="text-foreground">{top.name}</b>({signed(top.eff)})이{" "}
-      {opp
-        ? <>{opp.name}({signed(opp.eff)})을 {won ? "이겼어요" : "못 이겼어요"}.</>
-        : <>상쇄 요인 없이 그대로 반영됐어요.</>}
-    </p>
-  );
+
+  const domWord = net < 0 ? "유출" : "유입", oppWord = net < 0 ? "유입" : "유출";
+  const domTotal = net < 0 ? O : I, oppTotal = net < 0 ? I : O, gross = O + I;
+  const domItems = items.filter((x) => (net < 0 ? x.v < 0 : x.v > 0)).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+  const topDom = domItems[0];
+  // §4-C6 자산 부연: 최대 항목이 자산이고 방향이 정책 뱃지와 일치(QT↔유출·QE↔유입)하면 괄호 부연.
+  const sfx = (it?: { name: string }) => (it && it.name === "자산" && ((net < 0 && phase === "QT") || (net > 0 && phase === "QE")) ? (net < 0 ? "(QT 축소)" : "(QE 확대)") : "");
+  const item = (it: { name: string; v: number }) => `${it.name} ${domWord} ${money(it.v)}${sfx(it)}`;
+
+  // §4-C0 보합
+  if (Math.abs(net) < FLOW_T.FLAT)
+    return <p className={P}>이번 주 준비금은 거의 그대로예요({netChip}). 유출 {money(O)}과 유입 {money(I)}이 상쇄됐어요.</p>;
+
+  // §4-C5 일방향(반대방향 총액이 T_ONE 미만)
+  if (oppTotal < FLOW_T.ONE)
+    return <p className={P}>이번 주 준비금 {netChip} — 전 항목이 {domWord}이었어요. 최대는 {item(topDom)}.</p>;
+
+  // §4-C3 단일 지배(최대 항목이 총유량 O+I 의 75% 이상)
+  if (Math.abs(topDom.v) >= FLOW_T.DOM * gross)
+    return <p className={P}>이번 주 준비금 {netChip} — 사실상 {item(topDom)}이 주도했어요 ({oppWord}은 {money(oppTotal)}).</p>;
+
+  // §4-C1/C2 기본 (+ §4-C4 팽팽)
+  const tie = domItems.length >= 2 && (Math.abs(domItems[0].v) - Math.abs(domItems[1].v)) / Math.abs(domItems[0].v) < FLOW_T.TIE;
+  const second = tie
+    ? `${item(domItems[0])}과 ${item(domItems[1])}이 나란히 컸어요.`
+    : `최대 ${domWord}은 ${item(topDom)}.`;
+  return <p className={P}>이번 주 준비금 {netChip} — {domWord} {money(domTotal)}이 {oppWord} {money(oppTotal)}을 넘었어요. {second}</p>;
 }
 
 function Legend({ items }: { items: [string, string][] }) {
@@ -372,23 +388,26 @@ const NODE_META: Record<string, { key: keyof WeekPoint; color: string; label: st
   liabResidual: { key: "liabResidual", color: L_RESID, label: "기타·자본" },
 };
 
-function NodeCanvas({ node, weeks, sel, selPrev, treasury }: {
-  node: string; weeks: WeekPoint[]; sel: WeekPoint | null; selPrev: WeekPoint | null; treasury?: Treasury;
+function NodeCanvas({ node, weeks, sel, selPrev, treasury, phase }: {
+  node: string; weeks: WeekPoint[]; sel: WeekPoint | null; selPrev: WeekPoint | null; treasury?: Treasury; phase: string;
 }) {
   const meta = NODE_META[node] ?? NODE_META.reserves;
   // 준비금 → 앵커형 워터폴(그 주 분해)
   if (node === "reserves") {
+    const jo = (v: number) => `$${(v / 1e6).toFixed(2)}조`; // 억 정밀도 조(변화가 보이도록 소수 2자리)
+    const sameMonth = !!sel && !!selPrev && selPrev.date.slice(0, 7) === sel.date.slice(0, 7);
+    const nowWk = sel ? (sameMonth ? weekLabel(sel.date).replace(/^\d+월\s/, "") : weekLabel(sel.date)) : "";
     return (
       <div className="flex flex-col h-full">
-        <div className="text-sm font-semibold" style={{ color: L_RES }}>지급준비금 <span className="text-[11px] font-normal text-muted-foreground">주간 변화 워터폴 · 어디서 들어오고 나갔나</span></div>
+        <div className="text-sm font-semibold" style={{ color: L_RES }}>지급준비금</div>
         {sel && selPrev && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
-            {weekRange(selPrev.date, sel.date)} · 전주 <b className="text-foreground">{T(selPrev.reserves)}</b> → 이번주 <b className="text-foreground">{T(sel.reserves)}</b> · 단위 억 달러
+          <div className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">
+            {weekLabel(selPrev.date)} <b className="text-foreground">{jo(selPrev.reserves)}</b> → {nowWk} <b className="text-foreground">{jo(sel.reserves)}</b>
           </div>
         )}
         <div className="flex-1 flex flex-col justify-center min-h-0">
           {sel && selPrev ? (
-            <div data-canvas="1"><DeltaWaterfall prev={selPrev} now={sel} /><div className="mt-2"><FlowSummary prev={selPrev} now={sel} /></div></div>
+            <div data-canvas="1"><DeltaWaterfall prev={selPrev} now={sel} /><div className="mt-2"><FlowSummary prev={selPrev} now={sel} phase={phase} /></div></div>
           ) : <div className="py-6 text-center text-[12px] text-muted-foreground">첫 주는 이전 주가 없어 표시할 수 없습니다.</div>}
         </div>
       </div>
@@ -737,21 +756,19 @@ export default function Fed() {
             <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border tabular-nums">준비금 {Number.isFinite(dReserves) ? signed(dReserves) : "—"}</span>
           </div>
 
-          {/* 우측: 날짜(년 월 주차) + ◀ 미니슬라이더 ▶(항상 표시) + 현재로(과거 모드) */}
-          <span className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {/* 우측: 날짜 + ◀ 슬라이더(남는 공간 채워 flex-1) ▶ + 현재로(과거 모드) */}
+          <span className="flex items-center gap-1.5 flex-1 min-w-0 ml-2">
             <span className={`text-[11.5px] tabular-nums shrink-0 ${isPast ? "text-amber-700 font-semibold" : "text-muted-foreground"}`}>
               {sel ? `${sel.date.slice(0, 4)}년 ${weekLabel(sel.date)}` : ""}
             </span>
-            <span className="flex items-center gap-1">
-              <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" title="이전 주"
-                className="px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">◀</button>
-              <input type="range" min={0} max={weeks.length - 1} value={curIdx} step={1}
-                onChange={(e) => setIdx(Number(e.target.value))}
-                aria-label="시점 이동" title={`시점 이동 · ${sel?.date ?? ""}`}
-                className="h-1.5 w-28 md:w-40 cursor-pointer accent-red-500 align-middle" />
-              <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" title="다음 주"
-                className="px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
-            </span>
+            <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" title="이전 주"
+              className="shrink-0 px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">◀</button>
+            <input type="range" min={0} max={weeks.length - 1} value={curIdx} step={1}
+              onChange={(e) => setIdx(Number(e.target.value))}
+              aria-label="시점 이동" title={`시점 이동 · ${sel?.date ?? ""}`}
+              className="h-1.5 flex-1 min-w-[8rem] cursor-pointer accent-red-500 align-middle" />
+            <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" title="다음 주"
+              className="shrink-0 px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
             {/* 현재로: 폭을 항상 예약(invisible) → 과거 전환 시 슬라이더가 밀리지 않게 */}
             <button type="button" onClick={() => setIdx(-1)} title="현재(최신 주)로" aria-hidden={!isPast} tabIndex={isPast ? 0 : -1}
               className={`shrink-0 rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[10.5px] hover:bg-amber-500/10 ${isPast ? "" : "invisible pointer-events-none"}`}>현재로</button>
@@ -791,7 +808,7 @@ export default function Fed() {
           {sel && <TAccount w={sel} selected={node} onSelect={setNode} />}
         </Card>
         <Card className="p-3.5 flex flex-col">
-          {sel && <NodeCanvas node={node} weeks={weeks} sel={sel} selPrev={selPrev} treasury={data?.treasury} />}
+          {sel && <NodeCanvas node={node} weeks={weeks} sel={sel} selPrev={selPrev} treasury={data?.treasury} phase={phase} />}
         </Card>
       </div>
 
