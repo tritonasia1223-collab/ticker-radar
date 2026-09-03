@@ -562,7 +562,7 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
         ))}
         <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2 rounded-sm" style={{ background: "#7c3aed" }} />순발행</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} />연준 증감</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} />연준 변화량</span>
         </span>
       </div>
 
@@ -585,13 +585,26 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
         </ResponsiveContainer>
       </div>
 
-      {/* hover 고정 잔차 문장 — 기본은 최근월 */}
-      {hRow ? (
-        <div className="mt-1 text-[12px] tabular-nums">
-          <span className="text-muted-foreground">{fym(hRow.date)} · </span>
-          순발행 <b style={{ color: hRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(hRow.sup)}</b> · 연준 <b style={{ color: A_SOMA }}>{signed(hRow.fed)}</b> → 민간·해외 <b>{signed(hRow.res)}</b>
+      {/* 고정 3슬롯 — 라벨 위치 고정, 스크럽/hover 시 숫자만 바뀜. 항등식: 순발행 = 연준 + 민간·해외 */}
+      {hRow && (
+        <div className="mt-1.5 flex items-center justify-center gap-1.5 text-center">
+          <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{fym(hRow.date)}</span>
+          <div className="flex w-[106px] flex-col items-center leading-tight">
+            <span className="text-[9.5px] text-muted-foreground">재무부 순발행</span>
+            <b className="text-[13px] tabular-nums" style={{ color: hRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(hRow.sup)}</b>
+          </div>
+          <span className="shrink-0 text-muted-foreground">→</span>
+          <div className="flex w-[92px] flex-col items-center leading-tight">
+            <span className="text-[9.5px] text-muted-foreground">연준 변화량</span>
+            <b className="text-[13px] tabular-nums" style={{ color: A_SOMA }}>{signed(hRow.fed)}</b>
+          </div>
+          <span className="shrink-0 text-muted-foreground">+</span>
+          <div className="flex w-[106px] flex-col items-center leading-tight">
+            <span className="text-[9.5px] text-muted-foreground">민간·해외 변화량</span>
+            <b className="text-[13px] tabular-nums">{signed(hRow.res)}</b>
+          </div>
         </div>
-      ) : <div className="mt-1 text-[12px] text-muted-foreground">막대에 커서를 올리면 순발행·연준·잔차</div>}
+      )}
     </Card>
   );
 }
