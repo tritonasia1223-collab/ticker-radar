@@ -7,7 +7,7 @@ import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition"; // select(...).transition() 활성화
 import { feature, neighbors } from "topojson-client";
-import { Plus, Minus, X, Locate } from "lucide-react";
+import { Plus, Minus, X, Locate, Search } from "lucide-react";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
 
@@ -19,6 +19,16 @@ const TEAL = "#0d9488";          // 선택 하이라이트(유동성 탭 팔레�
 const WORLD_LABEL_TOP = 28;      // 세계 뷰에서 라벨 붙일 대국 개수(면적순)
 const K_REGION = 2.5, K_LOCAL = 6; // 시맨틱 줌 경계
 const CENTER_LON = 150;          // 중심 경도(동아시아 중심 = 아메리카가 오른쪽). 컷은 ~30°W 대서양.
+
+// 권역 프리셋(§8 Phase2) — 클릭 시 중심 경도 재정렬 + 바운딩박스로 플라이투. bbox = [W, S, E, N].
+const REGIONS: { name: string; lon: number; bbox: [number, number, number, number] }[] = [
+  { name: "유럽", lon: 15, bbox: [-11, 34, 42, 60] },
+  { name: "중동", lon: 47, bbox: [32, 12, 63, 42] },
+  { name: "아프리카", lon: 20, bbox: [-18, -35, 52, 38] },
+  { name: "동남아", lon: 113, bbox: [92, -11, 142, 28] },
+  { name: "남미", lon: -60, bbox: [-82, -56, -34, 13] },
+];
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ""); // 검색 정규화(공백·대소문자 무시)
 
 export default function World() {
   // ── 정적 데이터: 토폴로지 → 피처 + 인접(공유아크) + 면적 + 수도 인덱스 ──
@@ -35,6 +45,20 @@ export default function World() {
     for (const c of capitalsData as Cap[]) if (c.iso) m.set(c.iso, c);
     return m;
   }, []);
+  const isoToIdx = useMemo(() => {
+    const m = new Map<string, number>();
+    features.forEach((f, i) => m.set(f.properties.iso, i));
+    return m;
+  }, [features]);
+  // 검색 색인(§8 Phase2) — 국가(한/영) + 수도(한/영). 항만·초크포인트는 Phase3에서 추가.
+  type Hit = { kind: "country"; label: string; sub: string; idx: number; key: string }
+    | { kind: "capital"; label: string; sub: string; iso: string; lng: number; lat: number; key: string };
+  const searchIndex = useMemo<Hit[]>(() => {
+    const out: Hit[] = [];
+    features.forEach((f, i) => out.push({ kind: "country", label: f.properties.ko, sub: f.properties.en, idx: i, key: norm(f.properties.ko) + " " + norm(f.properties.en) }));
+    for (const c of capitalsData as Cap[]) out.push({ kind: "capital", label: c.ko, sub: c.en, iso: c.iso, lng: c.lng, lat: c.lat, key: norm(c.ko) + " " + norm(c.en) });
+    return out;
+  }, [features]);
 
   // ── 반응형 크기 ──
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -101,6 +125,36 @@ export default function World() {
     select(svgRef.current).transition().duration(650).call(zoomRef.current.transform, tr);
   }, [pathGen, dim]);
 
+  // 지정 중심경도(useLon)로 재정렬 + 대상 화면bbox 에 맞춰 플라이투(검색·권역 프리셋 공용).
+  const projFor = useCallback((useLon: number) => geoEqualEarth().rotate([-useLon, 0]).fitExtent([[14, 14], [dim.w - 14, dim.h - 14]], { type: "Sphere" } as any), [dim]);
+  const fitTo = useCallback((useLon: number, b: [number, number, number, number], fill: number) => {
+    if (!zoomRef.current || !svgRef.current) return;
+    const [x0, y0, x1, y1] = b, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const k = Math.max(1, Math.min(9, fill / Math.max((x1 - x0) / dim.w || 1e-3, (y1 - y0) / dim.h || 1e-3)));
+    setLon(useLon);
+    const tr = zoomIdentity.translate(dim.w / 2 - k * cx, dim.h / 2 - k * cy).scale(k);
+    select(svgRef.current).transition().duration(700).call(zoomRef.current.transform, tr);
+  }, [dim]);
+  const flyRegion = useCallback((r: { lon: number; bbox: [number, number, number, number] }) => {
+    // bbox 둘레를 직접 투영해 화면 bbox 산출(합성 폴리곤의 구면 winding 문제 회피).
+    const proj = projFor(r.lon);
+    const [w, s, e, n] = r.bbox, N = 8;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i <= N; i++) {
+      const fx = w + (e - w) * (i / N), fy = s + (n - s) * (i / N);
+      for (const pt of [[fx, s], [fx, n], [w, fy], [e, fy]] as [number, number][]) {
+        const p = proj(pt); if (!p) continue;
+        x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+      }
+    }
+    if (Number.isFinite(x0)) fitTo(r.lon, [x0, y0, x1, y1], 0.85);
+  }, [projFor, fitTo]);
+  const flyFeatureCentered = useCallback((f: Cty) => {
+    const useLon = Number.isFinite(f.properties.lx) ? f.properties.lx : CENTER_LON;
+    const [[x0, y0], [x1, y1]] = geoPath(projFor(useLon)).bounds(f as any);
+    fitTo(useLon, [x0, y0, x1, y1], 0.55);
+  }, [projFor, fitTo]);
+
   const zoomBy = (f: number) => zoomRef.current && svgRef.current &&
     select(svgRef.current).transition().duration(250).call(zoomRef.current.scaleBy, f);
 
@@ -111,6 +165,20 @@ export default function World() {
   const selNeighbors = useMemo(() => (sel == null ? new Set<number>() : new Set(adj[sel])), [sel, adj]);
 
   const pick = useCallback((i: number) => { setSel(i); flyTo(features[i]); }, [features, flyTo]);
+
+  // 검색(§8 Phase2) — 클라이언트 부분일치. 선택 시 중심경도 재정렬 + 플라이투 + 국가 선택.
+  const [query, setQuery] = useState("");
+  const results = useMemo<Hit[]>(() => {
+    const q = norm(query); if (!q) return [];
+    return searchIndex.filter((it) => it.key.includes(q)).slice(0, 8);
+  }, [query, searchIndex]);
+  const onSelectResult = useCallback((it: Hit) => {
+    setQuery("");
+    if (it.kind === "country") { setSel(it.idx); flyFeatureCentered(features[it.idx]); return; }
+    const ci = it.iso ? isoToIdx.get(it.iso) : undefined;
+    if (ci != null) { setSel(ci); flyFeatureCentered(features[ci]); }
+    else flyRegion({ lon: it.lng, bbox: [it.lng - 6, it.lat - 6, it.lng + 6, it.lat + 6] });
+  }, [features, isoToIdx, flyFeatureCentered, flyRegion]);
 
   // 화면 좌표 헬퍼(라벨/수도 오버레이 — 줌 변환 적용, 텍스트는 스케일 안 함)
   const toScreen = (lng: number, lat: number): [number, number] | null => {
@@ -191,14 +259,43 @@ export default function World() {
       <div className="absolute bottom-4 right-4 flex flex-col gap-1">
         <button onClick={() => zoomBy(1.6)} className="h-9 w-9 rounded-md border border-border bg-card/90 text-lg leading-none shadow-sm backdrop-blur hover:bg-muted" title="확대"><Plus className="mx-auto h-4 w-4" /></button>
         <button onClick={() => zoomBy(1 / 1.6)} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted" title="축소"><Minus className="mx-auto h-4 w-4" /></button>
-        <button onClick={() => svgRef.current && select(svgRef.current).transition().duration(400).call(zoomRef.current.transform, zoomIdentity)}
-          className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted" title="세계 뷰로"><Locate className="mx-auto h-4 w-4" /></button>
+        <button onClick={() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).transition().duration(400).call(zoomRef.current.transform, zoomIdentity); }}
+          className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted" title="세계 뷰로(태평양 중심)"><Locate className="mx-auto h-4 w-4" /></button>
       </div>
 
-      {/* 좌상: 제목(Phase 1 — 검색/프리셋/층토글은 후속) */}
-      <div className="absolute left-4 top-4 rounded-md border border-border bg-card/85 px-3 py-1.5 shadow-sm backdrop-blur">
-        <div className="text-sm font-bold">세계 현황판</div>
-        <div className="text-[11px] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 인접국</div>
+      {/* 좌상: 검색(국가·수도) */}
+      <div className="absolute left-4 top-4 w-64">
+        <div className="rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && results[0]) onSelectResult(results[0]); if (e.key === "Escape") setQuery(""); }}
+              placeholder="나라·수도 검색" spellCheck={false}
+              className="w-full bg-transparent text-[12.5px] outline-none placeholder:text-muted-foreground" />
+            {query && <button onClick={() => setQuery("")} className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted" title="지우기"><X className="h-3.5 w-3.5" /></button>}
+          </div>
+          {results.length > 0 && (
+            <div className="max-h-64 overflow-auto border-t border-border">
+              {results.map((it, ri) => (
+                <button key={ri} onClick={() => onSelectResult(it)}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted">
+                  <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${it.kind === "country" ? "bg-teal-500/15 text-teal-700 dark:text-teal-300" : "bg-muted text-muted-foreground"}`}>{it.kind === "country" ? "국가" : "수도"}</span>
+                  <span className="text-[12.5px] font-medium">{it.label}</span>
+                  <span className="truncate text-[10px] text-muted-foreground">{it.sub}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mt-1 pl-1 text-[10.5px] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 인접국</div>
+      </div>
+
+      {/* 좌하: 권역 프리셋 */}
+      <div className="absolute bottom-4 left-4 flex max-w-[16rem] flex-wrap gap-1">
+        {REGIONS.map((r) => (
+          <button key={r.name} onClick={() => { setSel(null); flyRegion(r); }}
+            className="rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] shadow-sm backdrop-blur hover:bg-muted">{r.name}</button>
+        ))}
       </div>
 
       {/* 우측: 국가 카드 */}
