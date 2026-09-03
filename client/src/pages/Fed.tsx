@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, BarChart, Bar, ComposedChart, Line, Cell, XAxis, YAxis, Tooltip,
+  AreaChart, Area, BarChart, Bar, Cell, Customized, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
@@ -483,36 +483,35 @@ const TB_TYPES = [
   { k: "frn", nk: "netFrn", label: "FRN", color: TB.frn, desc: "변동금리채 · 만기 2년." },
 ] as const;
 
-// ── 연준의 국채 흡수(SOMA 만기별 보유·매입 + 흡수율) — 상단 T-계정의 '국채 매입'을 만기별로 확장 ──
-//   상단 슬라이더(selDate)와 연동해 '선택 주' 기준으로 표시. 매입 = 그 주의 전주 대비 Δ(주간).
-//   ⚠ 연준 H.4.1 은 Bills / 중장기(Notes+Bonds 합산) / TIPS 3개 라인만 공개 — Notes·Bonds 분리·FRN 별도표기는 불가.
-//     TIPS = 총보유 − 단기 − 중장기 (물가보정분 포함 → 3버킷이 총계와 정확히 합치).
-function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
+// ── ΔFed 오버레이 막대(Customized) — 순발행 막대 위, 같은 x 중심에 40% 좁은 청록 막대 ──
+function FedOverlayBars(props: any) {
+  const { xAxisMap, yAxisMap, data } = props;
+  if (!xAxisMap || !yAxisMap || !data) return null;
+  const xa = xAxisMap[Object.keys(xAxisMap)[0]], ya = yAxisMap[Object.keys(yAxisMap)[0]];
+  const xs = xa?.scale, ys = ya?.scale;
+  if (!xs || !ys) return null;
+  const bw = typeof xs.bandwidth === "function" ? xs.bandwidth() : 8;
+  const y0 = ys(0), w = Math.max(2, bw * 0.42);
+  return (
+    <g>
+      {data.map((d: any, i: number) => {
+        if (!Number.isFinite(d.fed)) return null;
+        const cx = (xs(d.date) ?? 0) + bw / 2, yv = ys(d.fed);
+        const top = Math.min(y0, yv), h = Math.max(Math.abs(yv - y0), 1);
+        return <rect key={i} x={cx - w / 2} y={top} width={w} height={h} rx={1} fill={A_SOMA} />;
+      })}
+    </g>
+  );
+}
+
+// ── 월별 순발행(공급) vs 연준 보유증감(ΔHoldings) — 수급 비교(주연). 순발행은 이 차트에서만 그린다(중복 제거). ──
+//   ΔHoldings = 매입 − 만기상환 − 매도 (= 월 마지막 수요일 H.4.1 ffill 의 MoM Δ). 잔차 = 순발행 − ΔFed = 민간·해외.
+//   버킷: 단기 ΔWSHOBL / 중장기 ΔWSHONBNL(FRN포함) / TIPS ΔWSHONBIIL(물가보정 제외). Σ버킷 = Δ(WSHOTSL−WSHOICL) 자동성립.
+function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
   const { monthly: tm, fedWeekly: fw } = t;
   const pct = (v: number) => (v * 100).toFixed(1) + "%";
-  const [fbucket, setFbucket] = useState<"total" | "bills" | "nb" | "tips">("total"); // 주연 플로우 만기 토글
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);                       // 플로우 차트 hover 월
-  // 주간 흡수율 = 연준 국채보유(주간) / 재무부 시장성 총액(월간, 해당 주의 최근 월로 ffill).
-  //   만기별(연준 3버킷: 단기 Bills / 중장기 Notes·Bonds / TIPS)도 함께 매칭 —
-  //   중장기 분모 = 시장 Notes+Bonds+FRN(연준 WSHONBNL 은 FRN 을 nominal 로 포함하므로 분모도 합산).
-  const weekly = useMemo(() => {
-    let ti = 0, m: typeof tm[number] | null = null;
-    return fw.map((w) => {
-      while (ti < tm.length && tm[ti].date <= w.date) { m = tm[ti]; ti++; }
-      const fedTips = w.total - w.bills - w.notesBonds;
-      const mBills = m?.bills ?? NaN, mNb = m ? m.notes + m.bonds + m.frn : NaN, mTips = m?.tips ?? NaN, mTot = m?.total ?? NaN;
-      return {
-        date: w.date, fedBills: w.bills, fedNb: w.notesBonds, fedTips, fedTotal: w.total,
-        mBills, mNb, mTips, mTotal: mTot,
-        share: Number.isFinite(mTot) && mTot ? w.total / mTot : NaN,
-      };
-    });
-  }, [fw, tm]);
-
-  // ── 플로우(주연) 원자료: 월별 순발행(공급) vs 연준 보유증감 ΔHoldings ──
-  //   ΔHoldings = 매입 − 만기상환 − 매도 (= 월 마지막 수요일 H.4.1 ffill 의 MoM Δ). QT 롤오프면 음수.
-  //   버킷: 단기 ΔWSHOBL / 중장기 ΔWSHONBNL(FRN 포함) / TIPS ΔWSHONBIIL(물가보정 WSHOICL 제외 = 원금 기준).
-  //   Σ버킷 = Δ(WSHOTSL − WSHOICL) 항등식 자동 성립(구성상). 잔차 = 순발행 − ΔFed = 민간·해외 흡수.
+  const [fbucket, setFbucket] = useState<"total" | "bills" | "nb" | "tips">("total");
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const flow = useMemo(() => {
     let p = 0; let fedAt: (typeof fw)[number] | null = null;
     const reps = tm.map((pt) => { while (p < fw.length && fw[p].date <= pt.date) { fedAt = fw[p]; p++; } return fedAt; });
@@ -524,31 +523,15 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
       return { date: pt.date, bills: mk(pt.netBills, dBills), nb: mk(pt.netNotes + pt.netBonds + pt.netFrn, dNb), tips: mk(pt.netTips, dTips), total: mk(pt.netTotal, dBills + dNb + dTips) };
     });
   }, [fw, tm]);
-
-  const finite = weekly.filter((x) => Number.isFinite(x.share));
-  if (!finite.length) return null;
-  // 선택 주(상단 슬라이더 연동): selDate 이하 최근 주. 없으면 최신.
-  let selIdx = weekly.length - 1;
-  if (selDate) { for (let i = 0; i < weekly.length; i++) { if (weekly[i].date <= selDate) selIdx = i; else break; } }
-  const cur = weekly[selIdx];
-  const peak = finite.reduce((m, x) => (x.share > m.share ? x : m), finite[0]);
-  const share = Number.isFinite(cur.share) ? pct(cur.share) : "—";
-  // 만기별 3버킷(선택 주) — 연준 보유량(양) + 흡수율. 그래프는 이 3버킷의 보유량 추이가 메인.
-  const buckets = [
-    { key: "fedBills", label: "단기 Bills", tip: "만기 1년 이하", color: TB.bill, fed: cur.fedBills, mkt: cur.mBills },
-    { key: "fedNb", label: "중장기 Notes·Bonds", tip: "만기 2~30년 · FRN 포함", color: TB.note, fed: cur.fedNb, mkt: cur.mNb },
-    { key: "fedTips", label: "TIPS", tip: "물가연동", color: TB.tips, fed: cur.fedTips, mkt: cur.mTips },
-  ].map((b) => ({ ...b, rate: Number.isFinite(b.fed) && b.mkt ? b.fed / b.mkt : NaN }));
-
-  // 플로우 파생: 선택 월 기준 36개월 창 + 만기 버킷 선택 + 12개월 흡수율 + hover 행.
-  const FWIN = 36;
+  if (!flow.some(Boolean)) return null;
+  const WIN = 30;
   const selMonth = selDate?.slice(0, 7);
   const firstMonth = tm[0]?.date.slice(0, 7);
   const flowBefore = !!selMonth && !!firstMonth && selMonth < firstMonth;
   const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
-  const endMi = selMi >= 0 ? Math.max(selMi, Math.min(FWIN - 1, tm.length - 1)) : tm.length - 1;
+  const endMi = selMi >= 0 ? Math.max(selMi, Math.min(WIN - 1, tm.length - 1)) : tm.length - 1;
   const fk = fbucket;
-  const flowWin = flow.slice(Math.max(0, endMi - (FWIN - 1)), endMi + 1).filter(Boolean) as any[];
+  const flowWin = flow.slice(Math.max(0, endMi - (WIN - 1)), endMi + 1).filter(Boolean) as any[];
   const chartData = flowWin.map((r) => ({ date: r.date, sup: r[fk].sup, fed: r[fk].fed, res: r[fk].res }));
   const last12 = flow.slice(Math.max(0, endMi - 11), endMi + 1).filter(Boolean) as any[];
   const sumFed = last12.reduce((s, r) => s + r[fk].fed, 0), sumSup = last12.reduce((s, r) => s + r[fk].sup, 0);
@@ -556,132 +539,149 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
   const hi = hoverIdx != null && hoverIdx >= 0 && hoverIdx < chartData.length ? hoverIdx : chartData.length - 1;
   const hRow = chartData[hi];
   const FB = [{ k: "total", label: "전체" }, { k: "bills", label: "단기" }, { k: "nb", label: "중장기 N·B·FRN" }, { k: "tips", label: "TIPS" }] as const;
-  const supColor = fk === "bills" ? TB.bill : fk === "nb" ? TB.note : fk === "tips" ? TB.tips : "#7c3aed";
   const fym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
 
   return (
     <Card className="p-3.5">
-      {/* 헤더 — 섹션명 교정 + 스톡 보유비중은 우상단 참고 수치로 강등 */}
       <div className="mb-1 flex items-start justify-between gap-2 flex-wrap">
-        <div className="text-sm font-semibold flex items-center gap-1">연준의 국채 보유 — 잔액과 증감 <span className="text-[11px] font-normal text-muted-foreground">만기별 · 월간</span>
-          <Hint content={<>재무부 <b>순발행</b>(공급)과 같은 기간 연준 <b>보유 증감</b>(수요 밸브)을 나란히 — 잔차 = 민간·해외 흡수.<div className="mt-1 text-muted-foreground">연준은 경매 직접매입 불가 → ‘신규발행 흡수’는 원리상 데이터 없음. 유통시장 매입·롤오프의 순효과인 <b>보유 증감(ΔHoldings)</b>으로 밸브 개폐를 측정. H.4.1 3버킷(단기 / 중장기 N·B·FRN 합산 / TIPS)만 공개.</div></>}>
+        <div className="text-sm font-semibold flex items-center gap-1">월별 순발행 vs 연준 보유 증감 <span className="text-[11px] font-normal text-muted-foreground">만기별 · 월간</span>
+          <Hint content={<>재무부 <b>순발행</b>(발행−상환) 막대에 같은 달 연준 <b>보유 증감</b>(청록)을 겹쳐 — 잔차 = 민간·해외 흡수.<div className="mt-1 text-muted-foreground"><b>보유 증감</b> = 매입 − 만기상환 − 매도 · 월간 근사(마지막 수요일) · TIPS 물가보정 제외. QT 음수 = 만기분 미재투자로 시장이 새로 받아낸 물량. 연준은 경매 직접매입 불가 → ‘신규발행 흡수’는 원리상 없음. H.4.1 3버킷(단기/중장기 N·B·FRN/TIPS)만 공개.</div></>}>
             <span className="text-[12px] text-muted-foreground cursor-help leading-none">ⓘ</span>
           </Hint>
         </div>
         <div className="text-right text-[11px] text-muted-foreground shrink-0">
-          보유 비중(스톡) <b className="text-[12.5px] tabular-nums" style={{ color: FED_ABS }}>{share}</b>
-          <span className="text-muted-foreground/70"> · 정점 {peak ? pct(peak.share) : "—"}</span>
+          12개월 흡수율 <b className="text-[12.5px] tabular-nums" style={{ color: A_SOMA }}>{Number.isFinite(flow12) ? pct(flow12) : "—"}</b>
         </div>
       </div>
 
-      {/* 만기 토글 + 12개월 플로우 흡수율(누적) */}
+      {/* 만기 토글 + 범례(순발행 보라/코럴 · 연준 청록) */}
       <div className="flex flex-wrap items-center gap-1 mb-1">
         {FB.map((b) => (
           <button key={b.k} type="button" onClick={() => setFbucket(b.k)}
             className={`rounded-full border px-2 py-0.5 text-[11px] ${fk === b.k ? "border-foreground/50 bg-muted font-semibold" : "border-border/60 hover:bg-muted/50"}`}>{b.label}</button>
         ))}
-        <span className="ml-auto text-[11px] text-muted-foreground">12개월 흡수율 <b className="tabular-nums" style={{ color: FED_ABS }}>{Number.isFinite(flow12) ? pct(flow12) : "—"}</b></span>
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2 rounded-sm" style={{ background: "#7c3aed" }} />순발행</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} />연준 증감</span>
+        </span>
       </div>
 
-      {/* 주연 — 월별 순발행(막대) vs 연준 보유증감(청록 선) */}
-      {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 36개월 기준</div>}
-      <div className="h-[186px]">
+      {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 {WIN}개월 기준</div>}
+      <div className="h-[190px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}
             onMouseMove={(s: any) => setHoverIdx(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
             onMouseLeave={() => setHoverIdx(null)}>
             <XAxis dataKey="date" tickFormatter={fym} minTickGap={30} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
             <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={44} className="text-muted-foreground" />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
             {hRow && <ReferenceLine x={hRow.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.35} />}
-            <Bar dataKey="sup" name="순발행" fill={supColor} fillOpacity={0.35} isAnimationActive={false} />
-            <Line dataKey="fed" name="연준 보유증감" stroke={A_SOMA} strokeWidth={2} dot={{ r: 2, fill: A_SOMA }} isAnimationActive={false} />
-            <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.25 }} />
-          </ComposedChart>
+            <Bar dataKey="sup" isAnimationActive={false}>
+              {chartData.map((d, i) => <Cell key={i} fill={d.sup >= 0 ? "#7c3aed" : "#f97316"} fillOpacity={0.42} />)}
+            </Bar>
+            <Customized component={(cp: any) => <FedOverlayBars {...cp} data={chartData} />} />
+            <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.2 }} />
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* hover 고정 잔차 문장(§워터폴 요약 패턴) — 기본은 최근월 */}
+      {/* hover 고정 잔차 문장 — 기본은 최근월 */}
       {hRow ? (
         <div className="mt-1 text-[12px] tabular-nums">
           <span className="text-muted-foreground">{fym(hRow.date)} · </span>
-          순발행 <b>{signed(hRow.sup)}</b> · 연준 <b style={{ color: A_SOMA }}>{signed(hRow.fed)}</b> → 민간·해외 <b>{signed(hRow.res)}</b>
+          순발행 <b style={{ color: hRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(hRow.sup)}</b> · 연준 <b style={{ color: A_SOMA }}>{signed(hRow.fed)}</b> → 민간·해외 <b>{signed(hRow.res)}</b>
         </div>
       ) : <div className="mt-1 text-[12px] text-muted-foreground">막대에 커서를 올리면 순발행·연준·잔차</div>}
-      <div className="mt-0.5 text-[10.5px] text-muted-foreground leading-snug">
-        <b>보유 증감</b> = 매입 − 만기상환 − 매도 · 월간 근사(마지막 수요일) · TIPS 물가보정 제외. <span className="text-muted-foreground/80">QT 음수 = 만기분 미재투자로 시장이 새로 받아낸 물량.</span>
-      </div>
+    </Card>
+  );
+}
 
-      {/* 조연 — 만기별 보유 잔액(스톡) 축소 + 버킷 카드 */}
-      <div className="mt-2 border-t border-border/50 pt-2">
-        <div className="mb-0.5 text-[11px] text-muted-foreground">만기별 보유 잔액(스톡) <span className="text-muted-foreground/70">· {weekLabel(cur.date)}</span></div>
-        <div className="h-[104px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={finite} margin={{ top: 4, right: 8, left: 6, bottom: 0 }}>
-              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} width={34} className="text-muted-foreground" />
-              <Area dataKey="fedBills" stackId="s" stroke={TB.bill} fill={TB.bill} fillOpacity={0.5} strokeWidth={0.8} isAnimationActive={false} />
-              <Area dataKey="fedNb" stackId="s" stroke={TB.note} fill={TB.note} fillOpacity={0.5} strokeWidth={0.8} isAnimationActive={false} />
-              <Area dataKey="fedTips" stackId="s" stroke={TB.tips} fill={TB.tips} fillOpacity={0.5} strokeWidth={0.8} isAnimationActive={false} />
-              <ReferenceLine x={cur.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.4} />
-            </AreaChart>
-          </ResponsiveContainer>
+// ── 연준 국채 보유(스톡) — 만기별 잔액 추이 + 보유 비중. T-계정 국채 클릭 스냅샷의 시계열판. ──
+function FedHoldingsStock({ t, selDate }: { t: Treasury; selDate?: string }) {
+  const { monthly: tm, fedWeekly: fw } = t;
+  const pct = (v: number) => (v * 100).toFixed(1) + "%";
+  const weekly = useMemo(() => {
+    let ti = 0, m: typeof tm[number] | null = null;
+    return fw.map((w) => {
+      while (ti < tm.length && tm[ti].date <= w.date) { m = tm[ti]; ti++; }
+      const fedTips = w.total - w.bills - w.notesBonds;
+      const mBills = m?.bills ?? NaN, mNb = m ? m.notes + m.bonds + m.frn : NaN, mTips = m?.tips ?? NaN, mTot = m?.total ?? NaN;
+      return { date: w.date, fedBills: w.bills, fedNb: w.notesBonds, fedTips, mBills, mNb, mTips, share: Number.isFinite(mTot) && mTot ? w.total / mTot : NaN };
+    });
+  }, [fw, tm]);
+  const finite = weekly.filter((x) => Number.isFinite(x.share));
+  if (!finite.length) return null;
+  let selIdx = weekly.length - 1;
+  if (selDate) { for (let i = 0; i < weekly.length; i++) { if (weekly[i].date <= selDate) selIdx = i; else break; } }
+  const cur = weekly[selIdx];
+  const peak = finite.reduce((m, x) => (x.share > m.share ? x : m), finite[0]);
+  const share = Number.isFinite(cur.share) ? pct(cur.share) : "—";
+  const buckets = [
+    { key: "fedBills", label: "단기 Bills", color: TB.bill, fed: cur.fedBills, mkt: cur.mBills },
+    { key: "fedNb", label: "중장기 Notes·Bonds", color: TB.note, fed: cur.fedNb, mkt: cur.mNb },
+    { key: "fedTips", label: "TIPS", color: TB.tips, fed: cur.fedTips, mkt: cur.mTips },
+  ].map((b) => ({ ...b, rate: Number.isFinite(b.fed) && b.mkt ? b.fed / b.mkt : NaN }));
+  return (
+    <Card className="p-3.5">
+      <div className="mb-1 flex items-start justify-between gap-2 flex-wrap">
+        <div className="text-sm font-semibold flex items-center gap-1">연준 국채 보유 <span className="text-[11px] font-normal text-muted-foreground">만기별 잔액(스톡) · {weekLabel(cur.date)}</span>
+          <Hint content={<>연준이 사서 들고 있는 국채(SOMA)를 만기 3버킷으로 나눈 <b>잔액</b>과 시장 대비 <b>보유 비중</b>. 상단 T-계정 ‘국채’ 클릭 스냅샷을 시계열로 편 것.</>}>
+            <span className="text-[12px] text-muted-foreground cursor-help leading-none">ⓘ</span>
+          </Hint>
         </div>
-        <div className="mt-1 grid grid-cols-3 gap-1.5">
-          {buckets.map((b) => (
-            <div key={b.key} className="rounded-md border border-border/60 px-2 py-1">
-              <div className="flex items-center gap-1 text-[10.5px] leading-tight"><span className="w-2 h-2 rounded-sm shrink-0" style={{ background: b.color }} /><span className="truncate">{b.label}</span></div>
-              <div className="mt-0.5 flex items-baseline justify-between gap-1">
-                <b className="text-[12px] tabular-nums">{Number.isFinite(b.fed) ? T(b.fed) : "—"}</b>
-                <span className="text-[10px] tabular-nums text-muted-foreground">비중 <b style={{ color: b.color }}>{Number.isFinite(b.rate) ? pct(b.rate) : "—"}</b></span>
-              </div>
+        <div className="text-right text-[11px] text-muted-foreground shrink-0">
+          보유 비중(스톡) <b className="text-[12.5px] tabular-nums" style={{ color: FED_ABS }}>{share}</b>
+          <span className="text-muted-foreground/70"> · 정점 {pct(peak.share)}({peak.date.slice(0, 7)})</span>
+        </div>
+      </div>
+      <div className="h-[150px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={finite} margin={{ top: 6, right: 8, left: 6, bottom: 0 }}>
+            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
+            <Area dataKey="fedBills" name="단기 Bills" stackId="s" stroke={TB.bill} fill={TB.bill} fillOpacity={0.5} strokeWidth={1} isAnimationActive={false} />
+            <Area dataKey="fedNb" name="중장기 Notes·Bonds" stackId="s" stroke={TB.note} fill={TB.note} fillOpacity={0.5} strokeWidth={1} isAnimationActive={false} />
+            <Area dataKey="fedTips" name="TIPS" stackId="s" stroke={TB.tips} fill={TB.tips} fillOpacity={0.5} strokeWidth={1} isAnimationActive={false} />
+            <ReferenceLine x={cur.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+        {buckets.map((b) => (
+          <div key={b.key} className="rounded-md border border-border/60 px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] leading-tight"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: b.color }} /><span className="truncate">{b.label}</span></div>
+            <div className="mt-1 flex items-baseline justify-between gap-1.5">
+              <b className="text-[13px] tabular-nums">{Number.isFinite(b.fed) ? T(b.fed) : "—"}</b>
+              <span className="text-[10.5px] tabular-nums text-muted-foreground">비중 <b style={{ color: b.color }}>{Number.isFinite(b.rate) ? pct(b.rate) : "—"}</b></span>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </Card>
   );
 }
 
-// 월별 순발행 단일막대 툴팁 — 순액 + 종류별 분해(§6.3).
-function NetTip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="rounded-md border bg-popover px-2.5 py-1.5 text-[12px] text-popover-foreground shadow-md">
-      <div className="font-semibold">{String(d.date).slice(0, 7)} 순발행 <span style={{ color: d.netTotal >= 0 ? "#7c3aed" : "#f97316" }}>{signed(d.netTotal)}</span></div>
-      <div className="text-muted-foreground mt-0.5 leading-snug">{TB_TYPES.map((x) => `${x.label.replace(/^(단기|중기|장기) /, "")} ${signed(d[x.nk])}`).join(" · ")}</div>
-    </div>
-  );
-}
-
-// ── 재무부 국채 발행(종류별 잔액·순발행) — 공급 측. 각 종류에 온커서 만기 설명 ──
+// ── 재무부 국채 발행(종류별 잔액) — 공급 측 스톡. 각 종류에 온커서 만기 설명. 월별 순발행은 SupplyDemandFlow 로 이관. ──
 function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
   const tm = t.monthly;
   const last = tm.at(-1);
   const [hoverK, setHoverK] = useState<string | null>(null);
   const [pctMode, setPctMode] = useState(false); // 절대액 ↔ 구성비(%) — '단기화 여부'는 비중으로
   if (!last) return null;
-  const ym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
   const active = TB_TYPES.find((x) => x.k === hoverK) ?? null;
   const dim = (k: string) => (active && active.k !== k ? true : false);
-  // 선택 주차(timeState) → 그 달의 데이터 포인트 날짜. 월간 차트에 수직 가이드라인으로.
+  // 선택 주차(timeState) → 그 달의 데이터 포인트 날짜. 잔액 차트에 수직 가이드라인으로.
   const selMonth = selDate?.slice(0, 7);
   const guideDate = selMonth ? tm.find((p) => p.date.slice(0, 7) === selMonth)?.date : undefined;
-  // 순발행 창: '선택 월에서 끝나는 30개월'. 데이터 시작(2014) 근처면 30개월을 시작에 고정(늘어남 방지),
-  //   선택월이 2014 이전이면 beforeData=true → 차트 대신 '데이터 없음'. 미래월(최신 MSPD 이후)은 최신 30.
-  const WINDOW = 30;
   const firstMonth = tm[0]?.date.slice(0, 7);
-  const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
   const beforeData = !!selMonth && !!firstMonth && selMonth < firstMonth;
-  const endMi = selMi >= 0 ? Math.max(selMi, Math.min(WINDOW - 1, tm.length - 1)) : tm.length - 1;
-  const recentNet = tm.slice(Math.max(0, endMi - (WINDOW - 1)), endMi + 1);
   return (
     <Card className="p-3.5">
       <div className="mb-1 flex items-start justify-between flex-wrap gap-2">
         <div>
-          <div className="text-sm font-semibold flex items-center gap-1">재무부 국채 발행 <span className="text-[11px] font-normal text-muted-foreground">시장성 국채 종류별 · {last.date.slice(0, 7)}</span>
-            <Hint content={<>재무부가 자금을 어떤 만기로 조달하는지 — 종류별 잔액과 월별 순발행(발행−상환). 아래 ‘연준의 국채 흡수’가 이 공급의 일부를 받아준다.</>}>
+          <div className="text-sm font-semibold flex items-center gap-1">재무부 국채 발행 <span className="text-[11px] font-normal text-muted-foreground">시장성 국채 종류별 잔액 · {last.date.slice(0, 7)}</span>
+            <Hint content={<>재무부가 자금을 어떤 만기로 조달하는지 — 종류별 발행잔액(스톡). 월별 순발행(플로우)과 연준 흡수 비교는 아래 ‘월별 순발행 vs 연준 보유 증감’.</>}>
               <span className="text-[12px] text-muted-foreground cursor-help leading-none">ⓘ</span>
             </Hint>
           </div>
@@ -724,32 +724,6 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
             {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
           </AreaChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* 월별 순발행 — 순액 단일 막대(양수 보라 / 음수 코럴), 종류 분해는 hover(§6.3) */}
-      <div className="mt-2">
-        <div className="text-[12px] font-semibold mb-0.5">월별 순발행 <span className="text-[10.5px] font-normal text-muted-foreground">발행−상환 순액 · <span style={{ color: "#7c3aed" }}>증가</span>/<span style={{ color: "#f97316" }}>감소</span>{beforeData ? "" : ` · ${recentNet[0]?.date.slice(0, 7)}~${recentNet.at(-1)?.date.slice(0, 7)}`} · 막대 hover=종류별</span></div>
-        <div className="h-[150px]">
-          {beforeData ? (
-            <div className="h-full flex flex-col items-center justify-center text-center text-[12px] text-muted-foreground">
-              <div>재무부 국채 종류별 데이터는 <b className="text-foreground">2014년</b>부터 제공됩니다.</div>
-              <div className="text-[11px] mt-0.5">더 과거 시점은 표시할 수 없어요. (재무부 MSPD 시작 = {firstMonth})</div>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={recentNet} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
-                <XAxis dataKey="date" tickFormatter={ym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-                <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(1)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-                <Tooltip cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.4 }} content={<NetTip />} />
-                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
-                {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
-                <Bar dataKey="netTotal" isAnimationActive={false}>
-                  {recentNet.map((d, i) => <Cell key={i} fill={d.netTotal >= 0 ? "#7c3aed" : "#f97316"} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
       </div>
     </Card>
   );
@@ -887,13 +861,16 @@ export default function Fed() {
         </Card>
       </div>
 
-      <BandLabel>국채 수급 · 재무부 발행(공급) → 연준 흡수</BandLabel>
+      <BandLabel>국채 수급 · 재무부 발행(공급) ↔ 연준 흡수(수요)</BandLabel>
 
-      {/* 재무부 국채 발행(공급) 먼저 — 종류별 잔액·순발행. 선택 주차 가이드라인 연동 */}
+      {/* ① 재무부 발행 — 종류별 잔액(공급 스톡) */}
       {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} selDate={sel?.date} />}
 
-      {/* 연준의 국채 흡수 — 그 공급을 연준이 얼마나 받아주나(흡수율). 상단 슬라이더 연동 */}
-      {data?.treasury && data.treasury.monthly.length > 0 && <FedAbsorption t={data.treasury} selDate={sel?.date} />}
+      {/* ② 수급 비교(주연) — 월별 순발행 vs 연준 보유증감. 순발행은 여기서만 그린다(중복 제거) */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <SupplyDemandFlow t={data.treasury} selDate={sel?.date} />}
+
+      {/* ③ 연준 보유 — 만기별 잔액(스톡) + 보유비중 */}
+      {data?.treasury && data.treasury.monthly.length > 0 && <FedHoldingsStock t={data.treasury} selDate={sel?.date} />}
 
       {/* L4 위기 감지기(§7) — 평상시 한 줄 상태바 / 클릭·자동(경계+) 펼침 시 차트 */}
       <Card className="p-3">
