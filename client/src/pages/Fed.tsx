@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, Tooltip,
+  AreaChart, Area, BarChart, Bar, Cell, Customized, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
@@ -483,15 +483,35 @@ const TB_TYPES = [
   { k: "frn", nk: "netFrn", label: "FRN", color: TB.frn, desc: "변동금리채 · 만기 2년." },
 ] as const;
 
+// ── ΔFed 오버레이 막대(Customized) — 순발행 막대 위, 같은 x 중심에 40% 좁은 청록 막대 ──
+function FedOverlayBars(props: any) {
+  const { xAxisMap, yAxisMap, data } = props;
+  if (!xAxisMap || !yAxisMap || !data) return null;
+  const xa = xAxisMap[Object.keys(xAxisMap)[0]], ya = yAxisMap[Object.keys(yAxisMap)[0]];
+  const xs = xa?.scale, ys = ya?.scale;
+  if (!xs || !ys) return null;
+  const bw = typeof xs.bandwidth === "function" ? xs.bandwidth() : 8;
+  const y0 = ys(0), w = Math.max(2, bw * 0.42);
+  return (
+    <g>
+      {data.map((d: any, i: number) => {
+        if (!Number.isFinite(d.fed)) return null;
+        const cx = (xs(d.date) ?? 0) + bw / 2, yv = ys(d.fed);
+        const top = Math.min(y0, yv), h = Math.max(Math.abs(yv - y0), 1);
+        return <rect key={i} x={cx - w / 2} y={top} width={w} height={h} rx={1} fill={A_SOMA} />;
+      })}
+    </g>
+  );
+}
+
 // ── 월별 순발행(공급) vs 연준 보유증감(ΔHoldings) — 수급 비교. 순발행은 이 차트에서만 그린다(중복 제거). ──
-//   연준 변화량이 순발행 대비 훨씬 작아 오버레이론 안 보임 → 위=순발행(원 스케일) / 아래=연준 보유증감(자체 축) 2단 정렬.
+//   중앙 고정선: 선택 월(상단 슬라이더)을 창 정중앙에 놓고, 그 위에 세로선 고정. 스크럽하면 데이터가 선 아래로 흐른다.
 //   ΔHoldings = 매입 − 만기상환 − 매도 (= 월 마지막 수요일 H.4.1 ffill 의 MoM Δ). 잔차 = 순발행 − ΔFed = 민간·해외.
 //   버킷: 단기 ΔWSHOBL / 중장기 ΔWSHONBNL(FRN포함) / TIPS ΔWSHONBIIL(물가보정 제외). Σ버킷 = Δ(WSHOTSL−WSHOICL) 자동성립.
 function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
   const { monthly: tm, fedWeekly: fw } = t;
   const pct = (v: number) => (v * 100).toFixed(1) + "%";
   const [fbucket, setFbucket] = useState<"total" | "bills" | "nb" | "tips">("total");
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const flow = useMemo(() => {
     let p = 0; let fedAt: (typeof fw)[number] | null = null;
     const reps = tm.map((pt) => { while (p < fw.length && fw[p].date <= pt.date) { fedAt = fw[p]; p++; } return fedAt; });
@@ -504,22 +524,25 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
     });
   }, [fw, tm]);
   if (!flow.some(Boolean)) return null;
-  const WIN = 30;
+  const HALF = 14; // 좌우 각 14개월(총 29) — 선택 월을 정중앙에
   const selMonth = selDate?.slice(0, 7);
   const firstMonth = tm[0]?.date.slice(0, 7);
   const flowBefore = !!selMonth && !!firstMonth && selMonth < firstMonth;
   const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
-  const endMi = selMi >= 0 ? Math.max(selMi, Math.min(WIN - 1, tm.length - 1)) : tm.length - 1;
+  const centerMi = selMi >= 0 ? selMi : tm.length - 1; // 창 정중앙에 놓을 월(상단 슬라이더 연동)
   const fk = fbucket;
-  const flowWin = flow.slice(Math.max(0, endMi - (WIN - 1)), endMi + 1).filter(Boolean) as any[];
-  const chartData = flowWin.map((r) => ({ date: r.date, sup: r[fk].sup, fed: r[fk].fed, res: r[fk].res }));
-  const last12 = flow.slice(Math.max(0, endMi - 11), endMi + 1).filter(Boolean) as any[];
+  // 중앙 고정: centerMi 를 정중앙, 좌우 HALF 개월. 범위 밖(미래/이전)은 빈 슬롯 패딩 → 선이 항상 정중앙(0.5).
+  const chartData: any[] = [];
+  for (let k = centerMi - HALF; k <= centerMi + HALF; k++) {
+    const r = k >= 0 && k < flow.length ? flow[k] : null;
+    chartData.push(r ? { date: r.date, sup: r[fk].sup, fed: r[fk].fed, res: r[fk].res, real: true } : { date: `pad${k}`, sup: null, fed: null, res: null, real: false });
+  }
+  const centerRow = chartData[HALF]; // = centerMi 월(정중앙, 선 아래)
+  const last12 = flow.slice(Math.max(0, centerMi - 11), centerMi + 1).filter(Boolean) as any[];
   const sumFed = last12.reduce((s, r) => s + r[fk].fed, 0), sumSup = last12.reduce((s, r) => s + r[fk].sup, 0);
   const flow12 = Math.abs(sumSup) > 20_000 ? sumFed / sumSup : NaN; // 순발행 합 $200억 미만이면 비율 생략(§2-4)
-  const hi = hoverIdx != null && hoverIdx >= 0 && hoverIdx < chartData.length ? hoverIdx : chartData.length - 1;
-  const hRow = chartData[hi];
   const FB = [{ k: "total", label: "전체" }, { k: "bills", label: "단기" }, { k: "nb", label: "중장기 N·B·FRN" }, { k: "tips", label: "TIPS" }] as const;
-  const fym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
+  const fym = (d: string) => (/^\d{4}-/.test(d) ? `${d.slice(2, 4)}.${d.slice(5, 7)}` : "");
 
   return (
     <Card className="p-3.5">
@@ -540,65 +563,59 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
           <button key={b.k} type="button" onClick={() => setFbucket(b.k)}
             className={`rounded-full border px-2 py-0.5 text-[11px] ${fk === b.k ? "border-foreground/50 bg-muted font-semibold" : "border-border/60 hover:bg-muted/50"}`}>{b.label}</button>
         ))}
-        <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className="inline-block w-2.5 h-2 rounded-sm" style={{ background: "#7c3aed" }} />순발행 <span className="text-muted-foreground/70">(양수 보라·음수 코럴)</span>
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2 rounded-sm" style={{ background: "#7c3aed" }} />순발행<span className="text-muted-foreground/60">(±보라/코럴)</span></span>
+          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} />연준 보유증감</span>
         </span>
       </div>
 
-      {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 {WIN}개월 기준</div>}
-      {/* 위: 재무부 순발행(원 스케일) — 공급 */}
-      <div className="h-[190px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}
-            onMouseMove={(s: any) => setHoverIdx(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
-            onMouseLeave={() => setHoverIdx(null)}>
-            <XAxis dataKey="date" hide />
-            <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={46} className="text-muted-foreground" />
-            <ReferenceLine y={0} stroke="hsl(var(--border))" />
-            {hRow && <ReferenceLine x={hRow.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.35} />}
-            <Bar dataKey="sup" isAnimationActive={false}>
-              {chartData.map((d, i) => <Cell key={i} fill={d.sup >= 0 ? "#7c3aed" : "#f97316"} fillOpacity={0.5} />)}
-            </Bar>
-            <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.2 }} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      {/* 아래: 연준 보유증감(자체 축·확대 — 순발행 대비 작아 별도 스케일) — 수요 밸브 */}
-      <div className="mt-1 flex items-center gap-1.5"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} /><span className="text-[10.5px] font-medium">연준 보유증감</span><span className="text-[9.5px] text-muted-foreground">자체 축·확대(순발행보다 훨씬 작음)</span></div>
-      <div className="h-[118px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 4, right: 8, left: 6, bottom: 0 }}
-            onMouseMove={(s: any) => setHoverIdx(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
-            onMouseLeave={() => setHoverIdx(null)}>
-            <XAxis dataKey="date" tickFormatter={fym} minTickGap={30} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={46} className="text-muted-foreground" />
-            <ReferenceLine y={0} stroke="hsl(var(--border))" />
-            {hRow && <ReferenceLine x={hRow.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.35} />}
-            <Bar dataKey="fed" isAnimationActive={false}>
-              {chartData.map((d, i) => <Cell key={i} fill={A_SOMA} fillOpacity={d.fed >= 0 ? 0.9 : 0.45} />)}
-            </Bar>
-            <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.2 }} />
-          </BarChart>
-        </ResponsiveContainer>
+      {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 기준</div>}
+      {/* 단일 오버레이 차트 — 순발행 막대 위 연준 보유증감(청록) 겹침. 중앙 세로선 고정, 선택 월이 그 아래로 흐름. */}
+      <div className="relative">
+        {/* 중앙 고정선(0.5) — 플롯 좌측 52px + (100%−60px)*0.5. 선택(중앙) 월이 항상 이 아래. */}
+        <div className="pointer-events-none absolute z-10 border-l-2 border-dashed" style={{ left: `calc(52px + (100% - 60px) * 0.5)`, top: 2, bottom: 22, borderColor: NEG, opacity: 0.55 }} />
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}>
+              <XAxis dataKey="date" tickFormatter={fym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={46} className="text-muted-foreground" />
+              <ReferenceLine y={0} stroke="hsl(var(--border))" />
+              <Bar dataKey="sup" isAnimationActive={false}>
+                {chartData.map((d, i) => <Cell key={i} fill={d.sup >= 0 ? "#7c3aed" : "#f97316"} fillOpacity={0.5} />)}
+              </Bar>
+              <Customized component={(cp: any) => <FedOverlayBars {...cp} data={chartData} />} />
+              <Tooltip cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.2 }} content={({ active, payload }: any) => {
+                if (!active || !payload?.length) return null; const d = payload[0].payload; if (!d?.real) return null;
+                return (
+                  <div className="rounded-md border bg-popover px-2.5 py-1.5 text-[11px] text-popover-foreground shadow-md tabular-nums">
+                    <div className="font-semibold">{fym(d.date)}</div>
+                    <div>순발행 <b style={{ color: d.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(d.sup)}</b></div>
+                    <div>연준 <b style={{ color: A_SOMA }}>{signed(d.fed)}</b> · 민간·해외 {signed(d.res)}</div>
+                  </div>
+                );
+              }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* 고정 3슬롯 — 라벨 위치 고정, 스크럽/hover 시 숫자만 바뀜. 항등식: 순발행 = 연준 + 민간·해외 */}
-      {hRow && (
+      {/* 고정 3슬롯 — 라벨 고정, 중앙(선택) 월 숫자. 상단 슬라이더로 데이터가 선 아래로 흐름. 항등식: 순발행 = 연준 + 민간·해외 */}
+      {centerRow?.real && (
         <div className="mt-2 flex items-center justify-center gap-1.5 border-t border-border/40 pt-1.5 text-center">
-          <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{fym(hRow.date)}</span>
+          <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{fym(centerRow.date)}</span>
           <div className="flex w-[110px] flex-col items-center leading-tight">
             <span className="text-[9.5px] text-muted-foreground">재무부 순발행</span>
-            <b className="text-[13px] tabular-nums" style={{ color: hRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(hRow.sup)}</b>
+            <b className="text-[13px] tabular-nums" style={{ color: centerRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(centerRow.sup)}</b>
           </div>
           <span className="shrink-0 text-muted-foreground">→</span>
           <div className="flex w-[110px] flex-col items-center leading-tight">
             <span className="text-[9.5px] text-muted-foreground">연준 보유증감</span>
-            <b className="text-[13px] tabular-nums" style={{ color: A_SOMA }}>{signed(hRow.fed)}</b>
+            <b className="text-[13px] tabular-nums" style={{ color: A_SOMA }}>{signed(centerRow.fed)}</b>
           </div>
           <span className="shrink-0 text-muted-foreground">+</span>
           <div className="flex w-[110px] flex-col items-center leading-tight">
             <span className="text-[9.5px] text-muted-foreground">민간·해외 보유증감</span>
-            <b className="text-[13px] tabular-nums">{signed(hRow.res)}</b>
+            <b className="text-[13px] tabular-nums">{signed(centerRow.res)}</b>
           </div>
         </div>
       )}
