@@ -747,17 +747,18 @@ export default function Fed() {
           <div className="inline-flex items-stretch rounded-full overflow-hidden border border-border text-[12px] leading-none">
             <Hint content={<div>유동성 = <b>준비금</b>(자산−TGA−역레포−현금−기타)의 13주 평활 월율(= 워터폴 Δ준비금의 13주 누적). ‘정책’과 갈리는 순간이 핵심 신호.<div className="mt-1 text-muted-foreground">최근 13주 {Number.isFinite(liqRate) ? signed(liqRate * 3) : "—"} → 월율 {Number.isFinite(liqRate) ? signed(liqRate) : "—"}</div></div>}>
               <span className={`flex items-center px-2.5 py-1 font-bold cursor-help ${liq === "확장" ? "bg-emerald-500/25 text-emerald-700" : liq === "수축" ? "bg-red-500/20 text-red-700" : "bg-muted text-muted-foreground"}`}>
-                {liq === "확장" ? "유동성 확장" : liq === "수축" ? "유동성 수축" : liq === "중립" ? "유동성 중립" : "유동성 —"}{Number.isFinite(liqRate) ? ` · ${signed(liqRate)}/월` : ""}
+                {liq === "확장" ? "유동성 확장" : liq === "수축" ? "유동성 수축" : liq === "중립" ? "유동성 중립" : "유동성 —"}
+                {Number.isFinite(liqRate) && <> · <span className="inline-block w-[66px] text-right tabular-nums">{signed(liqRate)}</span>/월</>}
               </span>
             </Hint>
             <Hint content={<div>정책 스탠스 = <b>총자산</b> 13주 평활 월율(QE 매입 / QT 축소). {Number.isFinite(paceSel) ? `${signed(paceSel)}/월` : ""}</div>}>
-              <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border cursor-help">정책 {phase === "QE" ? "QE" : phase === "QT" ? "QT" : phase === "중립" ? "중립" : "—"}</span>
+              <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border cursor-help">정책 <span className="inline-block w-[26px] text-left">{phase === "QE" ? "QE" : phase === "QT" ? "QT" : phase === "중립" ? "중립" : "—"}</span></span>
             </Hint>
-            <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border tabular-nums">준비금 {Number.isFinite(dReserves) ? signed(dReserves) : "—"}</span>
+            <span className="flex items-center px-2 py-1 bg-muted/70 text-muted-foreground border-l border-border">준비금 <span className="inline-block w-[66px] text-right tabular-nums">{Number.isFinite(dReserves) ? signed(dReserves) : "—"}</span></span>
           </div>
 
-          {/* 우측: 날짜 + ◀ 슬라이더(남는 공간 채워 flex-1) ▶ + 현재로(과거 모드) */}
-          <span className="flex items-center gap-1.5 flex-1 min-w-0 ml-2">
+          {/* 우측: 날짜 + ◀ 슬라이더(고정폭·오른쪽 고정) ▶ + 현재로(과거 모드) */}
+          <span className="flex items-center gap-1.5 shrink-0 ml-auto">
             <span className={`text-[11.5px] tabular-nums shrink-0 ${isPast ? "text-amber-700 font-semibold" : "text-muted-foreground"}`}>
               {sel ? `${sel.date.slice(0, 4)}년 ${weekLabel(sel.date)}` : ""}
             </span>
@@ -766,7 +767,7 @@ export default function Fed() {
             <input type="range" min={0} max={weeks.length - 1} value={curIdx} step={1}
               onChange={(e) => setIdx(Number(e.target.value))}
               aria-label="시점 이동" title={`시점 이동 · ${sel?.date ?? ""}`}
-              className="h-1.5 flex-1 min-w-[8rem] cursor-pointer accent-red-500 align-middle" />
+              className="h-1.5 w-52 xl:w-64 shrink-0 cursor-pointer accent-red-500 align-middle" />
             <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" title="다음 주"
               className="shrink-0 px-0.5 text-[13px] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
             {/* 현재로: 폭을 항상 예약(invisible) → 과거 전환 시 슬라이더가 밀리지 않게 */}
