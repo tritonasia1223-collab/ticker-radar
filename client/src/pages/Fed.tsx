@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, BarChart, Bar, Cell, Customized, XAxis, YAxis, Tooltip,
+  AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
@@ -483,28 +483,8 @@ const TB_TYPES = [
   { k: "frn", nk: "netFrn", label: "FRN", color: TB.frn, desc: "변동금리채 · 만기 2년." },
 ] as const;
 
-// ── ΔFed 오버레이 막대(Customized) — 순발행 막대 위, 같은 x 중심에 40% 좁은 청록 막대 ──
-function FedOverlayBars(props: any) {
-  const { xAxisMap, yAxisMap, data } = props;
-  if (!xAxisMap || !yAxisMap || !data) return null;
-  const xa = xAxisMap[Object.keys(xAxisMap)[0]], ya = yAxisMap[Object.keys(yAxisMap)[0]];
-  const xs = xa?.scale, ys = ya?.scale;
-  if (!xs || !ys) return null;
-  const bw = typeof xs.bandwidth === "function" ? xs.bandwidth() : 8;
-  const y0 = ys(0), w = Math.max(2, bw * 0.42);
-  return (
-    <g>
-      {data.map((d: any, i: number) => {
-        if (!Number.isFinite(d.fed)) return null;
-        const cx = (xs(d.date) ?? 0) + bw / 2, yv = ys(d.fed);
-        const top = Math.min(y0, yv), h = Math.max(Math.abs(yv - y0), 1);
-        return <rect key={i} x={cx - w / 2} y={top} width={w} height={h} rx={1} fill={A_SOMA} />;
-      })}
-    </g>
-  );
-}
-
-// ── 월별 순발행(공급) vs 연준 보유증감(ΔHoldings) — 수급 비교(주연). 순발행은 이 차트에서만 그린다(중복 제거). ──
+// ── 월별 순발행(공급) vs 연준 보유증감(ΔHoldings) — 수급 비교. 순발행은 이 차트에서만 그린다(중복 제거). ──
+//   연준 변화량이 순발행 대비 훨씬 작아 오버레이론 안 보임 → 위=순발행(원 스케일) / 아래=연준 보유증감(자체 축) 2단 정렬.
 //   ΔHoldings = 매입 − 만기상환 − 매도 (= 월 마지막 수요일 H.4.1 ffill 의 MoM Δ). 잔차 = 순발행 − ΔFed = 민간·해외.
 //   버킷: 단기 ΔWSHOBL / 중장기 ΔWSHONBNL(FRN포함) / TIPS ΔWSHONBIIL(물가보정 제외). Σ버킷 = Δ(WSHOTSL−WSHOICL) 자동성립.
 function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
@@ -560,26 +540,43 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
           <button key={b.k} type="button" onClick={() => setFbucket(b.k)}
             className={`rounded-full border px-2 py-0.5 text-[11px] ${fk === b.k ? "border-foreground/50 bg-muted font-semibold" : "border-border/60 hover:bg-muted/50"}`}>{b.label}</button>
         ))}
-        <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2 rounded-sm" style={{ background: "#7c3aed" }} />순발행</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} />연준 변화량</span>
+        <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+          <span className="inline-block w-2.5 h-2 rounded-sm" style={{ background: "#7c3aed" }} />순발행 <span className="text-muted-foreground/70">(양수 보라·음수 코럴)</span>
         </span>
       </div>
 
       {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 {WIN}개월 기준</div>}
+      {/* 위: 재무부 순발행(원 스케일) — 공급 */}
       <div className="h-[190px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}
             onMouseMove={(s: any) => setHoverIdx(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
             onMouseLeave={() => setHoverIdx(null)}>
-            <XAxis dataKey="date" tickFormatter={fym} minTickGap={30} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={44} className="text-muted-foreground" />
+            <XAxis dataKey="date" hide />
+            <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={46} className="text-muted-foreground" />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
             {hRow && <ReferenceLine x={hRow.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.35} />}
             <Bar dataKey="sup" isAnimationActive={false}>
-              {chartData.map((d, i) => <Cell key={i} fill={d.sup >= 0 ? "#7c3aed" : "#f97316"} fillOpacity={0.42} />)}
+              {chartData.map((d, i) => <Cell key={i} fill={d.sup >= 0 ? "#7c3aed" : "#f97316"} fillOpacity={0.5} />)}
             </Bar>
-            <Customized component={(cp: any) => <FedOverlayBars {...cp} data={chartData} />} />
+            <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.2 }} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {/* 아래: 연준 보유증감(자체 축·확대 — 순발행 대비 작아 별도 스케일) — 수요 밸브 */}
+      <div className="mt-1 flex items-center gap-1.5"><span className="inline-block w-1.5 h-2 rounded-sm" style={{ background: A_SOMA }} /><span className="text-[10.5px] font-medium">연준 보유증감</span><span className="text-[9.5px] text-muted-foreground">자체 축·확대(순발행보다 훨씬 작음)</span></div>
+      <div className="h-[118px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 4, right: 8, left: 6, bottom: 0 }}
+            onMouseMove={(s: any) => setHoverIdx(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
+            onMouseLeave={() => setHoverIdx(null)}>
+            <XAxis dataKey="date" tickFormatter={fym} minTickGap={30} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+            <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={46} className="text-muted-foreground" />
+            <ReferenceLine y={0} stroke="hsl(var(--border))" />
+            {hRow && <ReferenceLine x={hRow.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.35} />}
+            <Bar dataKey="fed" isAnimationActive={false}>
+              {chartData.map((d, i) => <Cell key={i} fill={A_SOMA} fillOpacity={d.fed >= 0 ? 0.9 : 0.45} />)}
+            </Bar>
             <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.2 }} />
           </BarChart>
         </ResponsiveContainer>
@@ -587,20 +584,20 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
 
       {/* 고정 3슬롯 — 라벨 위치 고정, 스크럽/hover 시 숫자만 바뀜. 항등식: 순발행 = 연준 + 민간·해외 */}
       {hRow && (
-        <div className="mt-1.5 flex items-center justify-center gap-1.5 text-center">
+        <div className="mt-2 flex items-center justify-center gap-1.5 border-t border-border/40 pt-1.5 text-center">
           <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{fym(hRow.date)}</span>
-          <div className="flex w-[106px] flex-col items-center leading-tight">
+          <div className="flex w-[110px] flex-col items-center leading-tight">
             <span className="text-[9.5px] text-muted-foreground">재무부 순발행</span>
             <b className="text-[13px] tabular-nums" style={{ color: hRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(hRow.sup)}</b>
           </div>
           <span className="shrink-0 text-muted-foreground">→</span>
-          <div className="flex w-[92px] flex-col items-center leading-tight">
-            <span className="text-[9.5px] text-muted-foreground">연준 변화량</span>
+          <div className="flex w-[110px] flex-col items-center leading-tight">
+            <span className="text-[9.5px] text-muted-foreground">연준 보유증감</span>
             <b className="text-[13px] tabular-nums" style={{ color: A_SOMA }}>{signed(hRow.fed)}</b>
           </div>
           <span className="shrink-0 text-muted-foreground">+</span>
-          <div className="flex w-[106px] flex-col items-center leading-tight">
-            <span className="text-[9.5px] text-muted-foreground">민간·해외 변화량</span>
+          <div className="flex w-[110px] flex-col items-center leading-tight">
+            <span className="text-[9.5px] text-muted-foreground">민간·해외 보유증감</span>
             <b className="text-[13px] tabular-nums">{signed(hRow.res)}</b>
           </div>
         </div>
@@ -609,71 +606,6 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
   );
 }
 
-// ── 연준 국채 보유(스톡) — 만기별 잔액 추이 + 보유 비중. T-계정 국채 클릭 스냅샷의 시계열판. ──
-function FedHoldingsStock({ t, selDate }: { t: Treasury; selDate?: string }) {
-  const { monthly: tm, fedWeekly: fw } = t;
-  const pct = (v: number) => (v * 100).toFixed(1) + "%";
-  const weekly = useMemo(() => {
-    let ti = 0, m: typeof tm[number] | null = null;
-    return fw.map((w) => {
-      while (ti < tm.length && tm[ti].date <= w.date) { m = tm[ti]; ti++; }
-      const fedTips = w.total - w.bills - w.notesBonds;
-      const mBills = m?.bills ?? NaN, mNb = m ? m.notes + m.bonds + m.frn : NaN, mTips = m?.tips ?? NaN, mTot = m?.total ?? NaN;
-      return { date: w.date, fedBills: w.bills, fedNb: w.notesBonds, fedTips, mBills, mNb, mTips, share: Number.isFinite(mTot) && mTot ? w.total / mTot : NaN };
-    });
-  }, [fw, tm]);
-  const finite = weekly.filter((x) => Number.isFinite(x.share));
-  if (!finite.length) return null;
-  let selIdx = weekly.length - 1;
-  if (selDate) { for (let i = 0; i < weekly.length; i++) { if (weekly[i].date <= selDate) selIdx = i; else break; } }
-  const cur = weekly[selIdx];
-  const peak = finite.reduce((m, x) => (x.share > m.share ? x : m), finite[0]);
-  const share = Number.isFinite(cur.share) ? pct(cur.share) : "—";
-  const buckets = [
-    { key: "fedBills", label: "단기 Bills", color: TB.bill, fed: cur.fedBills, mkt: cur.mBills },
-    { key: "fedNb", label: "중장기 Notes·Bonds", color: TB.note, fed: cur.fedNb, mkt: cur.mNb },
-    { key: "fedTips", label: "TIPS", color: TB.tips, fed: cur.fedTips, mkt: cur.mTips },
-  ].map((b) => ({ ...b, rate: Number.isFinite(b.fed) && b.mkt ? b.fed / b.mkt : NaN }));
-  return (
-    <Card className="p-3.5">
-      <div className="mb-1 flex items-start justify-between gap-2 flex-wrap">
-        <div className="text-sm font-semibold flex items-center gap-1">연준 국채 보유 <span className="text-[11px] font-normal text-muted-foreground">만기별 잔액(스톡) · {weekLabel(cur.date)}</span>
-          <Hint content={<>연준이 사서 들고 있는 국채(SOMA)를 만기 3버킷으로 나눈 <b>잔액</b>과 시장 대비 <b>보유 비중</b>. 상단 T-계정 ‘국채’ 클릭 스냅샷을 시계열로 편 것.</>}>
-            <span className="text-[12px] text-muted-foreground cursor-help leading-none">ⓘ</span>
-          </Hint>
-        </div>
-        <div className="text-right text-[11px] text-muted-foreground shrink-0">
-          보유 비중(스톡) <b className="text-[12.5px] tabular-nums" style={{ color: FED_ABS }}>{share}</b>
-          <span className="text-muted-foreground/70"> · 정점 {pct(peak.share)}({peak.date.slice(0, 7)})</span>
-        </div>
-      </div>
-      <div className="h-[150px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={finite} margin={{ top: 6, right: 8, left: 6, bottom: 0 }}>
-            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
-            <Area dataKey="fedBills" name="단기 Bills" stackId="s" stroke={TB.bill} fill={TB.bill} fillOpacity={0.5} strokeWidth={1} isAnimationActive={false} />
-            <Area dataKey="fedNb" name="중장기 Notes·Bonds" stackId="s" stroke={TB.note} fill={TB.note} fillOpacity={0.5} strokeWidth={1} isAnimationActive={false} />
-            <Area dataKey="fedTips" name="TIPS" stackId="s" stroke={TB.tips} fill={TB.tips} fillOpacity={0.5} strokeWidth={1} isAnimationActive={false} />
-            <ReferenceLine x={cur.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-        {buckets.map((b) => (
-          <div key={b.key} className="rounded-md border border-border/60 px-2.5 py-1.5">
-            <div className="flex items-center gap-1.5 text-[11px] leading-tight"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: b.color }} /><span className="truncate">{b.label}</span></div>
-            <div className="mt-1 flex items-baseline justify-between gap-1.5">
-              <b className="text-[13px] tabular-nums">{Number.isFinite(b.fed) ? T(b.fed) : "—"}</b>
-              <span className="text-[10.5px] tabular-nums text-muted-foreground">비중 <b style={{ color: b.color }}>{Number.isFinite(b.rate) ? pct(b.rate) : "—"}</b></span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
 
 // ── 재무부 국채 발행(종류별 잔액) — 공급 측 스톡. 각 종류에 온커서 만기 설명. 월별 순발행은 SupplyDemandFlow 로 이관. ──
 function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
@@ -879,11 +811,8 @@ export default function Fed() {
       {/* ① 재무부 발행 — 종류별 잔액(공급 스톡) */}
       {data?.treasury && data.treasury.monthly.length > 0 && <TreasuryIssuance t={data.treasury} selDate={sel?.date} />}
 
-      {/* ② 수급 비교(주연) — 월별 순발행 vs 연준 보유증감. 순발행은 여기서만 그린다(중복 제거) */}
+      {/* ② 수급 비교 — 월별 순발행(위) vs 연준 보유증감(아래, 자체 축). 순발행은 여기서만. 연준 보유 스톡은 T-계정 국채 클릭이 담당(카드 삭제) */}
       {data?.treasury && data.treasury.monthly.length > 0 && <SupplyDemandFlow t={data.treasury} selDate={sel?.date} />}
-
-      {/* ③ 연준 보유 — 만기별 잔액(스톡) + 보유비중 */}
-      {data?.treasury && data.treasury.monthly.length > 0 && <FedHoldingsStock t={data.treasury} selDate={sel?.date} />}
 
       {/* L4 위기 감지기(§7) — 평상시 한 줄 상태바 / 클릭·자동(경계+) 펼침 시 차트 */}
       <Card className="p-3">
