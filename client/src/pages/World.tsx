@@ -18,6 +18,7 @@ type Cap = { iso: string; ko: string; en: string; lng: number; lat: number };
 const TEAL = "#0d9488";          // 선택 하이라이트(유동성 탭 팔레트)
 const WORLD_LABEL_TOP = 28;      // 세계 뷰에서 라벨 붙일 대국 개수(면적순)
 const K_REGION = 2.5, K_LOCAL = 6; // 시맨틱 줌 경계
+const CENTER_LON = 150;          // 중심 경도(동아시아 중심 = 아메리카가 오른쪽). 컷은 ~30°W 대서양.
 
 export default function World() {
   // ── 정적 데이터: 토폴로지 → 피처 + 인접(공유아크) + 면적 + 수도 인덱스 ──
@@ -47,8 +48,9 @@ export default function World() {
     ro.observe(el); return () => ro.disconnect();
   }, []);
 
-  // ── 투영·패스(Equal Earth, 컨테이너에 맞춤) ──
-  const projection = useMemo(() => geoEqualEarth().fitExtent([[14, 14], [dim.w - 14, dim.h - 14]], { type: "Sphere" } as any), [dim]);
+  // ── 투영·패스(Equal Earth, 컨테이너에 맞춤) ── 중심 경도(lon)를 스핀으로 회전. Sphere 피팅은 회전 불변이라 크기 고정.
+  const [lon, setLon] = useState(CENTER_LON);
+  const projection = useMemo(() => geoEqualEarth().rotate([-lon, 0]).fitExtent([[14, 14], [dim.w - 14, dim.h - 14]], { type: "Sphere" } as any), [dim, lon]);
   const pathGen = useMemo(() => geoPath(projection), [projection]);
   const paths = useMemo(() => features.map((f) => pathGen(f as any) || ""), [features, pathGen]);
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
@@ -56,6 +58,8 @@ export default function World() {
   // ── 줌/팬 ──
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<any>(null);
+  const kRef = useRef(1); // 최신 줌배율(줌 filter·스핀 게이트에서 참조)
+  const draggedRef = useRef(false); // 드래그(스핀·팬) 발생 → 뒤따르는 click(선택해제/선택) 억제
   const [t, setT] = useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   useEffect(() => {
     if (!svgRef.current) return;
@@ -64,11 +68,29 @@ export default function World() {
       .scaleExtent([1, 12])
       .translateExtent([[0, 0], [dim.w, dim.h]])
       .extent([[0, 0], [dim.w, dim.h]])
-      .on("zoom", (e: any) => setT({ x: e.transform.x, y: e.transform.y, k: e.transform.k }));
+      // 세계 뷰(k≈1)에선 마우스 드래그를 스핀 핸들러에 양보, 확대 상태에선 팬. 휠·더블클릭·터치는 항상 줌.
+      .filter((e: any) => (e.type === "mousedown" ? kRef.current > 1.02 : true))
+      .on("zoom", (e: any) => { if (e.sourceEvent?.type === "mousemove") draggedRef.current = true; kRef.current = e.transform.k; setT({ x: e.transform.x, y: e.transform.y, k: e.transform.k }); });
     svg.call(z as any);
     zoomRef.current = z;
     return () => { svg.on(".zoom", null); };
   }, [dim]);
+
+  // ── 좌우 스핀(세계 뷰에서 마우스 드래그 → 중심 경도 회전) ──
+  const spinRef = useRef<{ x: number; lon: number } | null>(null);
+  const onSpinDown = (e: React.PointerEvent) => {
+    draggedRef.current = false; // 팬·스핀 공통 리셋(zoom filter 로 팬은 여기서 스핀 안 함)
+    if (e.pointerType !== "mouse" || kRef.current > 1.02) return; // 확대 상태는 d3-zoom 팬에 맡김
+    spinRef.current = { x: e.clientX, lon };
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  };
+  const onSpinMove = (e: React.PointerEvent) => {
+    if (!spinRef.current) return;
+    const dx = e.clientX - spinRef.current.x;
+    if (Math.abs(dx) > 4) draggedRef.current = true;
+    setLon(spinRef.current.lon - (dx / dim.w) * 360); // 폭 전체 드래그 ≈ 360° 회전
+  };
+  const onSpinUp = () => { spinRef.current = null; };
 
   const flyTo = useCallback((f: Cty) => {
     if (!zoomRef.current || !svgRef.current) return;
@@ -103,8 +125,9 @@ export default function World() {
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-background text-foreground">
       <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${dim.w} ${dim.h}`}
-        className="block cursor-grab active:cursor-grabbing"
-        onClick={() => { setSel(null); }}>
+        className="block cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={onSpinDown} onPointerMove={onSpinMove} onPointerUp={onSpinUp} onPointerLeave={onSpinUp}
+        onClick={() => { if (draggedRef.current) { draggedRef.current = false; return; } setSel(null); }}>
         {/* 바다(구면) — 배경 톤. 빈 곳 클릭 = 선택 해제 */}
         <path d={spherePath} fill="hsl(var(--background))" stroke="hsl(var(--border))" strokeOpacity={0.6} />
         <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
@@ -115,7 +138,7 @@ export default function World() {
             return (
               <path key={i} d={paths[i]} fill={fill} stroke="hsl(var(--border))" strokeWidth={0.5 / t.k}
                 style={{ cursor: "pointer", transition: "fill 0.12s" }}
-                onClick={(e) => { e.stopPropagation(); pick(i); }}
+                onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } pick(i); }}
                 onMouseEnter={(e) => { setHover(i); setTip({ x: e.clientX, y: e.clientY, text: f.properties.ko || f.properties.en }); }}
                 onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: f.properties.ko || f.properties.en })}
                 onMouseLeave={() => { setHover(null); setTip(null); }} />
@@ -175,7 +198,7 @@ export default function World() {
       {/* 좌상: 제목(Phase 1 — 검색/프리셋/층토글은 후속) */}
       <div className="absolute left-4 top-4 rounded-md border border-border bg-card/85 px-3 py-1.5 shadow-sm backdrop-blur">
         <div className="text-sm font-bold">세계 현황판</div>
-        <div className="text-[11px] text-muted-foreground">국경·수도 · 클릭하면 인접국</div>
+        <div className="text-[11px] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 인접국</div>
       </div>
 
       {/* 우측: 국가 카드 */}
