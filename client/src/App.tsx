@@ -22,6 +22,7 @@ const Insider = lazy(() => import("@/pages/Insider"));
 const Interest = lazy(() => import("@/pages/Interest"));
 const Capitalism = lazy(() => import("@/pages/Capitalism"));
 const Fed = lazy(() => import("@/pages/Fed"));
+const World = lazy(() => import("@/pages/World"));
 // 블록체인 구조 — 작업 일시 중단(paused). 재개 시 아래 줄과 라우트 주석 해제.
 // const BlockchainLearn = lazy(() => import("@/pages/BlockchainLearn"));
 // CLO 모니터 — 작업 중단(paused). 라우트/페이지 코드는 보존, 재개 시 아래 두 줄 주석 해제.
@@ -61,6 +62,7 @@ function AppRouter() {
         <Route path="/interest" component={Interest} />
         <Route path="/capitalism" component={Capitalism} />
         <Route path="/fed" component={Fed} />
+        <Route path="/world" component={World} />
         {/* <Route path="/learn/blockchain" component={BlockchainLearn} /> */}
         {/* <Route path="/clo" component={Clo} /> */}
         <Route path="/settings" component={Settings} />
