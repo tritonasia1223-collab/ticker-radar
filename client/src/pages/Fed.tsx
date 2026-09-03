@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, Tooltip,
+  AreaChart, Area, BarChart, Bar, ComposedChart, Line, Cell, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceArea, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { Card } from "@/components/ui/card";
@@ -490,6 +490,8 @@ const TB_TYPES = [
 function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
   const { monthly: tm, fedWeekly: fw } = t;
   const pct = (v: number) => (v * 100).toFixed(1) + "%";
+  const [fbucket, setFbucket] = useState<"total" | "bills" | "nb" | "tips">("total"); // 주연 플로우 만기 토글
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);                       // 플로우 차트 hover 월
   // 주간 흡수율 = 연준 국채보유(주간) / 재무부 시장성 총액(월간, 해당 주의 최근 월로 ffill).
   //   만기별(연준 3버킷: 단기 Bills / 중장기 Notes·Bonds / TIPS)도 함께 매칭 —
   //   중장기 분모 = 시장 Notes+Bonds+FRN(연준 WSHONBNL 은 FRN 을 nominal 로 포함하므로 분모도 합산).
@@ -506,6 +508,23 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
       };
     });
   }, [fw, tm]);
+
+  // ── 플로우(주연) 원자료: 월별 순발행(공급) vs 연준 보유증감 ΔHoldings ──
+  //   ΔHoldings = 매입 − 만기상환 − 매도 (= 월 마지막 수요일 H.4.1 ffill 의 MoM Δ). QT 롤오프면 음수.
+  //   버킷: 단기 ΔWSHOBL / 중장기 ΔWSHONBNL(FRN 포함) / TIPS ΔWSHONBIIL(물가보정 WSHOICL 제외 = 원금 기준).
+  //   Σ버킷 = Δ(WSHOTSL − WSHOICL) 항등식 자동 성립(구성상). 잔차 = 순발행 − ΔFed = 민간·해외 흡수.
+  const flow = useMemo(() => {
+    let p = 0; let fedAt: (typeof fw)[number] | null = null;
+    const reps = tm.map((pt) => { while (p < fw.length && fw[p].date <= pt.date) { fedAt = fw[p]; p++; } return fedAt; });
+    const mk = (sup: number, fed: number) => ({ sup, fed, res: sup - fed });
+    return tm.map((pt, i) => {
+      const fn = reps[i], fp = i > 0 ? reps[i - 1] : null;
+      if (!fn || !fp) return null;
+      const dBills = fn.bills - fp.bills, dNb = fn.notesBonds - fp.notesBonds, dTips = fn.tips - fp.tips; // dTips = ΔWSHONBIIL(물가보정 제외)
+      return { date: pt.date, bills: mk(pt.netBills, dBills), nb: mk(pt.netNotes + pt.netBonds + pt.netFrn, dNb), tips: mk(pt.netTips, dTips), total: mk(pt.netTotal, dBills + dNb + dTips) };
+    });
+  }, [fw, tm]);
+
   const finite = weekly.filter((x) => Number.isFinite(x.share));
   if (!finite.length) return null;
   // 선택 주(상단 슬라이더 연동): selDate 이하 최근 주. 없으면 최신.
@@ -520,50 +539,105 @@ function FedAbsorption({ t, selDate }: { t: Treasury; selDate?: string }) {
     { key: "fedNb", label: "중장기 Notes·Bonds", tip: "만기 2~30년 · FRN 포함", color: TB.note, fed: cur.fedNb, mkt: cur.mNb },
     { key: "fedTips", label: "TIPS", tip: "물가연동", color: TB.tips, fed: cur.fedTips, mkt: cur.mTips },
   ].map((b) => ({ ...b, rate: Number.isFinite(b.fed) && b.mkt ? b.fed / b.mkt : NaN }));
+
+  // 플로우 파생: 선택 월 기준 36개월 창 + 만기 버킷 선택 + 12개월 흡수율 + hover 행.
+  const FWIN = 36;
+  const selMonth = selDate?.slice(0, 7);
+  const firstMonth = tm[0]?.date.slice(0, 7);
+  const flowBefore = !!selMonth && !!firstMonth && selMonth < firstMonth;
+  const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
+  const endMi = selMi >= 0 ? Math.max(selMi, Math.min(FWIN - 1, tm.length - 1)) : tm.length - 1;
+  const fk = fbucket;
+  const flowWin = flow.slice(Math.max(0, endMi - (FWIN - 1)), endMi + 1).filter(Boolean) as any[];
+  const chartData = flowWin.map((r) => ({ date: r.date, sup: r[fk].sup, fed: r[fk].fed, res: r[fk].res }));
+  const last12 = flow.slice(Math.max(0, endMi - 11), endMi + 1).filter(Boolean) as any[];
+  const sumFed = last12.reduce((s, r) => s + r[fk].fed, 0), sumSup = last12.reduce((s, r) => s + r[fk].sup, 0);
+  const flow12 = Math.abs(sumSup) > 20_000 ? sumFed / sumSup : NaN; // 순발행 합 $200억 미만이면 비율 생략(§2-4)
+  const hi = hoverIdx != null && hoverIdx >= 0 && hoverIdx < chartData.length ? hoverIdx : chartData.length - 1;
+  const hRow = chartData[hi];
+  const FB = [{ k: "total", label: "전체" }, { k: "bills", label: "단기" }, { k: "nb", label: "중장기 N·B·FRN" }, { k: "tips", label: "TIPS" }] as const;
+  const supColor = fk === "bills" ? TB.bill : fk === "nb" ? TB.note : fk === "tips" ? TB.tips : "#7c3aed";
+  const fym = (d: string) => `${d.slice(2, 4)}.${d.slice(5, 7)}`;
+
   return (
     <Card className="p-3.5">
-      <div className="mb-1.5 flex items-start justify-between gap-2 flex-wrap">
-        <div className="text-sm font-semibold flex items-center gap-1">연준의 국채 흡수 <span className="text-[11px] font-normal text-muted-foreground">만기별 보유량(양) 추이 · {weekLabel(cur.date)}</span>
-          <Hint content={<>연준이 사서 들고 있는 국채를 만기 3버킷으로 나눈 <b>보유량</b>과, 시장 대비 <b>흡수율</b>(연준보유/시장성총액).<div className="mt-1 text-muted-foreground">연준 H.4.1 은 보유를 <b>단기 / 중장기(Notes+Bonds 합산) / TIPS</b> 3줄로만 공개 — Notes·Bonds 분리·FRN 별도는 원천 데이터에 없음. FRN 은 중장기에 포함해 계산.</div></>}>
+      {/* 헤더 — 섹션명 교정 + 스톡 보유비중은 우상단 참고 수치로 강등 */}
+      <div className="mb-1 flex items-start justify-between gap-2 flex-wrap">
+        <div className="text-sm font-semibold flex items-center gap-1">연준의 국채 보유 — 잔액과 증감 <span className="text-[11px] font-normal text-muted-foreground">만기별 · 월간</span>
+          <Hint content={<>재무부 <b>순발행</b>(공급)과 같은 기간 연준 <b>보유 증감</b>(수요 밸브)을 나란히 — 잔차 = 민간·해외 흡수.<div className="mt-1 text-muted-foreground">연준은 경매 직접매입 불가 → ‘신규발행 흡수’는 원리상 데이터 없음. 유통시장 매입·롤오프의 순효과인 <b>보유 증감(ΔHoldings)</b>으로 밸브 개폐를 측정. H.4.1 3버킷(단기 / 중장기 N·B·FRN 합산 / TIPS)만 공개.</div></>}>
             <span className="text-[12px] text-muted-foreground cursor-help leading-none">ⓘ</span>
           </Hint>
         </div>
-        {/* 전체 흡수율 — 수치만 간단히 */}
         <div className="text-right text-[11px] text-muted-foreground shrink-0">
-          전체 흡수율 <b className="text-[13px] tabular-nums" style={{ color: FED_ABS }}>{share}</b>
-          <span className="text-muted-foreground/70"> · 정점 {pct(peak.share)}({peak.date.slice(0, 7)})</span>
+          보유 비중(스톡) <b className="text-[12.5px] tabular-nums" style={{ color: FED_ABS }}>{share}</b>
+          <span className="text-muted-foreground/70"> · 정점 {peak ? pct(peak.share) : "—"}</span>
         </div>
       </div>
 
-      {/* 메인 그래프 — 3버킷 보유량 누적 추이(연준이 만기별로 얼마나 흡수해 들고 있나) */}
-      <div className="h-[188px]">
+      {/* 만기 토글 + 12개월 플로우 흡수율(누적) */}
+      <div className="flex flex-wrap items-center gap-1 mb-1">
+        {FB.map((b) => (
+          <button key={b.k} type="button" onClick={() => setFbucket(b.k)}
+            className={`rounded-full border px-2 py-0.5 text-[11px] ${fk === b.k ? "border-foreground/50 bg-muted font-semibold" : "border-border/60 hover:bg-muted/50"}`}>{b.label}</button>
+        ))}
+        <span className="ml-auto text-[11px] text-muted-foreground">12개월 흡수율 <b className="tabular-nums" style={{ color: FED_ABS }}>{Number.isFinite(flow12) ? pct(flow12) : "—"}</b></span>
+      </div>
+
+      {/* 주연 — 월별 순발행(막대) vs 연준 보유증감(청록 선) */}
+      {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 36개월 기준</div>}
+      <div className="h-[186px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={finite} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}>
-            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
-            <Area dataKey="fedBills" name="단기 Bills" stackId="s" stroke={TB.bill} fill={TB.bill} fillOpacity={0.55} strokeWidth={1} isAnimationActive={false} />
-            <Area dataKey="fedNb" name="중장기 Notes·Bonds" stackId="s" stroke={TB.note} fill={TB.note} fillOpacity={0.55} strokeWidth={1} isAnimationActive={false} />
-            <Area dataKey="fedTips" name="TIPS" stackId="s" stroke={TB.tips} fill={TB.tips} fillOpacity={0.55} strokeWidth={1} isAnimationActive={false} />
-            <ReferenceLine x={cur.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} />
-          </AreaChart>
+          <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}
+            onMouseMove={(s: any) => setHoverIdx(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
+            onMouseLeave={() => setHoverIdx(null)}>
+            <XAxis dataKey="date" tickFormatter={fym} minTickGap={30} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+            <YAxis tickFormatter={(v) => (v === 0 ? "0" : asMoney(v).replace("$", ""))} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={44} className="text-muted-foreground" />
+            <ReferenceLine y={0} stroke="hsl(var(--border))" />
+            {hRow && <ReferenceLine x={hRow.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.35} />}
+            <Bar dataKey="sup" name="순발행" fill={supColor} fillOpacity={0.35} isAnimationActive={false} />
+            <Line dataKey="fed" name="연준 보유증감" stroke={A_SOMA} strokeWidth={2} dot={{ r: 2, fill: A_SOMA }} isAnimationActive={false} />
+            <Tooltip content={() => null} cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.25 }} />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* 선택 주 만기별 — 연준 보유량 + 시장 대비 흡수율 */}
-      <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-        {buckets.map((b) => (
-          <div key={b.key} className="rounded-md border border-border/60 px-2.5 py-1.5">
-            <div className="flex items-center gap-1.5 text-[11.5px] leading-tight">
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: b.color }} />
-              <span className="truncate">{b.label}</span>
+      {/* hover 고정 잔차 문장(§워터폴 요약 패턴) — 기본은 최근월 */}
+      {hRow ? (
+        <div className="mt-1 text-[12px] tabular-nums">
+          <span className="text-muted-foreground">{fym(hRow.date)} · </span>
+          순발행 <b>{signed(hRow.sup)}</b> · 연준 <b style={{ color: A_SOMA }}>{signed(hRow.fed)}</b> → 민간·해외 <b>{signed(hRow.res)}</b>
+        </div>
+      ) : <div className="mt-1 text-[12px] text-muted-foreground">막대에 커서를 올리면 순발행·연준·잔차</div>}
+      <div className="mt-0.5 text-[10.5px] text-muted-foreground leading-snug">
+        <b>보유 증감</b> = 매입 − 만기상환 − 매도 · 월간 근사(마지막 수요일) · TIPS 물가보정 제외. <span className="text-muted-foreground/80">QT 음수 = 만기분 미재투자로 시장이 새로 받아낸 물량.</span>
+      </div>
+
+      {/* 조연 — 만기별 보유 잔액(스톡) 축소 + 버킷 카드 */}
+      <div className="mt-2 border-t border-border/50 pt-2">
+        <div className="mb-0.5 text-[11px] text-muted-foreground">만기별 보유 잔액(스톡) <span className="text-muted-foreground/70">· {weekLabel(cur.date)}</span></div>
+        <div className="h-[104px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={finite} margin={{ top: 4, right: 8, left: 6, bottom: 0 }}>
+              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <YAxis tickFormatter={(v) => `${(v / 1e6).toFixed(0)}조`} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} width={34} className="text-muted-foreground" />
+              <Area dataKey="fedBills" stackId="s" stroke={TB.bill} fill={TB.bill} fillOpacity={0.5} strokeWidth={0.8} isAnimationActive={false} />
+              <Area dataKey="fedNb" stackId="s" stroke={TB.note} fill={TB.note} fillOpacity={0.5} strokeWidth={0.8} isAnimationActive={false} />
+              <Area dataKey="fedTips" stackId="s" stroke={TB.tips} fill={TB.tips} fillOpacity={0.5} strokeWidth={0.8} isAnimationActive={false} />
+              <ReferenceLine x={cur.date} stroke={NEG} strokeWidth={1} strokeOpacity={0.4} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-1 grid grid-cols-3 gap-1.5">
+          {buckets.map((b) => (
+            <div key={b.key} className="rounded-md border border-border/60 px-2 py-1">
+              <div className="flex items-center gap-1 text-[10.5px] leading-tight"><span className="w-2 h-2 rounded-sm shrink-0" style={{ background: b.color }} /><span className="truncate">{b.label}</span></div>
+              <div className="mt-0.5 flex items-baseline justify-between gap-1">
+                <b className="text-[12px] tabular-nums">{Number.isFinite(b.fed) ? T(b.fed) : "—"}</b>
+                <span className="text-[10px] tabular-nums text-muted-foreground">비중 <b style={{ color: b.color }}>{Number.isFinite(b.rate) ? pct(b.rate) : "—"}</b></span>
+              </div>
             </div>
-            <div className="mt-1 flex items-baseline justify-between gap-1.5">
-              <b className="text-[13px] tabular-nums">{Number.isFinite(b.fed) ? T(b.fed) : "—"}</b>
-              <span className="text-[11px] tabular-nums text-muted-foreground">흡수율 <b className="text-foreground" style={{ color: b.color }}>{Number.isFinite(b.rate) ? pct(b.rate) : "—"}</b></span>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </Card>
   );
