@@ -1,0 +1,1609 @@
+{
+  "meta": {
+    "title": "미국 AI 데이터센터 플래그십 캠퍼스 — 소유·임차·자금 구조",
+    "as_of": "2026-08",
+    "scope": "AI 학습·추론 전용 기가와트급 캠퍼스 중 자금 구조가 공개된 곳. 코로케이션·일반 클라우드 리전 제외. 완공률은 어느 회사도 공시하지 않으므로 운영 IT 전력 / 목표 용량 + 공정 단계로 대체.",
+    "capacity_unit": "MW (IT load 기준, 캠퍼스 확보 전력과 다를 수 있음)",
+    "groups": {
+      "A": "스타게이트 계열 — 오픈AI 최종 사용자. 개발사 SPV가 짓고 투자등급 임차인(주로 오라클)이 장기 리스로 신용을 댐",
+      "B": "하이퍼스케일러·프론티어랩 자체 보유 — 대부분 자기 현금, 메타 하이페리온만 SPV",
+      "C": "네오클라우드·개발사 — 코어위브형 GPU 담보 대출 또는 고객 선불 구조"
+    },
+    "credit_wrapper_definition": "SPV·개발사가 대출을 일으킬 때 그 신용의 근거가 되는 장기 임차인 또는 선불 고객. 임차인 등급이 낮을수록 구조 전체가 취약.",
+    "fields": {
+      "capacity_operational_mw": "2026-08 기준 운영 중 IT 전력. null = 미가동 또는 미공개",
+      "capacity_target_mw": "공표된 최종 목표. 범위일 경우 min/max",
+      "status_stage": "announced | approved | construction | partial_operation | operating",
+      "credit_wrapper_rating": "신용을 대는 쪽의 S&P 등급 (2026-08). 비상장·미평가는 null",
+      "lat/lng": "근사 좌표 (지도 표시용, 카운티·도시 중심). 정확한 부지 좌표 아님",
+      "disclosure": "public = 공시·회사 발표 / reported = 언론 보도 / undisclosed = 미공개"
+    },
+    "power_fields": {
+      "grid_operator": "계통 운영자. ERCOT(텍사스)·PJM(동부)·MISO(중서부)·SPP(대평원)·TVA/Southern/WECC(비ISO 유틸리티 권역)",
+      "grid_share": "계통 전력 비중: 100% / majority / mixed / minority / minimal / undisclosed",
+      "onsite_generation[]": "현장 발전 설비 {type, vendor, mw, status, note}. type: gas_turbine, gas_recip_engine, gas_combined_cycle, battery, solar_storage, nuclear_ap1000, smr",
+      "utility_new_build[]": "유틸리티가 이 부하 때문에 신설하는 발전(메타 하이페리온의 엔터지 가스 3기 등)",
+      "nuclear": "현장 원자력 계획 여부 (사이트 단위). 회사 단위 원전 PPA는 nuclear_deals 레이어 참조",
+      "confidence": "high = 공시·규제 문서 / medium = 복수 언론 / low = 단일 보도 또는 추정"
+    },
+    "transmission_geodata_sources": [
+      "HIFLD Open Data — 'Electric Power Transmission Lines' (미국 전체 송전선 지오메트리, 전압 등급 포함, 공개 GeoJSON/Shapefile)",
+      "HIFLD / EIA — 'Independent System Operators' 및 'Control Areas' 경계 폴리곤",
+      "EIA U.S. Energy Atlas — 발전소(Power Plants) 포인트 레이어 (가스·원전 위치)",
+      "OpenStreetMap power=line / power=substation 태그 (보완용)",
+      "각 사이트의 정확한 변전소·인입선은 비공개가 대부분 — 사이트 좌표에서 가장 가까운 HIFLD 345kV/138kV 선로로 스냅해서 표현하고 '근사'로 표기할 것"
+    ]
+  },
+  "sites": [
+    {
+      "id": "stargate-abilene",
+      "group": "A",
+      "name": "스타게이트 애빌린",
+      "location": {
+        "city": "Abilene",
+        "state": "TX",
+        "lat": 32.45,
+        "lng": -99.73
+      },
+      "capacity_operational_mw": 420,
+      "capacity_target_mw": {
+        "min": 1200,
+        "max": 1200
+      },
+      "status_stage": "partial_operation",
+      "status_note": "8동 중 2동 가동(2025.9~), 잔여 6동 2026년 내 완공 예정",
+      "landlord": "크루소 SPV",
+      "tenant": "오라클",
+      "lease_term_years": 15,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "equity",
+          "party": "블루아울",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        },
+        {
+          "type": "equity",
+          "party": "프라이머리 디지털 인프라",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        },
+        {
+          "type": "debt",
+          "party": "JP모건 주도 대주단",
+          "amount_usd_bn": 10,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": 13,
+      "credit_wrapper": "오라클",
+      "credit_wrapper_rating": "BBB-",
+      "notes": "스타게이트 플래그십. 오라클 15년 리스가 SPV 대출의 근거.",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": "Oncor",
+        "grid_share": "mixed",
+        "onsite_generation": [
+          {
+            "type": "gas_turbine",
+            "vendor": "GE Vernova",
+            "mw": 360,
+            "status": "operating",
+            "note": "behind-the-meter 가스터빈 발전소, 확장 중"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "현장 가스 + 계통(지역 풍력 포함) 혼합",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "abilene-expansion-msft",
+      "group": "A",
+      "name": "애빌린 확장분 (구 오픈AI·오라클 예정지)",
+      "location": {
+        "city": "Abilene",
+        "state": "TX",
+        "lat": 32.47,
+        "lng": -99.7
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 900,
+        "max": 900
+      },
+      "status_stage": "construction",
+      "status_note": "2027년 중반 1동 가동 목표",
+      "landlord": "크루소",
+      "tenant": "마이크로소프트",
+      "lease_term_years": null,
+      "end_user": "마이크로소프트",
+      "financing": [
+        {
+          "type": "project_finance",
+          "party": "크루소 (세부 미공개)",
+          "amount_usd_bn": null,
+          "disclosure": "undisclosed"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "마이크로소프트",
+      "credit_wrapper_rating": "AAA",
+      "notes": "2026.3 오픈AI가 확장 리스 포기, 오라클 이탈 후 몇 주 만에 MS가 인수. 호황기 재임대 선례.",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": "Oncor",
+        "grid_share": "undisclosed",
+        "onsite_generation": [
+          {
+            "type": "gas",
+            "vendor": null,
+            "mw": null,
+            "status": "planned",
+            "note": "크루소 패턴상 현장 가스 유력, 미공개"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "low"
+      }
+    },
+    {
+      "id": "stargate-frontier-shackelford",
+      "group": "A",
+      "name": "스타게이트 프런티어",
+      "location": {
+        "city": "Shackelford County",
+        "state": "TX",
+        "lat": 32.74,
+        "lng": -99.35
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 1400,
+        "max": 1400
+      },
+      "status_stage": "construction",
+      "status_note": "건설 중",
+      "landlord": "밴티지 데이터센터",
+      "tenant": "오라클",
+      "lease_term_years": null,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "debt",
+          "party": "JP모건·MUFG 주도 대주단 (텍사스+위스콘신 합산 패키지)",
+          "amount_usd_bn": 38,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": 38,
+      "financing_shared_with": [
+        "stargate-lighthouse-port-washington"
+      ],
+      "credit_wrapper": "오라클",
+      "credit_wrapper_rating": "BBB-",
+      "notes": "380억 패키지는 포트워싱턴과 합산 금액.",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": null,
+        "grid_share": "minimal",
+        "onsite_generation": [
+          {
+            "type": "gas_recip_engine",
+            "vendor": "VoltaGrid",
+            "mw": 700,
+            "status": "construction",
+            "note": "TCEQ 허가 가스 발전기 210대, 1차 700MW 오프그리드 마이크로그리드"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "계통 우회 behind-the-meter 설계",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "stargate-lighthouse-port-washington",
+      "group": "A",
+      "name": "스타게이트 라이트하우스",
+      "location": {
+        "city": "Port Washington",
+        "state": "WI",
+        "lat": 43.39,
+        "lng": -87.88
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 900,
+        "max": 900
+      },
+      "status_stage": "construction",
+      "status_note": "2025.12 착공, 2028 완공 목표",
+      "landlord": "밴티지 데이터센터",
+      "tenant": "오라클",
+      "lease_term_years": null,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "debt",
+          "party": "JP모건·MUFG 주도 대주단 (섀클퍼드와 합산)",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "financing_shared_with": [
+        "stargate-frontier-shackelford"
+      ],
+      "credit_wrapper": "오라클",
+      "credit_wrapper_rating": "BBB-",
+      "notes": "",
+      "power": {
+        "grid_operator": "MISO",
+        "utility": "We Energies (WEC)",
+        "grid_share": "majority",
+        "onsite_generation": [
+          {
+            "type": "battery",
+            "vendor": null,
+            "mw": null,
+            "status": "planned",
+            "note": "배터리 저장 포함"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "밴티지 주장: 태양광·풍력·배터리 70%(PPA). We Energies는 데이터센터 부하 대응 가스발전소 신설 추진",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "stargate-jupiter-dona-ana",
+      "group": "A",
+      "name": "프로젝트 주피터",
+      "location": {
+        "city": "Doña Ana County",
+        "state": "NM",
+        "lat": 31.86,
+        "lng": -106.66
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 1000,
+        "max": null
+      },
+      "status_stage": "approved",
+      "status_note": "승인·착공 단계. 30년 최대 1,650억 투자, 초기 5년 500억",
+      "landlord": "STACK 인프라 + 보더플렉스 디지털 애셋",
+      "tenant": "오라클",
+      "lease_term_years": null,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "debt",
+          "party": "대주단 미공개",
+          "amount_usd_bn": 18,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": 18,
+      "credit_wrapper": "오라클",
+      "credit_wrapper_rating": "BBB-",
+      "notes": "목표 용량은 단계별 공개, 1GW+로만 추정.",
+      "power": {
+        "grid_operator": "WECC (비ISO)",
+        "utility": "El Paso Electric (관할)",
+        "grid_share": "minimal",
+        "onsite_generation": [
+          {
+            "type": "gas",
+            "vendor": null,
+            "mw": null,
+            "status": "planned",
+            "note": "오라클 팩트시트 기준 현장 behind-the-meter 가스 마이크로그리드. NM HB93(2025)이 허용"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "stargate-the-barn-saline",
+      "group": "A",
+      "name": "더 반 (Saline Township)",
+      "location": {
+        "city": "Saline Township",
+        "state": "MI",
+        "lat": 42.17,
+        "lng": -83.78
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 1400,
+        "max": 1400
+      },
+      "status_stage": "construction",
+      "status_note": "2026년 착공",
+      "landlord": "릴레이티드 디지털",
+      "tenant": "오라클",
+      "lease_term_years": null,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "equity",
+          "party": "릴레이티드 컴퍼니스",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        },
+        {
+          "type": "debt",
+          "party": "미공개",
+          "amount_usd_bn": null,
+          "disclosure": "undisclosed"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "오라클",
+      "credit_wrapper_rating": "BBB-",
+      "notes": "",
+      "power": {
+        "grid_operator": "MISO",
+        "utility": "DTE Energy",
+        "grid_share": "100%",
+        "onsite_generation": [
+          {
+            "type": "battery",
+            "vendor": null,
+            "mw": null,
+            "status": "planned",
+            "note": "프로젝트가 자금 대는 배터리 저장"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "MPSC 2025.12.19 DTE 19년·1.4GW 공급계약 조건부 승인. 스타게이트 중 유일한 전량 계통 공급",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "stargate-milam",
+      "group": "A",
+      "name": "스타게이트 밀람 카운티",
+      "location": {
+        "city": "Milam County",
+        "state": "TX",
+        "lat": 30.65,
+        "lng": -97.0
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 1200,
+        "max": 1200
+      },
+      "status_stage": "construction",
+      "status_note": "건설 중",
+      "landlord": "SB에너지 (소프트뱅크)",
+      "tenant": "오픈AI",
+      "lease_term_years": null,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "equity",
+          "party": "소프트뱅크 그룹",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "소프트뱅크",
+      "credit_wrapper_rating": "BB+",
+      "notes": "오라클 개입 없음. 소프트뱅크 라인.",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": null,
+        "grid_share": "minority",
+        "onsite_generation": [
+          {
+            "type": "gas_turbine",
+            "vendor": "GE Vernova + Solar Turbines(Caterpillar)",
+            "mw": null,
+            "status": "planned",
+            "note": "현장 가스발전소, 디젤 비상발전 허가 완료"
+          },
+          {
+            "type": "solar_storage",
+            "vendor": "SB Energy",
+            "mw": null,
+            "status": "planned",
+            "note": "SB에너지 태양광+저장 신설이 대부분 공급"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "stargate-lordstown",
+      "group": "A",
+      "name": "스타게이트 로즈타운",
+      "location": {
+        "city": "Lordstown",
+        "state": "OH",
+        "lat": 41.16,
+        "lng": -80.86
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": null,
+        "max": null
+      },
+      "status_stage": "announced",
+      "status_note": "초기 단계, 용량 미공개",
+      "landlord": "소프트뱅크",
+      "tenant": "오픈AI",
+      "lease_term_years": null,
+      "end_user": "오픈AI",
+      "financing": [
+        {
+          "type": "equity",
+          "party": "소프트뱅크 그룹",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "소프트뱅크",
+      "credit_wrapper_rating": "BB+",
+      "notes": "오라클 개입 없음.",
+      "power": {
+        "grid_operator": "PJM",
+        "utility": "FirstEnergy (Ohio Edison)",
+        "grid_share": "undisclosed",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "세부 미공개",
+        "confidence": "low"
+      }
+    },
+    {
+      "id": "meta-hyperion",
+      "group": "B",
+      "name": "메타 하이페리온",
+      "location": {
+        "city": "Richland Parish",
+        "state": "LA",
+        "lat": 32.4,
+        "lng": -91.7
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 2000,
+        "max": 5000
+      },
+      "status_stage": "construction",
+      "status_note": "1차 2GW 2028년, 최대 5GW",
+      "landlord": "SPV 베이녜 인베스터 LLC (블루아울 80% · 메타 20%)",
+      "tenant": "메타",
+      "lease_term_years": null,
+      "end_user": "메타",
+      "financing": [
+        {
+          "type": "bond",
+          "party": "모건스탠리 주선, 핌코 등 매입",
+          "amount_usd_bn": 27,
+          "disclosure": "public"
+        },
+        {
+          "type": "power",
+          "party": "엔터지 루이지애나 가스발전 (별도)",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": 27,
+      "credit_wrapper": "메타",
+      "credit_wrapper_rating": "AA-",
+      "notes": "메타가 잔존가치 보증. B군 중 유일한 SPV 구조.",
+      "power": {
+        "grid_operator": "MISO",
+        "utility": "Entergy Louisiana",
+        "grid_share": "100% (유틸리티 신설 발전)",
+        "onsite_generation": [],
+        "utility_new_build": [
+          {
+            "type": "gas_combined_cycle",
+            "mw": 2260,
+            "status": "approved",
+            "note": "LPSC 2025.8 승인, 가스 복합화력 3기, 비용 메타 부담"
+          }
+        ],
+        "nuclear": false,
+        "note": "태양광 PPA 병행",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "meta-prometheus",
+      "group": "B",
+      "name": "메타 프로메테우스",
+      "location": {
+        "city": "New Albany",
+        "state": "OH",
+        "lat": 40.08,
+        "lng": -82.81
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 1000,
+        "max": 1000
+      },
+      "status_stage": "partial_operation",
+      "status_note": "2026년 가동 진입",
+      "landlord": "메타",
+      "tenant": "메타",
+      "lease_term_years": null,
+      "end_user": "메타",
+      "financing": [
+        {
+          "type": "bond",
+          "party": "메타 회사채 (2025.10 300억 등)",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "메타",
+      "credit_wrapper_rating": "AA-",
+      "notes": "",
+      "power": {
+        "grid_operator": "PJM",
+        "utility": "AEP Ohio",
+        "grid_share": "mixed",
+        "onsite_generation": [
+          {
+            "type": "gas_turbine",
+            "vendor": "Williams (Socrates 프로젝트)",
+            "mw": 200,
+            "status": "construction",
+            "note": "behind-the-meter 가스터빈 + 파이프라인"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "msft-fairwater-wisconsin",
+      "group": "B",
+      "name": "MS 페어워터 위스콘신",
+      "location": {
+        "city": "Mount Pleasant",
+        "state": "WI",
+        "lat": 42.72,
+        "lng": -87.87
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 2200,
+        "max": 3300
+      },
+      "status_stage": "partial_operation",
+      "status_note": "1차 가동 2026년 초, 전체 2028 Q2",
+      "landlord": "마이크로소프트",
+      "tenant": "마이크로소프트",
+      "lease_term_years": null,
+      "end_user": "마이크로소프트·오픈AI 워크로드",
+      "financing": [
+        {
+          "type": "self",
+          "party": "MS 자체 현금",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "마이크로소프트",
+      "credit_wrapper_rating": "AAA",
+      "notes": "목표 용량 추정치는 트래커마다 2.2~3.3GW로 차이.",
+      "power": {
+        "grid_operator": "MISO",
+        "utility": "We Energies (WEC)",
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "We Energies 가스발전소 신설(오크크릭·패리스)과 연동",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "msft-fairwater-atlanta",
+      "group": "B",
+      "name": "MS 페어워터 애틀랜타",
+      "location": {
+        "city": "Atlanta",
+        "state": "GA",
+        "lat": 33.75,
+        "lng": -84.39
+      },
+      "capacity_operational_mw": 636,
+      "capacity_target_mw": {
+        "min": null,
+        "max": null
+      },
+      "status_stage": "operating",
+      "status_note": "운영 중",
+      "landlord": "마이크로소프트",
+      "tenant": "마이크로소프트",
+      "lease_term_years": null,
+      "end_user": "마이크로소프트",
+      "financing": [
+        {
+          "type": "self",
+          "party": "MS 자체 현금",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "마이크로소프트",
+      "credit_wrapper_rating": "AAA",
+      "notes": "",
+      "power": {
+        "grid_operator": "SERC (Southern Co., 비ISO)",
+        "utility": "Georgia Power",
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "msft-pecos",
+      "group": "B",
+      "name": "MS 피코스",
+      "location": {
+        "city": "Pecos",
+        "state": "TX",
+        "lat": 31.42,
+        "lng": -103.49
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 2000,
+        "max": 2000
+      },
+      "status_stage": "announced",
+      "status_note": "2026.6 발표, 5~7년에 걸쳐 인도",
+      "landlord": "마이크로소프트",
+      "tenant": "마이크로소프트",
+      "lease_term_years": null,
+      "end_user": "마이크로소프트",
+      "financing": [
+        {
+          "type": "self",
+          "party": "MS 자체 현금",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "마이크로소프트",
+      "credit_wrapper_rating": "AAA",
+      "notes": "",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": null,
+        "grid_share": "undisclosed",
+        "onsite_generation": [
+          {
+            "type": "gas",
+            "vendor": null,
+            "mw": null,
+            "status": "unknown",
+            "note": "현장 가스 가능성, 미공개"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "low"
+      }
+    },
+    {
+      "id": "aws-rainier",
+      "group": "B",
+      "name": "AWS 프로젝트 레이니어",
+      "location": {
+        "city": "New Carlisle",
+        "state": "IN",
+        "lat": 41.7,
+        "lng": -86.51
+      },
+      "capacity_operational_mw": 910,
+      "capacity_target_mw": {
+        "min": 2200,
+        "max": 2200
+      },
+      "status_stage": "partial_operation",
+      "status_note": "1차 클러스터 운영, 확장 중",
+      "landlord": "아마존",
+      "tenant": "아마존",
+      "lease_term_years": null,
+      "end_user": "앤트로픽 (트레이니움)",
+      "financing": [
+        {
+          "type": "self",
+          "party": "아마존 자체 현금",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "아마존",
+      "credit_wrapper_rating": "AA",
+      "notes": "",
+      "power": {
+        "grid_operator": "PJM",
+        "utility": "Indiana Michigan Power (AEP)",
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "xai-colossus-1",
+      "group": "B",
+      "name": "xAI 콜로서스 1",
+      "location": {
+        "city": "Memphis",
+        "state": "TN",
+        "lat": 35.05,
+        "lng": -90.15
+      },
+      "capacity_operational_mw": 300,
+      "capacity_target_mw": {
+        "min": null,
+        "max": null
+      },
+      "status_stage": "operating",
+      "status_note": "가동 중",
+      "landlord": "xAI",
+      "tenant": "xAI",
+      "lease_term_years": null,
+      "end_user": "xAI",
+      "financing": [
+        {
+          "type": "debt",
+          "party": "2025년 부채 조달",
+          "amount_usd_bn": 5,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": 5,
+      "credit_wrapper": "xAI",
+      "credit_wrapper_rating": null,
+      "notes": "",
+      "power": {
+        "grid_operator": "TVA (비ISO)",
+        "utility": "MLGW",
+        "grid_share": "mixed",
+        "onsite_generation": [
+          {
+            "type": "gas_turbine",
+            "vendor": "Solaris Energy Infrastructure",
+            "mw": null,
+            "status": "operating",
+            "note": "이동식 가스터빈 최대 35대 운영, 허가는 15대 — 대기오염 소송 중"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "xai-colossus-2",
+      "group": "B",
+      "name": "xAI 콜로서스 2",
+      "location": {
+        "city": "Southaven",
+        "state": "MS",
+        "lat": 34.99,
+        "lng": -90.0
+      },
+      "capacity_operational_mw": 946,
+      "capacity_target_mw": {
+        "min": 1000,
+        "max": 2000
+      },
+      "status_stage": "partial_operation",
+      "status_note": "2026.8 기준 미국 최대 운영 IT 전력, 확장 중",
+      "landlord": "xAI",
+      "tenant": "xAI",
+      "lease_term_years": null,
+      "end_user": "xAI",
+      "financing": [
+        {
+          "type": "gpu_spv",
+          "party": "밸러 에쿼티·아폴로·엔비디아 참여 보도",
+          "amount_usd_bn": 20,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": 20,
+      "credit_wrapper": "xAI",
+      "credit_wrapper_rating": null,
+      "notes": "GPU SPV 구조라 코어위브형 리스크 일부 공유.",
+      "power": {
+        "grid_operator": "TVA (비ISO)",
+        "utility": "TVA / 지역 배전",
+        "grid_share": "mixed",
+        "onsite_generation": [
+          {
+            "type": "gas_turbine",
+            "vendor": "Solaris Energy Infrastructure",
+            "mw": 1000,
+            "status": "construction",
+            "note": "1GW급 가스터빈 단지 허가 신청"
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "google-multiple",
+      "group": "B",
+      "name": "구글 다수 캠퍼스",
+      "location": {
+        "city": null,
+        "state": null,
+        "lat": null,
+        "lng": null
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": null,
+        "max": null
+      },
+      "status_stage": "operating",
+      "status_note": "운영·확장, AI와 일반 클라우드 혼재로 사이트 특정 안 함",
+      "landlord": "구글",
+      "tenant": "구글",
+      "lease_term_years": null,
+      "end_user": "구글·앤트로픽 (TPU)",
+      "financing": [
+        {
+          "type": "self",
+          "party": "구글 자체 현금",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "구글",
+      "credit_wrapper_rating": "AA+",
+      "notes": "지도 표시 제외 대상.",
+      "power": {
+        "grid_operator": null,
+        "utility": null,
+        "grid_share": null,
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "사이트 미특정",
+        "confidence": null
+      }
+    },
+    {
+      "id": "applied-digital-polaris-forge",
+      "group": "C",
+      "name": "애플라이드 디지털 폴라리스 포지 1·2",
+      "location": {
+        "city": "Ellendale",
+        "state": "ND",
+        "lat": 46.0,
+        "lng": -98.53
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 400,
+        "max": 680
+      },
+      "status_stage": "partial_operation",
+      "status_note": "포지 1(400MW, 코어위브 250+150) 1차 가동, 포지 2(약 280MW) 확장",
+      "landlord": "애플라이드 디지털",
+      "tenant": "코어위브",
+      "lease_term_years": 15,
+      "end_user": "코어위브 고객",
+      "financing": [
+        {
+          "type": "debt",
+          "party": "맥쿼리",
+          "amount_usd_bn": 5,
+          "disclosure": "public"
+        },
+        {
+          "type": "project_finance",
+          "party": "기타 프로젝트 파이낸싱",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "코어위브",
+      "credit_wrapper_rating": "BB-",
+      "notes": "",
+      "power": {
+        "grid_operator": "MISO",
+        "utility": null,
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "노스다코타 풍력 비중 높은 계통. 유틸리티 미확인",
+        "confidence": "low"
+      }
+    },
+    {
+      "id": "galaxy-helios",
+      "group": "C",
+      "name": "갤럭시 헬리오스",
+      "location": {
+        "city": "Dickens County",
+        "state": "TX",
+        "lat": 33.6,
+        "lng": -100.8
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 800,
+        "max": 800
+      },
+      "status_stage": "construction",
+      "status_note": "건설 중",
+      "landlord": "갤럭시 디지털",
+      "tenant": "코어위브",
+      "lease_term_years": null,
+      "end_user": "코어위브 고객",
+      "financing": [
+        {
+          "type": "self",
+          "party": "갤럭시 자체",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        },
+        {
+          "type": "debt",
+          "party": "대출",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "코어위브",
+      "credit_wrapper_rating": "BB-",
+      "notes": "",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": null,
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "구 비트코인 채굴장, 800MW 계통 접속 승인분 활용. 유틸리티 미확인",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "core-scientific-sites",
+      "group": "C",
+      "name": "코어사이언티픽 전환 사이트 (덴튼 등 복수)",
+      "location": {
+        "city": "Denton (대표)",
+        "state": "TX",
+        "lat": 33.21,
+        "lng": -97.13
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 590,
+        "max": 590
+      },
+      "status_stage": "partial_operation",
+      "status_note": "비트코인 채굴장 → AI 전환, 단계별 가동. 코어위브 계약분 합계 약 590MW",
+      "landlord": "코어사이언티픽",
+      "tenant": "코어위브",
+      "lease_term_years": null,
+      "end_user": "코어위브 고객",
+      "financing": [
+        {
+          "type": "gpu_ddtl",
+          "party": "코어위브 GPU 담보 DDTL (블랙스톤·마그네타)",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "코어위브",
+      "credit_wrapper_rating": "BB-",
+      "notes": "복수 사이트 합산 행. 좌표는 덴튼 대표값.",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": "Denton Municipal Electric (덴튼 대표)",
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "사이트별 유틸리티 상이",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "coreweave-lancaster",
+      "group": "C",
+      "name": "코어위브 랭커스터",
+      "location": {
+        "city": "Lancaster",
+        "state": "PA",
+        "lat": 40.04,
+        "lng": -76.31
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 100,
+        "max": 300
+      },
+      "status_stage": "construction",
+      "status_note": "건설 중, 총 60억 투자",
+      "landlord": "코어위브",
+      "tenant": "코어위브",
+      "lease_term_years": null,
+      "end_user": "코어위브 고객",
+      "financing": [
+        {
+          "type": "gpu_ddtl",
+          "party": "코어위브 DDTL 계열",
+          "amount_usd_bn": 6,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": 6,
+      "credit_wrapper": "코어위브",
+      "credit_wrapper_rating": "BB-",
+      "notes": "",
+      "power": {
+        "grid_operator": "PJM",
+        "utility": "PPL Electric",
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "fluidstack-anthropic",
+      "group": "C",
+      "name": "플루이드스택 (앤트로픽 500억)",
+      "location": {
+        "city": null,
+        "state": "TX/NY",
+        "lat": null,
+        "lng": null
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": null,
+        "max": null
+      },
+      "status_stage": "construction",
+      "status_note": "2026년 착공. GW급 합계만 공개, 사이트별 미공개",
+      "landlord": "플루이드스택",
+      "tenant": "앤트로픽",
+      "lease_term_years": null,
+      "end_user": "앤트로픽",
+      "financing": [
+        {
+          "type": "contract_backed_debt",
+          "party": "앤트로픽 계약 담보 GPU 대출",
+          "amount_usd_bn": 10,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": 10,
+      "credit_wrapper": "앤트로픽",
+      "credit_wrapper_rating": null,
+      "notes": "지도 표시 제외 대상 (사이트 좌표 미공개).",
+      "power": {
+        "grid_operator": null,
+        "utility": null,
+        "grid_share": null,
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "사이트 미공개",
+        "confidence": null
+      }
+    },
+    {
+      "id": "iren-childress",
+      "group": "C",
+      "name": "IREN 차일드리스",
+      "location": {
+        "city": "Childress",
+        "state": "TX",
+        "lat": 34.43,
+        "lng": -100.2
+      },
+      "capacity_operational_mw": 50,
+      "capacity_target_mw": {
+        "min": 200,
+        "max": 750
+      },
+      "status_stage": "partial_operation",
+      "status_note": "호라이즌 1(50MW) MS 인수 2026.8.13, 호라이즌 2~4 연내. MS 계약분 IT 200MW, 캠퍼스 확보 전력 750MW",
+      "landlord": "IREN",
+      "tenant": "마이크로소프트",
+      "lease_term_years": 5,
+      "end_user": "마이크로소프트",
+      "financing": [
+        {
+          "type": "customer_prepay",
+          "party": "마이크로소프트 20% 선불",
+          "amount_usd_bn": 1.94,
+          "disclosure": "public"
+        },
+        {
+          "type": "self",
+          "party": "IREN 자체 + 컨버터블",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        },
+        {
+          "type": "vendor",
+          "party": "델 하드웨어 계약",
+          "amount_usd_bn": 5.8,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "마이크로소프트 (선불)",
+      "credit_wrapper_rating": "AAA",
+      "notes": "5년 97억 계약. 고객 선불 구조라 C군 중 코어위브형과 결이 다름.",
+      "power": {
+        "grid_operator": "ERCOT",
+        "utility": null,
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "750MW 계통 접속 확보(자체 변전소). 유틸리티 미확인",
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "nebius-vineland",
+      "group": "C",
+      "name": "네비우스 바인랜드",
+      "location": {
+        "city": "Vineland",
+        "state": "NJ",
+        "lat": 39.49,
+        "lng": -75.03
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 300,
+        "max": 300
+      },
+      "status_stage": "construction",
+      "status_note": "2026년 인도 목표",
+      "landlord": "네비우스",
+      "tenant": "마이크로소프트",
+      "lease_term_years": 5,
+      "end_user": "마이크로소프트",
+      "financing": [
+        {
+          "type": "convertible",
+          "party": "네비우스 컨버터블",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        },
+        {
+          "type": "contract_backed_debt",
+          "party": "계약 담보 대출",
+          "amount_usd_bn": null,
+          "disclosure": "reported"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": "마이크로소프트",
+      "credit_wrapper_rating": "AAA",
+      "notes": "MS 계약 174억~194억.",
+      "power": {
+        "grid_operator": "PJM",
+        "utility": "Vineland Municipal Electric Utility",
+        "grid_share": "100%",
+        "onsite_generation": [],
+        "utility_new_build": [],
+        "nuclear": false,
+        "note": "",
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "fermi-matador",
+      "group": "C",
+      "name": "페르미 아메리카 프로젝트 마타도어",
+      "location": {
+        "city": "Amarillo (Carson County)",
+        "state": "TX",
+        "lat": 35.22,
+        "lng": -101.83
+      },
+      "capacity_operational_mw": null,
+      "capacity_target_mw": {
+        "min": 11000,
+        "max": 17000
+      },
+      "status_stage": "announced",
+      "status_note": "발표 단계. 확정 임차인 없음",
+      "landlord": "페르미 아메리카 (REIT)",
+      "tenant": null,
+      "lease_term_years": null,
+      "end_user": null,
+      "financing": [
+        {
+          "type": "ipo",
+          "party": "REIT IPO 자금",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        },
+        {
+          "type": "epc",
+          "party": "프리모리스 (전력 EPC)",
+          "amount_usd_bn": null,
+          "disclosure": "public"
+        }
+      ],
+      "financing_total_usd_bn": null,
+      "credit_wrapper": null,
+      "credit_wrapper_rating": null,
+      "notes": "용량은 확보 전력 계획치. AI 용도로 발표됐으나 실제 용도 미정.",
+      "power": {
+        "grid_operator": "SPP",
+        "utility": "Xcel Energy SPS",
+        "grid_share": "minimal (200MW ESA)",
+        "onsite_generation": [
+          {
+            "type": "gas_combined_cycle",
+            "vendor": "Siemens(1.1GW LOI) 등",
+            "mw": 6000,
+            "status": "approved",
+            "note": "6GW 가스 예비 승인, 2026년 1.1GW 목표"
+          },
+          {
+            "type": "nuclear_ap1000",
+            "vendor": "Westinghouse / 두산에너빌리티 / 현대건설 FEED",
+            "mw": 4400,
+            "status": "licensing",
+            "note": "AP1000 4기, NRC COL 2025.9 접수, 1호기 2031~32, 4기 2038"
+          },
+          {
+            "type": "smr",
+            "vendor": null,
+            "mw": null,
+            "status": "planned",
+            "note": "세부 미공개"
+          },
+          {
+            "type": "solar_storage",
+            "vendor": null,
+            "mw": null,
+            "status": "planned",
+            "note": ""
+          }
+        ],
+        "utility_new_build": [],
+        "nuclear": true,
+        "note": "사실상 오프그리드 사설 전력망. SPS 115kV로 86→200MW 초기 공급",
+        "confidence": "high"
+      }
+    }
+  ],
+  "analysis_notes": [
+    "A군 중 오라클이 임차인인 사이트는 5곳(애빌린·섀클퍼드·포트워싱턴·도냐아나·세일라인). 밀람·로즈타운은 소프트뱅크 라인, 애빌린 확장분은 MS로 이전.",
+    "'투자등급 임차인이 장기 리스로 SPV 대출의 신용을 대는 구조'는 업계 표준(메타 하이페리온, MS의 크루소·IREN·네비우스). 차이는 신용을 대는 쪽의 등급: 오라클(BBB-, FCF 적자)만 래퍼 자신의 신용이 취약.",
+    "B군은 메타 하이페리온만 SPV, 나머지는 자기 현금이라 시스템 리스크 전이 경로 없음.",
+    "C군은 코어위브형(GPU 담보 DDTL)과 고객 선불형(IREN·네비우스)으로 갈림. 전자가 '먼저 터질 확률' 상위."
+  ],
+  "nuclear_deals": [
+    {
+      "id": "msft-crane",
+      "buyer": "마이크로소프트",
+      "counterparty": "Constellation",
+      "plant": "Crane Clean Energy Center (구 Three Mile Island 1호기 재가동)",
+      "reactor_type": "기존 대형 PWR 재가동",
+      "mw": 835,
+      "location": {
+        "state": "PA",
+        "grid": "PJM",
+        "lat": 40.15,
+        "lng": -76.72
+      },
+      "deal": "20년 PPA, 약 160억",
+      "target_year": 2027,
+      "status": "재가동 공사 중, FERC 송전 면제 2026.6.1 승인",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "high"
+    },
+    {
+      "id": "amzn-susquehanna",
+      "buyer": "아마존",
+      "counterparty": "Talen Energy",
+      "plant": "Susquehanna (기존 원전 직결 Cumulus 캠퍼스)",
+      "reactor_type": "기존 BWR",
+      "mw": 1920,
+      "location": {
+        "state": "PA",
+        "grid": "PJM",
+        "lat": 41.09,
+        "lng": -76.15
+      },
+      "deal": "PPA, 전력 공급 중",
+      "target_year": 2025,
+      "status": "가동 중(유일하게 원전 전력이 실제로 흐르는 AI 캠퍼스)",
+      "site_bound": true,
+      "feeds_sites": [
+        "amzn-cumulus-pa (표에 미포함)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "amzn-xenergy-cascade",
+      "buyer": "아마존",
+      "counterparty": "X-energy / Energy Northwest",
+      "plant": "Cascade",
+      "reactor_type": "SMR Xe-100 (HTGR)",
+      "mw": 320,
+      "mw_max": 960,
+      "location": {
+        "state": "WA",
+        "grid": "WECC/BPA",
+        "lat": 46.47,
+        "lng": -119.33
+      },
+      "deal": "X-energy에 7억 투자, 최대 12기",
+      "target_year": 2030,
+      "status": "NRC 인허가 단계",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "high"
+    },
+    {
+      "id": "amzn-xenergy-north-anna",
+      "buyer": "아마존",
+      "counterparty": "Dominion / X-energy",
+      "plant": "North Anna 인근 SMR",
+      "reactor_type": "SMR",
+      "mw": 300,
+      "location": {
+        "state": "VA",
+        "grid": "PJM",
+        "lat": 38.06,
+        "lng": -77.79
+      },
+      "deal": "개발 협약",
+      "target_year": 2030,
+      "status": "초기",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "medium"
+    },
+    {
+      "id": "goog-kairos",
+      "buyer": "구글",
+      "counterparty": "Kairos Power",
+      "plant": "Hermes 2 (Oak Ridge) 시작",
+      "reactor_type": "SMR KP-FHR (용융염)",
+      "mw": 500,
+      "location": {
+        "state": "TN",
+        "grid": "TVA",
+        "lat": 36.01,
+        "lng": -84.27
+      },
+      "deal": "MPDA, 2035년까지 500MW",
+      "target_year": 2030,
+      "status": "첫 50MW 2030 목표",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "high"
+    },
+    {
+      "id": "goog-elementl",
+      "buyer": "구글",
+      "counterparty": "Elementl Power",
+      "plant": "3개 부지 각 600MW",
+      "reactor_type": "SMR (기종 미정)",
+      "mw": 1800,
+      "location": {
+        "state": null,
+        "grid": null,
+        "lat": null,
+        "lng": null
+      },
+      "deal": "부지 개발 자금",
+      "target_year": 2030,
+      "status": "부지 준비",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "medium"
+    },
+    {
+      "id": "meta-oklo-pike",
+      "buyer": "메타",
+      "counterparty": "Oklo",
+      "plant": "Pike County 캠퍼스",
+      "reactor_type": "SMR Aurora (SFR)",
+      "mw": 1200,
+      "location": {
+        "state": "OH",
+        "grid": "PJM",
+        "lat": 39.03,
+        "lng": -83.02
+      },
+      "deal": "2026.1 협약",
+      "target_year": 2030,
+      "status": "Oklo 1호기(INL) 2027~28 이후",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "high"
+    },
+    {
+      "id": "meta-terrapower",
+      "buyer": "메타",
+      "counterparty": "TerraPower",
+      "plant": "Natrium 8기",
+      "reactor_type": "SFR",
+      "mw": 2800,
+      "location": {
+        "state": null,
+        "grid": null,
+        "lat": null,
+        "lng": null
+      },
+      "deal": "2026.1~2 협약",
+      "target_year": 2032,
+      "status": "부지 미정, 2032~35",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "medium"
+    },
+    {
+      "id": "meta-constellation-clinton",
+      "buyer": "메타",
+      "counterparty": "Constellation",
+      "plant": "Clinton (기존 BWR 연장)",
+      "reactor_type": "기존 대형",
+      "mw": 1100,
+      "location": {
+        "state": "IL",
+        "grid": "MISO",
+        "lat": 40.17,
+        "lng": -88.83
+      },
+      "deal": "20년 PPA (2025.6)",
+      "target_year": 2027,
+      "status": "계약 체결",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "high"
+    },
+    {
+      "id": "meta-vistra",
+      "buyer": "메타",
+      "counterparty": "Vistra",
+      "plant": "기존 원전 PPA/출력증강",
+      "reactor_type": "기존 대형",
+      "mw": null,
+      "location": {
+        "state": null,
+        "grid": null,
+        "lat": null,
+        "lng": null
+      },
+      "deal": "2026 협약",
+      "target_year": null,
+      "status": "세부 미공개",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "low"
+    },
+    {
+      "id": "fermi-ap1000",
+      "buyer": "페르미 아메리카 (자체)",
+      "counterparty": "Westinghouse / 두산 / 현대건설",
+      "plant": "Project Matador 1~4호기",
+      "reactor_type": "대형 AP1000 (SMR 아님)",
+      "mw": 4400,
+      "location": {
+        "state": "TX",
+        "grid": "SPP (오프그리드)",
+        "lat": 35.22,
+        "lng": -101.83
+      },
+      "deal": "자체 건설, NRC COL 접수 2025.9",
+      "target_year": 2031,
+      "status": "인허가 중, 4기 2038",
+      "site_bound": true,
+      "feeds_sites": [
+        "fermi-matador"
+      ],
+      "confidence": "high"
+    },
+    {
+      "id": "orcl-smr-claim",
+      "buyer": "오라클",
+      "counterparty": null,
+      "plant": "미공개",
+      "reactor_type": "SMR",
+      "mw": null,
+      "location": {
+        "state": null,
+        "grid": null,
+        "lat": null,
+        "lng": null
+      },
+      "deal": "2024.9 엘리슨: 1GW+ 데이터센터용 SMR 3기 건축 허가 확보 발언",
+      "target_year": null,
+      "status": "이후 부지·기종·사업자 공개 없음. 2026.8 기준 진전 미확인",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "low"
+    },
+    {
+      "id": "stargate-none",
+      "buyer": "오픈AI / 스타게이트",
+      "counterparty": null,
+      "plant": null,
+      "reactor_type": null,
+      "mw": null,
+      "location": {
+        "state": null,
+        "grid": null,
+        "lat": null,
+        "lng": null
+      },
+      "deal": null,
+      "target_year": null,
+      "status": "원자력 계약 없음 — 전 사이트 가스 마이크로그리드 또는 계통",
+      "site_bound": false,
+      "feeds_sites": [],
+      "confidence": "high"
+    }
+  ]
+}
