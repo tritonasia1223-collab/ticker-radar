@@ -76,6 +76,7 @@ const US_STATE_KO: Record<string, string> = { Alabama: "앨라배마", Alaska: "
 const WORLD_LABEL_TOP = 26;
 const K_REGION = 2.5, K_LOCAL = 6;
 const CENTER_LON = 150;
+const DC_SITE_ZOOM_MULT = 1.4; // DC 모드: 기준(미국-핏) 배율 × 이 값 이상이면 '사이트 줌'(연결선·흐름·스냅 활성). 미국핏~최대 줌 폭이 좁아(~2.2×) 낮게 잡음
 
 const REGIONS: { name: string; lon: number; bbox: [number, number, number, number] }[] = [
   { name: "유럽", lon: 15, bbox: [-11, 34, 42, 60] },
@@ -184,6 +185,8 @@ export default function World() {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<any>(null);
   const kRef = useRef(1);
+  const fitKRef = useRef(1); // 마지막 fitTo 목표 배율(스케일 서사 분리용 기준)
+  const dcBaseKRef = useRef(1); // DC 모드 진입 시 미국-핏 기준 배율. 사이트 줌 판정 기준값.
   const draggedRef = useRef(false);
   const [t, setT] = useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   useEffect(() => {
@@ -210,6 +213,7 @@ export default function World() {
     if (!zoomRef.current || !svgRef.current) return;
     const [x0, y0, x1, y1] = b, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     const k = Math.max(1, Math.min(9, fill / Math.max((x1 - x0) / dim.w || 1e-3, (y1 - y0) / dim.h || 1e-3)));
+    fitKRef.current = k;
     setLon(useLon);
     const tr = zoomIdentity.translate(dim.w / 2 - k * cx, dim.h / 2 - k * cy).scale(k);
     select(svgRef.current).transition().duration(700).call(zoomRef.current.transform, tr);
@@ -236,7 +240,7 @@ export default function World() {
   const toggleDc = useCallback(() => {
     setDcMode((m) => {
       const next = !m; setSel(null); setDcSel(null);
-      if (next) flyRegion({ lon: -95, bbox: US_BBOX }); // 미국 중심 회전+확대
+      if (next) { flyRegion({ lon: -95, bbox: US_BBOX }); dcBaseKRef.current = fitKRef.current; } // 미국 중심 회전+확대 + 기준 배율 기록
       else { setLon(CENTER_LON); svgRef.current && select(svgRef.current).transition().duration(500).call(zoomRef.current.transform, zoomIdentity); }
       return next;
     });
@@ -270,6 +274,8 @@ export default function World() {
     return { hlRoutes: R, hlChokes: C, hlPorts: P };
   }, [focus, compareSet, routeById, routesByNode]);
   const hasFocus = hlRoutes.size + hlChokes.size + hlPorts.size > 0;
+  // 스케일 서사 분리(§A): 국가 뷰 = 면 채색/귀속, 사이트 줌 = 생산→송전→DC 흐름(연결선·애니메이션·스냅)
+  const dcSiteZoom = dcMode && t.k >= dcBaseKRef.current * DC_SITE_ZOOM_MULT;
 
   // 검색
   const [query, setQuery] = useState("");
@@ -321,8 +327,8 @@ export default function World() {
           })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {dcMode && usStates.map((f: any, i: number) => <path key={`us${i}`} d={usStatePaths[i]} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.35} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} />)}
-          {/* 송전선 345kV+ (기존 계통 2022 · 배경층) */}
-          {txPath && <path d={txPath} fill="none" stroke="#3b82f6" strokeOpacity={0.22} strokeWidth={0.7 / t.k} strokeLinejoin="round" strokeLinecap="round" style={{ pointerEvents: "none" }} />}
+          {/* 송전선 345kV+ (기존 계통 2022 · 배경층). 무채색 — '배경은 회색, 색은 신호'(§D) */}
+          {txPath && <path d={txPath} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} strokeWidth={0.7 / t.k} strokeLinejoin="round" strokeLinecap="round" style={{ pointerEvents: "none" }} />}
           {dcMode && usStateLabels.map((l: any, i: number) => (
             <text key={`usl${i}`} x={l.c[0]} y={l.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={8 / t.k} fontWeight={500} fill="hsl(var(--muted-foreground))" fillOpacity={0.75}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5 / t.k, strokeLinejoin: "round", pointerEvents: "none" }}>{l.ko}</text>
@@ -410,12 +416,12 @@ export default function World() {
           );
         })}
 
-        {/* ③ 계통 급전 — 최근접 345kV 스냅(근사) 점선. 발전소 특정 안 함 = 계통 풀에서 인입 */}
-        {snapLines.map((sl) => { const a = toScreen(sl.dc[0], sl.dc[1]), b = toScreen(sl.snap[0], sl.snap[1]); if (!a || !b) return null;
-          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#3b82f6" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
+        {/* ③ 계통 급전 — 최근접 345kV 스냅(근사) 점선. 사이트 줌에서만(§A) */}
+        {dcSiteZoom && snapLines.map((sl) => { const a = toScreen(sl.dc[0], sl.dc[1]), b = toScreen(sl.snap[0], sl.snap[1]); if (!a || !b) return null;
+          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#64748b" strokeOpacity={0.7} strokeWidth={1} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
 
-        {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시, 흐름 없음) */}
-        {dcMode && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
+        {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시). 사이트 줌에서만(§A) */}
+        {dcMode && dcSiteZoom && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
           const phys = link.tier === "physical"; const col = FUEL_COLOR[plant.fuel] || "#f97316";
           const txt = phys ? "물리 전용 · 실제 조류" : "계약 관계 · 물리 조류 아님";
           return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={col} strokeOpacity={0.9} strokeWidth={phys ? 2 : 1.6}
