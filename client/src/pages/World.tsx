@@ -1,21 +1,28 @@
-// 세계 현황판 (/#/world) — Phase 1: L1 국가 기본(국경·한글 라벨·수도·팬줌·선택·인접국·국가카드).
-//   정적 TopoJSON 직접 렌더(DB/서버 불요). d3-geo Equal Earth + d3-zoom. 표면 토큰(바다=배경/땅=카드/국경=헤어라인).
-//   데이터: script/build-world-topo.ts 산출물(Natural Earth 110m, 한글명 NAME_KO 내장).
+// 세계 현황판 (/#/world) — L1 국가 기본(국경·한글 라벨·수도·팬줌·선택·인접국·카드) + 검색/프리셋 + L2 인프라(항로·항만·초크포인트).
+//   정적 데이터 직접 렌더(DB/서버 불요). d3-geo Equal Earth + d3-zoom. 표면 토큰(바다=배경/땅=카드/국경=헤어라인).
+//   데이터: script/build-world-topo.ts 산출(NE 110m·수도) + world-infra.json(항로·항만·초크포인트 수기 시드).
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { geoEqualEarth, geoPath, geoArea } from "d3-geo";
 import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition"; // select(...).transition() 활성화
 import { feature, neighbors } from "topojson-client";
-import { Plus, Minus, X, Locate, Search } from "lucide-react";
+import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route } from "lucide-react";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
+import infraData from "@/data/world-infra.json";
 
 type CtyProps = { iso: string; ko: string; en: string; lx: number; ly: number };
 type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
 type Cap = { iso: string; ko: string; en: string; lng: number; lat: number };
+type Choke = { ko: string; en: string; lng: number; lat: number; connects: string };
+type Port = { ko: string; en: string; lng: number; lat: number };
+type RouteT = { ko: string; coords: [number, number][] };
+const infra = infraData as { chokepoints: Choke[]; ports: Port[]; routes: RouteT[] };
 
 const TEAL = "#0d9488";          // 선택 하이라이트(유동성 탭 팔레트)
+const AMBER = "#f59e0b";         // 초크포인트(해협) 다이아몬드
+const SEA = "#2563eb";           // 항로(점선) · 항만(점)
 const WORLD_LABEL_TOP = 28;      // 세계 뷰에서 라벨 붙일 대국 개수(면적순)
 const K_REGION = 2.5, K_LOCAL = 6; // 시맨틱 줌 경계
 const CENTER_LON = 150;          // 중심 경도(동아시아 중심 = 아메리카가 오른쪽). 컷은 ~30°W 대서양.
@@ -50,13 +57,15 @@ export default function World() {
     features.forEach((f, i) => m.set(f.properties.iso, i));
     return m;
   }, [features]);
-  // 검색 색인(§8 Phase2) — 국가(한/영) + 수도(한/영). 항만·초크포인트는 Phase3에서 추가.
+  // 검색 색인 — 국가(한/영) + 수도 + 초크포인트(해협) + 항만.
   type Hit = { kind: "country"; label: string; sub: string; idx: number; key: string }
-    | { kind: "capital"; label: string; sub: string; iso: string; lng: number; lat: number; key: string };
+    | { kind: "capital" | "choke" | "port"; label: string; sub: string; lng: number; lat: number; iso?: string; key: string };
   const searchIndex = useMemo<Hit[]>(() => {
     const out: Hit[] = [];
     features.forEach((f, i) => out.push({ kind: "country", label: f.properties.ko, sub: f.properties.en, idx: i, key: norm(f.properties.ko) + " " + norm(f.properties.en) }));
     for (const c of capitalsData as Cap[]) out.push({ kind: "capital", label: c.ko, sub: c.en, iso: c.iso, lng: c.lng, lat: c.lat, key: norm(c.ko) + " " + norm(c.en) });
+    for (const c of infra.chokepoints) out.push({ kind: "choke", label: c.ko, sub: c.en, lng: c.lng, lat: c.lat, key: norm(c.ko) + " " + norm(c.en) });
+    for (const p of infra.ports) out.push({ kind: "port", label: p.ko, sub: p.en, lng: p.lng, lat: p.lat, key: norm(p.ko) + " " + norm(p.en) });
     return out;
   }, [features]);
 
@@ -78,6 +87,8 @@ export default function World() {
   const pathGen = useMemo(() => geoPath(projection), [projection]);
   const paths = useMemo(() => features.map((f) => pathGen(f as any) || ""), [features, pathGen]);
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
+  const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
+  const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true }); // L2 독립 토글
 
   // ── 줌/팬 ──
   const svgRef = useRef<SVGSVGElement>(null);
@@ -161,7 +172,7 @@ export default function World() {
   // ── 선택/hover ──
   const [sel, setSel] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
-  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; text: string; sub?: string } | null>(null);
   const selNeighbors = useMemo(() => (sel == null ? new Set<number>() : new Set(adj[sel])), [sel, adj]);
 
   const pick = useCallback((i: number) => { setSel(i); flyTo(features[i]); }, [features, flyTo]);
@@ -212,6 +223,11 @@ export default function World() {
                 onMouseLeave={() => { setHover(null); setTip(null); }} />
             );
           })}
+          {/* L2 항로 — 파랑 점선(투영 좌표, 줌 변환 안에서 굵기 보정) */}
+          {layers.routes && infra.routes.map((r, i) => (
+            <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={SEA} strokeWidth={1.3 / t.k}
+              strokeDasharray={`${4 / t.k} ${3 / t.k}`} strokeOpacity={0.7} strokeLinecap="round" style={{ pointerEvents: "none" }} />
+          ))}
         </g>
 
         {/* 국가 라벨 오버레이(줌 변환 후 좌표, 텍스트는 고정 크기) */}
@@ -247,13 +263,58 @@ export default function World() {
             })}
           </g>
         )}
+
+        {/* L2 항만 — 파랑 점(권역 뷰부터). hover 이름. */}
+        {layers.ports && t.k >= K_REGION && infra.ports.map((p, i) => {
+          const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          return (
+            <g key={`p${i}`} style={{ cursor: "pointer" }}
+              onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚓ ${p.ko}`, sub: p.en })}
+              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚓ ${p.ko}`, sub: p.en })}
+              onMouseLeave={() => setTip(null)}>
+              <circle cx={sc[0]} cy={sc[1]} r={3} fill={SEA} stroke="hsl(var(--background))" strokeWidth={0.8} />
+              {t.k >= K_LOCAL && <text x={sc[0] + 5} y={sc[1] + 3} fontSize={9.5} fill={SEA}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{p.ko}</text>}
+            </g>
+          );
+        })}
+
+        {/* L2 초크포인트 — 앰버 다이아몬드(상시). hover 이름 + 연결 수역. */}
+        {layers.chokes && infra.chokepoints.map((c, i) => {
+          const sc = toScreen(c.lng, c.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          return (
+            <g key={`c${i}`} style={{ cursor: "pointer" }}
+              onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `◆ ${c.ko}`, sub: c.connects })}
+              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `◆ ${c.ko}`, sub: c.connects })}
+              onMouseLeave={() => setTip(null)}>
+              <path d={`M${sc[0]},${sc[1] - 5} L${sc[0] + 5},${sc[1]} L${sc[0]},${sc[1] + 5} L${sc[0] - 5},${sc[1]} Z`}
+                fill={AMBER} stroke="hsl(var(--background))" strokeWidth={0.8} />
+              {t.k >= K_REGION && <text x={sc[0]} y={sc[1] - 8} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={AMBER}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{c.ko}</text>}
+            </g>
+          );
+        })}
       </svg>
 
-      {/* hover 툴팁(라벨 생략 소국 대응) */}
+      {/* hover 툴팁(라벨 생략 소국 · 항만/해협 팩트) */}
       {tip && (
         <div className="pointer-events-none fixed z-50 rounded-md border border-border bg-popover px-2 py-1 text-[12px] text-popover-foreground shadow-md"
-          style={{ left: tip.x + 12, top: tip.y + 12 }}>{tip.text}</div>
+          style={{ left: tip.x + 12, top: tip.y + 12 }}>
+          <div>{tip.text}</div>
+          {tip.sub && <div className="text-[10.5px] text-muted-foreground">{tip.sub}</div>}
+        </div>
       )}
+
+      {/* 우상: L2 층 토글(항로·항만·해협 독립) */}
+      <div className="absolute right-4 top-4 flex gap-1">
+        {([["routes", "항로", Route, SEA], ["ports", "항만", Anchor, SEA], ["chokes", "해협", Diamond, AMBER]] as const).map(([k, label, Icon, color]) => (
+          <button key={k} onClick={() => setLayers((l) => ({ ...l, [k]: !l[k] }))}
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${layers[k] ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}
+            title={`${label} ${layers[k] ? "끄기" : "켜기"}`}>
+            <Icon className="h-3 w-3" style={{ color: layers[k] ? color : undefined }} />{label}
+          </button>
+        ))}
+      </div>
 
       {/* 우하: 줌 컨트롤 */}
       <div className="absolute bottom-4 right-4 flex flex-col gap-1">
@@ -279,7 +340,7 @@ export default function World() {
               {results.map((it, ri) => (
                 <button key={ri} onClick={() => onSelectResult(it)}
                   className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted">
-                  <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${it.kind === "country" ? "bg-teal-500/15 text-teal-700 dark:text-teal-300" : "bg-muted text-muted-foreground"}`}>{it.kind === "country" ? "국가" : "수도"}</span>
+                  <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-medium" style={{ background: (it.kind === "country" ? TEAL : it.kind === "choke" ? AMBER : it.kind === "port" ? SEA : "#94a3b8") + "26", color: it.kind === "country" ? TEAL : it.kind === "choke" ? AMBER : it.kind === "port" ? SEA : "hsl(var(--muted-foreground))" }}>{it.kind === "country" ? "국가" : it.kind === "capital" ? "수도" : it.kind === "choke" ? "해협" : "항만"}</span>
                   <span className="text-[12.5px] font-medium">{it.label}</span>
                   <span className="truncate text-[10px] text-muted-foreground">{it.sub}</span>
                 </button>
@@ -298,9 +359,9 @@ export default function World() {
         ))}
       </div>
 
-      {/* 우측: 국가 카드 */}
+      {/* 우측: 국가 카드 (층 토글 아래) */}
       {selF && (
-        <div className="absolute right-4 top-4 w-64 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+        <div className="absolute right-4 top-16 w-64 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="text-base font-bold leading-tight">{selF.properties.ko}</div>
