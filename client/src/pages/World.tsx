@@ -13,6 +13,8 @@ import capitalsData from "@/data/world-capitals.json";
 import infraData from "@/data/world-infra.json";
 import dcData from "@/data/ai-datacenters.json";
 import usStatesTopo from "@/data/us-states-10m.json";
+import txData from "@/data/us-transmission-345.json";
+import dcPowerLinks from "@/data/dc-power-links.json";
 
 type CtyProps = { iso: string; ko: string; en: string; lx: number; ly: number };
 type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
@@ -62,6 +64,14 @@ const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Za
 const US_BBOX: [number, number, number, number] = [-125, 24, -66, 49]; // 본토 프레임
 type DcMode = "group" | "grid" | "credit";
 // 주 이름(us-atlas properties.name → 한글). DC 모드에서 주 경계 라벨용.
+// 전력 조달 연결선(§1 3계급) — 발전소 + DC↔발전소 링크
+type Plant = { id: string; name: string; fuel: string; capacity_mw: number | null; lat: number; lng: number; eia_plant_id: string | null; source_url: string; note: string };
+type DcLink = { dc_id: string; plant_id: string; tier: "physical" | "contract" | "grid"; note: string; source_url: string };
+const dcPower = dcPowerLinks as unknown as { plants: Plant[]; links: DcLink[] };
+const PLANT_BY_ID = new Map(dcPower.plants.map((p) => [p.id, p]));
+const FUEL_COLOR: Record<string, string> = { gas: "#f97316", nuclear: "#16a34a", solar: "#facc15", coal: "#57534e", hydro: "#0ea5e9" };
+const FUEL_KO: Record<string, string> = { gas: "가스", nuclear: "원전", solar: "태양광", coal: "석탄", hydro: "수력" };
+const FUEL_ICON: Record<string, any> = { gas: Flame, nuclear: Atom, solar: Zap, coal: Flame, hydro: Zap };
 const US_STATE_KO: Record<string, string> = { Alabama: "앨라배마", Alaska: "알래스카", Arizona: "애리조나", Arkansas: "아칸소", California: "캘리포니아", Colorado: "콜로라도", Connecticut: "코네티컷", Delaware: "델라웨어", "District of Columbia": "워싱턴 D.C.", Florida: "플로리다", Georgia: "조지아", Hawaii: "하와이", Idaho: "아이다호", Illinois: "일리노이", Indiana: "인디애나", Iowa: "아이오와", Kansas: "캔자스", Kentucky: "켄터키", Louisiana: "루이지애나", Maine: "메인", Maryland: "메릴랜드", Massachusetts: "매사추세츠", Michigan: "미시간", Minnesota: "미네소타", Mississippi: "미시시피", Missouri: "미주리", Montana: "몬태나", Nebraska: "네브래스카", Nevada: "네바다", "New Hampshire": "뉴햄프셔", "New Jersey": "뉴저지", "New Mexico": "뉴멕시코", "New York": "뉴욕", "North Carolina": "노스캐롤라이나", "North Dakota": "노스다코타", Ohio: "오하이오", Oklahoma: "오클라호마", Oregon: "오리건", Pennsylvania: "펜실베이니아", "Rhode Island": "로드아일랜드", "South Carolina": "사우스캐롤라이나", "South Dakota": "사우스다코타", Tennessee: "테네시", Texas: "텍사스", Utah: "유타", Vermont: "버몬트", Virginia: "버지니아", Washington: "워싱턴", "West Virginia": "웨스트버지니아", Wisconsin: "위스콘신", Wyoming: "와이오밍" };
 const WORLD_LABEL_TOP = 26;
 const K_REGION = 2.5, K_LOCAL = 6;
@@ -143,11 +153,31 @@ export default function World() {
   const [dcNuke, setDcNuke] = useState(true);
   const [dcSel, setDcSel] = useState<string | null>(null);
   const [dcNotes, setDcNotes] = useState(false);
+  const [dcTx, setDcTx] = useState(true); // 송전선 + 계통 스냅 레이어
   const usStates = useMemo(() => (feature(usStatesTopo as any, (usStatesTopo as any).objects.states) as any).features, []);
   const usStatePaths = useMemo(() => (dcMode ? usStates.map((f: any) => pathGen(f) || "") : []), [dcMode, usStates, pathGen]);
   // 주 이름 라벨 — 투영 후 중심점(그룹 transform 좌표계). NaN(클립됨) 제외.
   const usStateLabels = useMemo(() => (dcMode ? usStates.map((f: any) => { const c = pathGen.centroid(f); return { c, ko: US_STATE_KO[f.properties?.name] || f.properties?.name || "" }; }).filter((l: any) => Number.isFinite(l.c[0]) && Number.isFinite(l.c[1])) : []), [dcMode, usStates, pathGen]);
   const dcSites = useMemo(() => dc.sites.filter((s) => s.location.lat != null && s.location.lng != null), []);
+  // ── 전력 조달 레이어(§1~§3) ──
+  const txPoints = useMemo(() => { const pts: number[][] = []; for (const l of (txData as any).lines) for (const c of l.c) pts.push(c); return pts; }, []);
+  const txPath = useMemo(() => (dcMode && dcTx ? (pathGen({ type: "MultiLineString", coordinates: (txData as any).lines.map((l: any) => l.c) } as any) || "") : ""), [dcMode, dcTx, pathGen]);
+  const linkedDcIds = useMemo(() => new Set(dcPower.links.map((l) => l.dc_id)), []);
+  const dcLinksR = useMemo(() => dcPower.links.map((l) => { const p = PLANT_BY_ID.get(l.plant_id); const s = dcSites.find((x) => x.id === l.dc_id); return p && s ? { link: l, plant: p, dc: s } : null; }).filter(Boolean) as { link: DcLink; plant: Plant; dc: Site }[], [dcSites]);
+  // ③ 계통 급전 = grid_share 우세(≥0.5) & 명시 링크(①②) 없는 DC → 최근접 345kV 선로로 스냅(근사)
+  const snapLines = useMemo(() => {
+    if (!dcMode || !dcTx) return [] as { id: string; dc: [number, number]; snap: [number, number] }[];
+    const out: { id: string; dc: [number, number]; snap: [number, number] }[] = [];
+    for (const s of dcSites) {
+      const frac = gridShareFrac(s.power?.grid_share);
+      if (frac == null || frac < 0.5 || linkedDcIds.has(s.id)) continue;
+      const dlng = s.location.lng!, dlat = s.location.lat!;
+      let best = Infinity, bx = dlng, by = dlat;
+      for (const pt of txPoints) { const dx = pt[0] - dlng, dy = pt[1] - dlat, d = dx * dx + dy * dy; if (d < best) { best = d; bx = pt[0]; by = pt[1]; } }
+      out.push({ id: s.id, dc: [dlng, dlat], snap: [bx, by] });
+    }
+    return out;
+  }, [dcMode, dcTx, dcSites, txPoints, linkedDcIds]);
   const dcColorOf = (s: Site) => (dcColor === "group" ? GROUP_COLOR[s.group] : dcColor === "grid" ? gridColor(s.power?.grid_operator) : creditColor(s.credit_wrapper_rating));
 
   // ── 줌/팬 ──
@@ -291,6 +321,8 @@ export default function World() {
           })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {dcMode && usStates.map((f: any, i: number) => <path key={`us${i}`} d={usStatePaths[i]} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.35} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} />)}
+          {/* 송전선 345kV+ (기존 계통 2022 · 배경층) */}
+          {txPath && <path d={txPath} fill="none" stroke="#3b82f6" strokeOpacity={0.22} strokeWidth={0.7 / t.k} strokeLinejoin="round" strokeLinecap="round" style={{ pointerEvents: "none" }} />}
           {dcMode && usStateLabels.map((l: any, i: number) => (
             <text key={`usl${i}`} x={l.c[0]} y={l.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={8 / t.k} fontWeight={500} fill="hsl(var(--muted-foreground))" fillOpacity={0.75}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5 / t.k, strokeLinejoin: "round", pointerEvents: "none" }}>{l.ko}</text>
@@ -377,6 +409,31 @@ export default function World() {
             </g>
           );
         })}
+
+        {/* ③ 계통 급전 — 최근접 345kV 스냅(근사) 점선. 발전소 특정 안 함 = 계통 풀에서 인입 */}
+        {snapLines.map((sl) => { const a = toScreen(sl.dc[0], sl.dc[1]), b = toScreen(sl.snap[0], sl.snap[1]); if (!a || !b) return null;
+          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#3b82f6" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
+
+        {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시, 흐름 없음) */}
+        {dcMode && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
+          const phys = link.tier === "physical"; const col = FUEL_COLOR[plant.fuel] || "#f97316";
+          const txt = phys ? "물리 전용 · 실제 조류" : "계약 관계 · 물리 조류 아님";
+          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={col} strokeOpacity={0.9} strokeWidth={phys ? 2 : 1.6}
+            strokeDasharray={phys ? "4 4" : "7 5"} strokeLinecap="round" className={phys ? "wf-flow" : undefined} style={{ cursor: "pointer" }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: txt, sub: link.note })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: txt, sub: link.note })}
+            onMouseLeave={() => setTip(null)} />; })}
+
+        {/* 발전소 점 (②·① 관련만) — 연료색 사각 + 글리프. DC(원)와 형태로 구분 */}
+        {dcMode && dcLinksR.map(({ plant }) => { const sc = toScreen(plant.lng, plant.lat); if (!sc || !inView(sc[0], sc[1])) return null; const col = FUEL_COLOR[plant.fuel] || "#f97316"; const FI = FUEL_ICON[plant.fuel] || Flame;
+          return <g key={`pl${plant.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FUEL_KO[plant.fuel] || plant.fuel} · ${plant.name}`, sub: `${plant.capacity_mw ? plant.capacity_mw + "MW · " : ""}${plant.note}` })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FUEL_KO[plant.fuel] || plant.fuel} · ${plant.name}` })}
+            onMouseLeave={() => setTip(null)}>
+            <rect x={sc[0] - 4.5} y={sc[1] - 4.5} width={9} height={9} rx={1.5} fill={col} fillOpacity={0.92} stroke="hsl(var(--background))" strokeWidth={1} />
+            <FI x={sc[0] - 3} y={sc[1] - 3} width={6} height={6} style={{ color: "#fff", pointerEvents: "none" }} />
+          </g>; })}
 
         {/* DC 모드: 원전·SMR PPA(회사 단위 — 선 안 이음) */}
         {dcMode && dcNuke && dc.nuclear_deals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
@@ -566,6 +623,7 @@ export default function World() {
               {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
             </div>
             <label className="mt-2 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcNuke} onChange={(e) => setDcNuke(e.target.checked)} className="accent-purple-500" /><Atom className="h-3 w-3 text-purple-500" />원전·SMR PPA ({dc.nuclear_deals.length})</label>
+            <label className="mt-1 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcTx} onChange={(e) => setDcTx(e.target.checked)} className="accent-blue-500" /><Zap className="h-3 w-3 text-blue-500" />송전선 345kV+ · 계통 스냅</label>
           </div>
           <div className="rounded-md border border-border bg-card/90 p-2.5 text-[10.5px] shadow-sm backdrop-blur">
             <div className="mb-1 font-semibold">{dcColor === "group" ? "그룹" : dcColor === "grid" ? "전력계통(ISO)" : "신용등급(래퍼)"}</div>
@@ -574,6 +632,11 @@ export default function World() {
             {dcColor === "credit" && [["A~AAA", "#16a34a", "투자등급"], ["BBB-", "#f59e0b", "취약 IG(오라클)"], ["BB", "#dc2626", "정크"], ["미평가", "#94a3b8", "비상장"]].map(([k, c, v]) => <div key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />{k} · {v}</div>)}
             <div className="mt-1.5 flex items-center gap-2 border-t border-border/50 pt-1.5 text-muted-foreground"><span className="flex items-center gap-1"><Flame className="h-3 w-3" />가스</span><span className="flex items-center gap-1"><Atom className="h-3 w-3" />원전</span><span className="flex items-center gap-1"><Zap className="h-3 w-3" />계통</span></div>
             <div className="mt-1 text-[9.5px] leading-tight text-muted-foreground">원 크기 = 용량 · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 점선 원판 = 페르미</div>
+            <div className="mt-1.5 border-t border-border/50 pt-1.5 text-[9.5px] leading-tight text-muted-foreground">
+              <div className="flex items-center gap-1"><span className="inline-block h-0 w-4 border-t-2 border-dashed" style={{ borderColor: "#f97316" }} /><b>①물리</b> 흐름 애니메이션 = 실제 조류 · <span className="inline-block h-0 w-4 border-t border-dotted" style={{ borderColor: "#16a34a" }} /><b>②계약</b> 물리 조류 아님</div>
+              <div className="mt-0.5">▪ 발전소(사각) = ①·② 관련만 · <span style={{ color: "#3b82f6" }}>─</span> 송전선 <b>기존 계통 2022 기준</b>(신설선 미포함)</div>
+              <div className="mt-0.5">③ 계통 스냅 점선 = <b>근사</b> — 실제 인입선·변전소 비공개. RTO 권역 채색은 후속(데이터 잠김)</div>
+            </div>
           </div>
         </div>
 

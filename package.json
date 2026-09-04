@@ -51,7 +51,8 @@
     "healthcheck": "tsx script/healthcheck.ts",
     "db:push": "tsx script/db-push-guard.ts",
     "world:build": "tsx script/build-world-topo.ts",
-    "us:build": "tsx script/build-us-states.ts"
+    "us:build": "tsx script/build-us-states.ts",
+    "tx:build": "tsx script/build-us-transmission.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "note": "fable 전력지도 명세 §7. ②·① 계급 연결선용 발전소 + DC↔발전소 링크. ③계통 스냅은 렌더 시 최근접 345kV 계산(여기 없음).",
+    "as_of": "2026-09"
+  },
+  "plants": [
+    {
+      "id": "entergy-hyperion-gas",
+      "name": "Entergy 리치랜드 가스복합",
+      "fuel": "gas",
+      "capacity_mw": 2262,
+      "lat": 32.4771,
+      "lng": -91.6323,
+      "eia_plant_id": null,
+      "source_url": "https://www.entergynewsroom.com/",
+      "note": "메타 하이페리온 부하용 LPSC 승인 신설 3기 중 복합발전 2기 · ~2028 가동 · EIA-860 미등재(건설중)"
+    },
+    {
+      "id": "fermi-ap1000",
+      "name": "페르미 아메리카 AP1000 (마타도어)",
+      "fuel": "nuclear",
+      "capacity_mw": null,
+      "lat": 35.31,
+      "lng": -101.57,
+      "eia_plant_id": null,
+      "source_url": "https://www.nrc.gov/reactors/new-reactors/large-lwr/col/fermi-energy-intel-campus.html",
+      "note": "근사 좌표(Pantex 인접) · NRC COLA 단계 · 미건설 · 캠퍼스 사설망 AP1000 4기"
+    }
+  ],
+  "links": [
+    {
+      "dc_id": "meta-hyperion",
+      "plant_id": "entergy-hyperion-gas",
+      "tier": "contract",
+      "note": "유틸리티(Entergy)가 이 부하 때문에 신설하는 가스복합 — 계약 관계, 물리 조류 아님",
+      "source_url": "https://www.entergynewsroom.com/"
+    },
+    {
+      "dc_id": "fermi-matador",
+      "plant_id": "fermi-ap1000",
+      "tier": "physical",
+      "note": "캠퍼스 내 사설 전력망(가스 6GW + AP1000 4기) — 전용 물리 연결",
+      "source_url": "https://www.nrc.gov/reactors/new-reactors/large-lwr/col/fermi-energy-intel-campus.html"
+    }
+  ]
+}
