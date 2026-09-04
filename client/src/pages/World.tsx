@@ -55,6 +55,8 @@ const STAGE_KO: Record<string, string> = { announced: "발표", approved: "승�
 const creditColor = (r: string | null) => (!r ? "#94a3b8" : r === "BBB-" ? "#f59e0b" : r.startsWith("BB") ? "#dc2626" : "#16a34a");
 const capMW = (s: Site) => s.capacity_operational_mw ?? s.capacity_target_mw.max ?? s.capacity_target_mw.min ?? null;
 const dcMarkerR = (s: Site) => { if (s.id === "fermi-matador") return 7; const c = capMW(s); return c ? 4 + 0.16 * Math.sqrt(c) : 5; };
+// 계통 의존도(grid_share) → 외곽 링 채움 비율. null = undisclosed(점선 링). "100% (…)"·"minimal (200MW ESA)" 등 접미어 허용.
+const gridShareFrac = (share?: string): number | null => { if (!share) return null; const s = share.toLowerCase(); if (s.includes("100%") || s.includes("majority")) return s.includes("majority") ? 0.72 : 1; if (s.includes("mixed")) return 0.5; if (s.includes("minority")) return 0.3; if (s.includes("minimal")) return 0.12; return null; };
 const primaryGen = (p?: Power): "gas" | "nuclear" | "battery" | "grid" => { if (!p) return "grid"; const ts = p.onsite_generation.map((g) => g.type); if (ts.some((t) => t.includes("nuclear") || t === "smr")) return "nuclear"; if (ts.some((t) => t.includes("gas"))) return "gas"; if (ts.some((t) => t.includes("battery") || t.includes("solar"))) return "battery"; return "grid"; };
 const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Zap } as const;
 const US_BBOX: [number, number, number, number] = [-125, 24, -66, 49]; // 본토 프레임
@@ -391,12 +393,17 @@ export default function World() {
         {dcMode && dcSites.filter((s) => dcGroups[s.group]).map((s) => {
           const sc = toScreen(s.location.lng!, s.location.lat!); if (!sc || !inView(sc[0], sc[1])) return null;
           const on = s.id === dcSel; const col = dcColorOf(s); const r = dcMarkerR(s); const GenI = GEN_ICON[primaryGen(s.power)];
+          const frac = gridShareFrac(s.power?.grid_share); const RR = r + 3.2; const CIRC = 2 * Math.PI * RR;
           return (<g key={`dc${s.id}`} style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcSel(s.id); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: s.name, sub: `${s.location.city}, ${s.location.state} · ${capMW(s) ?? "?"}MW · ${s.power?.grid_operator ?? ""}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: s.name, sub: `${s.location.city}, ${s.location.state}` })}
             onMouseLeave={() => setTip(null)}>
+            {/* 외곽 링 = 계통 의존도(grid_share): 꽉 참=100% 계통 → 빈 링=현장발전 위주. 점선=미공개 */}
+            <circle cx={sc[0]} cy={sc[1]} r={RR} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.16} strokeWidth={1.6} style={{ pointerEvents: "none" }} />
+            <circle cx={sc[0]} cy={sc[1]} r={RR} fill="none" stroke={col} strokeOpacity={0.9} strokeWidth={1.6} strokeLinecap="round"
+              strokeDasharray={frac == null ? "1.5 3" : `${(frac * CIRC).toFixed(2)} ${CIRC.toFixed(2)}`} transform={`rotate(-90 ${sc[0]} ${sc[1]})`} style={{ pointerEvents: "none" }} />
             <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={on ? 0.55 : 0.32} stroke={col} strokeWidth={on ? 2 : 1.2} strokeDasharray={s.id === "fermi-matador" ? "3 2" : undefined} />
             <GenI x={sc[0] - 3.5} y={sc[1] - 3.5} width={7} height={7} style={{ color: col, pointerEvents: "none" }} />
             {/* 이름은 호버 툴팁으로(마커 크기=규모가 주인공). 선택 시에만 지도에 라벨 고정. */}
@@ -566,7 +573,7 @@ export default function World() {
             {dcColor === "grid" && [["ERCOT", "텍사스"], ["PJM", "동부"], ["MISO", "중서부"], ["SPP", "대평원"], ["비ISO", "TVA·WECC 등"]].map(([k, v]) => <div key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: gridColor(k) }} />{k} · {v}</div>)}
             {dcColor === "credit" && [["A~AAA", "#16a34a", "투자등급"], ["BBB-", "#f59e0b", "취약 IG(오라클)"], ["BB", "#dc2626", "정크"], ["미평가", "#94a3b8", "비상장"]].map(([k, c, v]) => <div key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />{k} · {v}</div>)}
             <div className="mt-1.5 flex items-center gap-2 border-t border-border/50 pt-1.5 text-muted-foreground"><span className="flex items-center gap-1"><Flame className="h-3 w-3" />가스</span><span className="flex items-center gap-1"><Atom className="h-3 w-3" />원전</span><span className="flex items-center gap-1"><Zap className="h-3 w-3" />계통</span></div>
-            <div className="mt-1 text-[9.5px] text-muted-foreground">원 크기 = 용량 · 점선원 = 페르미(확보전력)</div>
+            <div className="mt-1 text-[9.5px] leading-tight text-muted-foreground">원 크기 = 용량 · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 점선 원판 = 페르미</div>
           </div>
         </div>
 
