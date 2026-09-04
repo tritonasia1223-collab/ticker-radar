@@ -166,8 +166,7 @@ export default function World() {
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   const [listOpen, setListOpen] = useState(true); // 항로 목록 패널(접기 가능)
-  const [compareSet, setCompareSet] = useState<Set<string>>(new Set()); // 목록 체크박스 = 다중 비교 활성
-  const toggleCompare = useCallback((id: string) => setCompareSet((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }), []);
+  const [compareSet, setCompareSet] = useState<Set<string>>(new Set()); // 목록 체크박스 = 다중 비교 활성 (toggleCompare 는 flyRoute 이후 정의)
   // ── 데이터센터 모드(지도 위 오버레이) ──
   const [dcMode, setDcMode] = useState(false);
   const [dcColor, setDcColor] = useState<DcMode>("group");
@@ -290,6 +289,29 @@ export default function World() {
     else if (ent.kind === "route") { const r = routeById.get(ent.id); if (r) flyRoute(r); }
   }, [features, portById, chokeById, routeById, flyFeatureCentered, flyPoint, flyRoute]);
 
+  // 여러 항로를 한 화면에 — 중심 경도는 항로 중점들의 원형 평균, 투영 후 좌표로 bbox(경계 넘김 안전)
+  const flyToRoutes = useCallback((ids: string[]) => {
+    const routes = ids.map((id) => routeById.get(id)).filter(Boolean) as RouteT[];
+    if (!routes.length) return;
+    let sx = 0, sy = 0;
+    for (const r of routes) { const ml = (r.coords[Math.floor(r.coords.length / 2)][0] * Math.PI) / 180; sx += Math.cos(ml); sy += Math.sin(ml); }
+    const lon = (Math.atan2(sy, sx) * 180) / Math.PI;
+    const proj = projFor(lon);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const r of routes) for (const c of r.coords) { const p = proj(c as [number, number]); if (!p) continue; x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+    if (Number.isFinite(x0)) fitTo(lon, [x0, y0, x1, y1], 0.72);
+  }, [routeById, projFor, fitTo]);
+
+  // 항로 토글 = 체크박스·지도 라벨·목록 이름 공통 진입점(§연동). compareSet 이 하이라이트+카메라+카드를 몰이.
+  const toggleCompare = useCallback((id: string) => {
+    const n = new Set(compareSet); const adding = !n.has(id);
+    adding ? n.add(id) : n.delete(id);
+    setCompareSet(n);
+    const ids = [...n];
+    if (ids.length) flyToRoutes(ids);
+    setSel(adding ? { kind: "route", id } : (ids.length ? { kind: "route", id: ids[ids.length - 1] } : null));
+  }, [compareSet, flyToRoutes]);
+
   // 하이라이트 집합(선택 개체가 인프라면 그 기준, 아니면 hover 인프라)
   const focus = (sel && sel.kind !== "country" ? sel : hoverInfra) as { kind: "route" | "choke" | "port"; id: string } | null;
   const { hlRoutes, hlChokes, hlPorts } = useMemo(() => {
@@ -408,7 +430,7 @@ export default function World() {
               onMouseEnter={(e) => { setHoverInfra({ kind: "route", id: r.id }); setTip({ x: e.clientX, y: e.clientY, text: `➤ ${r.ko}`, sub: r.direction_note }); }}
               onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `➤ ${r.ko}`, sub: r.direction_note })}
               onMouseLeave={() => { setHoverInfra(null); setTip(null); }}
-              onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "route", id: r.id }); }}>{r.ko}</text>
+              onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } toggleCompare(r.id); }}>{r.ko}</text>
           );
         })}
 
@@ -590,14 +612,14 @@ export default function World() {
                 return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
                   className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"}`}>
                   <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: routeColor(r.id) }} />
-                  <button onClick={() => goTo({ kind: "route", id: r.id })} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 단독 보기(카드)">
+                  <button onClick={() => toggleCompare(r.id)} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 비교 켜기/끄기 + 이동 + 카드">
                     <span className="h-2 w-3 shrink-0 rounded-sm" style={{ background: routeColor(r.id) }} /><span className="truncate">{r.ko}</span></button></div>); })}
               {compareSet.size > 0 && (
                 <div className="mt-0.5 border-t border-border px-2.5 pt-1">
                   <button onClick={() => setCompareSet(new Set())} className="text-[10.5px] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
                 </div>
               )}
-              <div className="mt-0.5 border-t border-border px-2.5 pt-1 text-[10px] leading-tight text-muted-foreground">체크 = 여러 항로 동시 비교 · 이름 클릭 = 단독 카드</div>
+              <div className="mt-0.5 border-t border-border px-2.5 pt-1 text-[10px] leading-tight text-muted-foreground">체크·이름·지도 클릭 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게)</div>
             </div>
           )}
         </div>
@@ -625,7 +647,7 @@ export default function World() {
                 <span className="tabular-nums">{p.teu_m}M TEU</span><span className="text-[10.5px] text-muted-foreground">({infra._meta.data_year} 기준)</span>
               </div>
               {ctyIdx != null && <div className="mt-2 text-[11px] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => goTo({ kind: "route", id: r.id })}>{r.ko}</Chip>)}</div></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={`https://lloydslist.com`} label={infra._meta.teu_source} />
             </>); })()}
           {sel.kind === "choke" && (() => { const c = chokeById.get(sel.id)!; const rts = (routesByNode.get(c.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
@@ -635,7 +657,7 @@ export default function World() {
               <div className="text-[11px] text-muted-foreground">{c.en}</div>
               <div className="mt-2 text-[12px]"><span className="text-muted-foreground">연결</span> {c.connects}</div>
               <div className="mt-1.5 text-[11.5px] leading-snug">{c.throughput_note}</div>
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => goTo({ kind: "route", id: r.id })}>{r.ko}</Chip>)}</div></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={c.source_url} />
             </>); })()}
           {sel.kind === "route" && (() => { const r = routeById.get(sel.id)!; const alt = r.alt_of ? routeById.get(r.alt_of) : null;
