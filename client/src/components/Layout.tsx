@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Presentation, Pencil, Globe, Server } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Presentation, Pencil, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { useEditMode } from "@/components/EditModeProvider";
@@ -8,7 +8,6 @@ const NAV = [
   { href: "/capitalism", label: "자본주의 경제사", icon: History },
   { href: "/fed", label: "미국 유동성", icon: Building2 },
   { href: "/world", label: "세계 현황판", icon: Globe },
-  { href: "/datacenters", label: "미국 데이터센터", icon: Server },
   // 블록체인 구조 — 작업 일시 중단(paused). nav 에서 숨김. 라우트·페이지·엔진·테스트는 그대로 두고 재개 시 주석 해제.
   // { href: "/learn/blockchain", label: "블록체인 구조", icon: Blocks },
   { href: "/", label: "종목 발견", icon: Radar },
