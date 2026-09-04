@@ -59,6 +59,8 @@ const primaryGen = (p?: Power): "gas" | "nuclear" | "battery" | "grid" => { if (
 const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Zap } as const;
 const US_BBOX: [number, number, number, number] = [-125, 24, -66, 49]; // 본토 프레임
 type DcMode = "group" | "grid" | "credit";
+// 주 이름(us-atlas properties.name → 한글). DC 모드에서 주 경계 라벨용.
+const US_STATE_KO: Record<string, string> = { Alabama: "앨라배마", Alaska: "알래스카", Arizona: "애리조나", Arkansas: "아칸소", California: "캘리포니아", Colorado: "콜로라도", Connecticut: "코네티컷", Delaware: "델라웨어", "District of Columbia": "워싱턴 D.C.", Florida: "플로리다", Georgia: "조지아", Hawaii: "하와이", Idaho: "아이다호", Illinois: "일리노이", Indiana: "인디애나", Iowa: "아이오와", Kansas: "캔자스", Kentucky: "켄터키", Louisiana: "루이지애나", Maine: "메인", Maryland: "메릴랜드", Massachusetts: "매사추세츠", Michigan: "미시간", Minnesota: "미네소타", Mississippi: "미시시피", Missouri: "미주리", Montana: "몬태나", Nebraska: "네브래스카", Nevada: "네바다", "New Hampshire": "뉴햄프셔", "New Jersey": "뉴저지", "New Mexico": "뉴멕시코", "New York": "뉴욕", "North Carolina": "노스캐롤라이나", "North Dakota": "노스다코타", Ohio: "오하이오", Oklahoma: "오클라호마", Oregon: "오리건", Pennsylvania: "펜실베이니아", "Rhode Island": "로드아일랜드", "South Carolina": "사우스캐롤라이나", "South Dakota": "사우스다코타", Tennessee: "테네시", Texas: "텍사스", Utah: "유타", Vermont: "버몬트", Virginia: "버지니아", Washington: "워싱턴", "West Virginia": "웨스트버지니아", Wisconsin: "위스콘신", Wyoming: "와이오밍" };
 const WORLD_LABEL_TOP = 26;
 const K_REGION = 2.5, K_LOCAL = 6;
 const CENTER_LON = 150;
@@ -141,6 +143,8 @@ export default function World() {
   const [dcNotes, setDcNotes] = useState(false);
   const usStates = useMemo(() => (feature(usStatesTopo as any, (usStatesTopo as any).objects.states) as any).features, []);
   const usStatePaths = useMemo(() => (dcMode ? usStates.map((f: any) => pathGen(f) || "") : []), [dcMode, usStates, pathGen]);
+  // 주 이름 라벨 — 투영 후 중심점(그룹 transform 좌표계). NaN(클립됨) 제외.
+  const usStateLabels = useMemo(() => (dcMode ? usStates.map((f: any) => { const c = pathGen.centroid(f); return { c, ko: US_STATE_KO[f.properties?.name] || f.properties?.name || "" }; }).filter((l: any) => Number.isFinite(l.c[0]) && Number.isFinite(l.c[1])) : []), [dcMode, usStates, pathGen]);
   const dcSites = useMemo(() => dc.sites.filter((s) => s.location.lat != null && s.location.lng != null), []);
   const dcColorOf = (s: Site) => (dcColor === "group" ? GROUP_COLOR[s.group] : dcColor === "grid" ? gridColor(s.power?.grid_operator) : creditColor(s.credit_wrapper_rating));
 
@@ -285,6 +289,10 @@ export default function World() {
           })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {dcMode && usStates.map((f: any, i: number) => <path key={`us${i}`} d={usStatePaths[i]} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.35} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} />)}
+          {dcMode && usStateLabels.map((l: any, i: number) => (
+            <text key={`usl${i}`} x={l.c[0]} y={l.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={8 / t.k} fontWeight={500} fill="hsl(var(--muted-foreground))" fillOpacity={0.75}
+              style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5 / t.k, strokeLinejoin: "round", pointerEvents: "none" }}>{l.ko}</text>
+          ))}
           {/* L2 항로 — 항로별 색. 선택/hover 시 진하게+흐름 애니메이션, 나머지 감쇠 */}
           {!dcMode && layers.routes && infra.routes.map((r, i) => {
             const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
@@ -391,7 +399,8 @@ export default function World() {
             onMouseLeave={() => setTip(null)}>
             <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={on ? 0.55 : 0.32} stroke={col} strokeWidth={on ? 2 : 1.2} strokeDasharray={s.id === "fermi-matador" ? "3 2" : undefined} />
             <GenI x={sc[0] - 3.5} y={sc[1] - 3.5} width={7} height={7} style={{ color: col, pointerEvents: "none" }} />
-            {(on || t.k >= 3) && <text x={sc[0]} y={sc[1] - r - 3} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={col}
+            {/* 이름은 호버 툴팁으로(마커 크기=규모가 주인공). 선택 시에만 지도에 라벨 고정. */}
+            {on && <text x={sc[0]} y={sc[1] - r - 3} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={col}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>{s.name}</text>}
           </g>);
         })}
