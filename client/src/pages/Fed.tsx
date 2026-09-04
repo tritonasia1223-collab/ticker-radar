@@ -529,7 +529,8 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
   const firstMonth = tm[0]?.date.slice(0, 7);
   const flowBefore = !!selMonth && !!firstMonth && selMonth < firstMonth;
   const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
-  const centerMi = selMi >= 0 ? selMi : tm.length - 1; // 창 정중앙에 놓을 월(상단 슬라이더 연동)
+  // 창 정중앙 월. 데이터 이전(2014 미만)이면 첫 월로 클램프 → 2014 경계 넘을 때 점프 없이 이어짐. 이후/미래는 최신.
+  const centerMi = selMi >= 0 ? selMi : (flowBefore ? 0 : tm.length - 1);
   const fk = fbucket;
   // 중앙 고정: centerMi 를 정중앙, 좌우 HALF 개월. 범위 밖(미래/이전)은 빈 슬롯 패딩 → 선이 항상 정중앙(0.5).
   const chartData: any[] = [];
@@ -569,12 +570,11 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
         </span>
       </div>
 
-      {flowBefore && <div className="text-[11px] text-amber-600 mb-1">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 최신 기준</div>}
       {/* 단일 오버레이 차트 — 순발행 막대 위 연준 보유증감(청록) 겹침. 중앙 세로선 고정, 선택 월이 그 아래로 흐름. */}
       <div className="relative">
         {/* 중앙 고정선(0.5) — 플롯 좌측 52px + (100%−60px)*0.5. 선택(중앙) 월이 항상 이 아래. */}
-        <div className="pointer-events-none absolute z-10 border-l-2 border-dashed" style={{ left: `calc(52px + (100% - 60px) * 0.5)`, top: 2, bottom: 22, borderColor: NEG, opacity: 0.55 }} />
-        <div className="h-[300px]">
+        {!flowBefore && <div className="pointer-events-none absolute z-10 border-l-2 border-dashed" style={{ left: `calc(52px + (100% - 60px) * 0.5)`, top: 2, bottom: 22, borderColor: NEG, opacity: 0.55 }} />}
+        <div className={`h-[300px] ${flowBefore ? "opacity-40" : ""}`}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}>
               <XAxis dataKey="date" tickFormatter={fym} minTickGap={28} tick={{ fontSize: 9, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
@@ -597,6 +597,15 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        {/* 데이터 없음(2014 이전) — 레이아웃 안 밀도록 흐린 그래프 중앙에 팝업으로 */}
+        {flowBefore && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+            <div className="rounded-md border border-amber-500/40 bg-popover/95 px-3 py-2 text-center text-[12px] text-amber-700 shadow-md">
+              ⚠ 선택 시점({selMonth})은 발행 데이터 이전
+              <div className="text-[11px] text-muted-foreground">국채 종류별 데이터는 2014년부터</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 고정 3슬롯 — 라벨 고정, 중앙(선택) 월 숫자. 상단 슬라이더로 데이터가 선 아래로 흐름. 항등식: 순발행 = 연준 + 민간·해외 */}
@@ -647,7 +656,6 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
               <span className="text-[12px] text-muted-foreground cursor-help leading-none">ⓘ</span>
             </Hint>
           </div>
-          {beforeData && <div className="text-[11px] text-amber-600 mt-0.5">⚠ 선택 시점({selMonth})은 발행 데이터(2014~) 이전 — 아래는 최신 기준 참고용</div>}
         </div>
         <div className="text-right shrink-0 text-[12px] tabular-nums"><div>시장성 총 <b>{T(last.total)}</b></div></div>
       </div>
@@ -674,18 +682,28 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
           <button type="button" onClick={() => setPctMode(true)} className={`px-1.5 py-0.5 border-l border-border ${pctMode ? "bg-muted font-semibold" : "text-muted-foreground"}`}>구성비%</button>
         </div>
       </div>
-      <div className={`h-[180px] ${beforeData ? "opacity-40" : ""}`}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} stackOffset={pctMode ? "expand" : "none"}>
-            <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-            <YAxis tickFormatter={pctMode ? (v) => `${Math.round(v * 100)}%` : (v) => `$${(v / 1e6).toFixed(1)}조`} domain={pctMode ? [0, 1] : active ? ["auto", "auto"] : undefined} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={44} className="text-muted-foreground" />
-            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
-            {(pctMode || !active)
-              ? TB_TYPES.map((x) => <Area key={x.k} dataKey={x.k} name={x.label} stackId="1" stroke={x.color} fill={x.color} fillOpacity={dim(x.k) ? 0.15 : 0.55} isAnimationActive={false} />)
-              : <Area key={active.k} dataKey={active.k} name={active.label} stroke={active.color} fill={active.color} fillOpacity={0.3} strokeWidth={2} isAnimationActive={false} />}
-            {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="relative">
+        <div className={`h-[180px] ${beforeData ? "opacity-40" : ""}`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={tm} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} stackOffset={pctMode ? "expand" : "none"}>
+              <XAxis dataKey="date" tickFormatter={yr} minTickGap={44} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <YAxis tickFormatter={pctMode ? (v) => `${Math.round(v * 100)}%` : (v) => `$${(v / 1e6).toFixed(1)}조`} domain={pctMode ? [0, 1] : active ? ["auto", "auto"] : undefined} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={44} className="text-muted-foreground" />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [T(v), n]} labelFormatter={(l) => String(l).slice(0, 7)} />
+              {(pctMode || !active)
+                ? TB_TYPES.map((x) => <Area key={x.k} dataKey={x.k} name={x.label} stackId="1" stroke={x.color} fill={x.color} fillOpacity={dim(x.k) ? 0.15 : 0.55} isAnimationActive={false} />)
+                : <Area key={active.k} dataKey={active.k} name={active.label} stroke={active.color} fill={active.color} fillOpacity={0.3} strokeWidth={2} isAnimationActive={false} />}
+              {guideDate && <ReferenceLine x={guideDate} stroke={NEG} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3 3" />}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        {beforeData && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+            <div className="rounded-md border border-amber-500/40 bg-popover/95 px-3 py-2 text-center text-[12px] text-amber-700 shadow-md">
+              ⚠ 선택 시점({selMonth})은 발행 데이터 이전
+              <div className="text-[11px] text-muted-foreground">국채 종류별 데이터는 2014년부터</div>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
