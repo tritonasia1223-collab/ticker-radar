@@ -608,26 +608,24 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
         )}
       </div>
 
-      {/* 고정 3슬롯 — 라벨 고정, 중앙(선택) 월 숫자. 상단 슬라이더로 데이터가 선 아래로 흐름. 항등식: 순발행 = 연준 + 민간·해외 */}
-      {centerRow?.real && (
-        <div className="mt-2 flex items-center justify-center gap-1.5 border-t border-border/40 pt-1.5 text-center">
-          <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{fym(centerRow.date)}</span>
-          <div className="flex w-[110px] flex-col items-center leading-tight">
-            <span className="text-[9.5px] text-muted-foreground">재무부 순발행</span>
-            <b className="text-[13px] tabular-nums" style={{ color: centerRow.sup >= 0 ? "#7c3aed" : "#f97316" }}>{signed(centerRow.sup)}</b>
-          </div>
-          <span className="shrink-0 text-muted-foreground">→</span>
-          <div className="flex w-[110px] flex-col items-center leading-tight">
-            <span className="text-[9.5px] text-muted-foreground">연준 보유증감</span>
-            <b className="text-[13px] tabular-nums" style={{ color: A_SOMA }}>{signed(centerRow.fed)}</b>
-          </div>
-          <span className="shrink-0 text-muted-foreground">+</span>
-          <div className="flex w-[110px] flex-col items-center leading-tight">
-            <span className="text-[9.5px] text-muted-foreground">민간·해외 보유증감</span>
-            <b className="text-[13px] tabular-nums">{signed(centerRow.res)}</b>
-          </div>
+      {/* 고정 3슬롯 — 항상 렌더(카드 높이 불변). 데이터 없으면 '—'. 상단 슬라이더로 데이터가 선 아래로 흐름. */}
+      <div className="mt-2 flex items-center justify-center gap-1.5 border-t border-border/40 pt-1.5 text-center">
+        <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{centerRow?.real ? fym(centerRow.date) : ""}</span>
+        <div className="flex w-[110px] flex-col items-center leading-tight">
+          <span className="text-[9.5px] text-muted-foreground">재무부 순발행</span>
+          <b className="text-[13px] tabular-nums" style={{ color: centerRow?.real ? (centerRow.sup >= 0 ? "#7c3aed" : "#f97316") : undefined }}>{centerRow?.real ? signed(centerRow.sup) : "—"}</b>
         </div>
-      )}
+        <span className="shrink-0 text-muted-foreground">→</span>
+        <div className="flex w-[110px] flex-col items-center leading-tight">
+          <span className="text-[9.5px] text-muted-foreground">연준 보유증감</span>
+          <b className="text-[13px] tabular-nums" style={{ color: centerRow?.real ? A_SOMA : undefined }}>{centerRow?.real ? signed(centerRow.fed) : "—"}</b>
+        </div>
+        <span className="shrink-0 text-muted-foreground">+</span>
+        <div className="flex w-[110px] flex-col items-center leading-tight">
+          <span className="text-[9.5px] text-muted-foreground">민간·해외 보유증감</span>
+          <b className="text-[13px] tabular-nums">{centerRow?.real ? signed(centerRow.res) : "—"}</b>
+        </div>
+      </div>
     </Card>
   );
 }
