@@ -59,6 +59,21 @@ const capMW = (s: Site) => s.capacity_operational_mw ?? s.capacity_target_mw.max
 const dcMarkerR = (s: Site) => { if (s.id === "fermi-matador") return 7; const c = capMW(s); return c ? 4 + 0.16 * Math.sqrt(c) : 5; };
 // 계통 의존도(grid_share) → 외곽 링 채움 비율. null = undisclosed(점선 링). "100% (…)"·"minimal (200MW ESA)" 등 접미어 허용.
 const gridShareFrac = (share?: string): number | null => { if (!share) return null; const s = share.toLowerCase(); if (s.includes("100%") || s.includes("majority")) return s.includes("majority") ? 0.72 : 1; if (s.includes("mixed")) return 0.5; if (s.includes("minority")) return 0.3; if (s.includes("minimal")) return 0.12; return null; };
+const dcLoadStr = (mw: number | null) => (mw == null ? "용량 미공개" : mw >= 1000 ? `${(mw / 1000).toFixed(mw % 1000 === 0 ? 0 : 1)}GW` : `${mw}MW`);
+// 마커 hover 문장 — 인코딩을 말로 풂(§E-4). 예: '1.2GW · 현장 가스 위주(계통 minimal)'
+function dcHoverSub(s: Site): string {
+  const load = dcLoadStr(s.capacity_target_mw.max ?? s.capacity_target_mw.min ?? s.capacity_operational_mw);
+  if (s.id === "fermi-matador") return `${load} · 사설 전력망(가스 6GW + AP1000 4기, 계획)`;
+  const p = s.power; if (!p) return load;
+  const frac = gridShareFrac(p.grid_share);
+  const ts = p.onsite_generation.map((g) => g.type);
+  const genKo = ts.some((t) => t.includes("nuclear") || t === "smr") ? "원전" : ts.some((t) => t.includes("gas")) ? "가스" : ts.some((t) => t.includes("battery") || t.includes("solar")) ? "배터리" : null;
+  let phrase: string;
+  if (genKo && frac != null && frac <= 0.5) phrase = `현장 ${genKo} 위주(계통 ${p.grid_share})`;
+  else if (genKo) phrase = `현장 ${genKo} + 계통 ${p.grid_operator}`;
+  else phrase = `계통 ${p.grid_operator} ${p.grid_share}`;
+  return `${load} · ${phrase}`;
+}
 const primaryGen = (p?: Power): "gas" | "nuclear" | "battery" | "grid" => { if (!p) return "grid"; const ts = p.onsite_generation.map((g) => g.type); if (ts.some((t) => t.includes("nuclear") || t === "smr")) return "nuclear"; if (ts.some((t) => t.includes("gas"))) return "gas"; if (ts.some((t) => t.includes("battery") || t.includes("solar"))) return "battery"; return "grid"; };
 const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Zap } as const;
 const US_BBOX: [number, number, number, number] = [-125, 24, -66, 49]; // 본토 프레임
@@ -482,8 +497,8 @@ export default function World() {
           return (<g key={`dc${s.id}`} style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcSel(s.id); }}
-            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: s.name, sub: `${s.location.city}, ${s.location.state} · ${capMW(s) ?? "?"}MW · ${s.power?.grid_operator ?? ""}` })}
-            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: s.name, sub: `${s.location.city}, ${s.location.state}` })}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${s.name} · ${s.location.state}`, sub: dcHoverSub(s) })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${s.name} · ${s.location.state}`, sub: dcHoverSub(s) })}
             onMouseLeave={() => setTip(null)}>
             {/* 외곽 링 = 계통 의존도(grid_share): 꽉 참=100% 계통 → 빈 링=현장발전 위주. 점선=미공개 */}
             <circle cx={sc[0]} cy={sc[1]} r={RR} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.16} strokeWidth={1.6} style={{ pointerEvents: "none" }} />
@@ -641,35 +656,28 @@ export default function World() {
       {dcMode && (<>
         <div className="absolute left-4 top-16 w-60 space-y-2">
           <div className="rounded-md border border-border bg-card/90 p-2.5 shadow-sm backdrop-blur">
-            <div className="flex items-center gap-1.5 text-sm font-bold"><Server className="h-4 w-4" /> 미국 AI 데이터센터</div>
+            <div className="flex items-center gap-1.5 text-sm font-bold"><Server className="h-4 w-4" /> 미국 AI 데이터센터
+              <span className="ml-auto cursor-help text-[12px] font-normal text-muted-foreground" title="원 = 데이터센터(크기=IT 용량) · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 내부 아이콘 = 발전원(가스·원전·배터리) · 사각 = 발전소(①·② 관련) · 점선 원판 = 페르미(확보전력)">ⓘ</span>
+            </div>
             <div className="text-[10.5px] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
             <div className="mt-2 text-[10.5px] text-muted-foreground">색 기준</div>
             <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[11px]">
               {(["group", "grid", "credit"] as DcMode[]).map((m) => (<button key={m} onClick={() => setDcColor(m)} className={`flex-1 px-1.5 py-0.5 ${dcColor === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{m === "group" ? "그룹" : m === "grid" ? "전력계통" : "신용등급"}</button>))}
             </div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
+            {/* 칩 = 범례. 기준 전환 시 칩 줄만 교체(§E-5). 그룹 칩은 필터 겸용 */}
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {dcColor === "group" && (["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
+              {dcColor === "grid" && ([["ERCOT", "텍사스"], ["PJM", "동부"], ["MISO", "중서부"], ["SPP", "대평원"], ["비ISO", "TVA·WECC"]] as const).map(([k, v]) => (<span key={k} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px]"><span className="h-2 w-2 rounded-full" style={{ background: gridColor(k) }} />{k} {v}</span>))}
+              {dcColor === "credit" && ([["A~AAA", "#16a34a", "투자등급"], ["BBB-", "#f59e0b", "취약 IG"], ["BB", "#dc2626", "정크"], ["미평가", "#94a3b8", "비상장"]] as const).map(([k, c, v]) => (<span key={k} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px]"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{k} {v}</span>))}
             </div>
             <label className="mt-2 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcNuke} onChange={(e) => setDcNuke(e.target.checked)} className="accent-purple-500" /><Atom className="h-3 w-3 text-purple-500" />원전·SMR PPA ({dc.nuclear_deals.length})</label>
             <label className="mt-1 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcTx} onChange={(e) => setDcTx(e.target.checked)} className="accent-blue-500" /><Zap className="h-3 w-3 text-blue-500" />송전선 345kV+ · 계통 스냅</label>
+            {dcTx && <div className="ml-5 text-[9px] text-muted-foreground">기존 계통 · 2022 기준(신설선 미포함)</div>}
             <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색<span title="AI 부하 비중 = 주내 AI DC 목표부하 합 ÷ 주 평균 전력부하(EIA 2023 소매판매량÷8760). RTO 권역 채색은 폴리곤 확보 후." className="cursor-help">ⓘ</span></div>
             <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[11px]">
               {([["none", "없음"], ["load", "AI 부하 비중"]] as const).map(([m, lab]) => (<button key={m} onClick={() => setDcFill(m)} className={`flex-1 px-1.5 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
-            {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음 (부하 비중)</span></div>)}
-          </div>
-          <div className="rounded-md border border-border bg-card/90 p-2.5 text-[10.5px] shadow-sm backdrop-blur">
-            <div className="mb-1 font-semibold">{dcColor === "group" ? "그룹" : dcColor === "grid" ? "전력계통(ISO)" : "신용등급(래퍼)"}</div>
-            {dcColor === "group" && (["A", "B", "C"] as const).map((g) => <div key={g} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} · {GROUP_LABEL[g]}</div>)}
-            {dcColor === "grid" && [["ERCOT", "텍사스"], ["PJM", "동부"], ["MISO", "중서부"], ["SPP", "대평원"], ["비ISO", "TVA·WECC 등"]].map(([k, v]) => <div key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: gridColor(k) }} />{k} · {v}</div>)}
-            {dcColor === "credit" && [["A~AAA", "#16a34a", "투자등급"], ["BBB-", "#f59e0b", "취약 IG(오라클)"], ["BB", "#dc2626", "정크"], ["미평가", "#94a3b8", "비상장"]].map(([k, c, v]) => <div key={k} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />{k} · {v}</div>)}
-            <div className="mt-1.5 flex items-center gap-2 border-t border-border/50 pt-1.5 text-muted-foreground"><span className="flex items-center gap-1"><Flame className="h-3 w-3" />가스</span><span className="flex items-center gap-1"><Atom className="h-3 w-3" />원전</span><span className="flex items-center gap-1"><Zap className="h-3 w-3" />계통</span></div>
-            <div className="mt-1 text-[9.5px] leading-tight text-muted-foreground">원 크기 = 용량 · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 점선 원판 = 페르미</div>
-            <div className="mt-1.5 border-t border-border/50 pt-1.5 text-[9.5px] leading-tight text-muted-foreground">
-              <div className="flex items-center gap-1"><span className="inline-block h-0 w-4 border-t-2 border-dashed" style={{ borderColor: "#f97316" }} /><b>①물리</b> 흐름 애니메이션 = 실제 조류 · <span className="inline-block h-0 w-4 border-t border-dotted" style={{ borderColor: "#16a34a" }} /><b>②계약</b> 물리 조류 아님</div>
-              <div className="mt-0.5">▪ 발전소(사각) = ①·② 관련만 · <span style={{ color: "#3b82f6" }}>─</span> 송전선 <b>기존 계통 2022 기준</b>(신설선 미포함)</div>
-              <div className="mt-0.5">③ 계통 스냅 점선 = <b>근사</b> — 실제 인입선·변전소 비공개. RTO 권역 채색은 후속(데이터 잠김)</div>
-            </div>
+            {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음</span></div>)}
           </div>
         </div>
 
