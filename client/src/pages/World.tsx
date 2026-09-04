@@ -7,7 +7,7 @@ import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
 import { feature, neighbors } from "topojson-client";
-import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink } from "lucide-react";
+import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown } from "lucide-react";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
 import infraData from "@/data/world-infra.json";
@@ -29,7 +29,13 @@ type EntitySel =
 
 const TEAL = "#0d9488";          // 선택 하이라이트
 const AMBER = "#f59e0b";         // 해협
-const SEA = "#2563eb";           // 항로·항만
+const SEA = "#2563eb";           // 항만(파랑 점)
+// 항로별 색 — 앰버(해협)·청록(선택)·적(분쟁 예정) 회피한 범주형 팔레트
+const ROUTE_COLOR: Record<string, string> = {
+  "eu-asia-suez": "#2563eb", "cape": "#9333ea", "nsr": "#0891b2", "nwp": "#64748b",
+  "trans-pacific": "#db2777", "panama": "#16a34a", "mideast-oil": "#4f46e5", "trans-atlantic": "#0ea5e9",
+};
+const routeColor = (id: string) => ROUTE_COLOR[id] ?? SEA;
 const WORLD_LABEL_TOP = 26;
 const K_REGION = 2.5, K_LOCAL = 6;
 const CENTER_LON = 150;
@@ -46,7 +52,12 @@ const portR = (teu_m: number) => 2 + 1.35 * Math.sqrt(Math.max(teu_m, 0)); // �
 
 export default function World() {
   const topo = topoData as any;
-  const features = useMemo<Cty[]>(() => (feature(topo, topo.objects.countries) as any).features, []);
+  const features = useMemo<Cty[]>(() => {
+    const fs: Cty[] = (feature(topo, topo.objects.countries) as any).features;
+    const OVERRIDE: Record<string, string> = { TWN: "대만", PRK: "북한" }; // NAME_KO(중화민국·조선민주주의인민공화국) 교정
+    for (const f of fs) if (OVERRIDE[f.properties.iso]) f.properties.ko = OVERRIDE[f.properties.iso];
+    return fs;
+  }, []);
   const adj = useMemo<number[][]>(() => neighbors(topo.objects.countries.geometries as any), []);
   const areas = useMemo(() => features.map((f) => geoArea(f as any)), [features]);
   const worldLabelSet = useMemo(() => new Set(features.map((_, i) => i).sort((a, b) => areas[b] - areas[a]).slice(0, WORLD_LABEL_TOP)), [features, areas]);
@@ -95,6 +106,7 @@ export default function World() {
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
+  const [listOpen, setListOpen] = useState(true); // 항로 목록 패널(접기 가능)
 
   // ── 줌/팬 ──
   const svgRef = useRef<SVGSVGElement>(null);
@@ -116,7 +128,7 @@ export default function World() {
   const onSpinDown = (e: React.PointerEvent) => {
     draggedRef.current = false;
     if (e.pointerType !== "mouse" || kRef.current > 1.02) return;
-    spinRef.current = { x: e.clientX, lon }; (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    spinRef.current = { x: e.clientX, lon }; // ⚠ setPointerCapture 안 함 — 클릭(선택) 스틸 방지. 스핀은 svg onPointerMove/Up 으로 추적.
   };
   const onSpinMove = (e: React.PointerEvent) => { if (!spinRef.current) return; const dx = e.clientX - spinRef.current.x; if (Math.abs(dx) > 4) draggedRef.current = true; setLon(spinRef.current.lon - (dx / dim.w) * 360); };
   const onSpinUp = () => { spinRef.current = null; };
@@ -224,13 +236,13 @@ export default function World() {
                 onMouseLeave={() => { setHoverCty(null); setTip(null); }} />
             );
           })}
-          {/* L2 항로 — 파랑 선. 선택/hover 시 진하게+흐름 애니메이션, 나머지 감쇠 */}
+          {/* L2 항로 — 항로별 색. 선택/hover 시 진하게+흐름 애니메이션, 나머지 감쇠 */}
           {layers.routes && infra.routes.map((r, i) => {
             const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
             return (
-              <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={SEA} strokeLinecap="round"
+              <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={routeColor(r.id)} strokeLinecap="round"
                 className={on ? "wf-flow" : undefined}
-                strokeWidth={(on ? 2.2 : 1.3) / t.k} strokeOpacity={dim2 ? 0.12 : on ? 0.95 : 0.65}
+                strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.72}
                 strokeDasharray={`${(on ? 6 : 4) / t.k} ${3 / t.k}`} style={{ pointerEvents: "none" }} />
             );
           })}
@@ -256,7 +268,7 @@ export default function World() {
           if (!sc || !inView(sc[0], sc[1]) || t.k >= K_LOCAL) return null;
           const on = hlRoutes.has(r.id); if (hasFocus && !on) return null;
           return (
-            <text key={`rl${i}`} x={sc[0]} y={sc[1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={SEA}
+            <text key={`rl${i}`} x={sc[0]} y={sc[1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={routeColor(r.id)}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round", cursor: "pointer" }}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) => { setHoverInfra({ kind: "route", id: r.id }); setTip({ x: e.clientX, y: e.clientY, text: `➤ ${r.ko}`, sub: r.direction_note }); }}
@@ -365,17 +377,21 @@ export default function World() {
         <button onClick={() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).transition().duration(400).call(zoomRef.current.transform, zoomIdentity); }} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted" title="세계 뷰"><Locate className="mx-auto h-4 w-4" /></button>
       </div>
 
-      {/* 항만 순위 리스트(항만 레이어 on) — 지도 '어디' / 리스트 '몇 위' 분업 */}
-      {layers.ports && (
-        <div className="absolute left-4 top-[4.75rem] w-52 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
-          <div className="border-b border-border px-2.5 py-1.5 text-[11px] font-semibold">세계 항만 TOP 20 <span className="font-normal text-muted-foreground">TEU · {infra._meta.data_year}</span></div>
-          <div className="max-h-[calc(100vh-16rem)] overflow-auto py-1">
-            {portsRanked.map((p) => { const on = hlPorts.has(p.id) || (sel?.kind === "port" && sel.id === p.id);
-              return (<button key={p.id} onMouseEnter={() => setHoverInfra({ kind: "port", id: p.id })} onMouseLeave={() => setHoverInfra(null)} onClick={() => goTo({ kind: "port", id: p.id })}
-                className={`flex w-full items-baseline gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
-                <span className="w-4 shrink-0 tabular-nums text-muted-foreground">{p.rank}</span><span className="truncate">{p.ko}</span>
-                <span className="ml-auto shrink-0 tabular-nums text-[10px] text-muted-foreground">{p.teu_m}M</span></button>); })}
-          </div>
+      {/* 주요 항로 목록/범례 — 접기 가능(향후 층위 위해 상시 점유 안 함). 색=항로 신원 */}
+      {layers.routes && (
+        <div className="absolute left-4 top-[4.75rem] w-56 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+          <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted/50">
+            <span>주요 항로 <span className="font-normal text-muted-foreground">{infra.routes.length}</span></span>
+            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
+          </button>
+          {listOpen && (
+            <div className="border-t border-border py-1">
+              {infra.routes.map((r) => { const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
+                return (<button key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)} onClick={() => goTo({ kind: "route", id: r.id })}
+                  className={`flex w-full items-center gap-2 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                  <span className="h-2 w-3.5 shrink-0 rounded-sm" style={{ background: routeColor(r.id) }} /><span className="truncate">{r.ko}</span></button>); })}
+            </div>
+          )}
         </div>
       )}
 
@@ -401,7 +417,7 @@ export default function World() {
                 <span className="tabular-nums">{p.teu_m}M TEU</span><span className="text-[10.5px] text-muted-foreground">({infra._meta.data_year} 기준)</span>
               </div>
               {ctyIdx != null && <div className="mt-2 text-[11px] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={SEA} onClick={() => goTo({ kind: "route", id: r.id })}>{r.ko}</Chip>)}</div></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => goTo({ kind: "route", id: r.id })}>{r.ko}</Chip>)}</div></div>}
               <Src url={`https://lloydslist.com`} label={infra._meta.teu_source} />
             </>); })()}
           {sel.kind === "choke" && (() => { const c = chokeById.get(sel.id)!; const rts = (routesByNode.get(c.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
@@ -411,18 +427,18 @@ export default function World() {
               <div className="text-[11px] text-muted-foreground">{c.en}</div>
               <div className="mt-2 text-[12px]"><span className="text-muted-foreground">연결</span> {c.connects}</div>
               <div className="mt-1.5 text-[11.5px] leading-snug">{c.throughput_note}</div>
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={SEA} onClick={() => goTo({ kind: "route", id: r.id })}>{r.ko}</Chip>)}</div></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => goTo({ kind: "route", id: r.id })}>{r.ko}</Chip>)}</div></div>}
               <Src url={c.source_url} />
             </>); })()}
           {sel.kind === "route" && (() => { const r = routeById.get(sel.id)!; const alt = r.alt_of ? routeById.get(r.alt_of) : null;
             return (<>
-              <div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: SEA }} /><span className="text-base font-bold leading-tight">{r.ko}</span></div>
+              <div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold leading-tight">{r.ko}</span></div>
               <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">경유지 (순서)</div>
                 <div className="flex flex-wrap items-center gap-1">{r.waypoints.map((w, wi) => { const node = w.type === "port" ? portById.get(w.ref) : chokeById.get(w.ref); if (!node) return null;
                   return (<span key={wi} className="flex items-center gap-1">{wi > 0 && <span className="text-muted-foreground">›</span>}<Chip color={w.type === "port" ? SEA : AMBER} onClick={() => goTo(w.type === "port" ? { kind: "port", id: w.ref } : { kind: "choke", id: w.ref })}>{node.ko}</Chip></span>); })}</div></div>
               <div className="mt-2 text-[11.5px] leading-snug"><span className="text-muted-foreground">방향</span> {r.direction_note} <span className="text-[10.5px] text-muted-foreground">· 양방향(주 무역 흐름 기준)</span></div>
               {r.facts && <div className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{r.facts}</div>}
-              {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={SEA} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
+              {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={routeColor(alt.id)} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
               <Src url={r.source_url} />
             </>); })()}
         </div>
