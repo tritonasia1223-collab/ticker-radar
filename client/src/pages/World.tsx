@@ -130,6 +130,8 @@ export default function World() {
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   const [listOpen, setListOpen] = useState(true); // 항로 목록 패널(접기 가능)
+  const [compareSet, setCompareSet] = useState<Set<string>>(new Set()); // 목록 체크박스 = 다중 비교 활성
+  const toggleCompare = useCallback((id: string) => setCompareSet((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }), []);
   // ── 데이터센터 모드(지도 위 오버레이) ──
   const [dcMode, setDcMode] = useState(false);
   const [dcColor, setDcColor] = useState<DcMode>("group");
@@ -221,14 +223,17 @@ export default function World() {
   // 하이라이트 집합(선택 개체가 인프라면 그 기준, 아니면 hover 인프라)
   const focus = (sel && sel.kind !== "country" ? sel : hoverInfra) as { kind: "route" | "choke" | "port"; id: string } | null;
   const { hlRoutes, hlChokes, hlPorts } = useMemo(() => {
-    const R = new Set<string>(), C = new Set<string>(), P = new Set<string>();
+    // compareSet(목록 체크박스) = 상시 다중 하이라이트, focus(클릭·hover) = 단독 강조. 둘의 합집합.
+    const R = new Set<string>(compareSet), C = new Set<string>(), P = new Set<string>();
     if (focus) {
-      if (focus.kind === "route") { R.add(focus.id); const r = routeById.get(focus.id); r?.waypoints.forEach((w) => (w.type === "chokepoint" ? C : P).add(w.ref)); }
+      if (focus.kind === "route") R.add(focus.id);
       else { (focus.kind === "choke" ? C : P).add(focus.id); (routesByNode.get(focus.id) ?? []).forEach((rid) => R.add(rid)); }
     }
+    // 하이라이트된 모든 항로의 경유지(해협·항만)도 함께 켠다 — 비교 시 경유지 대조가 핵심.
+    for (const rid of R) { const r = routeById.get(rid); r?.waypoints.forEach((w) => (w.type === "chokepoint" ? C : P).add(w.ref)); }
     return { hlRoutes: R, hlChokes: C, hlPorts: P };
-  }, [focus, routeById, routesByNode]);
-  const hasFocus = hlRoutes.size > 0;
+  }, [focus, compareSet, routeById, routesByNode]);
+  const hasFocus = hlRoutes.size + hlChokes.size + hlPorts.size > 0;
 
   // 검색
   const [query, setQuery] = useState("");
@@ -322,14 +327,7 @@ export default function World() {
           );
         })}
 
-        {/* 수도 점(권역+) */}
-        {t.k >= K_REGION && (
-          <g style={{ pointerEvents: "none" }}>
-            {(capitalsData as Cap[]).map((c, i) => { const sc = toScreen(c.lng, c.lat); if (!sc || !inView(sc[0], sc[1])) return null;
-              return (<g key={i}><circle cx={sc[0]} cy={sc[1]} r={2.4} fill="hsl(var(--foreground))" fillOpacity={0.5} />
-                {t.k >= K_LOCAL && <text x={sc[0] + 4} y={sc[1] + 3} fontSize={9} fill="hsl(var(--muted-foreground))" style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{c.ko}</text>}</g>); })}
-          </g>
-        )}
+        {/* 수도 점은 지도에서 제거(시각 복잡도↓). 수도 정보는 국가 카드·검색에서만 유지. */}
 
         {/* L2 항만 — 면적 ∝ TEU, 순위 뱃지. 세계뷰=클러스터 top / 권역+=전부 */}
         {!dcMode && layers.ports && infra.ports.map((p) => {
@@ -467,15 +465,23 @@ export default function World() {
       {!dcMode && layers.routes && (
         <div className="absolute left-4 top-[4.75rem] w-56 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted/50">
-            <span>주요 항로 <span className="font-normal text-muted-foreground">{infra.routes.length}</span></span>
+            <span>주요 항로 <span className="font-normal text-muted-foreground">{infra.routes.length}</span>{compareSet.size > 0 && <span className="ml-1 text-primary">· 비교 {compareSet.size}</span>}</span>
             <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
           </button>
           {listOpen && (
             <div className="border-t border-border py-1">
-              {infra.routes.map((r) => { const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
-                return (<button key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)} onClick={() => goTo({ kind: "route", id: r.id })}
-                  className={`flex w-full items-center gap-2 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
-                  <span className="h-2 w-3.5 shrink-0 rounded-sm" style={{ background: routeColor(r.id) }} /><span className="truncate">{r.ko}</span></button>); })}
+              {infra.routes.map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
+                return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
+                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: routeColor(r.id) }} />
+                  <button onClick={() => goTo({ kind: "route", id: r.id })} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 단독 보기(카드)">
+                    <span className="h-2 w-3 shrink-0 rounded-sm" style={{ background: routeColor(r.id) }} /><span className="truncate">{r.ko}</span></button></div>); })}
+              {compareSet.size > 0 && (
+                <div className="mt-0.5 border-t border-border px-2.5 pt-1">
+                  <button onClick={() => setCompareSet(new Set())} className="text-[10.5px] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
+                </div>
+              )}
+              <div className="mt-0.5 border-t border-border px-2.5 pt-1 text-[10px] leading-tight text-muted-foreground">체크 = 여러 항로 동시 비교 · 이름 클릭 = 단독 카드</div>
             </div>
           )}
         </div>
