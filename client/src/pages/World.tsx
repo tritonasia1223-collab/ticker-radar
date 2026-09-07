@@ -7,7 +7,7 @@ import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
 import { feature, neighbors } from "topojson-client";
-import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown, Server, Flame, Atom, BatteryCharging, Zap, Info, Globe } from "lucide-react";
+import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown, Server, Flame, Atom, BatteryCharging, Zap, Info, Globe, Swords } from "lucide-react";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
 import infraData from "@/data/world-infra.json";
@@ -16,6 +16,7 @@ import usStatesTopo from "@/data/us-states-10m.json";
 import txData from "@/data/us-transmission-345.json";
 import dcPowerLinks from "@/data/dc-power-links.json";
 import rtoData from "@/data/us-rto-regions.json";
+import conflictsData from "@/data/world-conflicts.json";
 
 type CtyProps = { iso: string; ko: string; en: string; lx: number; ly: number };
 type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
@@ -26,11 +27,20 @@ type Waypoint = { type: "port" | "chokepoint"; ref: string };
 type RouteT = { id: string; ko: string; coords: [number, number][]; waypoints: Waypoint[]; direction_note: string; alt_of: string | null; facts: string; source_url: string };
 const infra = infraData as unknown as { chokepoints: Choke[]; ports: Port[]; routes: RouteT[]; _meta: { teu_source: string; data_year: number } };
 
+// L4 분쟁 층 (UCDP GED)
+type ConflictParty = { name: string; iso: string | null; is_state: boolean };
+type Conflict = { id: string; name_en: string; name_ko: string; type: string; intensity: string; active: boolean; deaths_12mo: number; events_12mo: number; epicenter: [number, number]; parties: ConflictParty[]; party_isos: string[]; started_year: number; last_event_date: string };
+const conflictsAll = (conflictsData as unknown as { _meta: any; conflicts: Conflict[] }).conflicts;
+const conflictsMeta = (conflictsData as unknown as { _meta: any })._meta;
+const CONFLICT_TYPE_KO: Record<string, string> = { state: "국가간", nonstate: "비국가 무장세력 간", onesided: "일방적 폭력(대민간)" };
+const CONFLICT_RED = "#dc2626";
+
 type EntitySel =
   | { kind: "country"; idx: number }
   | { kind: "port"; id: string }
   | { kind: "choke"; id: string }
-  | { kind: "route"; id: string };
+  | { kind: "route"; id: string }
+  | { kind: "conflict"; id: string };
 
 const TEAL = "#0d9488";          // 선택 하이라이트
 const AMBER = "#f59e0b";         // 해협
@@ -174,6 +184,13 @@ export default function World() {
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
+  // L4 분쟁 층 — 진앙 마커 + 당사국 스트로크(면 아님 → 블록과 공존). 기본 전쟁(≥1000)만, 무력분쟁 토글.
+  const [showConflicts, setShowConflicts] = useState(false);
+  const [showArmed, setShowArmed] = useState(false);
+  const [hoverConflict, setHoverConflict] = useState<string | null>(null);
+  const conflictById = useMemo(() => new Map(conflictsAll.map((c) => [c.id, c])), []);
+  const visConflicts = useMemo(() => (showArmed ? conflictsAll : conflictsAll.filter((c) => c.intensity === "war")), [showArmed]);
+  const conflictPartyIsos = useMemo(() => { const m = new Map<string, string>(); for (const c of visConflicts) for (const iso of c.party_isos) m.set(iso, c.id); return m; }, [visConflicts]);
   const [listOpen, setListOpen] = useState(true); // 항로 목록 패널(접기 가능)
   const [compareSet, setCompareSet] = useState<Set<string>>(new Set()); // 목록 체크박스 = 다중 비교 활성 (toggleCompare 는 flyRoute 이후 정의)
   // ── 데이터센터 모드(지도 위 오버레이) ──
@@ -304,7 +321,8 @@ export default function World() {
     else if (ent.kind === "port") { const p = portById.get(ent.id); if (p) flyPoint(p.lng, p.lat); }
     else if (ent.kind === "choke") { const c = chokeById.get(ent.id); if (c) flyPoint(c.lng, c.lat); }
     else if (ent.kind === "route") { const r = routeById.get(ent.id); if (r) flyRoute(r); }
-  }, [features, portById, chokeById, routeById, flyFeatureCentered, flyPoint, flyRoute]);
+    else if (ent.kind === "conflict") { const c = conflictById.get(ent.id); if (c) flyPoint(c.epicenter[0], c.epicenter[1]); }
+  }, [features, portById, chokeById, routeById, conflictById, flyFeatureCentered, flyPoint, flyRoute]);
 
   // 여러 항로를 한 화면에 — 중심 경도는 항로 중점들의 원형 평균, 투영 후 좌표로 bbox(경계 넘김 안전)
   const flyToRoutes = useCallback((ids: string[]) => {
@@ -394,6 +412,10 @@ export default function World() {
                 onMouseLeave={() => { setHoverCty(null); setTip(null); }} />
             );
           })}
+          {/* L4 당사국 스트로크 — 면 채움 아님(블록과 공존). 선택 분쟁의 당사국은 진하게 */}
+          {!dcMode && showConflicts && [...conflictPartyIsos].map(([iso, cid]) => { const idx = isoToIdx.get(iso); if (idx == null || !paths[idx]) return null;
+            const hot = (sel?.kind === "conflict" && sel.id === cid) || hoverConflict === cid;
+            return <path key={`cp${iso}`} d={paths[idx]} fill="none" stroke={CONFLICT_RED} strokeOpacity={hot ? 0.95 : 0.45} strokeWidth={(hot ? 2.2 : 1.5) / t.k} style={{ pointerEvents: "none" }} />; })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {/* 국가 뷰 면 채색 §B — 전력시장(RTO) 권역. 비ISO 지역은 무채색(안 그림) */}
           {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => (r.d ? <path key={`rto${i}`} d={r.d} fill={RTO_FILL[r.code] || "#94a3b8"} fillOpacity={0.14} stroke={RTO_FILL[r.code] || "#94a3b8"} strokeOpacity={0.3} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} /> : null))}
@@ -524,6 +546,18 @@ export default function World() {
             <FI x={sc[0] - 3} y={sc[1] - 3} width={6} height={6} style={{ color: "#fff", pointerEvents: "none" }} />
           </g>; })}
 
+        {/* L4 분쟁 진앙 마커 — 전쟁=大·무력분쟁=小. 정적(펄스 없음). 색=적 하나(유형은 hover·카드) */}
+        {!dcMode && showConflicts && visConflicts.map((c) => { const sc = toScreen(c.epicenter[0], c.epicenter[1]); if (!sc || !inView(sc[0], sc[1])) return null;
+          const war = c.intensity === "war"; const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id;
+          const r = (war ? 6 : 3.6) * (on ? 1.3 : 1);
+          return (<g key={`cf${c.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "conflict", id: c.id }); }}
+            onMouseEnter={(e) => { setHoverConflict(c.id); setTip({ x: e.clientX, y: e.clientY, text: c.name_ko, sub: `${CONFLICT_TYPE_KO[c.type]} · ${war ? "전쟁" : "무력분쟁"} · 최근 12개월 사망 ${c.deaths_12mo.toLocaleString()}` }); }}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: c.name_ko, sub: `${war ? "전쟁" : "무력분쟁"} · 사망 ${c.deaths_12mo.toLocaleString()}` })}
+            onMouseLeave={() => { setHoverConflict(null); setTip(null); }}>
+            <circle cx={sc[0]} cy={sc[1]} r={r} fill={CONFLICT_RED} fillOpacity={war ? 0.82 : 0.6} stroke="hsl(var(--background))" strokeWidth={on ? 1.6 : 1} />
+          </g>); })}
+
         {/* DC 모드: 원전·SMR PPA(회사 단위 — 선 안 이음) */}
         {dcMode && dcNuke && dc.nuclear_deals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
           const reuse = isReuseNuke(n.site_type); const stKo = SITE_TYPE_KO[n.site_type || ""] || n.reactor_type;
@@ -585,6 +619,9 @@ export default function World() {
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${layers[k] ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}
             title={`${label} ${layers[k] ? "끄기" : "켜기"}`}><Icon className="h-3 w-3" style={{ color: layers[k] ? color : undefined }} />{label}</button>
         ))}
+        <button onClick={() => { setShowConflicts((v) => !v); setSel(null); }}
+          className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${showConflicts ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}
+          title={`분쟁(UCDP) ${showConflicts ? "끄기" : "켜기"} — 진앙 마커 + 당사국 테두리`}><Swords className="h-3 w-3" style={{ color: showConflicts ? CONFLICT_RED : undefined }} />분쟁</button>
       </div>
       )}
 
@@ -627,8 +664,10 @@ export default function World() {
       </div>
 
       {/* 주요 항로 목록/범례 — 접기 가능(향후 층위 위해 상시 점유 안 함). 색=항로 신원 */}
-      {!dcMode && layers.routes && (
-        <div className="absolute left-4 top-[4.75rem] w-60 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+      {!dcMode && (layers.routes || showConflicts) && (
+      <div className="absolute left-4 top-[4.75rem] flex max-h-[calc(100%-6rem)] w-60 flex-col gap-2">
+        {layers.routes && (
+        <div className="shrink-0 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center gap-1.5 p-2.5 pb-1 text-left hover:bg-muted/30">
             <Route className="h-4 w-4" /><span className="text-sm font-bold">주요 항로</span>
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
@@ -650,6 +689,23 @@ export default function World() {
             </div>
           )}
         </div>
+        )}
+        {showConflicts && (
+        <div className="flex min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+          <div className="p-2.5 pb-1">
+            <div className="flex items-center gap-1.5"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-sm font-bold">분쟁</span><span className="ml-auto text-[9px] text-muted-foreground">UCDP</span></div>
+            <div className="text-[10.5px] text-muted-foreground">{visConflicts.length}개 · <button onClick={() => setShowArmed((v) => !v)} className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "무력분쟁 포함"}</button> · 강도순</div>
+          </div>
+          <div className="min-h-0 overflow-auto border-t border-border py-1">
+            {visConflicts.map((c) => { const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id; const war = c.intensity === "war";
+              return (<button key={c.id} onMouseEnter={() => setHoverConflict(c.id)} onMouseLeave={() => setHoverConflict(null)} onClick={() => goTo({ kind: "conflict", id: c.id })}
+                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: CONFLICT_RED, opacity: war ? 1 : 0.5 }} />
+                <span className="flex-1 truncate">{c.name_ko}</span><span className="shrink-0 text-[9px] text-muted-foreground">{war ? "전쟁" : "무력"}</span></button>); })}
+          </div>
+        </div>
+        )}
+      </div>
       )}
 
       {/* 개체 카드 — 유형별 필드, 칩 = 크로스링크 */}
@@ -697,6 +753,24 @@ export default function World() {
               {r.facts && <div className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{r.facts}</div>}
               {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={routeColor(alt.id)} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
               <Src url={r.source_url} />
+            </>); })()}
+          {sel.kind === "conflict" && (() => { const c = conflictById.get(sel.id); if (!c) return null; const war = c.intensity === "war";
+            return (<>
+              <div className="flex items-center gap-1.5"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-base font-bold leading-tight">{c.name_ko}</span>
+                <span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: CONFLICT_RED + "22", color: CONFLICT_RED }}>{war ? "전쟁" : "무력분쟁"}</span></div>
+              <div className="text-[11px] text-muted-foreground">{c.name_en}</div>
+              <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
+                <span className="text-muted-foreground">유형</span><span>{CONFLICT_TYPE_KO[c.type]}</span>
+                <span className="text-muted-foreground">강도</span><span>{war ? "전쟁 — 연간 전투사망 1,000명+" : "무력분쟁 — 연간 25명+"} <span className="text-[10px] text-muted-foreground">(UCDP)</span></span>
+                <span className="text-muted-foreground">최근 12개월</span><span className="tabular-nums">사망 {c.deaths_12mo.toLocaleString()} · 사건 {c.events_12mo.toLocaleString()}</span>
+                <span className="text-muted-foreground">기간</span><span>{c.started_year}~ · 최근 {c.last_event_date}</span></div>
+              <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">당사자</div><div className="flex flex-wrap gap-1">
+                {c.parties.map((p, i) => { const idx = p.iso ? isoToIdx.get(p.iso) : undefined;
+                  return idx != null
+                    ? <Chip key={i} color={CONFLICT_RED} onClick={() => goTo({ kind: "country", idx })}>{features[idx].properties.ko || p.name}</Chip>
+                    : <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">{p.name}</span>; })}</div></div>
+              <div className="mt-2 text-[10px] leading-tight text-muted-foreground">진앙 = 최근 사건 분포의 중심(근사) · 집계 {conflictsMeta.window}</div>
+              <Src url={conflictsMeta.source_url} label="UCDP GED" />
             </>); })()}
         </div>
       )}
