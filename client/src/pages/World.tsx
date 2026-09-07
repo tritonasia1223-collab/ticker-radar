@@ -397,8 +397,11 @@ export default function World() {
               onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${US_STATE_KO[f.properties.name] || f.properties.name} · AI 부하 ${share.toFixed(0)}%`, sub: "주 평균 전력부하 대비(EIA 2023)" })}
               onMouseLeave={() => setTip(null)} />; })}
           {dcMode && usStates.map((f: any, i: number) => <path key={`us${i}`} d={usStatePaths[i]} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.35} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} />)}
-          {/* 송전선 345kV+ (기존 계통 2022 · 배경층). 무채색 — '배경은 회색, 색은 신호'(§D) */}
-          {txPath && <path d={txPath} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} strokeWidth={0.7 / t.k} strokeLinejoin="round" strokeLinecap="round" style={{ pointerEvents: "none" }} />}
+          {/* 송전선 345kV+ (기존 계통 2022). 토글 레이어라 켜면 확 보이게 — 하늘색 글로우(광택). */}
+          {txPath && (<>
+            <path d={txPath} fill="none" stroke="#38bdf8" strokeOpacity={0.22} strokeWidth={2.6 / t.k} strokeLinejoin="round" strokeLinecap="round" style={{ pointerEvents: "none" }} />
+            <path d={txPath} fill="none" stroke="#0ea5e9" strokeOpacity={0.95} strokeWidth={0.85 / t.k} strokeLinejoin="round" strokeLinecap="round" style={{ pointerEvents: "none" }} />
+          </>)}
           {dcMode && usStateLabels.map((l: any, i: number) => (
             <text key={`usl${i}`} x={l.c[0]} y={l.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={8 / t.k} fontWeight={500} fill="hsl(var(--muted-foreground))" fillOpacity={0.75}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5 / t.k, strokeLinejoin: "round", pointerEvents: "none" }}>{l.ko}</text>
@@ -488,7 +491,7 @@ export default function World() {
 
         {/* ③ 계통 급전 — 최근접 345kV 스냅(근사) 점선. 사이트 줌에서만(§A) */}
         {dcSiteZoom && snapLines.map((sl) => { const a = toScreen(sl.dc[0], sl.dc[1]), b = toScreen(sl.snap[0], sl.snap[1]); if (!a || !b) return null;
-          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#64748b" strokeOpacity={0.7} strokeWidth={1} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
+          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#0ea5e9" strokeOpacity={0.8} strokeWidth={1.2} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
 
         {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시). 사이트 줌에서만(§A) */}
         {dcMode && dcSiteZoom && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
@@ -520,9 +523,9 @@ export default function World() {
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${stKo}` })}
             onMouseLeave={() => setTip(null)}>
             {/* 재활용(기존·퇴역 부지) = 실선 + 중심점(기존 접속점 재활용) / 신규 = 점선 */}
-            <circle cx={sc[0]} cy={sc[1]} r={4.5} fill={reuse ? "rgba(168,85,247,0.14)" : "none"} stroke="#a855f7" strokeWidth={1.4} strokeDasharray={reuse ? undefined : "2 1.5"} />
-            {reuse && <circle cx={sc[0]} cy={sc[1]} r={1.3} fill="#a855f7" />}
-            <text x={sc[0]} y={sc[1] + 2.6} textAnchor="middle" fontSize={6} fill="#a855f7" fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            <circle cx={sc[0]} cy={sc[1]} r={5.6} fill={reuse ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.08)"} stroke="#f59e0b" strokeWidth={1.9} strokeDasharray={reuse ? undefined : "2.6 1.8"} />
+            {reuse && <circle cx={sc[0]} cy={sc[1]} r={1.7} fill="#b45309" />}
+            <text x={sc[0]} y={sc[1] + 3.1} textAnchor="middle" fontSize={8.5} fill="#b45309" fontWeight={700} style={{ pointerEvents: "none", paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.2, strokeLinejoin: "round" }}>⚛</text>
           </g>); })}
 
         {/* DC 모드: 데이터센터 마커 */}
@@ -693,9 +696,9 @@ export default function World() {
         {/* 우상단 레이어 토글 — 세계·무역 모드의 항로/항만/해협 알약과 통일 */}
         <div className="absolute right-4 top-4 flex gap-1">
           <button onClick={() => setDcNuke((v) => !v)} title={`원전·SMR PPA ${dc.nuclear_deals.length}건 표시 · ⚛ 실선+점 = 기존/퇴역 부지 재활용(빠른 접속) · 점선 = 신규 건설. 회사 단위 계약이라 특정 데이터센터로 선을 잇지 않음.`}
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#a855f7" : undefined }} />원전·SMR</button>
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#f59e0b" : undefined }} />원전·SMR</button>
           <button onClick={() => setDcTx((v) => !v)} title="345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사)."
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#3b82f6" : undefined }} />송전선</button>
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
         </div>
 
         <div className="absolute left-4 top-16 w-60 space-y-2">
