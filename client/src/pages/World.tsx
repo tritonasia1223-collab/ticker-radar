@@ -61,6 +61,21 @@ const ROUTE_COLOR: Record<string, string> = {
   "trans-pacific": "#db2777", "panama": "#16a34a", "mideast-oil": "#4f46e5", "trans-atlantic": "#0ea5e9",
 };
 const routeColor = (id: string) => ROUTE_COLOR[id] ?? SEA;
+// ── 항로 배 흐름(밀도=물동량 등급) ──
+const TIER_SHIPS: Record<string, number> = { high: 5, mid: 3, low: 1 }; // 동시 척수(합 상한 40)
+const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59e0b", mixed: "#9333ea", bulk: "#78716c" };
+const CARGO_KO: Record<string, string> = { container: "컨테이너", crude: "원유", mixed: "혼합", bulk: "벌크" };
+const shipSymbol = (cargo: string) => (cargo === "crude" ? "ship-tanker" : "ship-container");
+// 지리 좌표로 항로 densify(스핀 재투영 대응 — path getPointAtLength 대신). 세그먼트 선형 보간.
+function densifyRoute(coords: number[][], stepDeg = 1.2): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i < coords.length - 1; i++) { const [ax, ay] = coords[i], [bx, by] = coords[i + 1]; const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / stepDeg)); for (let j = 0; j < n; j++) out.push([ax + ((bx - ax) * j) / n, ay + ((by - ay) * j) / n]); }
+  out.push(coords[coords.length - 1]); return out;
+}
+function shipLngLat(samples: number[][], offset: number): [number, number] {
+  const N = samples.length; const f = ((offset % 1) + 1) % 1 * (N - 1); const i0 = Math.floor(f), i1 = Math.min(N - 1, i0 + 1), fr = f - i0;
+  const a = samples[i0], b = samples[i1]; return [a[0] + (b[0] - a[0]) * fr, a[1] + (b[1] - a[1]) * fr];
+}
 
 // ── 미국 데이터센터 모드(지도 위 오버레이) ──
 type Gen = { type: string; vendor: string | null; mw: number | null; status: string; note?: string };
@@ -218,6 +233,12 @@ export default function World() {
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
+  // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
+  const [shipCargoView, setShipCargoView] = useState(false);
+  const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
+  const routeSamples = useMemo(() => { const m = new Map<string, number[][]>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
+  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: 0.00055 * (0.9 + 0.2 * ((i * 37) % 100) / 100) }); } return s; }, []);
+  const fleetRefs = useRef<(SVGGElement | null)[]>([]);
   // L4 분쟁 층 — 진앙 마커 + 당사국 스트로크(면 아님 → 블록과 공존). 기본 전쟁(≥1000)만, 무력분쟁 토글.
   const [conflictMode, setConflictMode] = useState(false);
   const [showArmed, setShowArmed] = useState(false);
@@ -444,6 +465,31 @@ export default function World() {
 
   const toScreen = (lng: number, lat: number): [number, number] | null => { const p = projection([lng, lat]); if (!p) return null; return [p[0] * t.k + t.x, p[1] * t.k + t.y]; };
   const inView = (x: number, y: number) => x >= -30 && x <= dim.w + 30 && y >= -30 && y <= dim.h + 30;
+  // 배 흐름 rAF — 최신 투영/줌은 ref 로 읽어 스핀·줌 자연 대응. 배는 스크린 공간이라 크기 고정.
+  const projRef = useRef(projection); projRef.current = projection;
+  const tRef = useRef(t); tRef.current = t;
+  const shipsOn = tradeMode && layers.routes;
+  useEffect(() => {
+    if (!shipsOn) return;
+    const place = () => { const proj = projRef.current, tt = tRef.current;
+      for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue;
+        const [lng, lat] = shipLngLat(samples, ship.offset); const p = proj([lng, lat] as any); if (!p) { el.style.display = "none"; continue; }
+        const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y;
+        const [al, at] = shipLngLat(samples, ship.offset + 0.004); const p2 = proj([al, at] as any); const ang = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) * 180 / Math.PI : 0;
+        el.style.display = x < -20 || x > dim.w + 20 || y < -20 || y > dim.h + 20 ? "none" : "";
+        el.setAttribute("transform", `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${ang.toFixed(1)}) scale(0.78)`);
+      }
+    };
+    if (reducedMotion) { place(); return; } // 정지: 정적 배치(밀도 정보 유지)
+    let raf = 0, last = performance.now(), running = true;
+    const tick = (now: number) => { if (!running) return; const dt = Math.min(50, now - last); last = now; for (const ship of fleet) ship.offset = (ship.offset + ship.speed * dt) % 1; place(); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    const onVis = () => { if (document.hidden) { running = false; cancelAnimationFrame(raf); } else if (!running) { running = true; last = performance.now(); raf = requestAnimationFrame(tick); } };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { running = false; cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); };
+  }, [shipsOn, fleet, routeSamples, reducedMotion, dim]);
+  // 정적(reducedMotion)·스핀/줌 시 재배치
+  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; el.setAttribute("transform", `translate(${(p[0] * tt.k + tt.x).toFixed(1)},${(p[1] * tt.k + tt.y).toFixed(1)}) scale(0.78)`); } } });
 
   // 항만 라벨 클러스터(세계 뷰에서 밀집 시 최상위 1개만) — 순위 오름차순 그리디, 44px 이내 중복 제거
   const portLabelSet = useMemo(() => {
@@ -463,6 +509,10 @@ export default function World() {
         className="block cursor-grab active:cursor-grabbing select-none"
         onPointerDown={onSpinDown} onPointerMove={onSpinMove} onPointerUp={onSpinUp} onPointerLeave={onSpinUp}
         onClick={() => { if (draggedRef.current) { draggedRef.current = false; return; } setSel(null); }}>
+        <defs>
+          <symbol id="ship-container" viewBox="0 0 16 8"><path d="M0 5 L2 7.6 L14 7.6 L16 5 Z" /><path d="M2.5 2.2 h3.4 v2.4 h-3.4 Z M6.6 2.2 h3.4 v2.4 h-3.4 Z M10.7 2.2 h2.6 v2.4 h-2.6 Z" opacity="0.7" /></symbol>
+          <symbol id="ship-tanker" viewBox="0 0 16 8"><path d="M0 4.6 L2 7.4 L14 7.4 L16 4.6 Z" /><rect x="3" y="3" width="7.6" height="1.8" rx="0.9" opacity="0.7" /><rect x="12" y="1.8" width="1.8" height="2.8" opacity="0.7" /></symbol>
+        </defs>
         <path d={spherePath} fill="hsl(var(--background))" stroke="hsl(var(--border))" strokeOpacity={0.6} />
         <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
           {/* 육지 */}
@@ -515,6 +565,10 @@ export default function World() {
             );
           })}
         </g>
+
+        {/* 항로 배 흐름 — 밀도=물동량 등급(§1). 스크린 공간(크기 고정), 위치·회전은 rAF 로. */}
+        {shipsOn && fleet.map((ship, i) => { const col = shipCargoView ? (CARGO_COLOR[ship.cargo] || SEA) : routeColor(ship.routeId); const dim2 = hasFocus && !hlRoutes.has(ship.routeId);
+          return <g key={`ship${i}`} ref={(el) => { fleetRefs.current[i] = el; }} transform="translate(-99,-99) scale(0.78)" style={{ opacity: dim2 ? 0.1 : 0.92, pointerEvents: "none" }}><use href={`#${shipSymbol(ship.cargo)}`} x={-8} y={-4} width={16} height={8} fill={col} /></g>; })}
 
         {/* 국가 라벨 */}
         <g style={{ pointerEvents: "none" }}>
@@ -779,6 +833,13 @@ export default function World() {
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
           </button>
           <div className="px-2.5 pb-1.5 text-[10.5px] text-muted-foreground">{infra.routes.length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
+          <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-muted-foreground">
+            <span>배 색</span>
+            <div className="flex overflow-hidden rounded border border-border">
+              {([["route", "항로별"], ["cargo", "화물별"]] as const).map(([v, lab]) => (<button key={v} onClick={() => setShipCargoView(v === "cargo")} className={`px-1.5 py-0.5 ${(v === "cargo") === shipCargoView ? "bg-muted font-semibold text-foreground" : "hover:bg-muted/50"}`}>{lab}</button>))}
+            </div>
+            <span title="배 흐름 = 항로별 연간 물동량 등급의 연출(밀도 비례) · 실시간 선박 위치 아님 · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
+          </div>
           {listOpen && (
             <div className="border-t border-border py-1">
               {infra.routes.map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
