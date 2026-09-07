@@ -54,7 +54,8 @@
     "us:build": "tsx script/build-us-states.ts",
     "tx:build": "tsx script/build-us-transmission.ts",
     "rto:build": "tsx script/build-us-rto.ts",
-    "conflicts:build": "tsx script/build-conflicts.ts"
+    "conflicts:build": "tsx script/build-conflicts.ts",
+    "nuclear:build": "tsx script/build-nuclear.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

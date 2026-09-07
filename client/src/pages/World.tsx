@@ -18,6 +18,7 @@ import dcPowerLinks from "@/data/dc-power-links.json";
 import rtoData from "@/data/us-rto-regions.json";
 import conflictsData from "@/data/world-conflicts.json";
 import fabsData from "@/data/ai-fabs.json";
+import nuclearData from "@/data/us-nuclear-plants.json";
 
 type CtyProps = { iso: string; ko: string; en: string; lx: number; ly: number };
 type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
@@ -98,6 +99,13 @@ function dcHoverSub(s: Site): string {
 }
 const primaryGen = (p?: Power): "gas" | "nuclear" | "battery" | "grid" => { if (!p) return "grid"; const ts = p.onsite_generation.map((g) => g.type); if (ts.some((t) => t.includes("nuclear") || t === "smr")) return "nuclear"; if (ts.some((t) => t.includes("gas"))) return "gas"; if (ts.some((t) => t.includes("battery") || t.includes("solar"))) return "battery"; return "grid"; };
 const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Zap } as const;
+// ── 미국 전체 원전 층 ──
+type NukePlant = { id: string; name: string; status: string; state: string | null; lat: number; lng: number; capacity_mw: number | null; ai_linked: boolean; ai_note: string | null; retired_year?: number };
+const nuclearPlants = (nuclearData as unknown as { _meta: any; plants: NukePlant[] }).plants;
+const nuclearMeta = (nuclearData as unknown as { _meta: any })._meta;
+const NUKE_STATUS_COLOR: Record<string, string> = { operating: "#16a34a", retired: "#94a3b8", restarting: "#f59e0b", canceled: "#cbd5e1" };
+const NUKE_STATUS_KO: Record<string, string> = { operating: "가동", retired: "퇴역", restarting: "재가동 진행", canceled: "취소" };
+const AI_SMR = "#a855f7"; // AI 연계·신규 SMR 색
 // ── 반도체 팹 층(DC 모드 안 레이어) ──
 type FabLog = { status: string; changed_on: string; note: string; source_url: string };
 type Fab = { id: string; company: string; site_name: string; location: { city: string; state: string; lat: number; lng: number }; category: string; node_note: string; invest_announced_usd_bn: number; chips_award_usd_bn: number | null; target_year: number | null; status: string; status_as_of: string; status_note: string; status_source_url: string; status_log: FabLog[]; source_url: string };
@@ -228,6 +236,9 @@ export default function World() {
   const [dcFill, setDcFill] = useState<"none" | "rto" | "load">("none"); // 국가 뷰 면 채색(§B) — 상호배타
   const [dcFabs, setDcFabs] = useState(false); // 반도체 팹 레이어
   const [fabSel, setFabSel] = useState<string | null>(null);
+  const [nukeSel, setNukeSel] = useState<string | null>(null);
+  // AI 신규 SMR/원전 계획(데이터센터 PPA 중 기존 원전 아닌 신규) — 기존 원전 매칭분은 fleet 에 ai_linked 로 이미 표시
+  const newSmrDeals = useMemo(() => dc.nuclear_deals.filter((n) => n.location?.lat != null && !["amzn-susquehanna", "msft-crane", "meta-constellation-clinton", "meta-vistra", "stargate-none", "orcl-smr-claim"].includes(n.id)), []);
   const fabsSorted = useMemo(() => [...fabs].sort((a, b) => (FAB_STATUS_ORDER[a.status] - FAB_STATUS_ORDER[b.status]) || (b.invest_announced_usd_bn - a.invest_announced_usd_bn)), []);
   const rtoPaths = useMemo(() => (dcMode && dcFill === "rto" ? rtoRegions.map((r) => ({ code: r.code, d: pathGen(r.geometry) || "" })) : []), [dcMode, dcFill, pathGen]);
   const usStates = useMemo(() => (feature(usStatesTopo as any, (usStatesTopo as any).objects.states) as any).features, []);
@@ -586,18 +597,27 @@ export default function World() {
             <circle cx={sc[0]} cy={sc[1]} r={r} fill={CONFLICT_RED} fillOpacity={war ? 0.82 : 0.6} stroke="hsl(var(--background))" strokeWidth={on ? 1.6 : 1} />
           </g>); })}
 
-        {/* DC 모드: 원전·SMR PPA(회사 단위 — 선 안 이음) */}
-        {dcMode && dcNuke && dc.nuclear_deals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
-          const reuse = isReuseNuke(n.site_type); const stKo = SITE_TYPE_KO[n.site_type || ""] || n.reactor_type;
-          return (<g key={`n${n.id}`} style={{ cursor: "pointer" }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.mw ?? "?"}MW · ${n.reactor_type} · ${stKo}` })}
-            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${stKo}` })}
+        {/* DC 모드: 미국 전체 원전 — 상태 색(가동·퇴역·재가동·취소) + AI 연계 보라 링 */}
+        {dcMode && dcNuke && nuclearPlants.map((p) => { const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8"; const on = p.id === nukeSel; const r = 4.5 * (on ? 1.2 : 1);
+          const solid = p.status === "operating" || p.status === "restarting";
+          return (<g key={`nk${p.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setNukeSel(p.id); setDcSel(null); setFabSel(null); }}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: `${NUKE_STATUS_KO[p.status]}${p.capacity_mw ? ` · ${p.capacity_mw.toLocaleString()}MW` : ""}${p.ai_linked ? " · AI 연계" : ""}` })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: NUKE_STATUS_KO[p.status] })}
             onMouseLeave={() => setTip(null)}>
-            {/* 재활용(기존·퇴역 부지) = 실선 + 중심점(기존 접속점 재활용) / 신규 = 점선 */}
-            <circle cx={sc[0]} cy={sc[1]} r={5.6} fill={reuse ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.08)"} stroke="#f59e0b" strokeWidth={1.9} strokeDasharray={reuse ? undefined : "2.6 1.8"} />
-            {reuse && <circle cx={sc[0]} cy={sc[1]} r={1.7} fill="#b45309" />}
-            <text x={sc[0]} y={sc[1] + 3.1} textAnchor="middle" fontSize={8.5} fill="#b45309" fontWeight={700} style={{ pointerEvents: "none", paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.2, strokeLinejoin: "round" }}>⚛</text>
+            {p.ai_linked && <circle cx={sc[0]} cy={sc[1]} r={r + 2.6} fill="none" stroke={AI_SMR} strokeWidth={1.4} strokeDasharray="2 1.5" />}
+            <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={solid ? 0.85 : 0.25} stroke={col} strokeWidth={on ? 2 : 1.3} strokeDasharray={p.status === "canceled" ? "2 1.5" : undefined} />
+            <text x={sc[0]} y={sc[1] + 2.3} textAnchor="middle" fontSize={5.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+          </g>); })}
+        {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) */}
+        {dcMode && dcNuke && newSmrDeals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          return (<g key={`smr${n.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `AI 신규 계획 · ${n.buyer} · ${n.reactor_type}` })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.reactor_type}` })}
+            onMouseLeave={() => setTip(null)}>
+            <circle cx={sc[0]} cy={sc[1]} r={4.2} fill={AI_SMR} fillOpacity={0.12} stroke={AI_SMR} strokeWidth={1.4} strokeDasharray="2 1.5" />
+            <text x={sc[0]} y={sc[1] + 2.3} textAnchor="middle" fontSize={5.5} fill={AI_SMR} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
 
         {/* DC 모드: 반도체 팹 — 육각(원=DC·사각=발전소와 형태 구분). 회사색·상태 채움 */}
@@ -816,8 +836,8 @@ export default function World() {
       {dcMode && (<>
         {/* 우상단 레이어 토글 — 세계·무역 모드의 항로/항만/해협 알약과 통일 */}
         <div className="absolute right-4 top-4 flex gap-1">
-          <button onClick={() => setDcNuke((v) => !v)} title={`원전·SMR PPA ${dc.nuclear_deals.length}건 표시 · ⚛ 실선+점 = 기존/퇴역 부지 재활용(빠른 접속) · 점선 = 신규 건설. 회사 단위 계약이라 특정 데이터센터로 선을 잇지 않음.`}
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#f59e0b" : undefined }} />원전·SMR</button>
+          <button onClick={() => setDcNuke((v) => !v)} title={`미국 전체 원전 ${nuclearPlants.length}기 — 상태별 색(가동 초록·퇴역 회색·재가동 앰버·취소). 보라 링 = AI 데이터센터 연계 · 보라 점선 ⚛ = AI 신규 SMR 계획.`}
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#16a34a" : undefined }} />원전</button>
           <button onClick={() => setDcTx((v) => !v)} title="345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사)."
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
           <button onClick={() => { setDcFabs((v) => !v); setFabSel(null); }} title={`반도체 팹 ${dcFabs ? "끄기" : "켜기"} — 육각 마커(회사색·상태 채움). 발표≠착공≠가동을 상태 필드로 추적.`}
@@ -888,6 +908,16 @@ export default function World() {
             {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{s.notes}</div>}
           </div>);
         })()}
+
+        {nukeSel && (() => { const p = nuclearPlants.find((x) => x.id === nukeSel); if (!p) return null; const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8";
+          return (<div className="absolute right-4 top-16 w-72 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+            <button onClick={() => setNukeSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+            <div className="flex items-center gap-1.5"><Atom className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{p.name}</span></div>
+            <div className="text-[11px] text-muted-foreground">{p.state ?? ""} · 원자력</div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]"><span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: col + "22", color: col }}>{NUKE_STATUS_KO[p.status]}</span>{p.capacity_mw && <span className="tabular-nums text-muted-foreground">{p.capacity_mw.toLocaleString()}MW</span>}{p.retired_year && <span className="text-[11px] text-muted-foreground">{p.retired_year} 퇴역</span>}</div>
+            {p.ai_linked && (<div className="mt-2 rounded-md border border-border/60 p-2 text-[11.5px]"><span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: AI_SMR + "22", color: AI_SMR }}>AI 연계</span> <span className="text-muted-foreground">{p.ai_note}</span></div>)}
+            <div className="mt-2 text-[10px] leading-tight text-muted-foreground">출처: {nuclearMeta.source}</div>
+          </div>); })()}
 
         {fabSel && (() => { const f = fabs.find((x) => x.id === fabSel); if (!f) return null; const col = FAB_COLOR[f.company] || FAB_COLOR.other;
           return (<div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
