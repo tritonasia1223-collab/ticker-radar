@@ -101,6 +101,7 @@ type RtoRegion = { code: string; name: string; geometry: any };
 const rtoRegions = (rtoData as unknown as { regions: RtoRegion[] }).regions;
 const RTO_FILL: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b", CAISO: "#db2777", ISONE: "#9333ea", NYISO: "#0891b2" };
 const TX_WIDTH: Record<string, number> = { "345": 0.75, "500": 1.3, "735 and Above": 2.0 }; // 화면 px, 전압 등급별
+const TX_OPACITY: Record<string, number> = { "345": 0.5, "500": 0.72, "735 and Above": 0.95 }; // 전압 낮을수록 투명
 const US_NAME_ABBR: Record<string, string> = { Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA", Colorado: "CO", Connecticut: "CT", Delaware: "DE", "District of Columbia": "DC", Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA", Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD", Massachusetts: "MA", Michigan: "MI", Minnesota: "MN", Mississippi: "MS", Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK", Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT", Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI", Wyoming: "WY" };
 const US_STATE_KO: Record<string, string> = { Alabama: "앨라배마", Alaska: "알래스카", Arizona: "애리조나", Arkansas: "아칸소", California: "캘리포니아", Colorado: "콜로라도", Connecticut: "코네티컷", Delaware: "델라웨어", "District of Columbia": "워싱턴 D.C.", Florida: "플로리다", Georgia: "조지아", Hawaii: "하와이", Idaho: "아이다호", Illinois: "일리노이", Indiana: "인디애나", Iowa: "아이오와", Kansas: "캔자스", Kentucky: "켄터키", Louisiana: "루이지애나", Maine: "메인", Maryland: "메릴랜드", Massachusetts: "매사추세츠", Michigan: "미시간", Minnesota: "미네소타", Mississippi: "미시시피", Missouri: "미주리", Montana: "몬태나", Nebraska: "네브래스카", Nevada: "네바다", "New Hampshire": "뉴햄프셔", "New Jersey": "뉴저지", "New Mexico": "뉴멕시코", "New York": "뉴욕", "North Carolina": "노스캐롤라이나", "North Dakota": "노스다코타", Ohio: "오하이오", Oklahoma: "오클라호마", Oregon: "오리건", Pennsylvania: "펜실베이니아", "Rhode Island": "로드아일랜드", "South Carolina": "사우스캐롤라이나", "South Dakota": "사우스다코타", Tennessee: "테네시", Texas: "텍사스", Utah: "유타", Vermont: "버몬트", Virginia: "버지니아", Washington: "워싱턴", "West Virginia": "웨스트버지니아", Wisconsin: "위스콘신", Wyoming: "와이오밍" };
 const WORLD_LABEL_TOP = 26;
@@ -374,7 +375,7 @@ export default function World() {
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-background text-foreground">
-      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}`}</style>
+      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}.wf-flow-slow{animation:wf-flow 3.2s linear infinite}`}</style>
       <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${dim.w} ${dim.h}`}
         className="block cursor-grab active:cursor-grabbing select-none"
         onPointerDown={onSpinDown} onPointerMove={onSpinMove} onPointerUp={onSpinUp} onPointerLeave={onSpinUp}
@@ -408,8 +409,8 @@ export default function World() {
           {/* 송전선 345kV+ (기존 계통 2022). 전압 등급별 굵기 + 흐르는 점선(전력이 흐르는 느낌). 정적 언더레이로 그물망은 상시 보임. */}
           {txPathsByClass.map(({ v, d }) => d ? (
             <g key={`tx${v}`} style={{ pointerEvents: "none" }}>
-              <path d={d} fill="none" stroke="#38bdf8" strokeOpacity={0.28} strokeWidth={(TX_WIDTH[v] + 1.4) / t.k} strokeLinejoin="round" strokeLinecap="round" />
-              <path d={d} className="wf-flow" fill="none" stroke="#0ea5e9" strokeOpacity={0.95} strokeWidth={TX_WIDTH[v] / t.k} strokeLinecap="round" strokeDasharray={`${6 / t.k} ${4 / t.k}`} />
+              <path d={d} fill="none" stroke="#38bdf8" strokeOpacity={TX_OPACITY[v] * 0.3} strokeWidth={(TX_WIDTH[v] + 1.4) / t.k} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={d} className="wf-flow-slow" fill="none" stroke="#0ea5e9" strokeOpacity={TX_OPACITY[v]} strokeWidth={TX_WIDTH[v] / t.k} strokeLinecap="round" strokeDasharray={`${6 / t.k} ${5 / t.k}`} />
             </g>
           ) : null)}
           {dcMode && usStateLabels.map((l: any, i: number) => (
