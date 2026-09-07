@@ -239,6 +239,7 @@ export default function World() {
   const [dcNuke, setDcNuke] = useState(true);
   const [dcSel, setDcSel] = useState<string | null>(null);
   const [dcNotes, setDcNotes] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false); // 모드별 사용 가이드(처음 쓰는 사람용)
   const [dcTx, setDcTx] = useState(true); // 송전선 + 계통 스냅 레이어
   const [dcFill, setDcFill] = useState<"none" | "rto" | "load">("none"); // 국가 뷰 면 채색(§B) — 상호배타
   const [dcFabs, setDcFabs] = useState(false); // 반도체 팹 레이어
@@ -721,6 +722,9 @@ export default function World() {
           })}
         </div>
       </div>
+      {/* 좌하단: 사용 가이드 */}
+      <button onClick={() => setGuideOpen((o) => !o)} className="absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-md border border-border bg-card/90 px-2.5 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:bg-muted"><Info className="h-3.5 w-3.5" />사용 가이드</button>
+      {guideOpen && <GuideCard mode={dcMode ? "dc" : conflictMode ? "conflict" : "trade"} onClose={() => setGuideOpen(false)} />}
 
       {/* 우상: L2 층 토글 (세계·무역 모드에서만) */}
       {tradeMode && (
@@ -757,12 +761,6 @@ export default function World() {
       </div>
       )}
 
-      {/* 좌하: 권역 프리셋 */}
-      {!dcMode && (
-      <div className="absolute bottom-4 left-4 flex max-w-[16rem] flex-wrap gap-1">
-        {REGIONS.map((r) => (<button key={r.name} onClick={() => { setSel(null); flyRegion(r); }} className="rounded-full border border-border bg-card/90 px-2.5 py-1 text-[11px] shadow-sm backdrop-blur hover:bg-muted">{r.name}</button>))}
-      </div>
-      )}
 
       {/* 우하: 줌 컨트롤 */}
       <div className="absolute bottom-4 right-4 flex flex-col gap-1">
@@ -928,11 +926,6 @@ export default function World() {
           )}
         </div>
 
-        <div className="absolute bottom-4 left-4 w-72">
-          <button onClick={() => setDcNotes((o) => !o)} className="flex w-full items-center gap-1.5 rounded-md border border-border bg-card/90 px-2.5 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:bg-muted"><Info className="h-3.5 w-3.5" />구조 해설 {dcNotes ? "▾" : "▸"}</button>
-          {dcNotes && <div className="mt-1 space-y-1.5 rounded-md border border-border bg-card/95 p-2.5 text-[11px] leading-snug shadow-sm backdrop-blur">{dc.analysis_notes.map((n, i) => <div key={i} className="text-muted-foreground">· {n}</div>)}</div>}
-        </div>
-
         {dcSel && (() => { const s = dc.sites.find((x) => x.id === dcSel); if (!s) return null; const stageIdx = STAGES.indexOf(s.status_stage); const gen = primaryGen(s.power); const GenI = GEN_ICON[gen];
           return (<div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setDcSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
@@ -985,6 +978,73 @@ export default function World() {
               <div className="space-y-1">{f.status_log.map((l, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 tabular-nums text-muted-foreground">{l.changed_on}</span><span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: col + "18", color: col }}>{FAB_STATUS_KO[l.status]}</span><span className="text-muted-foreground">{l.note}</span></div>))}</div></div>
             <Src url={f.source_url} label="출처" />
           </div>); })()}
+      </>)}
+    </div>
+  );
+}
+
+// 모드별 사용 가이드 — 처음 쓰는 사람용. "이 아이콘은 뭐고, X를 보려면 Y를 해라."
+function GRow({ mark, children }: { mark: React.ReactNode; children: React.ReactNode }) {
+  return <div className="flex items-start gap-2"><span className="mt-[3px] flex h-3.5 w-5 shrink-0 items-center justify-center">{mark}</span><span className="flex-1">{children}</span></div>;
+}
+function GSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div className="mt-3"><div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{title}</div><div className="space-y-1 text-[12px] leading-snug">{children}</div></div>;
+}
+const dot = (c: string, sq = false) => <span className={`inline-block h-2.5 w-2.5 ${sq ? "rounded-sm" : "rounded-full"}`} style={{ background: c }} />;
+function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClose: () => void }) {
+  const title = mode === "dc" ? "미국 데이터센터 — AI 인프라 지도" : mode === "conflict" ? "분쟁 — 전 세계 활성 분쟁 (UCDP)" : "세계·무역 — 무역 동맥 지도";
+  const lead = mode === "dc" ? "AI 데이터센터가 어디에, 무슨 전기로, 그 지역 전력망에 얼마나 무겁게 앉았는지 봅니다." : mode === "conflict" ? "지금 벌어지는 무력 분쟁의 위치·규모·유형을 봅니다." : "배가 다니는 항로·항구·병목 해협과 나라를 봅니다.";
+  return (
+    <div className="absolute bottom-14 left-4 z-20 max-h-[calc(100%-6rem)] w-[29rem] max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-border bg-card/97 p-4 shadow-xl backdrop-blur">
+      <button onClick={onClose} className="absolute right-2.5 top-2.5 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+      <div className="flex items-center gap-1.5 pr-6 text-[15px] font-bold"><Info className="h-4 w-4 shrink-0 text-muted-foreground" />{title}</div>
+      <div className="mt-1 text-[12px] text-muted-foreground">{lead}</div>
+      <div className="mt-2 text-[11px] text-muted-foreground">지도를 좌우로 끌면 지구가 돌고, 스크롤로 확대. 무엇이든 클릭하면 상세 카드가 뜹니다.</div>
+
+      {mode === "trade" && (<>
+        <GSection title="아이콘 읽는 법">
+          <GRow mark={<span className="h-0 w-4 border-t-2" style={{ borderColor: "#2563eb" }} />}>색깔 있는 선 = <b>항로</b> (색이 곧 항로 이름)</GRow>
+          <GRow mark={<Diamond className="h-3 w-3" style={{ color: "#f59e0b" }} />}>◆ = <b>해협</b> (좁은 병목 지점)</GRow>
+          <GRow mark={dot("#2563eb")}>● = <b>항만</b> (원이 클수록 물동량 많음)</GRow>
+        </GSection>
+        <GSection title="이걸 보고 싶으면">
+          <GRow mark="▸">여러 항로 <b>한눈에 비교</b> → 왼쪽 '주요 항로' 목록에서 체크박스 여러 개. 켠 항로가 다 보이게 지도가 맞춰짐.</GRow>
+          <GRow mark="▸">이 해협을 <b>지나는 항로</b> → 해협 클릭 → 카드의 '지나는 항로' 칩.</GRow>
+          <GRow mark="▸"><b>나라·항만 찾기</b> → 왼쪽 위 검색창(자동 이동).</GRow>
+        </GSection>
+        <div className="mt-3 text-[11px] text-muted-foreground">우상단 <b>항로·항만·해협</b> 토글로 각 레이어를 켜고 끕니다.</div>
+      </>)}
+
+      {mode === "dc" && (<>
+        <GSection title="마커는 '모양'으로 구분">
+          <GRow mark={dot("#7c3aed")}>● 원 = <b>데이터센터</b> (크기=IT 용량, 외곽 링=계통 의존도)</GRow>
+          <GRow mark={<Hexagon className="h-3 w-3" style={{ color: "#2563eb" }} />}>⬡ 육각 = <b>반도체 팹</b> (색=회사)</GRow>
+          <GRow mark={<Atom className="h-3 w-3" style={{ color: "#16a34a" }} />}>⚛ = <b>원전</b> (색=상태)</GRow>
+          <GRow mark={dot("#f97316", true)}>■ 사각 = <b>발전소</b> (가스=주황·원전=초록)</GRow>
+        </GSection>
+        <GSection title="이걸 보고 싶으면">
+          <GRow mark="▸"><b>AI가 어느 주에 가장 무겁게</b> 앉았나 → 왼쪽 '면 채색 → AI 부하 비중' (진할수록 부담 큼).</GRow>
+          <GRow mark="▸">이 지역이 <b>누구 그리드</b> 전기냐 → '면 채색 → 전력시장' (ERCOT=텍사스 등).</GRow>
+          <GRow mark="▸">이 DC가 <b>전기를 어디서</b> 끌어오나 → 그 DC로 <b>확대(줌인)</b>하면 연결선이 살아남 (흐르는 선=현장발전 실제 조류 · 대시=계약 · 점선=계통 근사 연결).</GRow>
+          <GRow mark="▸"><b>원전 상태</b>(가동/퇴역/재가동) → 우상단 '원전' 켜기. 초록=가동·회색=퇴역·앰버=재가동, 보라 링=AI 연계.</GRow>
+          <GRow mark="▸"><b>반도체 팹 상태</b>(가동/건설/지연) → 우상단 '반도체 팹'. 육각 채움(꽉=가동·반=건설·점선=발표만) + 클릭 시 상태 이력.</GRow>
+          <GRow mark="▸"><b>송전망</b> → 우상단 '송전선' (하늘색 흐름, 굵기=전압 등급).</GRow>
+        </GSection>
+        <div className="mt-3 text-[11px] text-muted-foreground">정직성: 완공률·실제 인입선은 공개 데이터가 없어 안 그립니다. 계통 스냅·진앙 등은 '근사' 표기.</div>
+      </>)}
+
+      {mode === "conflict" && (<>
+        <GSection title="아이콘 읽는 법">
+          <GRow mark={dot(CONFLICT_RED)}>● 붉은 점 = <b>진앙</b> (큰 점=전쟁 · 작은 점=무력분쟁)</GRow>
+          <GRow mark={<span className="h-2.5 w-2.5 rounded-sm border border-dashed" style={{ borderColor: CONFLICT_RED, background: CONFLICT_RED + "22" }} />}>붉은 면 = <b>분쟁 구역</b> (사건이 실제 몰린 곳 — 국가 전체가 아님)</GRow>
+          <GRow mark="글">유형은 색이 아니라 <b>라벨</b>로: 국가간전 · 내전 · 무장세력 충돌 · 대민간 폭력.</GRow>
+        </GSection>
+        <GSection title="이걸 보고 싶으면">
+          <GRow mark="▸">큰 전쟁 말고 <b>작은 분쟁까지 다</b> → 왼쪽 목록 '무력분쟁 포함'.</GRow>
+          <GRow mark="▸">이 분쟁의 <b>시간순 전개</b> → 진앙/목록 클릭 → 카드 → '상세 재생'. 사건이 날짜순으로 쌓입니다.</GRow>
+          <GRow mark="▸"><b>유형·당사국·사망자</b> → 클릭하면 카드에.</GRow>
+        </GSection>
+        <div className="mt-3 text-[11px] text-muted-foreground">정직성: 진앙·구역은 최근 사건 <b>분포의 근사</b>이지 확정 전선이 아닙니다.</div>
       </>)}
     </div>
   );
