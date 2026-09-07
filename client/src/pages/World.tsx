@@ -2,7 +2,7 @@
 //   정적 데이터 직접 렌더(DB/서버 불요). d3-geo Equal Earth + d3-zoom. 태평양 중심(회전 스핀).
 //   L2 개편(개체 명세): 항로/해협/항만을 필드·경유지체인·상호 하이퍼링크를 가진 개체로. 카드 1컴포넌트, 유형별 필드.
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { geoEqualEarth, geoPath, geoArea, geoInterpolate } from "d3-geo";
+import { geoEqualEarth, geoPath, geoArea } from "d3-geo";
 import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
@@ -67,11 +67,17 @@ const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59
 const CARGO_KO: Record<string, string> = { container: "컨테이너", crude: "원유", mixed: "혼합", bulk: "벌크" };
 const shipSymbol = (cargo: string) => (cargo === "crude" ? "ship-tanker" : "ship-container");
 const LANE_OFFSETS: Record<string, number[]> = { high: [-7, 0, 7], mid: [-4, 4], low: [0] }; // 등급→차선(회랑 폭=2차 인코딩)
-// 지리 좌표로 항로 densify — 측지선(geoInterpolate)이라 geoPath 항로선에 정확히 얹힘 + 매프레임 재투영이라 회전 대응.
+// Chaikin 코너 커팅 — 모서리를 둥글려 부드러운 곡선. 원 폴리라인 안쪽에 머물러 육지로 튀지 않음(안전).
+function chaikin(pts: number[][], iters: number): number[][] {
+  let p = pts;
+  for (let k = 0; k < iters; k++) { const q: number[][] = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1]; q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); } q.push(p[p.length - 1]); p = q; }
+  return p;
+}
+// 곡선화된 dense 지리 좌표 — 항로선·배 공용. 매프레임 재투영이라 회전 대응.
 function densifyRoute(coords: number[][]): { pts: number[][]; len: number } {
-  const out: number[][] = []; let len = 0;
-  for (let i = 0; i < coords.length - 1; i++) { const a = coords[i], b = coords[i + 1]; const interp = geoInterpolate(a as [number, number], b as [number, number]); const d = Math.hypot(b[0] - a[0], b[1] - a[1]); len += d; const n = Math.max(1, Math.round(d / 1.2)); for (let j = 0; j < n; j++) out.push(interp(j / n)); }
-  out.push(coords[coords.length - 1]); return { pts: out, len: Math.max(len, 1) };
+  const pts = chaikin(coords, 3); let len = 0;
+  for (let i = 0; i < pts.length - 1; i++) len += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+  return { pts, len: Math.max(len, 1) };
 }
 function shipLngLat(samples: number[][], offset: number): [number, number] {
   const N = samples.length; const f = ((offset % 1) + 1) % 1 * (N - 1); const i0 = Math.floor(f), i1 = Math.min(N - 1, i0 + 1), fr = f - i0;
@@ -232,13 +238,13 @@ export default function World() {
   const pathGen = useMemo(() => geoPath(projection), [projection]);
   const paths = useMemo(() => features.map((f) => pathGen(f as any) || ""), [features, pathGen]);
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
-  const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: r.coords } as any) || ""), [pathGen]);
+  const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: densifyRoute(r.coords).pts } as any) || ""), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
   const [shipCargoView, setShipCargoView] = useState(false);
   const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
   const routeSamples = useMemo(() => { const m = new Map<string, { pts: number[][]; len: number }>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
-  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.006 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
+  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.004 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
   const fleetRefs = useRef<(SVGGElement | null)[]>([]);
   // L4 분쟁 층 — 진앙 마커 + 당사국 스트로크(면 아님 → 블록과 공존). 기본 전쟁(≥1000)만, 무력분쟁 토글.
   const [conflictMode, setConflictMode] = useState(false);
