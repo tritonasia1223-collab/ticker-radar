@@ -72,6 +72,13 @@ function convexHull(points: [number, number][]): [number, number][] {
   return lower.concat(upper);
 }
 const r3 = (p: number[]): [number, number] => [Math.round(p[0] * 1e3) / 1e3, Math.round(p[1] * 1e3) / 1e3];
+// 사건 점 캐시(상세 뷰 재생용) — 시간순 균등 씨닝, 상한. 좌표 2자리·날짜 일 단위.
+function thinEvents(evs: { lng: number; lat: number; ms: number; best: number }[], cap: number) {
+  const sorted = evs.slice().sort((a, b) => a.ms - b.ms);
+  let sel = sorted;
+  if (sorted.length > cap) { sel = []; const step = sorted.length / cap; for (let i = 0; i < sorted.length; i += step) sel.push(sorted[Math.floor(i)]); }
+  return sel.map((e) => ({ c: [Math.round(e.lng * 100) / 100, Math.round(e.lat * 100) / 100], d: new Date(e.ms).toISOString().slice(0, 10), b: e.best }));
+}
 function conflictZone(coords: [number, number][], ep: [number, number]): [number, number][] | null {
   if (coords.length < 4) return null;
   const dists = coords.map((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1])).sort((a, b) => a - b);
@@ -133,6 +140,8 @@ async function main() {
       type, category, intensity: deaths >= 1000 ? "war" : "armed_conflict", active: true,
       deaths_12mo: deaths, events_12mo: w.length,
       epicenter, zone: conflictZone(coords, epicenter),
+      geometry_type: "standoff", // territorial(통제지역 폴리곤)은 라이선스 확보 후. 소스 없으면 standoff(사건 재생).
+      events: thinEvents(r.ev, 100), // 상세 뷰 재생용(직전 ~24개월, 균등 씨닝)
       parties, party_isos: partyIsos,
       started_year: r.start, last_event_date: new Date(lastMs).toISOString().slice(0, 10),
     });
