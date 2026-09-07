@@ -692,10 +692,8 @@ export default function World() {
         )}
         {showConflicts && (
         <div className="flex min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
-          <div className="p-2.5 pb-1">
-            <div className="flex items-center gap-1.5"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-sm font-bold">분쟁</span><span className="ml-auto text-[9px] text-muted-foreground">UCDP</span></div>
-            <div className="text-[10.5px] text-muted-foreground">{visConflicts.length}개 · <button onClick={() => setShowArmed((v) => !v)} className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "무력분쟁 포함"}</button> · 강도순</div>
-          </div>
+          <div className="flex items-center gap-1.5 p-2.5 pb-1"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-sm font-bold">분쟁</span><span className="ml-auto text-[9px] text-muted-foreground" title={`출처: ${conflictsMeta.source} · 집계 ${conflictsMeta.window}`}>UCDP</span></div>
+          <div className="px-2.5 pb-1.5 text-[10.5px] text-muted-foreground">{visConflicts.length}개 · <button onClick={() => setShowArmed((v) => !v)} className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "무력분쟁 포함"}</button> · 강도순</div>
           <div className="min-h-0 overflow-auto border-t border-border py-1">
             {visConflicts.map((c) => { const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id; const war = c.intensity === "war";
               return (<button key={c.id} onMouseEnter={() => setHoverConflict(c.id)} onMouseLeave={() => setHoverConflict(null)} onClick={() => goTo({ kind: "conflict", id: c.id })}
