@@ -47,7 +47,10 @@ type Gen = { type: string; vendor: string | null; mw: number | null; status: str
 type Power = { grid_operator: string; utility: string | null; grid_share: string; onsite_generation: Gen[]; utility_new_build: Gen[]; nuclear: boolean; note?: string; confidence: string };
 type Fin = { type: string; party: string; amount_usd_bn: number | null; disclosure: string };
 type Site = { id: string; group: "A" | "B" | "C"; name: string; location: { city: string | null; state: string | null; lat: number | null; lng: number | null }; capacity_operational_mw: number | null; capacity_target_mw: { min: number | null; max: number | null }; status_stage: string; status_note: string; landlord: string; tenant: string | null; lease_term_years: number | null; end_user: string | null; financing: Fin[]; financing_total_usd_bn: number | null; credit_wrapper: string | null; credit_wrapper_rating: string | null; notes: string; power?: Power };
-type Nuke = { id: string; buyer: string; plant: string; reactor_type: string; mw: number; location: { state: string; grid: string; lat: number; lng: number }; deal: string; target_year: number; status: string; site_bound: boolean; confidence: string };
+type Nuke = { id: string; buyer: string; plant: string; reactor_type: string; mw: number; location: { state: string; grid: string; lat: number; lng: number }; deal: string; target_year: number; status: string; site_bound: boolean; confidence: string; site_type?: string };
+// §C 원전 부지 유형: 기존·퇴역 부지 재활용(빠른 접속) vs 신규 건설(느림·불확실)
+const SITE_TYPE_KO: Record<string, string> = { restart: "퇴역 원전 재가동", existing: "기존 원전 활용", new: "신규 건설", unconfirmed: "미확인", none: "원자력 없음" };
+const isReuseNuke = (t?: string) => t === "restart" || t === "existing";
 const dc = dcData as unknown as { meta: any; sites: Site[]; analysis_notes: string[]; nuclear_deals: Nuke[] };
 const GROUP_COLOR: Record<string, string> = { A: "#7c3aed", B: "#2563eb", C: "#db2777" };
 const GROUP_LABEL: Record<string, string> = { A: "스타게이트 계열", B: "하이퍼스케일러", C: "네오클라우드" };
@@ -510,12 +513,15 @@ export default function World() {
 
         {/* DC 모드: 원전·SMR PPA(회사 단위 — 선 안 이음) */}
         {dcMode && dcNuke && dc.nuclear_deals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          const reuse = isReuseNuke(n.site_type); const stKo = SITE_TYPE_KO[n.site_type || ""] || n.reactor_type;
           return (<g key={`n${n.id}`} style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
-            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.mw}MW · ${n.reactor_type}` })}
-            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.mw}MW` })}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.mw ?? "?"}MW · ${n.reactor_type} · ${stKo}` })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${stKo}` })}
             onMouseLeave={() => setTip(null)}>
-            <circle cx={sc[0]} cy={sc[1]} r={4.5} fill="none" stroke="#a855f7" strokeWidth={1.4} strokeDasharray={n.site_bound ? undefined : "2 1.5"} />
+            {/* 재활용(기존·퇴역 부지) = 실선 + 중심점(기존 접속점 재활용) / 신규 = 점선 */}
+            <circle cx={sc[0]} cy={sc[1]} r={4.5} fill={reuse ? "rgba(168,85,247,0.14)" : "none"} stroke="#a855f7" strokeWidth={1.4} strokeDasharray={reuse ? undefined : "2 1.5"} />
+            {reuse && <circle cx={sc[0]} cy={sc[1]} r={1.3} fill="#a855f7" />}
             <text x={sc[0]} y={sc[1] + 2.6} textAnchor="middle" fontSize={6} fill="#a855f7" fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
 
@@ -701,6 +707,7 @@ export default function World() {
               {dcColor === "credit" && ([["A~AAA", "#16a34a", "투자등급"], ["BBB-", "#f59e0b", "취약 IG"], ["BB", "#dc2626", "정크"], ["미평가", "#94a3b8", "비상장"]] as const).map(([k, c, v]) => (<span key={k} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px]"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{k} {v}</span>))}
             </div>
             <label className="mt-2 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcNuke} onChange={(e) => setDcNuke(e.target.checked)} className="accent-purple-500" /><Atom className="h-3 w-3 text-purple-500" />원전·SMR PPA ({dc.nuclear_deals.length})</label>
+            {dcNuke && <div className="ml-5 text-[9px] text-muted-foreground">⚛ 실선·점 = 기존/퇴역 부지 재활용 · 점선 = 신규 건설</div>}
             <label className="mt-1 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcTx} onChange={(e) => setDcTx(e.target.checked)} className="accent-blue-500" /><Zap className="h-3 w-3 text-blue-500" />송전선 345kV+ · 계통 스냅</label>
             {dcTx && <div className="ml-5 text-[9px] text-muted-foreground">기존 계통 · 2022 기준(신설선 미포함)</div>}
             <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색<span title="전력시장(RTO) = 누구 전기인가(귀속) · AI 부하 비중 = 얼마나 무겁게(부담). 부하 비중 = 주내 AI DC 목표부하 합 ÷ 주 평균 전력부하(EIA 2023 소매판매량÷8760). RTO 경계는 겹침·공백 있는 근사(HIFLD)." className="cursor-help">ⓘ</span></div>
