@@ -15,6 +15,7 @@ import dcData from "@/data/ai-datacenters.json";
 import usStatesTopo from "@/data/us-states-10m.json";
 import txData from "@/data/us-transmission-345.json";
 import dcPowerLinks from "@/data/dc-power-links.json";
+import rtoData from "@/data/us-rto-regions.json";
 
 type CtyProps = { iso: string; ko: string; en: string; lx: number; ly: number };
 type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
@@ -92,6 +93,10 @@ const STATE_RETAIL_MWH_2023: Record<string, number> = { TX: 404603980, LA: 95374
 // 부하 비중 단계 램프(누적 임계 desc): AI DC 부하 ÷ 주 평균부하(연 판매량/8760) %.
 const LOAD_FILL_STEPS: [number, string][] = [[45, "rgba(220,38,38,0.60)"], [30, "rgba(220,38,38,0.42)"], [15, "rgba(234,88,12,0.30)"], [5, "rgba(245,158,11,0.20)"], [0, "rgba(245,158,11,0.09)"]];
 const loadFillColor = (share: number) => { for (const [th, c] of LOAD_FILL_STEPS) if (share >= th) return c; return "transparent"; };
+// ISO/RTO 권역 채색(§B '전력시장'). 비ISO(TVA·WECC·SERC 등)는 무채색.
+type RtoRegion = { code: string; name: string; geometry: any };
+const rtoRegions = (rtoData as unknown as { regions: RtoRegion[] }).regions;
+const RTO_FILL: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b", CAISO: "#db2777", ISONE: "#9333ea", NYISO: "#0891b2" };
 const US_NAME_ABBR: Record<string, string> = { Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA", Colorado: "CO", Connecticut: "CT", Delaware: "DE", "District of Columbia": "DC", Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA", Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD", Massachusetts: "MA", Michigan: "MI", Minnesota: "MN", Mississippi: "MS", Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK", Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT", Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI", Wyoming: "WY" };
 const US_STATE_KO: Record<string, string> = { Alabama: "앨라배마", Alaska: "알래스카", Arizona: "애리조나", Arkansas: "아칸소", California: "캘리포니아", Colorado: "콜로라도", Connecticut: "코네티컷", Delaware: "델라웨어", "District of Columbia": "워싱턴 D.C.", Florida: "플로리다", Georgia: "조지아", Hawaii: "하와이", Idaho: "아이다호", Illinois: "일리노이", Indiana: "인디애나", Iowa: "아이오와", Kansas: "캔자스", Kentucky: "켄터키", Louisiana: "루이지애나", Maine: "메인", Maryland: "메릴랜드", Massachusetts: "매사추세츠", Michigan: "미시간", Minnesota: "미네소타", Mississippi: "미시시피", Missouri: "미주리", Montana: "몬태나", Nebraska: "네브래스카", Nevada: "네바다", "New Hampshire": "뉴햄프셔", "New Jersey": "뉴저지", "New Mexico": "뉴멕시코", "New York": "뉴욕", "North Carolina": "노스캐롤라이나", "North Dakota": "노스다코타", Ohio: "오하이오", Oklahoma: "오클라호마", Oregon: "오리건", Pennsylvania: "펜실베이니아", "Rhode Island": "로드아일랜드", "South Carolina": "사우스캐롤라이나", "South Dakota": "사우스다코타", Tennessee: "테네시", Texas: "텍사스", Utah: "유타", Vermont: "버몬트", Virginia: "버지니아", Washington: "워싱턴", "West Virginia": "웨스트버지니아", Wisconsin: "위스콘신", Wyoming: "와이오밍" };
 const WORLD_LABEL_TOP = 26;
@@ -175,7 +180,8 @@ export default function World() {
   const [dcSel, setDcSel] = useState<string | null>(null);
   const [dcNotes, setDcNotes] = useState(false);
   const [dcTx, setDcTx] = useState(true); // 송전선 + 계통 스냅 레이어
-  const [dcFill, setDcFill] = useState<"none" | "load">("none"); // 국가 뷰 면 채색(§B). RTO 권역은 폴리곤 확보 후.
+  const [dcFill, setDcFill] = useState<"none" | "rto" | "load">("none"); // 국가 뷰 면 채색(§B) — 상호배타
+  const rtoPaths = useMemo(() => (dcMode && dcFill === "rto" ? rtoRegions.map((r) => ({ code: r.code, d: pathGen(r.geometry) || "" })) : []), [dcMode, dcFill, pathGen]);
   const usStates = useMemo(() => (feature(usStatesTopo as any, (usStatesTopo as any).objects.states) as any).features, []);
   const usStatePaths = useMemo(() => (dcMode ? usStates.map((f: any) => pathGen(f) || "") : []), [dcMode, usStates, pathGen]);
   // 주 이름 라벨 — 투영 후 중심점(그룹 transform 좌표계). NaN(클립됨) 제외.
@@ -378,6 +384,8 @@ export default function World() {
             );
           })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
+          {/* 국가 뷰 면 채색 §B — 전력시장(RTO) 권역. 비ISO 지역은 무채색(안 그림) */}
+          {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => (r.d ? <path key={`rto${i}`} d={r.d} fill={RTO_FILL[r.code] || "#94a3b8"} fillOpacity={0.14} stroke={RTO_FILL[r.code] || "#94a3b8"} strokeOpacity={0.3} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} /> : null))}
           {/* 국가 뷰 면 채색 §B — 주별 AI 부하 비중 램프 */}
           {dcMode && dcFill === "load" && usStates.map((f: any, i: number) => { const ab = US_NAME_ABBR[f.properties?.name]; const share = ab ? stateLoadShare.get(ab) : undefined; if (share == null) return null;
             return <path key={`fill${i}`} d={usStatePaths[i]} fill={loadFillColor(share)} stroke="none" style={{ cursor: "default" }}
@@ -695,11 +703,12 @@ export default function World() {
             <label className="mt-2 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcNuke} onChange={(e) => setDcNuke(e.target.checked)} className="accent-purple-500" /><Atom className="h-3 w-3 text-purple-500" />원전·SMR PPA ({dc.nuclear_deals.length})</label>
             <label className="mt-1 flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={dcTx} onChange={(e) => setDcTx(e.target.checked)} className="accent-blue-500" /><Zap className="h-3 w-3 text-blue-500" />송전선 345kV+ · 계통 스냅</label>
             {dcTx && <div className="ml-5 text-[9px] text-muted-foreground">기존 계통 · 2022 기준(신설선 미포함)</div>}
-            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색<span title="AI 부하 비중 = 주내 AI DC 목표부하 합 ÷ 주 평균 전력부하(EIA 2023 소매판매량÷8760). RTO 권역 채색은 폴리곤 확보 후." className="cursor-help">ⓘ</span></div>
-            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[11px]">
-              {([["none", "없음"], ["load", "AI 부하 비중"]] as const).map(([m, lab]) => (<button key={m} onClick={() => setDcFill(m)} className={`flex-1 px-1.5 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
+            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색<span title="전력시장(RTO) = 누구 전기인가(귀속) · AI 부하 비중 = 얼마나 무겁게(부담). 부하 비중 = 주내 AI DC 목표부하 합 ÷ 주 평균 전력부하(EIA 2023 소매판매량÷8760). RTO 경계는 겹침·공백 있는 근사(HIFLD)." className="cursor-help">ⓘ</span></div>
+            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[10.5px]">
+              {([["none", "없음"], ["rto", "전력시장"], ["load", "AI 부하 비중"]] as const).map(([m, lab]) => (<button key={m} onClick={() => setDcFill(m)} className={`flex-1 px-1 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
             {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음</span></div>)}
+            {dcFill === "rto" && (<div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">{(["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as const).map((k) => (<span key={k} className="flex items-center gap-0.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: RTO_FILL[k] }} />{k}</span>))}<span className="text-muted-foreground/70">· 무채색=비ISO(TVA·WECC 등)</span></div>)}
           </div>
         </div>
 
