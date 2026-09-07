@@ -1054,7 +1054,7 @@ function GSection({ title, children }: { title: string; children: React.ReactNod
 const dot = (c: string, sq = false) => <span className={`inline-block h-2.5 w-2.5 ${sq ? "rounded-sm" : "rounded-full"}`} style={{ background: c }} />;
 function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClose: () => void }) {
   const title = mode === "dc" ? "미국 데이터센터 — AI 인프라 지도" : mode === "conflict" ? "분쟁 — 전 세계 활성 분쟁 (UCDP)" : "세계·무역 — 무역 동맥 지도";
-  const lead = mode === "dc" ? "AI 데이터센터가 어디에, 무슨 전기로, 그 지역 전력망에 얼마나 무겁게 앉았는지 봅니다." : mode === "conflict" ? "지금 벌어지는 무력 분쟁의 위치·규모·유형을 봅니다." : "배가 다니는 항로·항구·병목 해협과 나라를 봅니다.";
+  const lead = mode === "dc" ? "AI 데이터센터가 미국 내 어디에 있으며, 전기는 얼마나 쓰는지를 봅니다." : mode === "conflict" ? "지금 벌어지는 무력 분쟁의 위치·규모·유형을 봅니다." : "배가 다니는 항로·항구·병목 해협과 나라를 봅니다.";
   return (
     <div className="absolute bottom-14 left-4 z-20 max-h-[calc(100%-6rem)] w-[29rem] max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-border bg-card/97 p-4 shadow-xl backdrop-blur">
       <button onClick={onClose} className="absolute right-2.5 top-2.5 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
@@ -1083,21 +1083,19 @@ function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClo
       </>)}
 
       {mode === "dc" && (<>
-        <GSection title="마커는 '모양'으로 구분">
-          <GRow mark={dot("#7c3aed")}>● 원 = <b>데이터센터</b> (크기=IT 용량, 외곽 링=계통 의존도)</GRow>
-          <GRow mark={<Hexagon className="h-3 w-3" style={{ color: "#2563eb" }} />}>⬡ 육각 = <b>반도체 팹</b> (색=회사)</GRow>
-          <GRow mark={<Atom className="h-3 w-3" style={{ color: "#16a34a" }} />}>⚛ = <b>원전</b> (색=상태)</GRow>
-          <GRow mark={dot("#f97316", true)}>■ 사각 = <b>발전소</b> (가스=주황·원전=초록)</GRow>
+        <GSection title="우측 상단 버튼으로 일부 뱃지 껐다 켜기">
+          <GRow mark={dot("#7c3aed")}><b>데이터센터</b> (크기=용량, 색깔=그룹 구분)</GRow>
+          <GRow mark={<Hexagon className="h-3 w-3" style={{ color: "#2563eb" }} />}><b>반도체 팹</b></GRow>
+          <GRow mark={<Atom className="h-3 w-3" style={{ color: "#16a34a" }} />}><b>원전</b> (색깔=가동 상태. 초록=가동 중 · 노랑=재가동(퇴역 복귀) · 회색=퇴역)</GRow>
+          <GRow mark={dot("#f97316", true)}><b>발전소</b></GRow>
+          <GRow mark={<Zap className="h-3 w-3" style={{ color: "#0ea5e9" }} />}><b>송전선</b> (미국 고압 송전망. 하늘색으로 흐르며, 굵을수록 높은 전압)</GRow>
         </GSection>
-        <GSection title="이걸 보고 싶으면">
-          <GRow mark="▸"><b>AI가 어느 주에 가장 무겁게</b> 앉았나 → 왼쪽 '면 채색 → AI 부하 비중' (진할수록 부담 큼).</GRow>
-          <GRow mark="▸">이 지역이 <b>누구 그리드</b> 전기냐 → '면 채색 → 전력시장' (ERCOT=텍사스 등).</GRow>
-          <GRow mark="▸">이 DC가 <b>전기를 어디서</b> 끌어오나 → 그 DC로 <b>확대(줌인)</b>하면 연결선이 살아남 (흐르는 선=현장발전 실제 조류 · 대시=계약 · 점선=계통 근사 연결).</GRow>
-          <GRow mark="▸"><b>원전 상태</b>(가동/퇴역/재가동) → 우상단 '원전' 켜기. 초록=가동·회색=퇴역·앰버=재가동, 보라 링=AI 연계.</GRow>
-          <GRow mark="▸"><b>반도체 팹 상태</b>(가동/건설/지연) → 우상단 '반도체 팹'. 육각 채움(꽉=가동·반=건설·점선=발표만) + 클릭 시 상태 이력.</GRow>
-          <GRow mark="▸"><b>송전망</b> → 우상단 '송전선' (하늘색 흐름, 굵기=전압 등급).</GRow>
+        <div className="mt-2 text-[11px] text-muted-foreground">마커는 <b>모양</b>으로 구분 — 원=데이터센터 · 육각형=반도체 팹 · ⚛=원전 · 사각형=발전소.</div>
+        <GSection title="면 채색 (지도 배경) — 왼쪽 패널에서 선택">
+          <div className="text-[11px] text-muted-foreground">"전기를 얼마나 쓰는지"의 핵심입니다.</div>
+          <GRow mark="▸"><b>AI 부하 비중</b>: 그 주 전체 전력 수요 중 AI 데이터센터가 차지하는 몫. 진할수록 무겁게 앉은 주.</GRow>
+          <GRow mark="▸"><b>전력시장</b>: 이 지역이 어느 그리드(ERCOT=텍사스 · PJM=동부 등)에 속하는지.</GRow>
         </GSection>
-        <div className="mt-3 text-[11px] text-muted-foreground">정직성: 완공률·실제 인입선은 공개 데이터가 없어 안 그립니다. 계통 스냅·진앙 등은 '근사' 표기.</div>
       </>)}
 
       {mode === "conflict" && (<>
