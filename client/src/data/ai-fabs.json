@@ -1,0 +1,180 @@
+{
+  "_meta": {
+    "title": "미국 첨단 반도체 팹 — AI 인프라 층",
+    "as_of": "2026-08",
+    "curation": "§1 기준: ① 첨단 로직(7nm↓) ② 첨단 메모리(DRAM/HBM/NAND) ③ 첨단 패키징 ④ 주요 기업 대형($5B+). 성숙 공정·소재·장비 제외.",
+    "note": "이 층의 본체는 상태 필드. 상태는 공식 발표로만 변경(추측 승격 금지). 투자액은 발표치. 좌표는 부지 근사. 초안 — 트리톤 정밀화 대상.",
+    "sources": ["SIA Semiconductor Supply Chain Investments", "U.S. Dept. of Commerce CHIPS awards", "기업 IR/보도자료"]
+  },
+  "fabs": [
+    {
+      "id": "intel-ohio",
+      "company": "intel", "site_name": "인텔 오하이오 (New Albany)",
+      "location": { "city": "New Albany (Licking Co.)", "state": "OH", "lat": 40.08, "lng": -82.79 },
+      "category": "logic", "node_note": "첨단 로직 (Intel 18A/차세대)",
+      "invest_announced_usd_bn": 28, "chips_award_usd_bn": null, "target_year": 2030,
+      "status": "paused", "status_as_of": "2026-08",
+      "status_note": "2022 착공했으나 2025-02 첫 팹 가동을 2030, 운영 2030~31로 공개 지연. 대표적 '발표≠가동' 사례.",
+      "status_source_url": "https://www.intc.com/news-events/press-releases",
+      "status_log": [
+        { "status": "announced", "changed_on": "2022-01", "note": "$20B+ 신규 팹 발표", "source_url": "https://www.intc.com/news-events/press-releases" },
+        { "status": "construction", "changed_on": "2022-09", "note": "착공", "source_url": "https://www.intc.com/news-events/press-releases" },
+        { "status": "paused", "changed_on": "2025-02", "note": "첫 팹 가동 2030, 운영 2030~31로 지연 발표", "source_url": "https://www.intc.com/news-events/press-releases" }
+      ],
+      "source_url": "https://www.intc.com/news-events/press-releases"
+    },
+    {
+      "id": "intel-az",
+      "company": "intel", "site_name": "인텔 애리조나 (Ocotillo, Fab 52/62)",
+      "location": { "city": "Chandler", "state": "AZ", "lat": 33.32, "lng": -111.90 },
+      "category": "logic", "node_note": "Intel 18A (2nm급) — Fab 52 램프",
+      "invest_announced_usd_bn": 32, "chips_award_usd_bn": 7.86, "target_year": 2025,
+      "status": "operating", "status_as_of": "2026-08",
+      "status_note": "Fab 52에서 Intel 18A 양산 개시(2025). CHIPS 확정 보조금은 인텔 전사 배정분.",
+      "status_source_url": "https://www.intc.com/news-events/press-releases",
+      "status_log": [
+        { "status": "construction", "changed_on": "2021-09", "note": "Fab 52/62 착공", "source_url": "https://www.intc.com/news-events/press-releases" },
+        { "status": "operating", "changed_on": "2025", "note": "18A 양산 개시", "source_url": "https://www.intc.com/news-events/press-releases" }
+      ],
+      "source_url": "https://www.intc.com/news-events/press-releases"
+    },
+    {
+      "id": "intel-nm",
+      "company": "intel", "site_name": "인텔 뉴멕시코 (Fab 9, Rio Rancho)",
+      "location": { "city": "Rio Rancho", "state": "NM", "lat": 35.23, "lng": -106.67 },
+      "category": "packaging", "node_note": "첨단 패키징 (Foveros 3D)",
+      "invest_announced_usd_bn": 3.5, "chips_award_usd_bn": null, "target_year": 2024,
+      "status": "operating", "status_as_of": "2026-08",
+      "status_note": "Foveros 첨단 패키징 가동(2024).",
+      "status_source_url": "https://www.intc.com/news-events/press-releases",
+      "status_log": [{ "status": "operating", "changed_on": "2024", "note": "Foveros 패키징 가동", "source_url": "https://www.intc.com/news-events/press-releases" }],
+      "source_url": "https://www.intc.com/news-events/press-releases"
+    },
+    {
+      "id": "tsmc-az",
+      "company": "tsmc", "site_name": "TSMC 애리조나 (Phoenix)",
+      "location": { "city": "Phoenix (north)", "state": "AZ", "lat": 33.73, "lng": -112.10 },
+      "category": "logic", "node_note": "N4 가동 · N3 건설 · N2/A16 계획 (Fab 1~3+)",
+      "invest_announced_usd_bn": 65, "chips_award_usd_bn": 6.6, "target_year": 2025,
+      "status": "operating", "status_as_of": "2026-08",
+      "status_note": "Fab 1(N4) 양산(2025). Fab 2(N3) 건설, 이후 N2/A16 계획. 첨단 패키징도 추가 발표.",
+      "status_source_url": "https://pr.tsmc.com/english/news",
+      "status_log": [
+        { "status": "construction", "changed_on": "2021", "note": "Fab 1 착공", "source_url": "https://pr.tsmc.com/english/news" },
+        { "status": "operating", "changed_on": "2025", "note": "Fab 1 N4 양산 개시", "source_url": "https://pr.tsmc.com/english/news" }
+      ],
+      "source_url": "https://pr.tsmc.com/english/news"
+    },
+    {
+      "id": "samsung-taylor",
+      "company": "samsung", "site_name": "삼성 테일러 (Taylor)",
+      "location": { "city": "Taylor", "state": "TX", "lat": 30.57, "lng": -97.41 },
+      "category": "logic", "node_note": "첨단 로직 (2nm/4nm 목표)",
+      "invest_announced_usd_bn": 37, "chips_award_usd_bn": 4.745, "target_year": 2026,
+      "status": "construction", "status_as_of": "2026-08",
+      "status_note": "착공했으나 가동 목표 2024→2026 이후로 후퇴(수요·수율 조정).",
+      "status_source_url": "https://news.samsung.com/us/",
+      "status_log": [
+        { "status": "construction", "changed_on": "2022", "note": "착공(초기 목표 2024 가동)", "source_url": "https://news.samsung.com/us/" },
+        { "status": "construction", "changed_on": "2024", "note": "가동 목표 2026 이후로 지연", "source_url": "https://news.samsung.com/us/" }
+      ],
+      "source_url": "https://news.samsung.com/us/"
+    },
+    {
+      "id": "micron-ny",
+      "company": "micron", "site_name": "마이크론 뉴욕 (Clay)",
+      "location": { "city": "Clay (Onondaga Co.)", "state": "NY", "lat": 43.18, "lng": -76.18 },
+      "category": "memory", "node_note": "첨단 DRAM (메가팹, 최대 4팹)",
+      "invest_announced_usd_bn": 100, "chips_award_usd_bn": 6.1, "target_year": 2029,
+      "status": "construction", "status_as_of": "2026-08",
+      "status_note": "환경 심사 후 부지 착공. 20년간 최대 $100B 발표치(1단계 우선).",
+      "status_source_url": "https://www.micron.com/about/newsroom",
+      "status_log": [
+        { "status": "announced", "changed_on": "2022-10", "note": "최대 $100B DRAM 메가팹 발표", "source_url": "https://www.micron.com/about/newsroom" },
+        { "status": "construction", "changed_on": "2025", "note": "부지 정지·착공", "source_url": "https://www.micron.com/about/newsroom" }
+      ],
+      "source_url": "https://www.micron.com/about/newsroom"
+    },
+    {
+      "id": "micron-id",
+      "company": "micron", "site_name": "마이크론 아이다호 (Boise)",
+      "location": { "city": "Boise", "state": "ID", "lat": 43.53, "lng": -116.23 },
+      "category": "memory", "node_note": "첨단 DRAM (HBM 연계)",
+      "invest_announced_usd_bn": 15, "chips_award_usd_bn": 6.1, "target_year": 2027,
+      "status": "construction", "status_as_of": "2026-08",
+      "status_note": "본사 인접 신규 DRAM 팹 건설(2023 착공). CHIPS 보조금은 NY·ID 합산 배정.",
+      "status_source_url": "https://www.micron.com/about/newsroom",
+      "status_log": [
+        { "status": "announced", "changed_on": "2022-09", "note": "$15B DRAM 팹 발표", "source_url": "https://www.micron.com/about/newsroom" },
+        { "status": "construction", "changed_on": "2023-10", "note": "착공", "source_url": "https://www.micron.com/about/newsroom" }
+      ],
+      "source_url": "https://www.micron.com/about/newsroom"
+    },
+    {
+      "id": "skhynix-in",
+      "company": "skhynix", "site_name": "SK하이닉스 인디애나 (West Lafayette)",
+      "location": { "city": "West Lafayette", "state": "IN", "lat": 40.44, "lng": -86.91 },
+      "category": "packaging", "node_note": "HBM 첨단 패키징 + R&D",
+      "invest_announced_usd_bn": 3.87, "chips_award_usd_bn": 0.458, "target_year": 2028,
+      "status": "construction", "status_as_of": "2026-08",
+      "status_note": "미국 첫 HBM 첨단 패키징 기지. 2028 양산 목표.",
+      "status_source_url": "https://news.skhynix.com/",
+      "status_log": [
+        { "status": "announced", "changed_on": "2024-04", "note": "$3.87B HBM 패키징 발표", "source_url": "https://news.skhynix.com/" },
+        { "status": "construction", "changed_on": "2025", "note": "착공", "source_url": "https://news.skhynix.com/" }
+      ],
+      "source_url": "https://news.skhynix.com/"
+    },
+    {
+      "id": "amkor-az",
+      "company": "other", "site_name": "앰코 애리조나 (Peoria)",
+      "location": { "city": "Peoria", "state": "AZ", "lat": 33.75, "lng": -112.24 },
+      "category": "packaging", "node_note": "첨단 패키징 (TSMC AZ 연계)",
+      "invest_announced_usd_bn": 2, "chips_award_usd_bn": 0.4, "target_year": 2027,
+      "status": "construction", "status_as_of": "2026-08",
+      "status_note": "미국 최대급 첨단 패키징. 인근 TSMC 애리조나 물량 연계.",
+      "status_source_url": "https://amkor.com/newsroom/",
+      "status_log": [
+        { "status": "announced", "changed_on": "2023-11", "note": "$2B 첨단 패키징 발표", "source_url": "https://amkor.com/newsroom/" },
+        { "status": "construction", "changed_on": "2025", "note": "착공", "source_url": "https://amkor.com/newsroom/" }
+      ],
+      "source_url": "https://amkor.com/newsroom/"
+    },
+    {
+      "id": "micron-va",
+      "company": "micron", "site_name": "마이크론 버지니아 (Manassas)",
+      "location": { "city": "Manassas", "state": "VA", "lat": 38.75, "lng": -77.48 },
+      "category": "memory", "node_note": "메모리(장수명 DRAM) 확장",
+      "invest_announced_usd_bn": 2, "chips_award_usd_bn": null, "target_year": 2027,
+      "status": "construction", "status_as_of": "2026-08",
+      "status_note": "기존 팹 확장.",
+      "status_source_url": "https://www.micron.com/about/newsroom",
+      "status_log": [{ "status": "construction", "changed_on": "2024", "note": "확장 착공", "source_url": "https://www.micron.com/about/newsroom" }],
+      "source_url": "https://www.micron.com/about/newsroom"
+    },
+    {
+      "id": "absolics-ga",
+      "company": "other", "site_name": "앱솔릭스 조지아 (Covington)",
+      "location": { "city": "Covington", "state": "GA", "lat": 33.6, "lng": -83.86 },
+      "category": "packaging", "node_note": "유리기판 첨단 패키징 (SKC)",
+      "invest_announced_usd_bn": 1.2, "chips_award_usd_bn": 0.075, "target_year": 2025,
+      "status": "operating", "status_as_of": "2026-08",
+      "status_note": "유리기판 첨단 패키징 파일럿 가동.",
+      "status_source_url": "https://absolics.com/",
+      "status_log": [{ "status": "operating", "changed_on": "2025", "note": "파일럿 가동", "source_url": "https://absolics.com/" }],
+      "source_url": "https://absolics.com/"
+    },
+    {
+      "id": "tsmc-az-adv",
+      "company": "tsmc", "site_name": "TSMC 애리조나 첨단 패키징",
+      "location": { "city": "Phoenix (north)", "state": "AZ", "lat": 33.76, "lng": -112.06 },
+      "category": "packaging", "node_note": "AI 칩용 첨단 패키징(발표)",
+      "invest_announced_usd_bn": 0, "chips_award_usd_bn": null, "target_year": 2029,
+      "status": "announced", "status_as_of": "2026-08",
+      "status_note": "$65B 패키지의 일부로 첨단 패키징 2기 발표(착공 미확인).",
+      "status_source_url": "https://pr.tsmc.com/english/news",
+      "status_log": [{ "status": "announced", "changed_on": "2025-03", "note": "첨단 패키징 2기 발표", "source_url": "https://pr.tsmc.com/english/news" }],
+      "source_url": "https://pr.tsmc.com/english/news"
+    }
+  ]
+}

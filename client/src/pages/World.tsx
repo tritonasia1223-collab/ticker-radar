@@ -7,7 +7,7 @@ import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
 import { feature, neighbors } from "topojson-client";
-import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown, Server, Flame, Atom, BatteryCharging, Zap, Info, Globe, Swords } from "lucide-react";
+import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown, Server, Flame, Atom, BatteryCharging, Zap, Info, Globe, Swords, Hexagon } from "lucide-react";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
 import infraData from "@/data/world-infra.json";
@@ -17,6 +17,7 @@ import txData from "@/data/us-transmission-345.json";
 import dcPowerLinks from "@/data/dc-power-links.json";
 import rtoData from "@/data/us-rto-regions.json";
 import conflictsData from "@/data/world-conflicts.json";
+import fabsData from "@/data/ai-fabs.json";
 
 type CtyProps = { iso: string; ko: string; en: string; lx: number; ly: number };
 type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
@@ -97,6 +98,23 @@ function dcHoverSub(s: Site): string {
 }
 const primaryGen = (p?: Power): "gas" | "nuclear" | "battery" | "grid" => { if (!p) return "grid"; const ts = p.onsite_generation.map((g) => g.type); if (ts.some((t) => t.includes("nuclear") || t === "smr")) return "nuclear"; if (ts.some((t) => t.includes("gas"))) return "gas"; if (ts.some((t) => t.includes("battery") || t.includes("solar"))) return "battery"; return "grid"; };
 const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Zap } as const;
+// ── 반도체 팹 층(DC 모드 안 레이어) ──
+type FabLog = { status: string; changed_on: string; note: string; source_url: string };
+type Fab = { id: string; company: string; site_name: string; location: { city: string; state: string; lat: number; lng: number }; category: string; node_note: string; invest_announced_usd_bn: number; chips_award_usd_bn: number | null; target_year: number | null; status: string; status_as_of: string; status_note: string; status_source_url: string; status_log: FabLog[]; source_url: string };
+const fabs = (fabsData as unknown as { _meta: any; fabs: Fab[] }).fabs;
+const fabsMeta = (fabsData as unknown as { _meta: any })._meta;
+const FAB_COLOR: Record<string, string> = { intel: "#2563eb", tsmc: "#dc2626", samsung: "#7c3aed", skhynix: "#ea580c", micron: "#059669", ti: "#b45309", other: "#64748b" };
+const FAB_COMPANY_KO: Record<string, string> = { intel: "인텔", tsmc: "TSMC", samsung: "삼성", skhynix: "SK하이닉스", micron: "마이크론", ti: "TI", other: "기타" };
+const FAB_STATUS_KO: Record<string, string> = { operating: "가동", construction: "건설 중", announced: "발표만", paused: "지연·보류" };
+const FAB_CAT_KO: Record<string, string> = { logic: "로직", memory: "메모리", packaging: "패키징", other: "기타" };
+const FAB_STATUS_ORDER: Record<string, number> = { operating: 0, construction: 1, announced: 2, paused: 3 };
+const fabFillOpacity = (s: string) => (s === "operating" ? 0.85 : s === "construction" || s === "paused" ? 0.4 : 0);
+const fabMarkerR = (f: Fab) => 5 + 0.5 * Math.sqrt(f.invest_announced_usd_bn || 1);
+function hexPath(cx: number, cy: number, r: number): string {
+  let d = "";
+  for (let i = 0; i < 6; i++) { const a = (Math.PI / 180) * (60 * i - 90); d += (i ? "L" : "M") + (cx + r * Math.cos(a)).toFixed(1) + " " + (cy + r * Math.sin(a)).toFixed(1); }
+  return d + "Z";
+}
 const US_BBOX: [number, number, number, number] = [-125, 24, -66, 49]; // 본토 프레임
 // 주 이름(us-atlas properties.name → 한글). DC 모드에서 주 경계 라벨용.
 // 전력 조달 연결선(§1 3계급) — 발전소 + DC↔발전소 링크
@@ -208,6 +226,9 @@ export default function World() {
   const [dcNotes, setDcNotes] = useState(false);
   const [dcTx, setDcTx] = useState(true); // 송전선 + 계통 스냅 레이어
   const [dcFill, setDcFill] = useState<"none" | "rto" | "load">("none"); // 국가 뷰 면 채색(§B) — 상호배타
+  const [dcFabs, setDcFabs] = useState(false); // 반도체 팹 레이어
+  const [fabSel, setFabSel] = useState<string | null>(null);
+  const fabsSorted = useMemo(() => [...fabs].sort((a, b) => (FAB_STATUS_ORDER[a.status] - FAB_STATUS_ORDER[b.status]) || (b.invest_announced_usd_bn - a.invest_announced_usd_bn)), []);
   const rtoPaths = useMemo(() => (dcMode && dcFill === "rto" ? rtoRegions.map((r) => ({ code: r.code, d: pathGen(r.geometry) || "" })) : []), [dcMode, dcFill, pathGen]);
   const usStates = useMemo(() => (feature(usStatesTopo as any, (usStatesTopo as any).objects.states) as any).features, []);
   const usStatePaths = useMemo(() => (dcMode ? usStates.map((f: any) => pathGen(f) || "") : []), [dcMode, usStates, pathGen]);
@@ -579,6 +600,18 @@ export default function World() {
             <text x={sc[0]} y={sc[1] + 3.1} textAnchor="middle" fontSize={8.5} fill="#b45309" fontWeight={700} style={{ pointerEvents: "none", paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.2, strokeLinejoin: "round" }}>⚛</text>
           </g>); })}
 
+        {/* DC 모드: 반도체 팹 — 육각(원=DC·사각=발전소와 형태 구분). 회사색·상태 채움 */}
+        {dcMode && dcFabs && fabs.map((f) => { const sc = toScreen(f.location.lng, f.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          const on = f.id === fabSel; const col = FAB_COLOR[f.company] || FAB_COLOR.other; const r = fabMarkerR(f) * (on ? 1.15 : 1);
+          return (<g key={`fab${f.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setFabSel(f.id); setDcSel(null); }}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FAB_COMPANY_KO[f.company]} ${f.site_name.replace(/^[^ ]+ /, "")}`, sub: `${FAB_STATUS_KO[f.status]} · ${FAB_CAT_KO[f.category]}` })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FAB_COMPANY_KO[f.company]} · ${FAB_STATUS_KO[f.status]}`, sub: f.node_note })}
+            onMouseLeave={() => setTip(null)}>
+            <path d={hexPath(sc[0], sc[1], r)} fill={col} fillOpacity={fabFillOpacity(f.status)} stroke={col} strokeWidth={on ? 2 : 1.4} strokeDasharray={f.status === "announced" ? "2.5 2" : undefined} />
+            {f.status === "paused" && <circle cx={sc[0] + r * 0.7} cy={sc[1] - r * 0.7} r={2.2} fill="#f59e0b" stroke="hsl(var(--background))" strokeWidth={0.8} />}
+          </g>); })}
+
         {/* DC 모드: 데이터센터 마커 */}
         {dcMode && dcSites.filter((s) => dcGroups[s.group]).map((s) => {
           const sc = toScreen(s.location.lng!, s.location.lat!); if (!sc || !inView(sc[0], sc[1])) return null;
@@ -787,6 +820,8 @@ export default function World() {
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#f59e0b" : undefined }} />원전·SMR</button>
           <button onClick={() => setDcTx((v) => !v)} title="345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사)."
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
+          <button onClick={() => { setDcFabs((v) => !v); setFabSel(null); }} title={`반도체 팹 ${dcFabs ? "끄기" : "켜기"} — 육각 마커(회사색·상태 채움). 발표≠착공≠가동을 상태 필드로 추적.`}
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "#2563eb" : undefined }} />반도체 팹</button>
         </div>
 
         <div className="absolute left-4 top-16 w-60 space-y-2">
@@ -807,6 +842,20 @@ export default function World() {
             {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음</span></div>)}
             {dcFill === "rto" && (<div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">{(["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as const).map((k) => (<span key={k} className="flex items-center gap-0.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: RTO_FILL[k] }} />{k}</span>))}<span className="text-muted-foreground/70">· 무채색=비ISO(TVA·WECC 등)</span></div>)}
           </div>
+          {dcFabs && (
+          <div className="flex max-h-[calc(100vh-22rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-1.5 p-2.5 pb-1"><Hexagon className="h-4 w-4" style={{ color: "#2563eb" }} /><span className="text-sm font-bold">반도체 팹</span><span className="ml-auto cursor-help text-[11px] text-muted-foreground" title="육각 = 팹(원=DC · 사각=발전소). 채움 = 상태(가동 꽉참 · 건설 반채움 · 발표 점선 · 지연 앰버 플래그). 크기 = 발표 투자액. 색 = 회사.">ⓘ</span></div>
+            <div className="px-2.5 pb-1 text-[10.5px] text-muted-foreground">{fabs.length}개 · 상태순 · 투자 발표치</div>
+            <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">{[...new Set(fabs.map((f) => f.company))].map((co) => <span key={co} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[9px]"><span className="h-2 w-2 rounded-sm" style={{ background: FAB_COLOR[co] }} />{FAB_COMPANY_KO[co]}</span>)}</div>
+            <div className="min-h-0 overflow-auto border-t border-border py-1">
+              {fabsSorted.map((f) => { const on = f.id === fabSel;
+                return (<button key={f.id} onMouseEnter={() => setTip(null)} onClick={() => { setFabSel(f.id); setDcSel(null); flyPoint(f.location.lng, f.location.lat); }}
+                  className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                  <span className="h-2 w-2 shrink-0 rotate-45" style={{ background: FAB_COLOR[f.company], opacity: f.status === "announced" ? 0.4 : 1 }} />
+                  <span className="flex-1 truncate">{f.site_name}</span><span className="shrink-0 text-[9px] text-muted-foreground">{FAB_STATUS_KO[f.status]}</span></button>); })}
+            </div>
+          </div>
+          )}
         </div>
 
         <div className="absolute bottom-4 left-4 w-72">
@@ -839,6 +888,23 @@ export default function World() {
             {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{s.notes}</div>}
           </div>);
         })()}
+
+        {fabSel && (() => { const f = fabs.find((x) => x.id === fabSel); if (!f) return null; const col = FAB_COLOR[f.company] || FAB_COLOR.other;
+          return (<div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+            <button onClick={() => setFabSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+            <div className="flex items-center gap-1.5"><Hexagon className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{f.site_name}</span></div>
+            <div className="text-[11px] text-muted-foreground">{FAB_COMPANY_KO[f.company]} · {f.location.city}, {f.location.state} · {FAB_CAT_KO[f.category]}</div>
+            <div className="mt-2 flex items-center gap-1.5 text-[12px]"><span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: col + "22", color: col }}>{FAB_STATUS_KO[f.status]}</span><span className="text-muted-foreground">{f.status_as_of} 기준</span>{f.status === "paused" && <span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: "#f59e0b22", color: "#b45309" }}>지연 플래그</span>}</div>
+            <div className="mt-1 text-[11px] leading-snug text-muted-foreground">{f.status_note}</div>
+            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
+              <span className="text-muted-foreground">공정</span><span>{f.node_note}</span>
+              <span className="text-muted-foreground">발표 투자</span><span>{f.invest_announced_usd_bn ? `$${f.invest_announced_usd_bn}B` : "미공개"} <span className="text-[10px] text-muted-foreground">(발표 기준)</span></span>
+              <span className="text-muted-foreground">CHIPS 보조</span><span>{f.chips_award_usd_bn != null ? `$${f.chips_award_usd_bn}B` : "—"}</span>
+              <span className="text-muted-foreground">목표 가동</span><span>{f.target_year ?? "—"}</span></div>
+            <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">상태 이력 <span className="text-[10px]">(트래킹의 실체)</span></div>
+              <div className="space-y-1">{f.status_log.map((l, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 tabular-nums text-muted-foreground">{l.changed_on}</span><span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: col + "18", color: col }}>{FAB_STATUS_KO[l.status]}</span><span className="text-muted-foreground">{l.note}</span></div>))}</div></div>
+            <Src url={f.source_url} label="출처" />
+          </div>); })()}
       </>)}
     </div>
   );
