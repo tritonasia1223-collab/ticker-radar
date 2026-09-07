@@ -1063,17 +1063,23 @@ function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClo
       <div className="mt-2 text-[11px] text-muted-foreground">지도를 좌우로 끌면 지구가 돌고, 스크롤로 확대. 무엇이든 클릭하면 상세 카드가 뜹니다.</div>
 
       {mode === "trade" && (<>
-        <GSection title="아이콘 읽는 법">
-          <GRow mark={<span className="h-0 w-4 border-t-2" style={{ borderColor: "#2563eb" }} />}>색깔 있는 선 = <b>항로</b> (색이 곧 항로 이름)</GRow>
-          <GRow mark={<Diamond className="h-3 w-3" style={{ color: "#f59e0b" }} />}>◆ = <b>해협</b> (좁은 병목 지점)</GRow>
-          <GRow mark={dot("#2563eb")}>● = <b>항만</b> (원이 클수록 물동량 많음)</GRow>
+        <div className="mt-1 text-[12px] leading-snug">세계 주요 항로, 항구, 주요 해협과 근접국들을 볼 수 있습니다.</div>
+        <GSection title="레이어 (우측 상단 버튼으로 껐다 켜기)">
+          <GRow mark={<span className="h-0 w-4 border-t-2" style={{ borderColor: "#2563eb" }} />}><b>항로</b> — 색깔 있는 선 (색이 곧 항로 이름)</GRow>
+          <GRow mark={<Diamond className="h-3 w-3" style={{ color: "#f59e0b" }} />}><b>해협</b> — ◆ 좁은 병목 지점</GRow>
+          <GRow mark={dot("#2563eb")}><b>항만</b> — ● 상위 20개 표기. <b>이름 앞 숫자 = 순위</b> (원이 클수록 물동량 많음)</GRow>
+        </GSection>
+        <GSection title="🚢 배 흐름 = 그 항로의 운송량 (이번 추가)">
+          <GRow mark="→"><b>진행 방향</b> = 그 항로의 주 무역 흐름 방향.</GRow>
+          <GRow mark="⋯"><b>배 밀도(동시 몇 척)</b> = 연간 물동량 등급. 많을수록 큰 항로(주항로 여러 척 · 북극항로 1척).</GRow>
+          <GRow mark={<span className="text-[10px]">◗</span>}><b>유조선 실루엣</b> = 원유 항로. 왼쪽 패널 '배 색' 토글로 항로별↔화물별 전환.</GRow>
+          <GRow mark="ⓘ">실시간 선박 위치(AIS) 아님 — <b>연간 물동량 등급의 연출</b>(출처: 운하청·UNCTAD).</GRow>
         </GSection>
         <GSection title="이걸 보고 싶으면">
-          <GRow mark="▸">여러 항로 <b>한눈에 비교</b> → 왼쪽 '주요 항로' 목록에서 체크박스 여러 개. 켠 항로가 다 보이게 지도가 맞춰짐.</GRow>
-          <GRow mark="▸">이 해협을 <b>지나는 항로</b> → 해협 클릭 → 카드의 '지나는 항로' 칩.</GRow>
+          <GRow mark="▸"><b>특정 항로만 집중</b> → 왼쪽 상단 '주요 항로' 패널의 체크박스(여러 개 동시). 켠 항로가 다 보이게 이동.</GRow>
+          <GRow mark="▸">이 해협을 <b>지나는 항로</b> → 해협 클릭 → 카드의 '지나는 항로'.</GRow>
           <GRow mark="▸"><b>나라·항만 찾기</b> → 왼쪽 위 검색창(자동 이동).</GRow>
         </GSection>
-        <div className="mt-3 text-[11px] text-muted-foreground">우상단 <b>항로·항만·해협</b> 토글로 각 레이어를 켜고 끕니다.</div>
       </>)}
 
       {mode === "dc" && (<>
