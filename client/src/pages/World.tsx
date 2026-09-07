@@ -81,7 +81,6 @@ function dcHoverSub(s: Site): string {
 const primaryGen = (p?: Power): "gas" | "nuclear" | "battery" | "grid" => { if (!p) return "grid"; const ts = p.onsite_generation.map((g) => g.type); if (ts.some((t) => t.includes("nuclear") || t === "smr")) return "nuclear"; if (ts.some((t) => t.includes("gas"))) return "gas"; if (ts.some((t) => t.includes("battery") || t.includes("solar"))) return "battery"; return "grid"; };
 const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Zap } as const;
 const US_BBOX: [number, number, number, number] = [-125, 24, -66, 49]; // 본토 프레임
-type DcMode = "group" | "grid" | "credit";
 // 주 이름(us-atlas properties.name → 한글). DC 모드에서 주 경계 라벨용.
 // 전력 조달 연결선(§1 3계급) — 발전소 + DC↔발전소 링크
 type Plant = { id: string; name: string; fuel: string; capacity_mw: number | null; lat: number; lng: number; eia_plant_id: string | null; source_url: string; note: string };
@@ -179,7 +178,7 @@ export default function World() {
   const [compareSet, setCompareSet] = useState<Set<string>>(new Set()); // 목록 체크박스 = 다중 비교 활성 (toggleCompare 는 flyRoute 이후 정의)
   // ── 데이터센터 모드(지도 위 오버레이) ──
   const [dcMode, setDcMode] = useState(false);
-  const [dcColor, setDcColor] = useState<DcMode>("group");
+  // 마커 색은 그룹(A/B/C) 고정 — ISO/전력계통 차원은 면 채색(전력시장)이 전담(중복 제거). 신용등급은 사이트 카드에만.
   const [dcGroups, setDcGroups] = useState<Record<string, boolean>>({ A: true, B: true, C: true });
   const [dcNuke, setDcNuke] = useState(true);
   const [dcSel, setDcSel] = useState<string | null>(null);
@@ -226,7 +225,7 @@ export default function World() {
     }
     return out;
   }, [dcMode, dcTx, dcSites, txPoints, linkedDcIds]);
-  const dcColorOf = (s: Site) => (dcColor === "group" ? GROUP_COLOR[s.group] : dcColor === "grid" ? gridColor(s.power?.grid_operator) : creditColor(s.credit_wrapper_rating));
+  const dcColorOf = (s: Site) => GROUP_COLOR[s.group];
 
   // ── 줌/팬 ──
   const svgRef = useRef<SVGSVGElement>(null);
@@ -718,15 +717,10 @@ export default function World() {
               <span className="ml-auto cursor-help text-[12px] font-normal text-muted-foreground" title="원 = 데이터센터(크기=IT 용량) · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 내부 아이콘 = 발전원(가스·원전·배터리) · 사각 = 발전소(①·② 관련) · 점선 원판 = 페르미(확보전력)">ⓘ</span>
             </div>
             <div className="text-[10.5px] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
-            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">색 기준<span title="마커(원)의 색을 무엇으로 칠할지. 전환하면 아래 칩 줄만 바뀜(칩이 곧 범례)." className="cursor-help">ⓘ</span></div>
-            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[11px]">
-              {([["group", "그룹", "사업 구조 — A 스타게이트 계열(개발사 SPV+투자등급 임차인 리스) · B 하이퍼스케일러 자체보유 · C 네오클라우드. A/B/C 칩 클릭 시 필터."], ["grid", "전력계통", "어느 그리드에서 전기를 받나 — ERCOT(텍사스)·PJM(동부)·MISO(중서부)·SPP(대평원)·비ISO(TVA·WECC 등)."], ["credit", "신용등급", "SPV 대출 신용을 대는 임차인·선불고객의 S&P 등급. BBB-(오라클)·BB(정크)·미평가(비상장)."]] as const).map(([m, lab, help]) => (<button key={m} onClick={() => setDcColor(m)} title={help} className={`flex-1 px-1.5 py-0.5 ${dcColor === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
-            </div>
-            {/* 칩 = 범례. 기준 전환 시 칩 줄만 교체(§E-5). 그룹 칩은 필터 겸용 */}
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {dcColor === "group" && (["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
-              {dcColor === "grid" && ([["ERCOT", "텍사스"], ["PJM", "동부"], ["MISO", "중서부"], ["SPP", "대평원"], ["비ISO", "TVA·WECC"]] as const).map(([k, v]) => (<span key={k} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px]"><span className="h-2 w-2 rounded-full" style={{ background: gridColor(k) }} />{k} {v}</span>))}
-              {dcColor === "credit" && ([["A~AAA", "#16a34a", "투자등급"], ["BBB-", "#f59e0b", "취약 IG"], ["BB", "#dc2626", "정크"], ["미평가", "#94a3b8", "비상장"]] as const).map(([k, c, v]) => (<span key={k} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px]"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{k} {v}</span>))}
+            {/* 마커 색 = 그룹 고정. A/B/C 칩 = 범례 겸 필터. (전력계통·신용등급은 각각 면 채색·사이트 카드로) */}
+            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">그룹 (마커 색)<span title="개발/자금 구조로 마커 색 구분. A 스타게이트 계열(개발사 SPV+투자등급 임차인 리스) · B 하이퍼스케일러 자체보유 · C 네오클라우드. 칩 클릭 = 필터. (전력계통 = 아래 '면 채색·전력시장', 신용등급 = 사이트 카드)" className="cursor-help">ⓘ</span></div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
             </div>
             <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색<span title={"지도 배경을 색칠 (둘 중 하나만).\n▸ 전력시장 = 이 지역이 어느 그리드에서 전기를 받나 (누구 전기인가·귀속)\n▸ AI 부하 비중 = 그 주 전체 전력 수요 중 AI 데이터센터가 차지하는 몫 (얼마나 무겁게·부담)"} className="cursor-help">ⓘ</span></div>
             <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[10.5px]">
