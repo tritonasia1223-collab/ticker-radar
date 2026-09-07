@@ -67,15 +67,9 @@ const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59
 const CARGO_KO: Record<string, string> = { container: "컨테이너", crude: "원유", mixed: "혼합", bulk: "벌크" };
 const shipSymbol = (cargo: string) => (cargo === "crude" ? "ship-tanker" : "ship-container");
 const LANE_OFFSETS: Record<string, number[]> = { high: [-7, 0, 7], mid: [-4, 4], low: [0] }; // 등급→차선(회랑 폭=2차 인코딩)
-// Chaikin 코너 커팅 — 모서리를 둥글려 부드러운 곡선. 원 폴리라인 안쪽에 머물러 육지로 튀지 않음(안전).
-function chaikin(pts: number[][], iters: number): number[][] {
-  let p = pts;
-  for (let k = 0; k < iters; k++) { const q: number[][] = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1]; q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); } q.push(p[p.length - 1]); p = q; }
-  return p;
-}
-// 곡선화된 dense 지리 좌표 — 항로선·배 공용. 매프레임 재투영이라 회전 대응.
+// 항로선·배 공용 지리 좌표 — 웨이포인트 사이 직선(꺾인 폴리라인). 매프레임 재투영이라 회전 대응.
 function densifyRoute(coords: number[][]): { pts: number[][]; len: number } {
-  const pts = chaikin(coords, 3); let len = 0;
+  const pts = coords; let len = 0;
   for (let i = 0; i < pts.length - 1; i++) len += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
   return { pts, len: Math.max(len, 1) };
 }
