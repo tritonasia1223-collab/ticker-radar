@@ -2,7 +2,7 @@
 //   정적 데이터 직접 렌더(DB/서버 불요). d3-geo Equal Earth + d3-zoom. 태평양 중심(회전 스핀).
 //   L2 개편(개체 명세): 항로/해협/항만을 필드·경유지체인·상호 하이퍼링크를 가진 개체로. 카드 1컴포넌트, 유형별 필드.
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { geoEqualEarth, geoPath, geoArea } from "d3-geo";
+import { geoEqualEarth, geoPath, geoArea, geoInterpolate } from "d3-geo";
 import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
@@ -66,11 +66,12 @@ const TIER_SHIPS: Record<string, number> = { high: 5, mid: 3, low: 1 }; // 동�
 const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59e0b", mixed: "#9333ea", bulk: "#78716c" };
 const CARGO_KO: Record<string, string> = { container: "컨테이너", crude: "원유", mixed: "혼합", bulk: "벌크" };
 const shipSymbol = (cargo: string) => (cargo === "crude" ? "ship-tanker" : "ship-container");
-// 지리 좌표로 항로 densify(스핀 재투영 대응 — path getPointAtLength 대신). 세그먼트 선형 보간.
-function densifyRoute(coords: number[][], stepDeg = 1.2): number[][] {
-  const out: number[][] = [];
-  for (let i = 0; i < coords.length - 1; i++) { const [ax, ay] = coords[i], [bx, by] = coords[i + 1]; const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / stepDeg)); for (let j = 0; j < n; j++) out.push([ax + ((bx - ax) * j) / n, ay + ((by - ay) * j) / n]); }
-  out.push(coords[coords.length - 1]); return out;
+const LANE_OFFSETS: Record<string, number[]> = { high: [-7, 0, 7], mid: [-4, 4], low: [0] }; // 등급→차선(회랑 폭=2차 인코딩)
+// 지리 좌표로 항로 densify — 측지선(geoInterpolate)이라 geoPath 항로선에 정확히 얹힘 + 매프레임 재투영이라 회전 대응.
+function densifyRoute(coords: number[][]): { pts: number[][]; len: number } {
+  const out: number[][] = []; let len = 0;
+  for (let i = 0; i < coords.length - 1; i++) { const a = coords[i], b = coords[i + 1]; const interp = geoInterpolate(a as [number, number], b as [number, number]); const d = Math.hypot(b[0] - a[0], b[1] - a[1]); len += d; const n = Math.max(1, Math.round(d / 1.2)); for (let j = 0; j < n; j++) out.push(interp(j / n)); }
+  out.push(coords[coords.length - 1]); return { pts: out, len: Math.max(len, 1) };
 }
 function shipLngLat(samples: number[][], offset: number): [number, number] {
   const N = samples.length; const f = ((offset % 1) + 1) % 1 * (N - 1); const i0 = Math.floor(f), i1 = Math.min(N - 1, i0 + 1), fr = f - i0;
@@ -236,8 +237,8 @@ export default function World() {
   // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
   const [shipCargoView, setShipCargoView] = useState(false);
   const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
-  const routeSamples = useMemo(() => { const m = new Map<string, number[][]>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
-  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: 0.00055 * (0.9 + 0.2 * ((i * 37) % 100) / 100) }); } return s; }, []);
+  const routeSamples = useMemo(() => { const m = new Map<string, { pts: number[][]; len: number }>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
+  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.0016 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
   const fleetRefs = useRef<(SVGGElement | null)[]>([]);
   // L4 분쟁 층 — 진앙 마커 + 당사국 스트로크(면 아님 → 블록과 공존). 기본 전쟁(≥1000)만, 무력분쟁 토글.
   const [conflictMode, setConflictMode] = useState(false);
@@ -473,11 +474,12 @@ export default function World() {
     if (!shipsOn) return;
     const place = () => { const proj = projRef.current, tt = tRef.current;
       for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue;
-        const [lng, lat] = shipLngLat(samples, ship.offset); const p = proj([lng, lat] as any); if (!p) { el.style.display = "none"; continue; }
+        const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) { el.style.display = "none"; continue; }
         const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y;
-        const [al, at] = shipLngLat(samples, ship.offset + 0.004); const p2 = proj([al, at] as any); const ang = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) * 180 / Math.PI : 0;
-        el.style.display = x < -20 || x > dim.w + 20 || y < -20 || y > dim.h + 20 ? "none" : "";
-        el.setAttribute("transform", `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${ang.toFixed(1)}) scale(0.78)`);
+        const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0;
+        const lx = x + ship.lane * -Math.sin(angR), ly = y + ship.lane * Math.cos(angR); // 회랑 차선(진행방향 수직, 스크린 px)
+        el.style.display = lx < -20 || lx > dim.w + 20 || ly < -20 || ly > dim.h + 20 ? "none" : "";
+        el.setAttribute("transform", `translate(${lx.toFixed(1)},${ly.toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78)`);
       }
     };
     if (reducedMotion) { place(); return; } // 정지: 정적 배치(밀도 정보 유지)
@@ -489,7 +491,7 @@ export default function World() {
     return () => { running = false; cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); };
   }, [shipsOn, fleet, routeSamples, reducedMotion, dim]);
   // 정적(reducedMotion)·스핀/줌 시 재배치
-  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; el.setAttribute("transform", `translate(${(p[0] * tt.k + tt.x).toFixed(1)},${(p[1] * tt.k + tt.y).toFixed(1)}) scale(0.78)`); } } });
+  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78)`); } } });
 
   // 항만 라벨 클러스터(세계 뷰에서 밀집 시 최상위 1개만) — 순위 오름차순 그리디, 44px 이내 중복 제거
   const portLabelSet = useMemo(() => {
@@ -560,7 +562,7 @@ export default function World() {
             return (
               <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={routeColor(r.id)} strokeLinecap="round"
                 className={on ? "wf-flow" : undefined}
-                strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.72}
+                strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.5}
                 strokeDasharray={`${(on ? 6 : 4) / t.k} ${3 / t.k}`} style={{ pointerEvents: "none" }} />
             );
           })}
