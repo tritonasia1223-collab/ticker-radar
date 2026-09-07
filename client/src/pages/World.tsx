@@ -628,11 +628,12 @@ export default function World() {
 
       {/* 주요 항로 목록/범례 — 접기 가능(향후 층위 위해 상시 점유 안 함). 색=항로 신원 */}
       {!dcMode && layers.routes && (
-        <div className="absolute left-4 top-[4.75rem] w-56 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
-          <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted/50">
-            <span>주요 항로 <span className="font-normal text-muted-foreground">{infra.routes.length}</span>{compareSet.size > 0 && <span className="ml-1 text-primary">· 비교 {compareSet.size}</span>}</span>
-            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
+        <div className="absolute left-4 top-[4.75rem] w-60 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+          <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center gap-1.5 p-2.5 pb-1 text-left hover:bg-muted/30">
+            <Route className="h-4 w-4" /><span className="text-sm font-bold">주요 항로</span>
+            <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
           </button>
+          <div className="px-2.5 pb-1.5 text-[10.5px] text-muted-foreground">{infra.routes.length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
           {listOpen && (
             <div className="border-t border-border py-1">
               {infra.routes.map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
@@ -646,7 +647,6 @@ export default function World() {
                   <button onClick={() => setCompareSet(new Set())} className="text-[10.5px] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
                 </div>
               )}
-              <div className="mt-0.5 border-t border-border px-2.5 pt-1 text-[10px] leading-tight text-muted-foreground">체크·이름·지도 클릭 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게)</div>
             </div>
           )}
         </div>
