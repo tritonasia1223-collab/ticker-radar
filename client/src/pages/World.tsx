@@ -238,7 +238,7 @@ export default function World() {
   const [shipCargoView, setShipCargoView] = useState(false);
   const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
   const routeSamples = useMemo(() => { const m = new Map<string, { pts: number[][]; len: number }>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
-  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.0016 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
+  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.006 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
   const fleetRefs = useRef<(SVGGElement | null)[]>([]);
   // L4 분쟁 층 — 진앙 마커 + 당사국 스트로크(면 아님 → 블록과 공존). 기본 전쟁(≥1000)만, 무력분쟁 토글.
   const [conflictMode, setConflictMode] = useState(false);
@@ -478,8 +478,9 @@ export default function World() {
         const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y;
         const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0;
         const lx = x + ship.lane * -Math.sin(angR), ly = y + ship.lane * Math.cos(angR); // 회랑 차선(진행방향 수직, 스크린 px)
+        const fy = Math.cos(angR) < 0 ? -0.78 : 0.78; // 서쪽행(옆모습 배 180° 뒤집힘) → 세로 반전으로 갑판 위 유지
         el.style.display = lx < -20 || lx > dim.w + 20 || ly < -20 || ly > dim.h + 20 ? "none" : "";
-        el.setAttribute("transform", `translate(${lx.toFixed(1)},${ly.toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78)`);
+        el.setAttribute("transform", `translate(${lx.toFixed(1)},${ly.toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${fy})`);
       }
     };
     if (reducedMotion) { place(); return; } // 정지: 정적 배치(밀도 정보 유지)
@@ -491,7 +492,7 @@ export default function World() {
     return () => { running = false; cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); };
   }, [shipsOn, fleet, routeSamples, reducedMotion, dim]);
   // 정적(reducedMotion)·스핀/줌 시 재배치
-  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78)`); } } });
+  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${Math.cos(angR) < 0 ? -0.78 : 0.78})`); } } });
 
   // 항만 라벨 클러스터(세계 뷰에서 밀집 시 최상위 1개만) — 순위 오름차순 그리디, 44px 이내 중복 제거
   const portLabelSet = useMemo(() => {
