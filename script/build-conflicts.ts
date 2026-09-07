@@ -6,6 +6,7 @@
 //   원칙:  intensity·active·진앙은 이벤트 집계에서 자동 산출(수동 등급 금지). 진앙=직전 12개월 이벤트 기하중앙값(Weiszfeld).
 //          이벤트 분포 캐시(권역 줌용)는 별도 후속(세계 뷰는 진앙만 — 수천 점 소음 방지).
 import { unzipSync, strFromU8 } from "fflate";
+import { geoArea } from "d3-geo";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +59,33 @@ function geoMedian(pts: [number, number][]): [number, number] {
   }
   return [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4];
 }
+// 분쟁 구역 = 이벤트 볼록 헐(국가 전체 아님). 이상치(먼 단발 타격) 제거 후 헐 — 전장 코어만 남김.
+function convexHull(points: [number, number][]): [number, number][] {
+  const pts = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts;
+  const cross = (o: number[], a: number[], b: number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: [number, number][] = [];
+  for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+  const upper: [number, number][] = [];
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+  lower.pop(); upper.pop();
+  return lower.concat(upper);
+}
+const r3 = (p: number[]): [number, number] => [Math.round(p[0] * 1e3) / 1e3, Math.round(p[1] * 1e3) / 1e3];
+function conflictZone(coords: [number, number][], ep: [number, number]): [number, number][] | null {
+  if (coords.length < 4) return null;
+  const dists = coords.map((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1])).sort((a, b) => a - b);
+  const thr = dists[Math.floor(dists.length * 0.85)] || Infinity; // 코어 85% (먼 타격 제거)
+  const core = coords.filter((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) <= thr);
+  if (core.length < 3) return null;
+  const hull = convexHull(core).map(r3);
+  if (hull.length < 3) return null;
+  const close = (h: [number, number][]) => [...h, h[0]];
+  let ring = close(hull);
+  // d3-geo 구면 winding — 반대로 감기면 '전 구면 − 구역'(전체 채색). geoArea>2π 면 뒤집음.
+  if (geoArea({ type: "Polygon", coordinates: [ring] } as any) > 2 * Math.PI) ring = close(hull.slice().reverse());
+  return ring;
+}
 
 async function main() {
   console.log("[conflicts:build] UCDP GED v26.1 받는 중…");
@@ -93,13 +121,19 @@ async function main() {
     const deaths = w.reduce((s, e) => s + e.best, 0);
     if (deaths < 25) continue; // UCDP 무력분쟁 최소 문턱
     const parties = [...r.parties.values()].map((p) => ({ ...p, is_state: !!p.iso }));
+    const partyIsos = [...new Set(parties.map((p) => p.iso).filter(Boolean))];
     const lastMs = w.reduce((m, e) => Math.max(m, e.ms), 0);
+    const type = TYPE[r.type] ?? "state";
+    // category(파생): 국가간(당사국 2개+) / 내전(국가 vs 반군) / 무장세력(비국가) / 대민간폭력(일방)
+    const category = type === "state" ? (partyIsos.length >= 2 ? "interstate" : "civil") : type === "nonstate" ? "nonstate" : "onesided";
+    const coords = w.map((e) => [e.lng, e.lat] as [number, number]);
+    const epicenter = geoMedian(coords);
     conflicts.push({
       id: cid, ucdp_conflict_id: cid, name_en: r.name, name_ko: koName(r.name),
-      type: TYPE[r.type] ?? "state", intensity: deaths >= 1000 ? "war" : "armed_conflict", active: true,
+      type, category, intensity: deaths >= 1000 ? "war" : "armed_conflict", active: true,
       deaths_12mo: deaths, events_12mo: w.length,
-      epicenter: geoMedian(w.map((e) => [e.lng, e.lat] as [number, number])),
-      parties, party_isos: [...new Set(parties.map((p) => p.iso).filter(Boolean))],
+      epicenter, zone: conflictZone(coords, epicenter),
+      parties, party_isos: partyIsos,
       started_year: r.start, last_event_date: new Date(lastMs).toISOString().slice(0, 10),
     });
   }
