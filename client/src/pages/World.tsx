@@ -19,6 +19,7 @@ import rtoData from "@/data/us-rto-regions.json";
 import conflictsData from "@/data/world-conflicts.json";
 import episodesData from "@/data/war-episodes.json";
 import disputesData from "@/data/territorial-disputes.json";
+import conflictCardsData from "@/data/conflict-cards.json";
 import fabsData from "@/data/ai-fabs.json";
 import nuclearData from "@/data/us-nuclear-plants.json";
 
@@ -41,12 +42,16 @@ const conflictsMeta = (conflictsData as unknown as { _meta: any })._meta;
 // 과거 전쟁 에피소드(개별 재생 진입점 — 현재 전부 '준비 중'). 티어 파급 규모순.
 type Episode = { id: string; title: string; period: string; tier: number; summary: string };
 const episodesAll = (episodesData as unknown as { episodes: Episode[] }).episodes;
-// 영토·주권 분쟁 층(별도 데이터 — UCDP 무력분쟁과 분리). 점선 노랑 마커, 글로우 없음(글로우는 폭력 예약).
-type DisputeParty = { iso: string; name_ko: string; controls: boolean; claim: string };
-type DisputeStake = { type: "route" | "resource" | "military" | "symbolic"; note: string };
-type Dispute = { id: string; name_ko: string; region: string; lat: number; lng: number; star?: boolean; resolved?: boolean; parties: DisputeParty[]; controlled_by: string; stakes: DisputeStake[]; linked_conflict_id: string | null; linked_choke_ids: string[]; linked_route_ids: string[]; recent_note: string; source_url: string };
+// 영토·주권 분쟁 층(별도 데이터 — UCDP 무력분쟁과 분리). 노랑 마커. 말풍선 claim = 공표 입장의 의역.
+type DisputeParty = { iso: string; name_ko: string; controls: boolean; control_note?: string; claim: string };
+type DisputeStake = { type: "industry" | "route" | "resource" | "military" | "symbolic"; note: string };
+type Dispute = { id: string; name_ko: string; region: string; lat: number; lng: number; star?: boolean; note?: string; parties: DisputeParty[]; stakes: DisputeStake[]; linked_conflict_id?: string | null; linked_choke_ids: string[]; linked_route_ids: string[]; source_url: string };
 const disputesAll = (disputesData as unknown as { disputes: Dispute[] }).disputes;
-const STAKE_KO: Record<string, string> = { route: "항로", resource: "자원", military: "군사", symbolic: "상징" };
+const STAKE_KO: Record<string, string> = { industry: "산업", route: "항로", resource: "자원", military: "군사", symbolic: "상징" };
+const disputeCtrl = (d: { parties: { controls: boolean; name_ko: string }[] }) => { const c = d.parties.filter((p) => p.controls); return c.length ? (c.length > 1 ? "분할 지배" : c[0].name_ko) : "미획정"; };
+// 분쟁 카드 큐레이션 콘텐츠(id → 좌/우 당사자·기간·니즈). UCDP 분쟁 위에 얹음.
+type ConflictCard = { title: string; left: string; right: string; period: string; need_left: string; need_right: string };
+const conflictCards = (conflictCardsData as unknown as { cards: Record<string, ConflictCard> }).cards;
 // 최근 사건 펄스 기준 = 데이터셋 최신 사건일(실 '지금' 대용). 이후 30일 이내 = 라이브.
 const CONFLICT_MAX_MS = Math.max(...conflictsAll.map((c) => (c.last_event_date ? Date.parse(c.last_event_date) : 0)));
 // 유형색(§2, 2026-09 4색 확정 — 상징성 배제·구분 최우선, 색상환 등거리+색각 고려). 색=유형, 폭·진하기=강도.
@@ -858,8 +863,8 @@ export default function World() {
           const halo = 15 * (on ? 1.25 : 1); const r = 3.5 * (on ? 1.2 : 1);
           return (<g key={`td${d.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "dispute", id: d.id }); }}
-            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${d.controlled_by}${d.resolved ? " · 해결 진행" : ""}` })}
-            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${d.controlled_by}` })}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${disputeCtrl(d)}` })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${disputeCtrl(d)}` })}
             onMouseLeave={() => setTip(null)}>
             <circle cx={sc[0]} cy={sc[1]} r={halo} fill={`url(#cfdot-${TERRITORIAL_YELLOW.slice(1)})`} />
             {d.star && <circle className="cf-pulse" cx={sc[0]} cy={sc[1]} r={r} fill="none" stroke={TERRITORIAL_YELLOW} strokeWidth={1.4} style={{ transformOrigin: `${sc[0]}px ${sc[1]}px` }} />}
@@ -1078,7 +1083,7 @@ export default function World() {
 
       {/* 개체 카드 — 유형별 필드, 칩 = 크로스링크 */}
       {sel && (
-        <div className="absolute right-4 top-16 w-72 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+        <div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
           <button onClick={() => setSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
           {sel.kind === "country" && (() => { const f = features[sel.idx]; const cap = capByIso.get(f.properties.iso);
             return (<>
@@ -1146,45 +1151,53 @@ export default function World() {
               {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={routeColor(alt.id)} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
               <Src url={r.source_url} />
             </>); })()}
-          {sel.kind === "conflict" && (() => { const c = conflictById.get(sel.id); if (!c) return null; const war = c.intensity === "war"; const cc = conflictColor(c.category);
+          {sel.kind === "conflict" && (() => { const c = conflictById.get(sel.id); if (!c) return null; const cc = conflictColor(c.category);
+            const card = conflictCards[c.id]; const title = card?.title ?? c.name_ko; const badge = CONFLICT_LEGEND.find((l) => l.group === catGroup(c.category))?.ko ?? CONFLICT_CAT_KO[c.category];
+            const pd = card?.period ?? `${c.started_year}~`; const pi = pd.indexOf("("); const pBig = pi >= 0 ? pd.slice(0, pi).trim() : pd; const pSub = pi >= 0 ? pd.slice(pi + 1).replace(")", "").trim() : "";
             return (<>
-              <div className="flex items-center gap-1.5"><Swords className="h-4 w-4" style={{ color: cc }} /><span className="text-base font-bold leading-tight">{c.name_ko}</span>
-                <span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: cc + "22", color: cc }}>{conflictLabel(c.category, war)}</span></div>
-              <div className="text-[11px] text-muted-foreground">{c.name_en}</div>
-              <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
-                <span className="text-muted-foreground">유형</span><span>{CONFLICT_CAT_KO[c.category]} <span className="text-[10px] text-muted-foreground">({c.type === "state" ? "UCDP 국가기반" : c.type === "nonstate" ? "UCDP 비국가" : "UCDP 일방적"})</span></span>
-                <span className="text-muted-foreground">강도</span><span>{war ? "전쟁 — 연간 전투사망 1,000명+" : "무력분쟁 — 연간 25명+"} <span className="text-[10px] text-muted-foreground">(UCDP)</span></span>
-                <span className="text-muted-foreground">최근 12개월</span><span className="tabular-nums">사망 {c.deaths_12mo.toLocaleString()} · 사건 {c.events_12mo.toLocaleString()}</span>
-                <span className="text-muted-foreground">기간</span><span>{c.started_year}~ · 최근 {c.last_event_date}</span></div>
-              <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">당사자</div><div className="flex flex-wrap gap-1">
-                {c.parties.map((p, i) => { const idx = p.iso ? isoToIdx.get(p.iso) : undefined;
-                  return idx != null
-                    ? <Chip key={i} color={cc} onClick={() => goTo({ kind: "country", idx })}>{features[idx].properties.ko || p.name}</Chip>
-                    : <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">{p.name}</span>; })}</div></div>
-              <div className="mt-2 text-[10px] leading-tight text-muted-foreground">당사국 채색(hover 시 국경 그라데이션·당사국 동시 강조) · 진앙 = 최근 사건 분포의 중심(근사) · 집계 {conflictsMeta.window}</div>
+              <div className="flex items-center gap-1.5 pr-5"><Swords className="h-4 w-4 shrink-0" style={{ color: cc }} /><span className="text-[15px] font-bold leading-tight">{title}</span>
+                <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: cc + "22", color: cc }}>{badge}</span></div>
+              {card && (card.left || card.right) && (
+                <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
+                  {card.left && <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-center text-[11.5px] font-semibold">{card.left}</span>}
+                  {card.left && card.right && <span className="text-[10px] text-muted-foreground">vs</span>}
+                  {card.right && <span className="rounded-full border px-2.5 py-1 text-center text-[11.5px] font-semibold" style={{ borderColor: cc + "66", color: cc, background: cc + "0f" }}>{card.right}</span>}
+                </div>
+              )}
+              <div className="mt-2.5 text-center"><div className="text-[15px] font-bold leading-tight tabular-nums">{pBig}</div>{pSub && <div className="text-[10.5px] text-muted-foreground">{pSub}</div>}</div>
+              {card && (card.need_left || card.need_right) && (
+                <div className="mt-2.5 border-t border-border pt-2 text-[11px] leading-snug">
+                  {card.need_left && <div><span className="font-semibold">{card.left}</span> — {card.need_left}</div>}
+                  {card.need_right && <div className={card.need_left ? "mt-1" : ""}><span className="font-semibold" style={{ color: cc }}>{card.right}</span> — {card.need_right}</div>}
+                </div>
+              )}
+              <div className="mt-2 text-[9.5px] text-muted-foreground">{badge} · 최근 12개월 사망 {c.deaths_12mo.toLocaleString()} · 집계 {conflictsMeta.window}</div>
               <Src url={conflictsMeta.source_url} label="UCDP GED" />
             </>); })()}
           {sel.kind === "dispute" && (() => { const d = disputeById.get(sel.id); if (!d) return null; const lc = d.linked_conflict_id ? conflictById.get(d.linked_conflict_id) : null;
             return (<>
-              <div className="flex items-center gap-1.5"><Diamond className="h-4 w-4" style={{ color: TERRITORIAL_TEXT, fill: TERRITORIAL_YELLOW }} /><span className="text-base font-bold leading-tight">{d.star ? "★ " : ""}{d.name_ko}</span>
-                <span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: TERRITORIAL_YELLOW + "33", color: TERRITORIAL_TEXT }}>영토·주권</span></div>
-              <div className="text-[11px] text-muted-foreground">{d.region} · 실효 지배: {d.controlled_by}{d.resolved ? " · 해결 진행형" : ""}</div>
+              <div className="flex items-center gap-1.5 pr-5"><Diamond className="h-4 w-4 shrink-0" style={{ color: TERRITORIAL_TEXT, fill: TERRITORIAL_YELLOW }} /><span className="text-[15px] font-bold leading-tight">{d.star ? "★ " : ""}{d.name_ko}</span>
+                <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: TERRITORIAL_YELLOW + "33", color: TERRITORIAL_TEXT }}>영토·주권</span></div>
+              {d.note && <div className="mt-0.5 text-[10px] text-muted-foreground">{d.note}</div>}
               {lc && <button onClick={() => goTo({ kind: "conflict", id: lc.id })} className="mt-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold" style={{ borderColor: CONFLICT_RED + "66", color: CONFLICT_RED }}><Swords className="h-3 w-3" />활성 분쟁 연동 · {lc.name_ko}</button>}
-              <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">당사국 · 공표 주장 <span className="text-[9px]">(◎=실효 지배)</span></div>
-                <div className="flex flex-col gap-1">{d.parties.map((p) => { const idx = isoToIdx.get(p.iso);
-                  return (<div key={p.iso} className="text-[11px] leading-snug">
-                    {idx != null ? <Chip color={TERRITORIAL_TEXT} onClick={() => goTo({ kind: "country", idx })}>{p.controls ? "◎ " : ""}{p.name_ko}</Chip> : <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px]">{p.controls ? "◎ " : ""}{p.name_ko}</span>}
-                    <span className="ml-1 text-muted-foreground">{p.claim}</span></div>); })}</div></div>
-              <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">쟁점 자산</div>
-                <div className="flex flex-col gap-0.5">{d.stakes.map((s, i) => (<div key={i} className="flex items-start gap-1.5 text-[11px] leading-snug">
-                  <span className="mt-0.5 shrink-0 rounded px-1 py-0.5 text-[8.5px] font-semibold" style={{ background: TERRITORIAL_YELLOW + "22", color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</span>
-                  <span className="text-muted-foreground">{s.note}</span></div>))}</div></div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {d.stakes.map((s, i) => <span key={i} className="rounded-full border px-1.5 py-0.5 text-[10px]" style={{ borderColor: TERRITORIAL_YELLOW + "88", background: TERRITORIAL_YELLOW + "14" }}><b style={{ color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</b> <span className="text-muted-foreground">— {s.note}</span></span>)}
+              </div>
+              <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-2">
+                {d.parties.map((p, i) => { const idx = isoToIdx.get(p.iso);
+                  return (<div key={i} className="flex min-w-0 flex-col gap-1">
+                    {idx != null
+                      ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted" style={p.controls ? { borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "22", color: TERRITORIAL_TEXT } : { borderColor: "hsl(var(--border))" }}>{p.controls ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</button>
+                      : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold" style={p.controls ? { borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "22", color: TERRITORIAL_TEXT } : { borderColor: "hsl(var(--border))" }}>{p.controls ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</span>}
+                    <div className="rounded-lg border px-2 py-1.5 text-[10.5px] leading-snug" style={p.controls ? { background: TERRITORIAL_YELLOW + "1a", borderColor: TERRITORIAL_YELLOW + "55" } : { borderColor: "hsl(var(--border))" }}>{p.claim}</div>
+                  </div>); })}
+              </div>
               {(d.linked_choke_ids.length > 0 || d.linked_route_ids.length > 0) && (
-                <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">무역 지도 연동</div><div className="flex flex-wrap gap-1">
+                <div className="mt-2.5 flex flex-wrap items-center gap-1"><span className="text-[10px] text-muted-foreground">무역 지도</span>
                   {d.linked_choke_ids.map((id) => { const ch = chokeById.get(id); return ch ? <Chip key={id} color={AMBER} onClick={() => goTo({ kind: "choke", id })}>{ch.ko}</Chip> : null; })}
-                  {d.linked_route_ids.map((id) => { const rt = routeById.get(id); return rt ? <Chip key={id} color={SEA} onClick={() => goTo({ kind: "route", id })}>{rt.ko}</Chip> : null; })}</div></div>
+                  {d.linked_route_ids.map((id) => { const rt = routeById.get(id); return rt ? <Chip key={id} color={SEA} onClick={() => goTo({ kind: "route", id })}>{rt.ko}</Chip> : null; })}</div>
               )}
-              <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{d.recent_note}</div>
+              <div className="mt-2 text-[9px] text-muted-foreground/80">말풍선 = 공표 입장 요지 (직접 인용 아님) · ◎ = 실효 지배</div>
               <Src url={d.source_url} label="출처(직접 큐레이션)" />
             </>); })()}
         </div>
