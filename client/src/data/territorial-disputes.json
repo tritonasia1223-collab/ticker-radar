@@ -1,120 +1,1081 @@
 {
   "_meta": {
     "note": "영토·주권 분쟁 층 v1 — UCDP와 분리, 직접 큐레이션. 말풍선(claim)=공표 입장의 의역(직접 인용 아님). 쟁점 자산 5종(산업/항로/자원/군사/상징). 노림수 추정 금지. 경과·상태 2026 기준. 해결·이양 사례(한스섬·차고스), 벨리즈–과테말라는 제외.",
-    "source": "직접 큐레이션(각 항목 source_url)", "as_of": "2026-09", "status": "seed"
+    "source": "직접 큐레이션(각 항목 source_url)",
+    "as_of": "2026-09",
+    "status": "seed"
   },
   "disputes": [
-    { "id": "taiwan", "name_ko": "대만", "region": "동아시아", "lat": 23.7, "lng": 121.0, "star": true,
-      "stakes": [{ "type": "industry", "note": "첨단 반도체(TSMC)" }, { "type": "route", "note": "대만해협" }, { "type": "military", "note": "제1도련선" }],
-      "parties": [{ "name_ko": "대만", "iso": "TWN", "controls": true, "control_note": "사실상 통치", "claim": "중화민국은 주권 국가 — 현상 유지, 미래는 대만 주민이 결정한다" }, { "name_ko": "중국", "iso": "CHN", "controls": false, "claim": "대만은 중국의 일부 — 하나의 중국, 무력 사용을 배제하지 않는다" }],
-      "linked_conflict_id": "13243_none", "linked_choke_ids": ["taiwan"], "linked_route_ids": ["trans-pacific"], "source_url": "https://en.wikipedia.org/wiki/Political_status_of_Taiwan" },
-    { "id": "dokdo", "name_ko": "독도", "region": "동아시아", "lat": 37.24, "lng": 131.87, "star": false,
-      "stakes": [{ "type": "resource", "note": "어장·EEZ 기점·하이드레이트 추정" }, { "type": "symbolic", "note": "역사·주권" }],
-      "parties": [{ "name_ko": "한국", "iso": "KOR", "controls": true, "claim": "역사적·지리적·국제법적으로 명백한 고유 영토 — 영유권 분쟁 자체가 존재하지 않는다" }, { "name_ko": "일본", "iso": "JPN", "controls": false, "claim": "1905년 시마네현 편입 이래 고유 영토 — ICJ 회부를 제안한다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Liancourt_Rocks_dispute" },
-    { "id": "senkaku", "name_ko": "센카쿠/댜오위다오", "region": "동아시아", "lat": 25.75, "lng": 123.48, "star": true,
-      "stakes": [{ "type": "resource", "note": "해저 석유·가스 추정, 어장" }, { "type": "military", "note": "동중국해 진출로" }],
-      "parties": [{ "name_ko": "일본", "iso": "JPN", "controls": true, "claim": "역사·국제법상 고유 영토 — 해결할 영유권 문제 자체가 없다" }, { "name_ko": "중국", "iso": "CHN", "controls": false, "claim": "댜오위다오는 예로부터 중국 영토 — 2012년 '국유화'는 무효다" }, { "name_ko": "대만", "iso": "TWN", "controls": false, "claim": "댜오위타이는 중화민국 부속 도서다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Senkaku_Islands_dispute" },
-    { "id": "kuril", "name_ko": "쿠릴 남부(북방영토)", "region": "동아시아", "lat": 44.0, "lng": 146.5, "star": false,
-      "stakes": [{ "type": "military", "note": "오호츠크해 관문" }, { "type": "resource", "note": "어장" }],
-      "parties": [{ "name_ko": "러시아", "iso": "RUS", "controls": true, "claim": "2차대전 결과로 확정된 러시아 영토 — 재론 대상이 아니다" }, { "name_ko": "일본", "iso": "JPN", "controls": false, "claim": "북방 4도는 일본 고유 영토 — 반환이 평화조약의 전제다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Kuril_Islands_dispute" },
-    { "id": "spratly", "name_ko": "남중국해 스프래틀리", "region": "동아시아", "lat": 9.5, "lng": 114.0, "star": true,
-      "stakes": [{ "type": "route", "note": "세계 해상무역 ~1/3" }, { "type": "resource", "note": "석유·가스, 어장" }],
-      "parties": [{ "name_ko": "중국", "iso": "CHN", "controls": true, "control_note": "부분·인공섬 군사화", "claim": "남해 제도와 수역에 역사적 권리(구단선) — 중재판정 불인정" }, { "name_ko": "베트남", "iso": "VNM", "controls": true, "control_note": "부분", "claim": "쯔엉사는 베트남 주권 — 역사적 근거가 충분하다" }, { "name_ko": "필리핀", "iso": "PHL", "controls": true, "control_note": "부분", "claim": "EEZ 내 지형은 필리핀 관할 — 2016 중재판정이 확인했다" }, { "name_ko": "말레이시아·브루나이", "iso": "MYS", "controls": false, "claim": "자국 대륙붕·EEZ 내 지형에 대한 권리" }, { "name_ko": "대만", "iso": "TWN", "controls": false, "claim": "남해 제도 영유 주장(중국과 같은 취지)" }],
-      "linked_choke_ids": ["malacca"], "linked_route_ids": ["eu-asia-suez", "trans-pacific"], "source_url": "https://en.wikipedia.org/wiki/Spratly_Islands_dispute" },
-    { "id": "paracel", "name_ko": "파라셀(시사)", "region": "동아시아", "lat": 16.5, "lng": 112.0, "star": false,
-      "stakes": [{ "type": "military", "note": "남중국해 북부 통제" }, { "type": "resource", "note": "어장·석유 추정" }],
-      "parties": [{ "name_ko": "중국", "iso": "CHN", "controls": true, "control_note": "1974~", "claim": "시사군도는 중국 고유 영토 — 분쟁 자체가 없다" }, { "name_ko": "베트남", "iso": "VNM", "controls": false, "claim": "1974년 무력 점거는 불법 — 호앙사는 베트남 땅이다" }, { "name_ko": "대만", "iso": "TWN", "controls": false, "claim": "영유권 주장(중국과 같은 취지)" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Paracel_Islands" },
-    { "id": "scarborough", "name_ko": "스카버러 암초", "region": "동아시아", "lat": 15.15, "lng": 117.76, "star": true,
-      "stakes": [{ "type": "resource", "note": "어장" }, { "type": "military", "note": "마닐라 근접" }],
-      "parties": [{ "name_ko": "중국", "iso": "CHN", "controls": true, "control_note": "2012~", "claim": "황옌다오는 중국 고유 영토다" }, { "name_ko": "필리핀", "iso": "PHL", "controls": false, "claim": "우리 EEZ 안의 암초 — 중재판정이 전통 어업권을 확인했다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Scarborough_Shoal" },
-    { "id": "ieodo", "name_ko": "이어도(수중 암초)", "region": "동아시아", "lat": 32.12, "lng": 125.18, "star": false,
+    {
+      "id": "taiwan",
+      "name_ko": "대만",
+      "region": "동아시아",
+      "lat": 23.7,
+      "lng": 121,
+      "star": true,
+      "stakes": [
+        {
+          "type": "industry",
+          "note": "첨단 반도체(TSMC)"
+        },
+        {
+          "type": "route",
+          "note": "대만해협"
+        },
+        {
+          "type": "military",
+          "note": "제1도련선"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "대만",
+          "iso": "TWN",
+          "controls": true,
+          "control_note": "사실상 통치",
+          "claim": "중화민국은 주권 국가 — 현상 유지, 미래는 대만 주민이 결정한다"
+        },
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": false,
+          "claim": "대만은 중국의 일부 — 하나의 중국, 무력 사용을 배제하지 않는다"
+        }
+      ],
+      "linked_conflict_id": "13243_none",
+      "linked_choke_ids": [
+        "taiwan"
+      ],
+      "linked_route_ids": [
+        "trans-pacific"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Political_status_of_Taiwan"
+    },
+    {
+      "id": "dokdo",
+      "name_ko": "독도",
+      "region": "동아시아",
+      "lat": 37.24,
+      "lng": 131.87,
+      "star": false,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "어장·EEZ 기점·하이드레이트 추정"
+        },
+        {
+          "type": "symbolic",
+          "note": "역사·주권"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "한국",
+          "iso": "KOR",
+          "controls": true,
+          "claim": "역사적·지리적·국제법적으로 명백한 고유 영토 — 영유권 분쟁 자체가 존재하지 않는다"
+        },
+        {
+          "name_ko": "일본",
+          "iso": "JPN",
+          "controls": false,
+          "claim": "1905년 시마네현 편입 이래 고유 영토 — ICJ 회부를 제안한다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Liancourt_Rocks_dispute"
+    },
+    {
+      "id": "senkaku",
+      "name_ko": "센카쿠/댜오위다오",
+      "region": "동아시아",
+      "lat": 25.75,
+      "lng": 123.48,
+      "star": true,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "해저 석유·가스 추정, 어장"
+        },
+        {
+          "type": "military",
+          "note": "동중국해 진출로"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "일본",
+          "iso": "JPN",
+          "controls": true,
+          "claim": "역사·국제법상 고유 영토 — 해결할 영유권 문제 자체가 없다"
+        },
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": false,
+          "claim": "댜오위다오는 예로부터 중국 영토 — 2012년 '국유화'는 무효다"
+        },
+        {
+          "name_ko": "대만",
+          "iso": "TWN",
+          "controls": false,
+          "claim": "댜오위타이는 중화민국 부속 도서다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Senkaku_Islands_dispute"
+    },
+    {
+      "id": "kuril",
+      "name_ko": "쿠릴 남부(북방영토)",
+      "region": "동아시아",
+      "lat": 44,
+      "lng": 146.5,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "오호츠크해 관문"
+        },
+        {
+          "type": "resource",
+          "note": "어장"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "러시아",
+          "iso": "RUS",
+          "controls": true,
+          "claim": "2차대전 결과로 확정된 러시아 영토 — 재론 대상이 아니다"
+        },
+        {
+          "name_ko": "일본",
+          "iso": "JPN",
+          "controls": false,
+          "claim": "북방 4도는 일본 고유 영토 — 반환이 평화조약의 전제다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Kuril_Islands_dispute"
+    },
+    {
+      "id": "spratly",
+      "name_ko": "남중국해 스프래틀리",
+      "region": "동아시아",
+      "lat": 9.5,
+      "lng": 114,
+      "star": true,
+      "stakes": [
+        {
+          "type": "route",
+          "note": "세계 해상무역 ~1/3"
+        },
+        {
+          "type": "resource",
+          "note": "석유·가스, 어장"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": true,
+          "control_note": "부분 · 인공섬 군사화",
+          "claim": "남해 제도에 역사적 권리(구단선) — 중재판정 불인정"
+        },
+        {
+          "name_ko": "베트남",
+          "iso": "VNM",
+          "controls": true,
+          "control_note": "부분 · 최다 초소",
+          "claim": "쯔엉사는 베트남 주권 — 역사적 근거가 충분하다"
+        },
+        {
+          "name_ko": "필리핀",
+          "iso": "PHL",
+          "controls": true,
+          "control_note": "부분",
+          "claim": "EEZ 내 지형은 필리핀 관할 — 2016 판정이 확인했다"
+        },
+        {
+          "name_ko": "대만",
+          "iso": "TWN",
+          "controls": true,
+          "control_note": "부분 · 이투아바",
+          "claim": "남해 제도 영유 — 중국과 같은 취지의 주장"
+        },
+        {
+          "name_ko": "말레이시아",
+          "iso": "MYS",
+          "controls": true,
+          "control_note": "부분",
+          "claim": "대륙붕·EEZ 내 지형에 대한 권리"
+        },
+        {
+          "name_ko": "브루나이",
+          "iso": "BRN",
+          "controls": false,
+          "control_note": "주장만 · 점유 없음",
+          "claim": "EEZ 권리를 주장한다"
+        }
+      ],
+      "linked_choke_ids": [
+        "malacca"
+      ],
+      "linked_route_ids": [
+        "eu-asia-suez",
+        "trans-pacific"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Spratly_Islands_dispute",
+      "layout": "grid"
+    },
+    {
+      "id": "paracel",
+      "name_ko": "파라셀(시사)",
+      "region": "동아시아",
+      "lat": 16.5,
+      "lng": 112,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "남중국해 북부 통제"
+        },
+        {
+          "type": "resource",
+          "note": "어장·석유 추정"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": true,
+          "control_note": "1974~",
+          "claim": "시사군도는 중국 고유 영토 — 분쟁 자체가 없다"
+        },
+        {
+          "name_ko": "베트남",
+          "iso": "VNM",
+          "controls": false,
+          "claim": "1974년 무력 점거는 불법 — 호앙사는 베트남 땅이다"
+        },
+        {
+          "name_ko": "대만",
+          "iso": "TWN",
+          "controls": false,
+          "claim": "영유권 주장(중국과 같은 취지)"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Paracel_Islands"
+    },
+    {
+      "id": "scarborough",
+      "name_ko": "스카버러 암초",
+      "region": "동아시아",
+      "lat": 15.15,
+      "lng": 117.76,
+      "star": true,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "어장"
+        },
+        {
+          "type": "military",
+          "note": "마닐라 근접"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": true,
+          "control_note": "2012~",
+          "claim": "황옌다오는 중국 고유 영토다"
+        },
+        {
+          "name_ko": "필리핀",
+          "iso": "PHL",
+          "controls": false,
+          "claim": "우리 EEZ 안의 암초 — 중재판정이 전통 어업권을 확인했다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Scarborough_Shoal"
+    },
+    {
+      "id": "ieodo",
+      "name_ko": "이어도(수중 암초)",
+      "region": "동아시아",
+      "lat": 32.12,
+      "lng": 125.18,
+      "star": false,
       "note": "양측 공히 영토 아님에 동의 — 관할권(EEZ) 분쟁",
-      "stakes": [{ "type": "resource", "note": "EEZ 중첩 수역·과학기지" }],
-      "parties": [{ "name_ko": "한국", "iso": "KOR", "controls": true, "control_note": "과학기지 운영", "claim": "수중 암초로 영토 문제가 아니며, 한국 측 EEZ에 속한다" }, { "name_ko": "중국", "iso": "CHN", "controls": false, "claim": "쑤옌자오 수역은 중국 EEZ 관할이다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Socotra_Rock" },
-    { "id": "kashmir", "name_ko": "카슈미르", "region": "남아시아", "lat": 34.0, "lng": 76.0, "star": true,
-      "stakes": [{ "type": "resource", "note": "인더스강 수원" }, { "type": "military", "note": "핵보유 3국 접점" }],
-      "parties": [{ "name_ko": "인도", "iso": "IND", "controls": true, "control_note": "잠무카슈미르", "claim": "카슈미르 전역은 인도의 불가분한 일부 — 2019년 특별지위 폐지로 완결" }, { "name_ko": "파키스탄", "iso": "PAK", "controls": true, "control_note": "아자드", "claim": "UN 결의대로 주민투표로 귀속을 결정해야 한다" }, { "name_ko": "중국", "iso": "CHN", "controls": true, "control_note": "악사이친", "claim": "악사이친은 중국 영토다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Kashmir_conflict" },
-    { "id": "china-india-border", "name_ko": "중–인 국경", "region": "남아시아", "lat": 33.5, "lng": 79.0, "star": false,
-      "stakes": [{ "type": "military", "note": "히말라야 전략 종심" }],
-      "parties": [{ "name_ko": "중국", "iso": "CHN", "controls": true, "control_note": "악사이친", "claim": "아루나찰은 짱난(藏南) — 중국 영토다" }, { "name_ko": "인도", "iso": "IND", "controls": true, "control_note": "아루나찰", "claim": "악사이친은 불법 점령된 인도 땅, 아루나찰은 인도의 주다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Sino-Indian_border_dispute" },
-    { "id": "siachen", "name_ko": "시아첸 빙하", "region": "남아시아", "lat": 35.4, "lng": 77.1, "star": false,
-      "stakes": [{ "type": "military", "note": "세계 최고도 대치" }, { "type": "symbolic", "note": "소모전 상징" }],
-      "parties": [{ "name_ko": "인도", "iso": "IND", "controls": true, "control_note": "1984~", "claim": "실제 통제선(AGPL)을 인정하라" }, { "name_ko": "파키스탄", "iso": "PAK", "controls": false, "claim": "협정상 경계 미획정 구역 — 철수 후 협상하자" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Siachen_conflict" },
-    { "id": "greenland", "name_ko": "그린란드", "region": "유럽·북극", "lat": 72.0, "lng": -42.0, "star": true,
-      "stakes": [{ "type": "resource", "note": "희토류·우라늄" }, { "type": "route", "note": "북극항로 관문" }, { "type": "military", "note": "피투피크 기지" }],
-      "parties": [{ "name_ko": "덴마크", "iso": "DNK", "controls": true, "control_note": "주권", "claim": "그린란드는 매물이 아니다" }, { "name_ko": "그린란드 자치정부", "iso": "GRL", "controls": true, "control_note": "자치", "claim": "우리의 미래는 우리가 결정한다 — 독립 지향, 미국 편입 거부" }, { "name_ko": "미국", "iso": "USA", "controls": false, "claim": "국가·경제 안보상 통제가 필요하다(매입·병합 압박)" }],
-      "linked_choke_ids": [], "linked_route_ids": ["nsr", "nwp"], "source_url": "https://en.wikipedia.org/wiki/Greenland" },
-    { "id": "crimea", "name_ko": "크림·우크라이나 점령지", "region": "유럽·북극", "lat": 45.3, "lng": 34.4, "star": true,
-      "stakes": [{ "type": "military", "note": "흑해함대 모항" }, { "type": "route", "note": "곡물 수출로" }],
-      "parties": [{ "name_ko": "러시아", "iso": "RUS", "controls": true, "control_note": "점령", "claim": "2014년 주민투표로 러시아에 귀속됐다" }, { "name_ko": "우크라이나", "iso": "UKR", "controls": false, "claim": "국제법 위반 강제 병합 — 1991년 국경의 원상회복" }],
-      "linked_conflict_id": "13243", "linked_choke_ids": ["bosphorus"], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Annexation_of_Crimea_by_the_Russian_Federation" },
-    { "id": "gibraltar", "name_ko": "지브롤터", "region": "유럽·북극", "lat": 36.14, "lng": -5.35, "star": false,
-      "stakes": [{ "type": "route", "note": "지브롤터 해협 관문" }],
-      "parties": [{ "name_ko": "영국", "iso": "GBR", "controls": true, "control_note": "1713~", "claim": "위트레흐트 조약으로 할양 — 주민 의사가 최우선(주민투표 2회 압도적 잔류)" }, { "name_ko": "스페인", "iso": "ESP", "controls": false, "claim": "영토 보전 원칙상 반환돼야 한다" }],
-      "linked_choke_ids": ["gibraltar"], "linked_route_ids": ["eu-asia-suez"], "source_url": "https://en.wikipedia.org/wiki/Status_of_Gibraltar" },
-    { "id": "ceuta-melilla", "name_ko": "세우타·멜리야", "region": "유럽·북극", "lat": 35.89, "lng": -5.31, "star": false,
-      "stakes": [{ "type": "route", "note": "지브롤터 남안 · 이주 통제 지렛대" }],
-      "parties": [{ "name_ko": "스페인", "iso": "ESP", "controls": true, "claim": "수세기 스페인 영토 — 협상 대상이 아니다" }, { "name_ko": "모로코", "iso": "MAR", "controls": false, "claim": "식민 잔재 — 반환하라" }],
-      "linked_choke_ids": ["gibraltar"], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Ceuta" },
-    { "id": "cyprus-north", "name_ko": "북키프로스", "region": "유럽·북극", "lat": 35.3, "lng": 33.4, "star": false,
-      "stakes": [{ "type": "resource", "note": "동지중해 가스전 EEZ 연동" }],
-      "parties": [{ "name_ko": "튀르키예계", "iso": "TUR", "controls": true, "control_note": "1974~, 미승인", "claim": "북키프로스는 주권국가 — 2국가 해법으로 가자" }, { "name_ko": "키프로스", "iso": "CYP", "controls": false, "claim": "점령을 끝내고 연방제로 통일하자" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Cyprus_dispute" },
-    { "id": "aegean", "name_ko": "에게해", "region": "유럽·북극", "lat": 38.5, "lng": 25.5, "star": false,
-      "stakes": [{ "type": "resource", "note": "대륙붕·가스 탐사" }, { "type": "route", "note": "해상 항로" }],
-      "parties": [{ "name_ko": "그리스", "iso": "GRC", "controls": true, "control_note": "도서 대부분", "claim": "도서 영유는 조약으로 확정 — 영해 12해리는 주권적 권리다" }, { "name_ko": "튀르키예", "iso": "TUR", "controls": false, "claim": "12해리 확장은 개전 사유 — 대륙붕을 재획정하자" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Aegean_dispute" },
-    { "id": "kosovo", "name_ko": "코소보", "region": "유럽·북극", "lat": 42.6, "lng": 21.0, "star": false,
-      "stakes": [{ "type": "symbolic", "note": "주권 승인 자체" }],
-      "parties": [{ "name_ko": "코소보", "iso": "XKX", "controls": true, "control_note": "2008 독립 선언", "claim": "독립은 되돌릴 수 없다 — 100여 개국이 승인했다" }, { "name_ko": "세르비아", "iso": "SRB", "controls": false, "claim": "코소보는 세르비아의 일부 — 독립을 인정하지 않는다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Political_status_of_Kosovo" },
-    { "id": "transnistria", "name_ko": "트란스니스트리아", "region": "유럽·북극", "lat": 46.8, "lng": 29.6, "star": false,
-      "stakes": [{ "type": "military", "note": "러시아군 주둔" }],
-      "parties": [{ "name_ko": "분리정부", "iso": "MDA", "controls": true, "control_note": "러 후원, 미승인", "claim": "주민 의사로 분리했다 — 러시아와의 통합을 지향한다" }, { "name_ko": "몰도바", "iso": "MDA", "controls": false, "claim": "몰도바 영토다 — 러시아군은 철수하라" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Transnistria_conflict" },
-    { "id": "abkhazia-ossetia", "name_ko": "압하지야·남오세티야", "region": "유럽·북극", "lat": 42.7, "lng": 42.0, "star": false,
-      "stakes": [{ "type": "military", "note": "러시아의 남캅카스 지렛대" }],
-      "parties": [{ "name_ko": "분리정부", "iso": "GEO", "controls": true, "control_note": "러 후원", "claim": "우리는 독립 국가다(러시아 등 소수 승인)" }, { "name_ko": "조지아", "iso": "GEO", "controls": false, "claim": "점령지다 — 영토 보전을 회복한다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Abkhazia" },
-    { "id": "arctic-shelf", "name_ko": "북극 대륙붕(로모노소프 해령)", "region": "유럽·북극", "lat": 84.0, "lng": 100.0, "star": false,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "EEZ 중첩 수역·과학기지"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "한국",
+          "iso": "KOR",
+          "controls": true,
+          "control_note": "과학기지 운영",
+          "claim": "수중 암초로 영토 문제가 아니며, 한국 측 EEZ에 속한다"
+        },
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": false,
+          "claim": "쑤옌자오 수역은 중국 EEZ 관할이다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Socotra_Rock"
+    },
+    {
+      "id": "kashmir",
+      "name_ko": "카슈미르",
+      "region": "남아시아",
+      "lat": 34,
+      "lng": 76,
+      "star": true,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "인더스강 수원"
+        },
+        {
+          "type": "military",
+          "note": "핵보유 3국 접점"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "인도",
+          "iso": "IND",
+          "controls": true,
+          "control_note": "잠무카슈미르",
+          "claim": "카슈미르 전역은 인도의 불가분한 일부 — 2019년 특별지위 폐지로 완결"
+        },
+        {
+          "name_ko": "파키스탄",
+          "iso": "PAK",
+          "controls": true,
+          "control_note": "아자드",
+          "claim": "UN 결의대로 주민투표로 귀속을 결정해야 한다"
+        },
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": true,
+          "control_note": "악사이친",
+          "claim": "악사이친은 중국 영토다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Kashmir_conflict",
+      "layout": "split",
+      "rows": [
+        {
+          "parties": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "악사이친",
+          "parties": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "china-india-border",
+      "name_ko": "중–인 국경",
+      "region": "남아시아",
+      "lat": 33.5,
+      "lng": 79,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "히말라야 전략 종심"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "중국",
+          "iso": "CHN",
+          "controls": true,
+          "control_note": "악사이친",
+          "claim": "아루나찰은 짱난(藏南) — 중국 영토다"
+        },
+        {
+          "name_ko": "인도",
+          "iso": "IND",
+          "controls": true,
+          "control_note": "아루나찰",
+          "claim": "악사이친은 불법 점령된 인도 땅, 아루나찰은 인도의 주다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Sino-Indian_border_dispute"
+    },
+    {
+      "id": "siachen",
+      "name_ko": "시아첸 빙하",
+      "region": "남아시아",
+      "lat": 35.4,
+      "lng": 77.1,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "세계 최고도 대치"
+        },
+        {
+          "type": "symbolic",
+          "note": "소모전 상징"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "인도",
+          "iso": "IND",
+          "controls": true,
+          "control_note": "1984~",
+          "claim": "실제 통제선(AGPL)을 인정하라"
+        },
+        {
+          "name_ko": "파키스탄",
+          "iso": "PAK",
+          "controls": false,
+          "claim": "협정상 경계 미획정 구역 — 철수 후 협상하자"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Siachen_conflict"
+    },
+    {
+      "id": "greenland",
+      "name_ko": "그린란드",
+      "region": "유럽·북극",
+      "lat": 72,
+      "lng": -42,
+      "star": true,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "희토류·우라늄"
+        },
+        {
+          "type": "route",
+          "note": "북극항로 관문"
+        },
+        {
+          "type": "military",
+          "note": "피투피크 기지"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "덴마크",
+          "iso": "DNK",
+          "controls": true,
+          "control_note": "주권",
+          "claim": "그린란드는 매물이 아니다"
+        },
+        {
+          "name_ko": "그린란드 자치정부",
+          "iso": "GRL",
+          "controls": true,
+          "control_note": "자치",
+          "claim": "우리의 미래는 우리가 결정한다 — 독립 지향, 미국 편입 거부"
+        },
+        {
+          "name_ko": "미국",
+          "iso": "USA",
+          "controls": false,
+          "claim": "국가·경제 안보상 통제가 필요하다(매입·병합 압박)"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [
+        "nsr",
+        "nwp"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Greenland",
+      "internal": "독립"
+    },
+    {
+      "id": "crimea",
+      "name_ko": "크림·우크라이나 점령지",
+      "region": "유럽·북극",
+      "lat": 45.3,
+      "lng": 34.4,
+      "star": true,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "흑해함대 모항"
+        },
+        {
+          "type": "route",
+          "note": "곡물 수출로"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "러시아",
+          "iso": "RUS",
+          "controls": true,
+          "control_note": "점령",
+          "claim": "2014년 주민투표로 러시아에 귀속됐다"
+        },
+        {
+          "name_ko": "우크라이나",
+          "iso": "UKR",
+          "controls": false,
+          "claim": "국제법 위반 강제 병합 — 1991년 국경의 원상회복"
+        }
+      ],
+      "linked_conflict_id": "13243",
+      "linked_choke_ids": [
+        "bosphorus"
+      ],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Annexation_of_Crimea_by_the_Russian_Federation"
+    },
+    {
+      "id": "gibraltar",
+      "name_ko": "지브롤터",
+      "region": "유럽·북극",
+      "lat": 36.14,
+      "lng": -5.35,
+      "star": false,
+      "stakes": [
+        {
+          "type": "route",
+          "note": "지브롤터 해협 관문"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "영국",
+          "iso": "GBR",
+          "controls": true,
+          "control_note": "1713~",
+          "claim": "위트레흐트 조약으로 할양 — 주민 의사가 최우선(주민투표 2회 압도적 잔류)"
+        },
+        {
+          "name_ko": "스페인",
+          "iso": "ESP",
+          "controls": false,
+          "claim": "영토 보전 원칙상 반환돼야 한다"
+        }
+      ],
+      "linked_choke_ids": [
+        "gibraltar"
+      ],
+      "linked_route_ids": [
+        "eu-asia-suez"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Status_of_Gibraltar"
+    },
+    {
+      "id": "ceuta-melilla",
+      "name_ko": "세우타·멜리야",
+      "region": "유럽·북극",
+      "lat": 35.89,
+      "lng": -5.31,
+      "star": false,
+      "stakes": [
+        {
+          "type": "route",
+          "note": "지브롤터 남안 · 이주 통제 지렛대"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "스페인",
+          "iso": "ESP",
+          "controls": true,
+          "claim": "수세기 스페인 영토 — 협상 대상이 아니다"
+        },
+        {
+          "name_ko": "모로코",
+          "iso": "MAR",
+          "controls": false,
+          "claim": "식민 잔재 — 반환하라"
+        }
+      ],
+      "linked_choke_ids": [
+        "gibraltar"
+      ],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Ceuta"
+    },
+    {
+      "id": "cyprus-north",
+      "name_ko": "북키프로스",
+      "region": "유럽·북극",
+      "lat": 35.3,
+      "lng": 33.4,
+      "star": false,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "동지중해 가스전 EEZ 연동"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "튀르키예계",
+          "iso": "TUR",
+          "controls": true,
+          "control_note": "1974~, 미승인",
+          "claim": "북키프로스는 주권국가 — 2국가 해법으로 가자"
+        },
+        {
+          "name_ko": "키프로스",
+          "iso": "CYP",
+          "controls": false,
+          "claim": "점령을 끝내고 연방제로 통일하자"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Cyprus_dispute"
+    },
+    {
+      "id": "aegean",
+      "name_ko": "에게해",
+      "region": "유럽·북극",
+      "lat": 38.5,
+      "lng": 25.5,
+      "star": false,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "대륙붕·가스 탐사"
+        },
+        {
+          "type": "route",
+          "note": "해상 항로"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "그리스",
+          "iso": "GRC",
+          "controls": true,
+          "control_note": "도서 대부분",
+          "claim": "도서 영유는 조약으로 확정 — 영해 12해리는 주권적 권리다"
+        },
+        {
+          "name_ko": "튀르키예",
+          "iso": "TUR",
+          "controls": false,
+          "claim": "12해리 확장은 개전 사유 — 대륙붕을 재획정하자"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Aegean_dispute"
+    },
+    {
+      "id": "kosovo",
+      "name_ko": "코소보",
+      "region": "유럽·북극",
+      "lat": 42.6,
+      "lng": 21,
+      "star": false,
+      "stakes": [
+        {
+          "type": "symbolic",
+          "note": "주권 승인 자체"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "코소보",
+          "iso": "XKX",
+          "controls": true,
+          "control_note": "2008 독립 선언",
+          "claim": "독립은 되돌릴 수 없다 — 100여 개국이 승인했다"
+        },
+        {
+          "name_ko": "세르비아",
+          "iso": "SRB",
+          "controls": false,
+          "claim": "코소보는 세르비아의 일부 — 독립을 인정하지 않는다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Political_status_of_Kosovo"
+    },
+    {
+      "id": "transnistria",
+      "name_ko": "트란스니스트리아",
+      "region": "유럽·북극",
+      "lat": 46.8,
+      "lng": 29.6,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "러시아군 주둔"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "분리정부",
+          "iso": "MDA",
+          "controls": true,
+          "control_note": "러 후원, 미승인",
+          "claim": "주민 의사로 분리했다 — 러시아와의 통합을 지향한다"
+        },
+        {
+          "name_ko": "몰도바",
+          "iso": "MDA",
+          "controls": false,
+          "claim": "몰도바 영토다 — 러시아군은 철수하라"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Transnistria_conflict"
+    },
+    {
+      "id": "abkhazia-ossetia",
+      "name_ko": "압하지야·남오세티야",
+      "region": "유럽·북극",
+      "lat": 42.7,
+      "lng": 42,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "러시아의 남캅카스 지렛대"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "분리정부",
+          "iso": "GEO",
+          "controls": true,
+          "control_note": "러 후원",
+          "claim": "우리는 독립 국가다(러시아 등 소수 승인)"
+        },
+        {
+          "name_ko": "조지아",
+          "iso": "GEO",
+          "controls": false,
+          "claim": "점령지다 — 영토 보전을 회복한다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Abkhazia"
+    },
+    {
+      "id": "arctic-shelf",
+      "name_ko": "북극 대륙붕(로모노소프 해령)",
+      "region": "유럽·북극",
+      "lat": 84,
+      "lng": 100,
+      "star": false,
       "note": "실효 지배 없음 — 해저, CLCS 심사 중",
-      "stakes": [{ "type": "resource", "note": "해저 자원 관할권" }],
-      "parties": [{ "name_ko": "러시아", "iso": "RUS", "controls": false, "claim": "해령은 시베리아 대륙붕의 자연 연장이다" }, { "name_ko": "캐나다", "iso": "CAN", "controls": false, "claim": "캐나다 대륙붕의 자연 연장이다" }, { "name_ko": "덴마크(그린란드)", "iso": "DNK", "controls": false, "claim": "그린란드 대륙붕의 자연 연장이다" }],
-      "linked_choke_ids": [], "linked_route_ids": ["nsr"], "source_url": "https://en.wikipedia.org/wiki/Lomonosov_Ridge" },
-    { "id": "westbank-golan", "name_ko": "서안·동예루살렘·골란", "region": "중동·아프리카", "lat": 31.95, "lng": 35.3, "star": true,
-      "stakes": [{ "type": "symbolic", "note": "성지" }, { "type": "military", "note": "전략 고지(골란)" }],
-      "parties": [{ "name_ko": "이스라엘", "iso": "ISR", "controls": true, "control_note": "점령·병합", "claim": "예루살렘은 불가분의 수도, 골란은 병합 완료(1981) — 서안은 분쟁지" }, { "name_ko": "팔레스타인", "iso": "PSE", "controls": false, "claim": "1967년 경계 기반 독립국가, 수도는 동예루살렘" }, { "name_ko": "시리아", "iso": "SYR", "controls": false, "claim": "골란을 반환하라" }],
-      "linked_conflict_id": "234", "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Israeli-occupied_territories" },
-    { "id": "abu-musa", "name_ko": "아부무사·대소툰브", "region": "중동·아프리카", "lat": 25.87, "lng": 55.03, "star": false,
-      "stakes": [{ "type": "route", "note": "호르무즈 해협 입구" }],
-      "parties": [{ "name_ko": "이란", "iso": "IRN", "controls": true, "control_note": "1971~", "claim": "이란 고유 영토의 회복이다" }, { "name_ko": "UAE", "iso": "ARE", "controls": false, "claim": "불법 점거 — ICJ에 회부하자" }],
-      "linked_choke_ids": ["hormuz"], "linked_route_ids": ["mideast-oil"], "source_url": "https://en.wikipedia.org/wiki/Greater_and_Lesser_Tunbs" },
-    { "id": "western-sahara", "name_ko": "서사하라", "region": "중동·아프리카", "lat": 24.5, "lng": -13.0, "star": false,
-      "stakes": [{ "type": "resource", "note": "인광석·대서양 어장" }],
-      "parties": [{ "name_ko": "모로코", "iso": "MAR", "controls": true, "control_note": "대부분", "claim": "모로코 주권 하의 자치안이 유일한 해법이다" }, { "name_ko": "폴리사리오", "iso": "ESH", "controls": false, "control_note": "알제리 후원", "claim": "UN 결의대로 주민투표로 독립을 결정하라" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Western_Sahara_conflict" },
-    { "id": "essequibo", "name_ko": "에세퀴보", "region": "미주", "lat": 6.5, "lng": -60.0, "star": true,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "해저 자원 관할권"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "러시아",
+          "iso": "RUS",
+          "controls": false,
+          "claim": "해령은 시베리아 대륙붕의 자연 연장이다"
+        },
+        {
+          "name_ko": "캐나다",
+          "iso": "CAN",
+          "controls": false,
+          "claim": "캐나다 대륙붕의 자연 연장이다"
+        },
+        {
+          "name_ko": "덴마크(그린란드)",
+          "iso": "DNK",
+          "controls": false,
+          "claim": "그린란드 대륙붕의 자연 연장이다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [
+        "nsr"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Lomonosov_Ridge",
+      "layout": "radial",
+      "center": {
+        "name": "로모노소프 해령",
+        "sub": "북극점 관통 · 해저 산맥"
+      }
+    },
+    {
+      "id": "westbank-golan",
+      "name_ko": "서안·동예루살렘·골란",
+      "region": "중동·아프리카",
+      "lat": 31.95,
+      "lng": 35.3,
+      "star": true,
+      "stakes": [
+        {
+          "type": "symbolic",
+          "note": "성지"
+        },
+        {
+          "type": "military",
+          "note": "전략 고지(골란)"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "이스라엘",
+          "iso": "ISR",
+          "controls": true,
+          "control_note": "점령·병합",
+          "claim": "예루살렘은 불가분의 수도, 골란은 병합 완료(1981) — 서안은 분쟁지"
+        },
+        {
+          "name_ko": "팔레스타인",
+          "iso": "PSE",
+          "controls": false,
+          "claim": "1967년 경계 기반 독립국가, 수도는 동예루살렘"
+        },
+        {
+          "name_ko": "시리아",
+          "iso": "SYR",
+          "controls": false,
+          "claim": "골란을 반환하라"
+        }
+      ],
+      "linked_conflict_id": "234",
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Israeli-occupied_territories",
+      "layout": "split",
+      "rows": [
+        {
+          "label": "서안·동예루살렘",
+          "parties": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "골란",
+          "parties": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "abu-musa",
+      "name_ko": "아부무사·대소툰브",
+      "region": "중동·아프리카",
+      "lat": 25.87,
+      "lng": 55.03,
+      "star": false,
+      "stakes": [
+        {
+          "type": "route",
+          "note": "호르무즈 해협 입구"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "이란",
+          "iso": "IRN",
+          "controls": true,
+          "control_note": "1971~",
+          "claim": "이란 고유 영토의 회복이다"
+        },
+        {
+          "name_ko": "UAE",
+          "iso": "ARE",
+          "controls": false,
+          "claim": "불법 점거 — ICJ에 회부하자"
+        }
+      ],
+      "linked_choke_ids": [
+        "hormuz"
+      ],
+      "linked_route_ids": [
+        "mideast-oil"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Greater_and_Lesser_Tunbs"
+    },
+    {
+      "id": "western-sahara",
+      "name_ko": "서사하라",
+      "region": "중동·아프리카",
+      "lat": 24.5,
+      "lng": -13,
+      "star": false,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "인광석·대서양 어장"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "모로코",
+          "iso": "MAR",
+          "controls": true,
+          "control_note": "대부분",
+          "claim": "모로코 주권 하의 자치안이 유일한 해법이다"
+        },
+        {
+          "name_ko": "폴리사리오",
+          "iso": "ESH",
+          "controls": false,
+          "control_note": "알제리 후원",
+          "claim": "UN 결의대로 주민투표로 독립을 결정하라"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Western_Sahara_conflict",
+      "sponsors": [
+        {
+          "name": "알제리",
+          "note": "폴리사리오 후원",
+          "side": "opp"
+        }
+      ]
+    },
+    {
+      "id": "essequibo",
+      "name_ko": "에세퀴보",
+      "region": "미주",
+      "lat": 6.5,
+      "lng": -60,
+      "star": true,
       "note": "유전 발견이 재점화 원인",
-      "stakes": [{ "type": "resource", "note": "해상 초대형 유전" }],
-      "parties": [{ "name_ko": "가이아나", "iso": "GUY", "controls": true, "claim": "1899년 중재판정으로 확정된 영토 — ICJ에서 다투는 중" }, { "name_ko": "베네수엘라", "iso": "VEN", "controls": false, "claim": "1899년 판정은 무효 — 에세키보는 베네수엘라 땅(2023 국민투표)" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Guayana_Esequiba" },
-    { "id": "falklands", "name_ko": "포클랜드/말비나스", "region": "미주", "lat": -51.7, "lng": -59.0, "star": false,
-      "stakes": [{ "type": "military", "note": "남대서양 거점" }, { "type": "resource", "note": "석유 탐사" }],
-      "parties": [{ "name_ko": "영국", "iso": "GBR", "controls": true, "claim": "주민 자결 — 2013년 주민투표 99.8% 잔류" }, { "name_ko": "아르헨티나", "iso": "ARG", "controls": false, "claim": "말비나스는 아르헨티나 영토 — 협상을 요구한다" }],
-      "linked_choke_ids": [], "linked_route_ids": [], "source_url": "https://en.wikipedia.org/wiki/Falkland_Islands_sovereignty_dispute" },
-    { "id": "beaufort-sea", "name_ko": "보퍼트해 경계", "region": "미주", "lat": 71.5, "lng": -140.0, "star": false,
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "해상 초대형 유전"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "가이아나",
+          "iso": "GUY",
+          "controls": true,
+          "claim": "1899년 중재판정으로 확정된 영토 — ICJ에서 다투는 중"
+        },
+        {
+          "name_ko": "베네수엘라",
+          "iso": "VEN",
+          "controls": false,
+          "claim": "1899년 판정은 무효 — 에세키보는 베네수엘라 땅(2023 국민투표)"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Guayana_Esequiba"
+    },
+    {
+      "id": "falklands",
+      "name_ko": "포클랜드/말비나스",
+      "region": "미주",
+      "lat": -51.7,
+      "lng": -59,
+      "star": false,
+      "stakes": [
+        {
+          "type": "military",
+          "note": "남대서양 거점"
+        },
+        {
+          "type": "resource",
+          "note": "석유 탐사"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "영국",
+          "iso": "GBR",
+          "controls": true,
+          "claim": "주민 자결 — 2013년 주민투표 99.8% 잔류"
+        },
+        {
+          "name_ko": "아르헨티나",
+          "iso": "ARG",
+          "controls": false,
+          "claim": "말비나스는 아르헨티나 영토 — 협상을 요구한다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [],
+      "source_url": "https://en.wikipedia.org/wiki/Falkland_Islands_sovereignty_dispute"
+    },
+    {
+      "id": "beaufort-sea",
+      "name_ko": "보퍼트해 경계",
+      "region": "미주",
+      "lat": 71.5,
+      "lng": -140,
+      "star": false,
       "note": "경계 미획정 수역 — 북서항로 지위 분쟁과 세트",
-      "stakes": [{ "type": "resource", "note": "북극해 석유·가스 구역" }],
-      "parties": [{ "name_ko": "미국", "iso": "USA", "controls": false, "claim": "등거리선 원칙으로 그어야 한다" }, { "name_ko": "캐나다", "iso": "CAN", "controls": false, "claim": "1825년 조약의 경도선을 연장해야 한다" }],
-      "linked_choke_ids": [], "linked_route_ids": ["nwp"], "source_url": "https://en.wikipedia.org/wiki/Beaufort_Sea#Territorial_claims" }
+      "stakes": [
+        {
+          "type": "resource",
+          "note": "북극해 석유·가스 구역"
+        }
+      ],
+      "parties": [
+        {
+          "name_ko": "미국",
+          "iso": "USA",
+          "controls": false,
+          "claim": "등거리선 원칙으로 그어야 한다"
+        },
+        {
+          "name_ko": "캐나다",
+          "iso": "CAN",
+          "controls": false,
+          "claim": "1825년 조약의 경도선을 연장해야 한다"
+        }
+      ],
+      "linked_choke_ids": [],
+      "linked_route_ids": [
+        "nwp"
+      ],
+      "source_url": "https://en.wikipedia.org/wiki/Beaufort_Sea#Territorial_claims"
+    }
   ]
 }

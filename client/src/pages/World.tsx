@@ -46,7 +46,7 @@ const episodesAll = (episodesData as unknown as { episodes: Episode[] }).episode
 // 영토·주권 분쟁 층(별도 데이터 — UCDP 무력분쟁과 분리). 노랑 마커. 말풍선 claim = 공표 입장의 의역.
 type DisputeParty = { iso: string; name_ko: string; controls: boolean; control_note?: string; claim: string };
 type DisputeStake = { type: "industry" | "route" | "resource" | "military" | "symbolic"; note: string };
-type Dispute = { id: string; name_ko: string; region: string; lat: number; lng: number; star?: boolean; note?: string; parties: DisputeParty[]; stakes: DisputeStake[]; linked_conflict_id?: string | null; linked_choke_ids: string[]; linked_route_ids: string[]; source_url: string };
+type Dispute = { id: string; name_ko: string; region: string; lat: number; lng: number; star?: boolean; note?: string; parties: DisputeParty[]; stakes: DisputeStake[]; linked_conflict_id?: string | null; linked_choke_ids: string[]; linked_route_ids: string[]; source_url: string; layout?: "axis" | "grid" | "radial" | "split"; internal?: string; center?: { name: string; sub: string }; rows?: { label?: string; parties: number[] }[]; sponsors?: { name: string; note?: string; side?: string }[] };
 const disputesAll = (disputesData as unknown as { disputes: Dispute[] }).disputes;
 const STAKE_KO: Record<string, string> = { industry: "산업", route: "항로", resource: "자원", military: "군사", symbolic: "상징" };
 const disputeCtrl = (d: { parties: { controls: boolean; name_ko: string }[] }) => { const c = d.parties.filter((p) => p.controls); return c.length ? (c.length > 1 ? "분할 지배" : c[0].name_ko) : "미획정"; };
@@ -1216,6 +1216,17 @@ export default function World() {
               <Src url={conflictsMeta.source_url} label="UCDP GED" />
             </>); })()}
           {sel.kind === "dispute" && (() => { const d = disputeById.get(sel.id); if (!d) return null; const lc = d.linked_conflict_id ? conflictById.get(d.linked_conflict_id) : null;
+            // 당사국 말풍선 열(공용). gray=주장만/후원(색 없음), 실효(◎)=노랑. 방사형은 전원 gray(대칭).
+            const pcol = (p: DisputeParty, key: React.Key, gray?: boolean) => { const idx = isoToIdx.get(p.iso);
+              const pillSt = gray ? { borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" } : p.controls ? { borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "22", color: TERRITORIAL_TEXT } : { borderColor: "hsl(var(--border))" };
+              const bubSt = gray ? { borderColor: "hsl(var(--border))" } : p.controls ? { background: TERRITORIAL_YELLOW + "1a", borderColor: TERRITORIAL_YELLOW + "55" } : { borderColor: "hsl(var(--border))" };
+              const inner = <>{p.controls && !gray ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</>;
+              return (<div key={key} className="flex min-w-0 flex-col gap-1">
+                {idx != null && !gray ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted" style={pillSt}>{inner}</button>
+                  : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold" style={pillSt}>{inner}</span>}
+                <div className="rounded-lg border px-2 py-1.5 text-[10.5px] leading-snug" style={bubSt}>{p.claim}</div>
+              </div>); };
+            const layout = d.layout ?? "axis";
             return (<>
               <div className="flex items-center gap-1.5 pr-5"><Diamond className="h-4 w-4 shrink-0" style={{ color: TERRITORIAL_TEXT, fill: TERRITORIAL_YELLOW }} /><span className="text-[15px] font-bold leading-tight">{d.star ? "★ " : ""}{d.name_ko}</span>
                 <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: TERRITORIAL_YELLOW + "33", color: TERRITORIAL_TEXT }}>영토·주권</span></div>
@@ -1224,15 +1235,33 @@ export default function World() {
               <div className="mt-2 flex flex-wrap gap-1">
                 {d.stakes.map((s, i) => <span key={i} className="rounded-full border px-1.5 py-0.5 text-[10px]" style={{ borderColor: TERRITORIAL_YELLOW + "88", background: TERRITORIAL_YELLOW + "14" }}><b style={{ color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</b> <span className="text-muted-foreground">— {s.note}</span></span>)}
               </div>
-              <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-2">
-                {d.parties.map((p, i) => { const idx = isoToIdx.get(p.iso);
-                  return (<div key={i} className="flex min-w-0 flex-col gap-1">
-                    {idx != null
-                      ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted" style={p.controls ? { borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "22", color: TERRITORIAL_TEXT } : { borderColor: "hsl(var(--border))" }}>{p.controls ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</button>
-                      : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold" style={p.controls ? { borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "22", color: TERRITORIAL_TEXT } : { borderColor: "hsl(var(--border))" }}>{p.controls ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</span>}
-                    <div className="rounded-lg border px-2 py-1.5 text-[10.5px] leading-snug" style={p.controls ? { background: TERRITORIAL_YELLOW + "1a", borderColor: TERRITORIAL_YELLOW + "55" } : { borderColor: "hsl(var(--border))" }}>{p.claim}</div>
-                  </div>); })}
-              </div>
+              {layout === "grid" ? (
+                <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-2">{d.parties.map((p, i) => pcol(p, i, !p.controls))}</div>
+              ) : layout === "radial" ? (
+                <div className="mt-2.5 flex flex-col items-center gap-2">
+                  {d.parties[0] && <div className="w-full max-w-[55%]">{pcol(d.parties[0], 0, true)}</div>}
+                  {d.center && <div className="rounded-full border-2 border-dashed px-4 py-2 text-center" style={{ borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "12" }}><div className="text-[11px] font-semibold" style={{ color: TERRITORIAL_TEXT }}>{d.center.name}</div><div className="text-[9px] text-muted-foreground">{d.center.sub}</div></div>}
+                  <div className="grid grid-cols-2 gap-2 self-stretch">{d.parties.slice(1).map((p, i) => pcol(p, i + 1, true))}</div>
+                  <div className="text-center text-[9px] text-muted-foreground">모든 주장이 같은 대상을 향함 — 실효 지배자 없음, 전원 동일 비중</div>
+                </div>
+              ) : layout === "split" && d.rows ? (
+                <div className="mt-2.5 flex flex-col gap-2">
+                  {d.rows.map((row, ri) => (
+                    <div key={ri} className={ri > 0 ? "border-t border-border pt-2" : ""}>
+                      {row.label && <div className="mb-1 text-[10px] font-semibold" style={{ color: TERRITORIAL_TEXT }}>{row.label}</div>}
+                      <div className="grid grid-cols-2 gap-2">{row.parties.map((pi) => (d.parties[pi] ? pcol(d.parties[pi], `${ri}-${pi}`) : null))}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (() => { const left = d.parties.filter((p) => p.controls); const right = d.parties.filter((p) => !p.controls);
+                return (<>
+                  <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-start gap-1.5">
+                    <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[8.5px] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
+                    <div className="self-center pt-4 text-[10px] text-muted-foreground">vs</div>
+                    <div className="flex flex-col gap-1.5">{right.map((p, i) => pcol(p, `r${i}`))}</div>
+                  </div>
+                  {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[9px] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[9.5px] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
+                </>); })()}
               {(d.linked_choke_ids.length > 0 || d.linked_route_ids.length > 0) && (
                 <div className="mt-2.5 flex flex-wrap items-center gap-1"><span className="text-[10px] text-muted-foreground">무역 지도</span>
                   {d.linked_choke_ids.map((id) => { const ch = chokeById.get(id); return ch ? <Chip key={id} color={AMBER} onClick={() => goTo({ kind: "choke", id })}>{ch.ko}</Chip> : null; })}
