@@ -761,6 +761,15 @@ export default function World() {
               onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } toggleCompare(r.id); }}>{r.ko}</text>
           );
         })}
+        {/* 관문 밖 페이드 스텁 — 전체 연장선 아님, '계속됨'만 암시(유럽·미 동안 방면). 배 없음. */}
+        {tradeMode && layers.routes && infra.routes.map((r, i) => { const stub = (r as any).stub as number[][] | undefined; if (!stub) return null;
+          const pts = stub.map((c) => toScreen(c[0], c[1])).filter(Boolean) as [number, number][]; if (pts.length < 2) return null;
+          const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on; const col = rCol(r as any); const end = pts[pts.length - 1];
+          return (<g key={`stub${i}`} style={{ pointerEvents: "none" }}>
+            <path d={"M" + pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L")} fill="none" stroke={col} strokeOpacity={dim2 ? 0.05 : on ? 0.5 : 0.22} strokeWidth={on ? 1.6 : 1.2} strokeLinecap="round" strokeDasharray="2 3.5" />
+            {(r as any).stub_label && <text x={end[0] + 4} y={end[1] + 3} fontSize={8.5} fontWeight={500} fill={col} fillOpacity={dim2 ? 0.15 : 0.62} style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{(r as any).stub_label} →</text>}
+          </g>);
+        })}
 
         {/* 수도 점은 지도에서 제거(시각 복잡도↓). 수도 정보는 국가 카드·검색에서만 유지. */}
 
@@ -1151,6 +1160,7 @@ export default function World() {
               )}
               {r.facts && <div className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{r.facts}</div>}
               {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={routeColor(alt.id)} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
+              {(r as any).conn_note && <div className="mt-1.5 flex items-center gap-1 text-[10.5px] text-muted-foreground"><span className="rounded-full border border-border px-1.5 py-0.5 text-[9.5px]" style={{ color: SEA }}>접속</span>{(r as any).conn_note}</div>}
               <Src url={r.source_url} />
             </>); })()}
           {sel.kind === "conflict" && (() => { const c = conflictById.get(sel.id); if (!c) return null; const cc = conflictColor(c.category);
