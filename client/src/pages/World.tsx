@@ -619,7 +619,7 @@ export default function World() {
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-background text-foreground">
-      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}.wf-flow-slow{animation:wf-flow 3.2s linear infinite}@keyframes cf-pulse{0%{transform:scale(1);opacity:.7}70%{transform:scale(3);opacity:0}100%{transform:scale(3);opacity:0}}.cf-pulse{animation:cf-pulse 1.8s ease-out infinite}@media(prefers-reduced-motion:reduce){.cf-pulse{animation:none;opacity:0}}`}</style>
+      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}.wf-flow-slow{animation:wf-flow 3.2s linear infinite}@keyframes cf-pulse{0%{transform:scale(1);opacity:.7}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}.cf-pulse{animation:cf-pulse 1.8s ease-out infinite}@media(prefers-reduced-motion:reduce){.cf-pulse{animation:none;opacity:0}}`}</style>
       <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${dim.w} ${dim.h}`}
         className="block cursor-grab active:cursor-grabbing select-none"
         onPointerDown={onSpinDown} onPointerMove={onSpinMove} onPointerUp={onSpinUp} onPointerLeave={onSpinUp}
@@ -841,7 +841,7 @@ export default function World() {
           const war = c.intensity === "war"; const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id;
           const col = conflictColor(c.category);
           const live = war && !!c.last_event_date && CONFLICT_MAX_MS - Date.parse(c.last_event_date) <= 30 * 864e5;
-          const halo = (war ? 26 : 18) * (on ? 1.25 : 1); const r = (war ? 5.2 : 4.2) * (on ? 1.2 : 1);
+          const halo = (war ? 21 : 15) * (on ? 1.25 : 1); const r = (war ? 4.4 : 3.5) * (on ? 1.2 : 1);
           return (<g key={`cf${c.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "conflict", id: c.id }); }}
             onMouseEnter={(e) => { setHoverConflict(c.id); setTip({ x: e.clientX, y: e.clientY, text: c.name_ko, sub: `${conflictLabel(c.category, war)} · 최근 12개월 사망 ${c.deaths_12mo.toLocaleString()}` }); }}
@@ -852,16 +852,18 @@ export default function World() {
             <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={0.95} stroke="hsl(var(--background))" strokeWidth={on ? 1.7 : 1.1} />
           </g>); })}
 
-        {/* 영토·주권 분쟁 마커 — 점선 노랑 링(활성 교전 아님 = 형태로 표시, 글로우 없음). 클릭=분쟁지 카드 */}
+        {/* 영토·주권 분쟁 마커 — 노랑 꽉 찬 원 + 광훈, ★(최근 활발)은 펄스. 클릭=분쟁지 카드 */}
         {conflictMode && visDisputes.map((d) => { const sc = toScreen(d.lng, d.lat); if (!sc || !inView(sc[0], sc[1])) return null;
-          const on = sel?.kind === "dispute" && sel.id === d.id; const r = on ? 6.5 : 5.2;
+          const on = sel?.kind === "dispute" && sel.id === d.id;
+          const halo = 15 * (on ? 1.25 : 1); const r = 3.5 * (on ? 1.2 : 1);
           return (<g key={`td${d.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "dispute", id: d.id }); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${d.controlled_by}${d.resolved ? " · 해결 진행" : ""}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${d.controlled_by}` })}
             onMouseLeave={() => setTip(null)}>
-            <circle cx={sc[0]} cy={sc[1]} r={r} fill={TERRITORIAL_YELLOW} fillOpacity={0.12} stroke={TERRITORIAL_YELLOW} strokeWidth={on ? 2 : 1.5} strokeDasharray="2.5 2" />
-            <circle cx={sc[0]} cy={sc[1]} r={1.6} fill={TERRITORIAL_YELLOW} />
+            <circle cx={sc[0]} cy={sc[1]} r={halo} fill={`url(#cfdot-${TERRITORIAL_YELLOW.slice(1)})`} />
+            {d.star && <circle className="cf-pulse" cx={sc[0]} cy={sc[1]} r={r} fill="none" stroke={TERRITORIAL_YELLOW} strokeWidth={1.4} style={{ transformOrigin: `${sc[0]}px ${sc[1]}px` }} />}
+            <circle cx={sc[0]} cy={sc[1]} r={r} fill={TERRITORIAL_YELLOW} fillOpacity={0.98} stroke={TERRITORIAL_TEXT} strokeWidth={on ? 1.3 : 0.9} />
           </g>); })}
 
         {/* DC 모드: 미국 전체 원전 — 상태 색(가동·퇴역·재가동·취소) + AI 연계 보라 링 */}
