@@ -95,11 +95,11 @@ const ROUTE_COLOR: Record<string, string> = {
 };
 const routeColor = (id: string) => ROUTE_COLOR[id] ?? SEA;
 // ── 항로 배 흐름(밀도=물동량 등급) ──
-const TIER_SHIPS: Record<string, number> = { high: 5, mid: 3, low: 1 }; // 동시 척수(합 상한 40)
+const TIER_SHIPS: Record<string, number> = { high: 5, mid: 3, low: 1, none: 0 }; // 동시 척수(합 상한 40). none=배 0(상업 통항 없음)
 const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59e0b", mixed: "#9333ea", bulk: "#78716c" };
 const CARGO_KO: Record<string, string> = { container: "컨테이너", crude: "원유", mixed: "혼합", bulk: "벌크" };
 const shipSymbol = (cargo: string) => (cargo === "crude" ? "ship-tanker" : "ship-container");
-const LANE_OFFSETS: Record<string, number[]> = { high: [-7, 0, 7], mid: [-4, 4], low: [0] }; // 등급→차선(회랑 폭=2차 인코딩)
+const LANE_OFFSETS: Record<string, number[]> = { high: [-7, 0, 7], mid: [-4, 4], low: [0], none: [0] }; // 등급→차선(회랑 폭=2차 인코딩)
 // 항로선·배 공용 지리 좌표 — 웨이포인트 사이 직선(꺾인 폴리라인). 매프레임 재투영이라 회전 대응.
 function densifyRoute(coords: number[][]): { pts: number[][]; len: number } {
   const pts = coords; let len = 0;
@@ -707,6 +707,7 @@ export default function World() {
           {/* L2 항로 — 항로별 색. 화물별 뷰: 화물색, 혼합=파랑+노랑 평행 겹선(법선 offset, 살짝 간격), 필터 시 해당 가닥만. 선택/hover 시 진하게+흐름. */}
           {tradeMode && layers.routes && infra.routes.flatMap((r, i) => {
             const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on; const d = (on ? 6 : 4) / t.k;
+            const tierNone = (r as any).volume_tier === "none"; // 배 0 · 선은 유지하되 더 옅게(잠든 선)
             const dual = routeDualPaths.get(r.id); // 혼합 항로면 {container, crude} offset 경로
             const strands = shipCargoView ? routeStrands(r as any) : [null];
             return strands.map((strand) => {
@@ -716,7 +717,7 @@ export default function World() {
               return (
                 <path key={`r${i}-${strand}`} d={dPath} fill="none" stroke={col} strokeLinecap="round"
                   className={on ? "wf-flow" : undefined}
-                  strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.5}
+                  strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : tierNone ? 0.24 : 0.5}
                   strokeDasharray={`${d} ${3 / t.k}`} style={{ pointerEvents: "none" }} />
               );
             });
@@ -1126,6 +1127,7 @@ export default function World() {
                     ? <Chip color={w.type === "port" ? SEA : AMBER} onClick={() => goTo(w.type === "port" ? { kind: "port", id: w.ref } : { kind: "choke", id: w.ref })}>{node.ko}</Chip>
                     : <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px]" style={{ color: SEA }}>{node.ko}</span>}</span>); })}</div></div>
               <div className="mt-2 text-[11.5px] leading-snug"><span className="text-muted-foreground">방향</span> {r.direction_note} <span className="text-[10.5px] text-muted-foreground">· 양방향(주 무역 흐름 기준)</span></div>
+              {(r as any).volume_tier === "none" && <div className="mt-1.5 rounded-md border border-border/70 bg-muted/40 px-2 py-1 text-[10.5px] leading-snug text-muted-foreground">ⓘ <b>배 흐름 없음 = 상업 통항 부재</b>(버그 아님·데이터). 선은 유지 — 존재하되 잠든 항로.</div>}
               {(r as any).cargo_note && (
                 <div className="mt-2">
                   <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">화물 구성
