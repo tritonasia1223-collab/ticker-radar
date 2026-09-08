@@ -46,8 +46,7 @@ const episodesAll = (episodesData as unknown as { episodes: Episode[] }).episode
 // 영토·주권 분쟁 층(별도 데이터 — UCDP 무력분쟁과 분리). 노랑 마커. 말풍선 claim = 공표 입장의 의역.
 type DisputeParty = { iso: string; name_ko: string; controls: boolean; control_note?: string; claim: string };
 type DisputeStake = { type: "industry" | "route" | "resource" | "military" | "symbolic"; note: string };
-type DisputeZone = { basis: "treaty" | "claims_intersection" | "approximate"; basis_note: string; display_mode: "hatch_only" | "lines_and_hatch" | "lines_only"; hatch?: [number, number][]; lines?: { name: string; coords: [number, number][] }[] };
-type Dispute = { id: string; name_ko: string; region: string; lat: number; lng: number; star?: boolean; note?: string; parties: DisputeParty[]; stakes: DisputeStake[]; linked_conflict_id?: string | null; linked_choke_ids: string[]; linked_route_ids: string[]; source_url: string; layout?: "axis" | "grid" | "radial" | "split"; internal?: string; center?: { name: string; sub: string }; rows?: { label?: string; parties: number[] }[]; sponsors?: { name: string; note?: string; side?: string }[]; zone?: DisputeZone };
+type Dispute = { id: string; name_ko: string; region: string; lat: number; lng: number; star?: boolean; note?: string; parties: DisputeParty[]; stakes: DisputeStake[]; linked_conflict_id?: string | null; linked_choke_ids: string[]; linked_route_ids: string[]; source_url: string; layout?: "axis" | "grid" | "radial" | "split"; internal?: string; center?: { name: string; sub: string }; rows?: { label?: string; parties: number[] }[]; sponsors?: { name: string; note?: string; side?: string }[] };
 const disputesAll = (disputesData as unknown as { disputes: Dispute[] }).disputes;
 const STAKE_KO: Record<string, string> = { industry: "산업", route: "항로", resource: "자원", military: "군사", symbolic: "상징" };
 const disputeCtrl = (d: { parties: { controls: boolean; name_ko: string }[] }) => { const c = d.parties.filter((p) => p.controls); return c.length ? (c.length > 1 ? "분할 지배" : c[0].name_ko) : "미획정"; };
@@ -66,7 +65,6 @@ const CONFLICT_TYPE_COLOR: Record<string, string> = { interstate: "#E24B4A", civ
 const conflictColor = (cat: string) => CONFLICT_TYPE_COLOR[cat] || "#1D9E75";
 const TERRITORIAL_YELLOW = "#F2C40F"; // 영토·주권 — 지도 요소(점선 마커·주장선)
 const TERRITORIAL_TEXT = "#8A6D00";   // 투톤 — 텍스트·뱃지(노랑은 밝은 배경 소자 가독 불가)
-const DISPUTE_LINE_COLORS = ["#8B5CF6", "#1D9E75", "#378ADD", "#E24B4A"]; // 포커스 주장선 당사국별 임시 구분색(판정 아님)
 // 유형 그룹(칩=범례+스위치). territorial 은 별도 층. category → group.
 const catGroup = (cat: string) => (cat === "interstate" ? "interstate" : cat === "civil" ? "civil" : "nonstate");
 const CONFLICT_LEGEND: { group: string; ko: string; color: string }[] = [
@@ -683,10 +681,6 @@ export default function World() {
               <stop offset="0%" stopColor={l.color} stopOpacity="0.55" /><stop offset="45%" stopColor={l.color} stopOpacity="0.22" /><stop offset="100%" stopColor={l.color} stopOpacity="0" />
             </radialGradient>
           ))}
-          {/* 계쟁 수역 빗금(노랑) */}
-          <pattern id="dispHatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="7" stroke={TERRITORIAL_YELLOW} strokeWidth="1.4" strokeOpacity="0.5" />
-          </pattern>
         </defs>
         <path d={spherePath} fill="hsl(var(--background))" stroke="hsl(var(--border))" strokeOpacity={0.6} />
         <g transform={`translate(${t.x},${t.y}) scale(${t.k})`}>
@@ -725,17 +719,6 @@ export default function World() {
               </g>
             );
           })}
-          {/* 해역 분쟁 계쟁 수역 — 포커스(분쟁지 선택) 시에만 페이드인. 해칭=중첩·협정수역 · 주장선=공표선. 기본 뷰는 마커만. */}
-          {conflictMode && sel?.kind === "dispute" && (() => { const z = disputeById.get(sel.id)?.zone; if (!z) return null;
-            const showHatch = !!z.hatch && z.display_mode !== "lines_only";
-            const showLines = !!z.lines && z.display_mode !== "hatch_only";
-            let hatchD = "";
-            if (showHatch) { let ring = z.hatch!; if (geoArea({ type: "Polygon", coordinates: [ring] } as any) > 2 * Math.PI) ring = [...ring].reverse(); hatchD = pathGen({ type: "Polygon", coordinates: [ring] } as any) || ""; }
-            return (<g className="dz-in" style={{ pointerEvents: "none" }}>
-              {showHatch && hatchD && <path d={hatchD} fill="url(#dispHatch)" stroke={TERRITORIAL_YELLOW} strokeWidth={1.6 / t.k} strokeDasharray={`${4.5 / t.k} ${3 / t.k}`} strokeLinejoin="round" />}
-              {showLines && z.lines!.map((ln, i) => { const dd = pathGen({ type: "LineString", coordinates: ln.coords } as any); return dd ? <path key={i} d={dd} fill="none" stroke={DISPUTE_LINE_COLORS[i % DISPUTE_LINE_COLORS.length]} strokeWidth={1.8 / t.k} strokeOpacity={0.85} strokeDasharray={`${5 / t.k} ${3.5 / t.k}`} strokeLinecap="round" strokeLinejoin="round" /> : null; })}
-            </g>);
-          })()}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {/* 국가 뷰 면 채색 §B — 전력시장(RTO) 권역. 비ISO 지역은 무채색(안 그림) */}
           {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => { if (!r.d) return null; const active = dcGridSel === r.code || dcGridHover === r.code; const col = RTO_FILL[r.code] || "#94a3b8";
@@ -1387,8 +1370,7 @@ export default function World() {
                   {d.linked_choke_ids.map((id) => { const ch = chokeById.get(id); return ch ? <Chip key={id} color={AMBER} onClick={() => goTo({ kind: "choke", id })}>{ch.ko}</Chip> : null; })}
                   {d.linked_route_ids.map((id) => { const rt = routeById.get(id); return rt ? <Chip key={id} color={SEA} onClick={() => goTo({ kind: "route", id })}>{rt.ko}</Chip> : null; })}</div>
               )}
-              {d.zone && <div className="mt-2 flex items-start gap-1.5 text-[10px] leading-snug"><span className="mt-px h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: `repeating-linear-gradient(45deg, ${TERRITORIAL_YELLOW} 0 1.5px, transparent 1.5px 4px)`, border: `1px dashed ${TERRITORIAL_YELLOW}` }} /><span className="text-muted-foreground">{d.zone.display_mode === "lines_only" ? "주장선" : "계쟁 수역"} — {d.zone.basis_note}</span></div>}
-              <div className="mt-2 text-[9px] text-muted-foreground/80">말풍선 = 공표 입장 요지 (직접 인용 아님) · ◎ = 실효 지배{d.zone ? " · 수역은 개략" : ""}</div>
+              <div className="mt-2 text-[9px] text-muted-foreground/80">말풍선 = 공표 입장 요지 (직접 인용 아님) · ◎ = 실효 지배</div>
               <Src url={d.source_url} label="출처(직접 큐레이션)" />
             </>); })()}
         </div>

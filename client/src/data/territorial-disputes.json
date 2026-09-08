@@ -84,38 +84,7 @@
       ],
       "linked_choke_ids": [],
       "linked_route_ids": [],
-      "source_url": "https://en.wikipedia.org/wiki/Liancourt_Rocks_dispute",
-      "zone": {
-        "basis": "treaty",
-        "basis_note": "한일 중간수역(1998 어업협정) 기반 · 개략",
-        "display_mode": "hatch_only",
-        "hatch": [
-          [
-            130.9,
-            37
-          ],
-          [
-            132.7,
-            36.9
-          ],
-          [
-            133.3,
-            37.5
-          ],
-          [
-            132.7,
-            38.1
-          ],
-          [
-            131,
-            38.05
-          ],
-          [
-            130.4,
-            37.5
-          ]
-        ]
-      }
+      "source_url": "https://en.wikipedia.org/wiki/Liancourt_Rocks_dispute"
     },
     {
       "id": "senkaku",
@@ -156,38 +125,7 @@
       ],
       "linked_choke_ids": [],
       "linked_route_ids": [],
-      "source_url": "https://en.wikipedia.org/wiki/Senkaku_Islands_dispute",
-      "zone": {
-        "basis": "claims_intersection",
-        "basis_note": "일·중 EEZ 주장 중첩 · 개략",
-        "display_mode": "hatch_only",
-        "hatch": [
-          [
-            122.5,
-            24.9
-          ],
-          [
-            124.5,
-            25
-          ],
-          [
-            124.9,
-            26.1
-          ],
-          [
-            124,
-            26.7
-          ],
-          [
-            122.3,
-            26.4
-          ],
-          [
-            122,
-            25.5
-          ]
-        ]
-      }
+      "source_url": "https://en.wikipedia.org/wiki/Senkaku_Islands_dispute"
     },
     {
       "id": "kuril",
@@ -293,105 +231,7 @@
         "trans-pacific"
       ],
       "source_url": "https://en.wikipedia.org/wiki/Spratly_Islands_dispute",
-      "layout": "grid",
-      "zone": {
-        "basis": "approximate",
-        "basis_note": "구단선·연안국 EEZ 주장 다층 — 교집합 무의미(주장선만)",
-        "display_mode": "lines_only",
-        "lines": [
-          {
-            "name": "중국 구단선(개략)",
-            "coords": [
-              [
-                120,
-                21
-              ],
-              [
-                118.5,
-                17
-              ],
-              [
-                115,
-                13.5
-              ],
-              [
-                112,
-                9
-              ],
-              [
-                110.5,
-                6
-              ],
-              [
-                112.5,
-                3.5
-              ],
-              [
-                116,
-                4.5
-              ],
-              [
-                118.5,
-                8
-              ],
-              [
-                119.5,
-                12
-              ],
-              [
-                120.5,
-                17
-              ],
-              [
-                121,
-                20
-              ]
-            ]
-          },
-          {
-            "name": "베트남 주장(연안 EEZ 개략)",
-            "coords": [
-              [
-                108,
-                17
-              ],
-              [
-                109.5,
-                13
-              ],
-              [
-                110,
-                9
-              ],
-              [
-                109,
-                6.5
-              ]
-            ]
-          },
-          {
-            "name": "필리핀 EEZ(개략)",
-            "coords": [
-              [
-                117,
-                19
-              ],
-              [
-                118.5,
-                15
-              ],
-              [
-                119,
-                11
-              ],
-              [
-                118,
-                8
-              ]
-            ]
-          }
-        ]
-      }
+      "layout": "grid"
     },
     {
       "id": "paracel",
@@ -433,38 +273,7 @@
       ],
       "linked_choke_ids": [],
       "linked_route_ids": [],
-      "source_url": "https://en.wikipedia.org/wiki/Paracel_Islands",
-      "zone": {
-        "basis": "approximate",
-        "basis_note": "중·베 영유·수역 주장 중첩 · 개략",
-        "display_mode": "hatch_only",
-        "hatch": [
-          [
-            110.7,
-            15.4
-          ],
-          [
-            113.3,
-            15.5
-          ],
-          [
-            113.7,
-            17
-          ],
-          [
-            112.6,
-            17.7
-          ],
-          [
-            110.5,
-            17.5
-          ],
-          [
-            110.1,
-            16.2
-          ]
-        ]
-      }
+      "source_url": "https://en.wikipedia.org/wiki/Paracel_Islands"
     },
     {
       "id": "scarborough",
@@ -500,38 +309,7 @@
       ],
       "linked_choke_ids": [],
       "linked_route_ids": [],
-      "source_url": "https://en.wikipedia.org/wiki/Scarborough_Shoal",
-      "zone": {
-        "basis": "claims_intersection",
-        "basis_note": "필리핀 EEZ ∩ 중국 구단선 · 개략",
-        "display_mode": "hatch_only",
-        "hatch": [
-          [
-            116.7,
-            14.4
-          ],
-          [
-            118.7,
-            14.5
-          ],
-          [
-            119.1,
-            15.6
-          ],
-          [
-            118.3,
-            16.3
-          ],
-          [
-            116.5,
-            16.1
-          ],
-          [
-            116.1,
-            15
-          ]
-        ]
-      }
+      "source_url": "https://en.wikipedia.org/wiki/Scarborough_Shoal"
     },
     {
       "id": "ieodo",
@@ -564,38 +342,7 @@
       ],
       "linked_choke_ids": [],
       "linked_route_ids": [],
-      "source_url": "https://en.wikipedia.org/wiki/Socotra_Rock",
-      "zone": {
-        "basis": "treaty",
-        "basis_note": "한중 잠정조치수역 기반 · 개략",
-        "display_mode": "hatch_only",
-        "hatch": [
-          [
-            123.3,
-            31
-          ],
-          [
-            126.6,
-            31.1
-          ],
-          [
-            127.1,
-            32.4
-          ],
-          [
-            126.2,
-            33.5
-          ],
-          [
-            123.9,
-            33.4
-          ],
-          [
-            123,
-            32
-          ]
-        ]
-      }
+      "source_url": "https://en.wikipedia.org/wiki/Socotra_Rock"
     },
     {
       "id": "kashmir",
@@ -950,38 +697,7 @@
       ],
       "linked_choke_ids": [],
       "linked_route_ids": [],
-      "source_url": "https://en.wikipedia.org/wiki/Aegean_dispute",
-      "zone": {
-        "basis": "approximate",
-        "basis_note": "그·튀 대륙붕·영해 주장 중첩 · 개략",
-        "display_mode": "hatch_only",
-        "hatch": [
-          [
-            24,
-            37
-          ],
-          [
-            27.2,
-            37.1
-          ],
-          [
-            27.6,
-            39
-          ],
-          [
-            26.4,
-            40.1
-          ],
-          [
-            24.1,
-            39.9
-          ],
-          [
-            23.4,
-            38
-          ]
-        ]
-      }
+      "source_url": "https://en.wikipedia.org/wiki/Aegean_dispute"
     },
     {
       "id": "kosovo",
