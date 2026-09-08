@@ -20,6 +20,7 @@ import conflictsData from "@/data/world-conflicts.json";
 import episodesData from "@/data/war-episodes.json";
 import disputesData from "@/data/territorial-disputes.json";
 import conflictCardsData from "@/data/conflict-cards.json";
+import routeCardsData from "@/data/route-cards.json";
 import fabsData from "@/data/ai-fabs.json";
 import nuclearData from "@/data/us-nuclear-plants.json";
 
@@ -52,6 +53,11 @@ const disputeCtrl = (d: { parties: { controls: boolean; name_ko: string }[] }) =
 // 분쟁 카드 큐레이션 콘텐츠(id → 좌/우 당사자·기간·니즈). UCDP 분쟁 위에 얹음.
 type ConflictCard = { title: string; left: string; right: string; period: string; need_left: string; need_right: string };
 const conflictCards = (conflictCardsData as unknown as { cards: Record<string, ConflictCard> }).cards;
+// 항로 카드 신포맷(노선도·화물막대·설명·관계칩). 색: 화물 4종.
+const CARGO_BAR_COLOR: Record<string, string> = { container: "#378ADD", oil: "#EF9F27", grain: "#1D9E75", other: "#B4B2A9" };
+type RouteStop = { l: string; t: "port" | "strait" | "seg"; ref?: string; note?: string };
+type RouteCard = { candidate?: boolean; stops: RouteStop[]; fork_note?: string; bar?: { l: string; p: number; c: string }[]; status?: string[]; lines: string[]; rel?: { k: string; rk: "route" | "dispute"; ref: string; l: string } };
+const routeCards = (routeCardsData as unknown as { cards: Record<string, RouteCard> }).cards;
 // 최근 사건 펄스 기준 = 데이터셋 최신 사건일(실 '지금' 대용). 이후 30일 이내 = 라이브.
 const CONFLICT_MAX_MS = Math.max(...conflictsAll.map((c) => (c.last_event_date ? Date.parse(c.last_event_date) : 0)));
 // 유형색(§2, 2026-09 4색 확정 — 상징성 배제·구분 최우선, 색상환 등거리+색각 고려). 색=유형, 폭·진하기=강도.
@@ -1142,42 +1148,49 @@ export default function World() {
               {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={c.source_url} />
             </>); })()}
-          {sel.kind === "route" && (() => { const r = routeById.get(sel.id)!; const alt = r.alt_of ? routeById.get(r.alt_of) : null;
+          {sel.kind === "route" && (() => { const r = routeById.get(sel.id)!; const rc = routeCards[r.id];
+            if (!rc) return (<><div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold">{r.ko}</span></div><div className="mt-2 text-[11.5px] text-muted-foreground">{r.facts}</div></>);
             return (<>
-              <div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold leading-tight">{r.ko}</span></div>
-              <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">경유지 (순서)</div>
-                <div className="flex flex-wrap items-center gap-1">{r.waypoints.map((w, wi) => { const node = w.type === "port" ? portById.get(w.ref) : w.type === "minor_port" ? minorPortById.get(w.ref) : chokeById.get(w.ref); if (!node) return null;
-                  const clickable = w.type === "port" || w.type === "chokepoint";
-                  return (<span key={wi} className="flex items-center gap-1">{wi > 0 && <span className="text-muted-foreground">›</span>}{clickable
-                    ? <Chip color={w.type === "port" ? SEA : AMBER} onClick={() => goTo(w.type === "port" ? { kind: "port", id: w.ref } : { kind: "choke", id: w.ref })}>{node.ko}</Chip>
-                    : <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px]" style={{ color: SEA }}>{node.ko}</span>}</span>); })}</div></div>
-              <div className="mt-2 text-[11.5px] leading-snug"><span className="text-muted-foreground">방향</span> {r.direction_note} <span className="text-[10.5px] text-muted-foreground">· 양방향(주 무역 흐름 기준)</span></div>
-              {(r as any).volume_tier === "none" && <div className="mt-1.5 rounded-md border border-border/70 bg-muted/40 px-2 py-1 text-[10.5px] leading-snug text-muted-foreground">ⓘ <b>배 흐름 없음 = 상업 통항 부재</b>(버그 아님·데이터). 선은 유지 — 존재하되 잠든 항로.</div>}
-              {(r as any).cargo_note && (
-                <div className="mt-2">
-                  <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">화물 구성
-                    {(r as any).cargo_type === "mixed"
-                      ? <span className="flex items-center gap-1"><span className="flex h-2 w-3 overflow-hidden rounded-sm">{["container", "crude"].map((s) => <span key={s} className="flex-1" style={{ background: CARGO_COLOR[s] }} />)}</span><span className="font-medium text-foreground">혼합</span></span>
-                      : <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CARGO_COLOR[(r as any).cargo_type] || SEA }} /><span className="font-medium text-foreground">{CARGO_KO[(r as any).cargo_type] || (r as any).cargo_type}</span></span>}
-                  </div>
-                  <div className="text-[11px] leading-snug text-muted-foreground">{(r as any).cargo_note}</div>
-                  {(r as any).cargo_source && <div className="mt-0.5 text-[9.5px] text-muted-foreground/70">출처: {(r as any).cargo_source}</div>}
+              <div className="flex items-center gap-1.5 pr-5"><Route className="h-4 w-4 shrink-0" style={{ color: routeColor(r.id) }} /><span className="text-[15px] font-bold leading-tight">{r.ko}</span>
+                {rc.candidate && <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground">후보 항로</span>}</div>
+              {/* ① 노선도식 경유지 — 원=항만·다이아=해협/운하, 클릭=개체 카드로 점프 */}
+              <div className="mt-2.5 overflow-x-auto pb-0.5">
+                <div className="relative flex items-start" style={{ minWidth: Math.max(rc.stops.length * 56, 240) }}>
+                  <div className="absolute left-7 right-7 top-[7px] h-[2px]" style={{ background: "hsl(var(--border))" }} />
+                  {rc.stops.map((s, i) => { const clk = (s.t === "port" && !!s.ref && (portById.has(s.ref) || minorPortById.has(s.ref))) || (s.t === "strait" && !!s.ref && chokeById.has(s.ref));
+                    return (<div key={i} className="relative z-10 flex flex-1 flex-col items-center px-0.5" style={{ minWidth: 56 }}>
+                      <button disabled={!clk} onClick={() => { if (!clk) return; s.t === "port" ? goTo({ kind: "port", id: s.ref! }) : goTo({ kind: "choke", id: s.ref! }); }} className={clk ? "cursor-pointer hover:opacity-70" : "cursor-default"} title={clk ? "개체로 이동" : undefined}>
+                        {s.t === "strait" ? <span className="block h-3 w-3 rotate-45 border-[1.6px] bg-background" style={{ borderColor: AMBER }} />
+                          : s.t === "seg" ? <span className="mx-auto mt-[3px] block h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                            : <span className="block h-3 w-3 rounded-full border-[1.6px] bg-background" style={{ borderColor: SEA }} />}
+                      </button>
+                      <span className={`mt-1 text-center text-[9px] leading-tight ${clk ? "font-medium" : "text-muted-foreground"}`}>{s.l}</span>
+                      {s.note && <span className="text-center text-[8px] leading-tight text-muted-foreground">{s.note}</span>}
+                    </div>); })}
                 </div>
-              )}
-              {(r as any).legal_status && <div className="mt-2 text-[11px] leading-snug"><span className="mr-1 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: CONFLICT_RED + "22", color: CONFLICT_RED }}>법적 지위</span><span className="text-muted-foreground">{(r as any).legal_status}</span>{(r as any).legal_status_source && <span className="text-[9.5px] text-muted-foreground/70"> · {(r as any).legal_status_source}</span>}</div>}
-              {(r as any).candidate_ports?.length > 0 && (
-                <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">개발 중 거점 <span className="text-[9.5px] text-muted-foreground/70">(항만 미확정 — 관문 노드 유지)</span></div>
-                  <div className="flex flex-col gap-1.5">{(r as any).candidate_ports.map((p: any) => (
-                    <div key={p.name} className="rounded border border-border/60 px-2 py-1">
-                      <div className="flex items-center gap-1.5 text-[11px]"><span className="font-semibold">{p.name}</span><span className="rounded bg-muted px-1 py-0.5 text-[8.5px] font-semibold text-muted-foreground">{p.status}{p.asof ? ` · ${p.asof}` : ""}</span><span className="ml-auto text-[9px] text-muted-foreground">{p.side}</span></div>
-                      <div className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{p.note}</div>
-                    </div>))}</div>
+              </div>
+              {rc.fork_note && <div className="mt-1 text-[9.5px] leading-snug text-muted-foreground">⑂ {rc.fork_note}</div>}
+              {/* ② 화물 구성 막대(톤 기준 개략) 또는 상태 칩 */}
+              {rc.bar ? (<div className="mt-2.5">
+                <div className="mb-1 text-[10.5px] text-muted-foreground">화물 구성 <span className="text-[9px]">(톤 기준 개략)</span></div>
+                <div className="flex h-2.5 w-full overflow-hidden rounded-full" title="톤 기준 개략 · 연도별 변동">
+                  {rc.bar.map((b, i) => <div key={i} style={{ width: `${b.p}%`, background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other, boxShadow: i > 0 ? "inset 1.5px 0 0 hsl(var(--card))" : undefined }} />)}
                 </div>
-              )}
-              {r.facts && <div className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{r.facts}</div>}
-              {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={routeColor(alt.id)} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
-              {(r as any).conn_note && <div className="mt-1.5 flex items-center gap-1 text-[10.5px] text-muted-foreground"><span className="rounded-full border border-border px-1.5 py-0.5 text-[9.5px]" style={{ color: SEA }}>접속</span>{(r as any).conn_note}</div>}
-              <Src url={r.source_url} />
+                <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
+                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[9.5px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{b.l}</span>)}
+                </div>
+              </div>) : rc.status ? (<div className="mt-2.5 flex flex-col gap-1">
+                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[10.5px] leading-snug text-muted-foreground">{s}</span>)}
+              </div>) : null}
+              {/* ③ 설명 — 끊긴 문장, 줄바꿈 유지 */}
+              <div className="mt-2.5 flex flex-col gap-1 text-[11.5px] leading-snug text-foreground/85">
+                {rc.lines.map((l, i) => <div key={i}>{l}</div>)}
+              </div>
+              {/* ④ 관계 칩 */}
+              {rc.rel && <div className="mt-2.5"><button onClick={() => rc.rel!.rk === "route" ? goTo({ kind: "route", id: rc.rel!.ref }) : goTo({ kind: "dispute", id: rc.rel!.ref })}
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium hover:bg-muted"
+                style={rc.rel.k === "연동" ? { borderColor: TERRITORIAL_YELLOW, color: TERRITORIAL_TEXT } : { borderColor: SEA + "66", color: SEA }}>
+                {rc.rel.k} — {rc.rel.l}</button></div>}
             </>); })()}
           {sel.kind === "conflict" && (() => { const c = conflictById.get(sel.id); if (!c) return null; const cc = conflictColor(c.category);
             const card = conflictCards[c.id]; const title = card?.title ?? c.name_ko; const badge = CONFLICT_LEGEND.find((l) => l.group === catGroup(c.category))?.ko ?? CONFLICT_CAT_KO[c.category];
