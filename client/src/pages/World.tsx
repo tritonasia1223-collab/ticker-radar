@@ -1054,6 +1054,27 @@ export default function World() {
                 <div className="flex flex-wrap items-center gap-1">{r.waypoints.map((w, wi) => { const node = w.type === "port" ? portById.get(w.ref) : chokeById.get(w.ref); if (!node) return null;
                   return (<span key={wi} className="flex items-center gap-1">{wi > 0 && <span className="text-muted-foreground">›</span>}<Chip color={w.type === "port" ? SEA : AMBER} onClick={() => goTo(w.type === "port" ? { kind: "port", id: w.ref } : { kind: "choke", id: w.ref })}>{node.ko}</Chip></span>); })}</div></div>
               <div className="mt-2 text-[11.5px] leading-snug"><span className="text-muted-foreground">방향</span> {r.direction_note} <span className="text-[10.5px] text-muted-foreground">· 양방향(주 무역 흐름 기준)</span></div>
+              {(r as any).cargo_note && (
+                <div className="mt-2">
+                  <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">화물 구성
+                    {(r as any).cargo_type === "mixed"
+                      ? <span className="flex items-center gap-1"><span className="flex h-2 w-3 overflow-hidden rounded-sm">{["container", "crude"].map((s) => <span key={s} className="flex-1" style={{ background: CARGO_COLOR[s] }} />)}</span><span className="font-medium text-foreground">혼합</span></span>
+                      : <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CARGO_COLOR[(r as any).cargo_type] || SEA }} /><span className="font-medium text-foreground">{CARGO_KO[(r as any).cargo_type] || (r as any).cargo_type}</span></span>}
+                  </div>
+                  <div className="text-[11px] leading-snug text-muted-foreground">{(r as any).cargo_note}</div>
+                  {(r as any).cargo_source && <div className="mt-0.5 text-[9.5px] text-muted-foreground/70">출처: {(r as any).cargo_source}</div>}
+                </div>
+              )}
+              {(r as any).legal_status && <div className="mt-2 text-[11px] leading-snug"><span className="mr-1 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: CONFLICT_RED + "22", color: CONFLICT_RED }}>법적 지위</span><span className="text-muted-foreground">{(r as any).legal_status}</span>{(r as any).legal_status_source && <span className="text-[9.5px] text-muted-foreground/70"> · {(r as any).legal_status_source}</span>}</div>}
+              {(r as any).candidate_ports?.length > 0 && (
+                <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">개발 중 거점 <span className="text-[9.5px] text-muted-foreground/70">(항만 미확정 — 관문 노드 유지)</span></div>
+                  <div className="flex flex-col gap-1.5">{(r as any).candidate_ports.map((p: any) => (
+                    <div key={p.name} className="rounded border border-border/60 px-2 py-1">
+                      <div className="flex items-center gap-1.5 text-[11px]"><span className="font-semibold">{p.name}</span><span className="rounded bg-muted px-1 py-0.5 text-[8.5px] font-semibold text-muted-foreground">{p.status}{p.asof ? ` · ${p.asof}` : ""}</span><span className="ml-auto text-[9px] text-muted-foreground">{p.side}</span></div>
+                      <div className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{p.note}</div>
+                    </div>))}</div>
+                </div>
+              )}
               {r.facts && <div className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{r.facts}</div>}
               {alt && <div className="mt-2 text-[11px] text-muted-foreground">대체 관계 <Chip color={routeColor(alt.id)} onClick={() => goTo({ kind: "route", id: alt.id })}>{alt.ko}</Chip></div>}
               <Src url={r.source_url} />
