@@ -26,9 +26,10 @@ type Cty = { type: "Feature"; geometry: any; properties: CtyProps };
 type Cap = { iso: string; ko: string; en: string; lng: number; lat: number };
 type Choke = { id: string; ko: string; en: string; lng: number; lat: number; connects: string; tier: number; throughput_note: string; source_url: string };
 type Port = { id: string; ko: string; en: string; country_iso: string; lng: number; lat: number; teu_m: number; rank: number };
-type Waypoint = { type: "port" | "chokepoint"; ref: string };
+type MinorPort = { id: string; ko: string; en: string; country_iso: string; lng: number; lat: number; note: string };
+type Waypoint = { type: "port" | "chokepoint" | "minor_port"; ref: string };
 type RouteT = { id: string; ko: string; coords: [number, number][]; waypoints: Waypoint[]; direction_note: string; alt_of: string | null; facts: string; source_url: string };
-const infra = infraData as unknown as { chokepoints: Choke[]; ports: Port[]; routes: RouteT[]; _meta: { teu_source: string; data_year: number } };
+const infra = infraData as unknown as { chokepoints: Choke[]; ports: Port[]; minor_ports: MinorPort[]; routes: RouteT[]; _meta: { teu_source: string; data_year: number } };
 
 // L4 분쟁 층 (UCDP GED)
 type ConflictParty = { name: string; iso: string | null; is_state: boolean };
@@ -95,6 +96,25 @@ function shipLngLat(samples: number[][], offset: number): [number, number] {
   let dlng = b[0] - a[0]; if (dlng > 180) dlng -= 360; else if (dlng < -180) dlng += 360;
   let lng = a[0] + dlng * fr; if (lng > 180) lng -= 360; else if (lng < -180) lng += 360;
   return [lng, a[1] + (b[1] - a[1]) * fr];
+}
+// 이미 클리핑된 geoPath d 문자열을 서브패스별로 파싱해 법선 방향으로 ±off 평행 이동한 두 d 문자열 반환(혼합 항로 겹선용).
+// 클리핑된 좌표에서 offset 하므로 날짜변경선 유령선 없음(§3-2와 동형).
+function offsetPolylines(d: string, off: number): [string, string] {
+  let plus = "", minus = "";
+  for (const sub of d.split("M")) {
+    if (!sub) continue;
+    const pts = sub.split("L").map((s) => s.split(",").map(Number)).filter((p) => p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    if (pts.length < 2) continue;
+    const P: string[] = [], N: string[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+      let dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      const nx = -dy * off, ny = dx * off, x = pts[i][0], y = pts[i][1];
+      P.push(`${(x + nx).toFixed(1)},${(y + ny).toFixed(1)}`); N.push(`${(x - nx).toFixed(1)},${(y - ny).toFixed(1)}`);
+    }
+    plus += "M" + P.join("L"); minus += "M" + N.join("L");
+  }
+  return [plus, minus];
 }
 
 // ── 미국 데이터센터 모드(지도 위 오버레이) ──
@@ -236,6 +256,7 @@ export default function World() {
 
   // ── L2 개체 인덱스 + 경유지 역인덱스(노드 id → 지나는 항로들) ──
   const portById = useMemo(() => new Map(infra.ports.map((p) => [p.id, p])), []);
+  const minorPortById = useMemo(() => new Map((infra.minor_ports ?? []).map((p) => [p.id, p])), []);
   const chokeById = useMemo(() => new Map(infra.chokepoints.map((c) => [c.id, c])), []);
   const routeById = useMemo(() => new Map(infra.routes.map((r) => [r.id, r])), []);
   const routesByNode = useMemo(() => {
@@ -394,6 +415,14 @@ export default function World() {
   const dcBaseKRef = useRef(1); // DC 모드 진입 시 미국-핏 기준 배율. 사이트 줌 판정 기준값.
   const draggedRef = useRef(false);
   const [t, setT] = useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
+  // 혼합 항로 겹선(§ 화물별) — 컨테이너/원유 각각 법선 offset 경로(살짝 간격). 화면 간격 일정(off=px/2 ÷ k).
+  const routeDualPaths = useMemo(() => {
+    const m = new Map<string, { container: string; crude: string }>();
+    if (!shipCargoView) return m;
+    const off = 1.7 / t.k;
+    infra.routes.forEach((r: any, i) => { if (r.cargo_type !== "mixed") return; const [plus, minus] = offsetPolylines(routePaths[i], off); m.set(r.id, { container: plus, crude: minus }); });
+    return m;
+  }, [shipCargoView, routePaths, t.k]);
   useEffect(() => {
     if (!svgRef.current) return;
     const svg = select(svgRef.current);
@@ -510,7 +539,7 @@ export default function World() {
       else { (focus.kind === "choke" ? C : P).add(focus.id); (routesByNode.get(focus.id) ?? []).forEach((rid) => R.add(rid)); }
     }
     // 하이라이트된 모든 항로의 경유지(해협·항만)도 함께 켠다 — 비교 시 경유지 대조가 핵심.
-    for (const rid of R) { const r = routeById.get(rid); r?.waypoints.forEach((w) => (w.type === "chokepoint" ? C : P).add(w.ref)); }
+    for (const rid of R) { const r = routeById.get(rid); r?.waypoints.forEach((w) => { if (w.type === "chokepoint") C.add(w.ref); else if (w.type === "port") P.add(w.ref); }); }
     return { hlRoutes: R, hlChokes: C, hlPorts: P };
   }, [focus, compareSet, routeById, routesByNode]);
   const hasFocus = hlRoutes.size + hlChokes.size + hlPorts.size > 0;
@@ -654,19 +683,20 @@ export default function World() {
             <text key={`usl${i}`} x={l.c[0]} y={l.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={8 / t.k} fontWeight={500} fill="hsl(var(--muted-foreground))" fillOpacity={0.75}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5 / t.k, strokeLinejoin: "round", pointerEvents: "none" }}>{l.ko}</text>
           ))}
-          {/* L2 항로 — 항로별 색. 화물별 뷰: 화물색, 혼합=파랑+노랑 2줄(strand 대시 인터리브), 필터 시 해당 가닥만. 선택/hover 시 진하게+흐름. */}
+          {/* L2 항로 — 항로별 색. 화물별 뷰: 화물색, 혼합=파랑+노랑 평행 겹선(법선 offset, 살짝 간격), 필터 시 해당 가닥만. 선택/hover 시 진하게+흐름. */}
           {tradeMode && layers.routes && infra.routes.flatMap((r, i) => {
             const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on; const d = (on ? 6 : 4) / t.k;
+            const dual = routeDualPaths.get(r.id); // 혼합 항로면 {container, crude} offset 경로
             const strands = shipCargoView ? routeStrands(r as any) : [null];
-            return strands.map((strand, si) => {
+            return strands.map((strand) => {
               if (shipCargoView && cargoFilter && strand !== cargoFilter) return null;
               const col = strand ? (CARGO_COLOR[strand] || SEA) : routeColor(r.id);
-              const dual = strands.length > 1; // 혼합 2줄 → 색별 대시를 엇갈리게(한 줄이 다른 색 틈에)
+              const dPath = (dual && strand && (strand === "container" || strand === "crude")) ? dual[strand] : routePaths[i];
               return (
-                <path key={`r${i}-${si}`} d={routePaths[i]} fill="none" stroke={col} strokeLinecap="round"
+                <path key={`r${i}-${strand}`} d={dPath} fill="none" stroke={col} strokeLinecap="round"
                   className={on ? "wf-flow" : undefined}
                   strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.5}
-                  strokeDasharray={dual ? `${d} ${d}` : `${d} ${3 / t.k}`} strokeDashoffset={dual ? si * d : 0} style={{ pointerEvents: "none" }} />
+                  strokeDasharray={`${d} ${3 / t.k}`} style={{ pointerEvents: "none" }} />
               );
             });
           })}
@@ -728,6 +758,20 @@ export default function World() {
               <circle cx={sc[0]} cy={sc[1]} r={r} fill={SEA} fillOpacity={on ? 0.45 : 0.28} stroke={SEA} strokeWidth={on ? 1.6 : 1} />
               {showLabel && <text x={sc[0]} y={sc[1] - r - 3} textAnchor="middle" fontSize={on ? 10.5 : 9.5} fontWeight={600} fill={SEA}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{`${p.rank} ${p.ko}`}</text>}
+            </g>
+          );
+        })}
+        {/* 북극 소항만(TOP20 아님) — 북서항로 후보 라인의 양끝. 순위 없음, 작은 링 마커 */}
+        {tradeMode && layers.ports && (infra.minor_ports ?? []).map((p) => {
+          const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          return (
+            <g key={`mp${p.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
+              onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚓ ${p.ko}`, sub: p.note })}
+              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚓ ${p.ko}`, sub: p.note })}
+              onMouseLeave={() => setTip(null)}>
+              <circle cx={sc[0]} cy={sc[1]} r={3} fill="hsl(var(--background))" stroke={SEA} strokeWidth={1.4} />
+              <text x={sc[0]} y={sc[1] - 6} textAnchor="middle" fontSize={9} fontWeight={600} fill={SEA}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{p.ko}</text>
             </g>
           );
         })}
@@ -1051,8 +1095,11 @@ export default function World() {
             return (<>
               <div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold leading-tight">{r.ko}</span></div>
               <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">경유지 (순서)</div>
-                <div className="flex flex-wrap items-center gap-1">{r.waypoints.map((w, wi) => { const node = w.type === "port" ? portById.get(w.ref) : chokeById.get(w.ref); if (!node) return null;
-                  return (<span key={wi} className="flex items-center gap-1">{wi > 0 && <span className="text-muted-foreground">›</span>}<Chip color={w.type === "port" ? SEA : AMBER} onClick={() => goTo(w.type === "port" ? { kind: "port", id: w.ref } : { kind: "choke", id: w.ref })}>{node.ko}</Chip></span>); })}</div></div>
+                <div className="flex flex-wrap items-center gap-1">{r.waypoints.map((w, wi) => { const node = w.type === "port" ? portById.get(w.ref) : w.type === "minor_port" ? minorPortById.get(w.ref) : chokeById.get(w.ref); if (!node) return null;
+                  const clickable = w.type === "port" || w.type === "chokepoint";
+                  return (<span key={wi} className="flex items-center gap-1">{wi > 0 && <span className="text-muted-foreground">›</span>}{clickable
+                    ? <Chip color={w.type === "port" ? SEA : AMBER} onClick={() => goTo(w.type === "port" ? { kind: "port", id: w.ref } : { kind: "choke", id: w.ref })}>{node.ko}</Chip>
+                    : <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px]" style={{ color: SEA }}>{node.ko}</span>}</span>); })}</div></div>
               <div className="mt-2 text-[11.5px] leading-snug"><span className="text-muted-foreground">방향</span> {r.direction_note} <span className="text-[10.5px] text-muted-foreground">· 양방향(주 무역 흐름 기준)</span></div>
               {(r as any).cargo_note && (
                 <div className="mt-2">
