@@ -282,6 +282,7 @@ export default function World() {
     return { countryGlows: [...cg.entries()].map(([idx, v]) => ({ idx, ...v })), conflictParties: cp };
   }, [visConflicts, isoToIdx]);
   const countryConflicts = useMemo(() => { const m = new Map<number, string[]>(); for (const g of countryGlows) m.set(g.idx, g.ids); return m; }, [countryGlows]);
+  const conflictCountrySet = useMemo(() => new Set(countryGlows.map((g) => g.idx)), [countryGlows]); // 분쟁 당사국 = 전체 뷰에서 라벨 노출(그 외는 확대 시)
   useEffect(() => { if (!episodeNotice) return; const tt = setTimeout(() => setEpisodeNotice(null), 2600); return () => clearTimeout(tt); }, [episodeNotice]);
   const [listOpen, setListOpen] = useState(true); // 항로 목록 패널(접기 가능)
   const [compareSet, setCompareSet] = useState<Set<string>>(new Set()); // 목록 체크박스 = 다중 비교 활성 (toggleCompare 는 flyRoute 이후 정의)
@@ -623,12 +624,14 @@ export default function World() {
         {/* 국가 라벨 */}
         <g style={{ pointerEvents: "none" }}>
           {features.map((f, i) => {
-            const show = isSelCty(i) || i === hoverCty || t.k >= K_REGION || worldLabelSet.has(i);
+            const isCf = conflictMode && conflictCountrySet.has(i);
+            // 분쟁 모드: 기본 뷰에서 분쟁 당사국만 라벨(비분쟁국은 확대 시). 그 외 모드: 기존 worldLabelSet.
+            const show = isSelCty(i) || i === hoverCty || t.k >= K_REGION || isCf || (!conflictMode && worldLabelSet.has(i));
             if (!show) return null;
             const sc = toScreen(f.properties.lx, f.properties.ly); if (!sc || !inView(sc[0], sc[1])) return null;
             return (
-              <text key={i} x={sc[0]} y={sc[1]} textAnchor="middle" fontSize={isSelCty(i) ? 12 : 10.5}
-                fontWeight={isSelCty(i) ? 700 : 500} fill={isSelCty(i) ? TEAL : "hsl(var(--foreground))"}
+              <text key={i} x={sc[0]} y={sc[1]} textAnchor="middle" fontSize={isSelCty(i) ? 12 : isCf ? 11 : 10.5}
+                fontWeight={isSelCty(i) ? 700 : isCf ? 700 : 500} fill={isSelCty(i) ? TEAL : "hsl(var(--foreground))"}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round" }}>{f.properties.ko}</text>
             );
           })}
@@ -909,7 +912,7 @@ export default function World() {
               return (<button key={c.id} onMouseEnter={() => setHoverConflict(c.id)} onMouseLeave={() => setHoverConflict(null)} onClick={() => goTo({ kind: "conflict", id: c.id })}
                 className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: conflictColor(c.category) }} />
-                <span className="flex-1 truncate">{c.name_ko}</span><span className="shrink-0 text-[9px] text-muted-foreground">{CONFLICT_CAT_KO[c.category]} · {war ? "전면" : "무력분쟁"}</span></button>); })}
+                <span className="flex-1 truncate">{c.name_ko}</span><span className="shrink-0 text-[9px] text-muted-foreground">{CONFLICT_CAT_KO[c.category]}{war ? "" : " · 무력분쟁"}</span></button>); })}
           </div>
         </div>
         {/* 에피소드 — 과거 전쟁(전부 준비 중). 아코디언(기본 접힘). 대본·엔진 완성 시 이 자리에서 개별 재생 */}
