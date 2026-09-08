@@ -670,10 +670,11 @@ export default function World() {
             // 분쟁 모드: 기본 뷰에서 분쟁 당사국만 라벨(비분쟁국은 확대 시). 그 외 모드: 기존 worldLabelSet.
             const show = isSelCty(i) || i === hoverCty || t.k >= K_REGION || isCf || (!conflictMode && worldLabelSet.has(i));
             if (!show) return null;
+            const dimLabel = conflictMode && !isCf && !isSelCty(i) && i !== hoverCty; // 분쟁 무관국(확대 시 나타남) = 흐리게
             const sc = toScreen(f.properties.lx, f.properties.ly); if (!sc || !inView(sc[0], sc[1])) return null;
             return (
               <text key={i} x={sc[0]} y={sc[1]} textAnchor="middle" fontSize={isSelCty(i) ? 12 : isCf ? 11 : 10.5}
-                fontWeight={isSelCty(i) ? 700 : isCf ? 700 : 500} fill={isSelCty(i) ? TEAL : "hsl(var(--foreground))"}
+                fontWeight={isSelCty(i) ? 700 : isCf ? 700 : 500} fill={isSelCty(i) ? TEAL : "hsl(var(--foreground))"} opacity={dimLabel ? 0.4 : 1}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round" }}>{f.properties.ko}</text>
             );
           })}
