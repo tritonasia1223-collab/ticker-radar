@@ -229,22 +229,26 @@ const RTO_ORDER = ["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as 
 const rtoAbbr = (c: string) => (c === "ISONE" ? "ISO-NE" : c); // 표시용 약칭
 const RTO_KO: Record<string, string> = { ERCOT: "텍사스 전기신뢰성위원회", PJM: "펜실베이니아·뉴저지·메릴랜드 연합(기원)", MISO: "미드컨티넌트 독립계통운영자", SPP: "사우스웨스트 전력풀", CAISO: "캘리포니아 독립계통운영자", ISONE: "뉴잉글랜드 독립계통운영자", NYISO: "뉴욕 독립계통운영자" };
 const RTO_REGION_KO: Record<string, string> = { ERCOT: "텍사스 대부분 (주 부하의 ~90%)", PJM: "중부대서양~중서부 13개 주 + DC", MISO: "중서부~루이지애나, 남북 종단 15개 주", SPP: "대평원 (다코타~오클라호마·캔자스)", CAISO: "캘리포니아 + 네바다 일부", ISONE: "북동부 6개 주", NYISO: "뉴욕주 단독" };
-const RTO_DESC: Record<string, string> = {
-  ERCOT: "미국에서 유일하게 독립된 텍사스 계통을 운영합니다. 다른 주와 사실상 안 이어져 연방(FERC) 규제 밖이고, 용량시장 없는 에너지 단독 시장이라 가격 변동이 크고 신규 진입이 빠릅니다 — 데이터센터·현장발전이 몰리는 제도적 이유.",
-  PJM: "세계 최대 규모의 전력시장입니다. 버지니아 '데이터센터 앨리'를 품고 있어 AI 전력 수요 논쟁의 최전선이기도 합니다.",
-  MISO: "미네소타에서 멕시코만까지 대륙을 세로로 관통합니다. 루이지애나(엔터지 권역)가 여기 속해 하이페리온의 시장이 MISO입니다.",
-  SPP: "대평원 풍력 벨트의 시장 — 풍력 비중이 미국 RTO 중 선두권입니다. 서부 비ISO 유틸들을 위한 신시장(Markets+)도 준비 중.",
-  CAISO: "태양광 '덕 커브'의 본고장. 자기 권역 외에도 서부 전역 유틸들이 참여하는 실시간 불균형 시장(WEIM)을 운영합니다.",
-  ISONE: "가스 의존도가 높아 겨울 한파 때 수급이 타이트해지는 시장입니다.",
-  NYISO: "뉴욕주 하나를 단독 운영 — 업스테이트(수력·원전)와 뉴욕시(가스) 사이의 송전 병목이 만성 이슈입니다.",
+// 성격 태그 배지(§1) — 조직 한글명 대신 권역 성격(가격대·특징) 요약. 패널 행 헤더에 배지로 표시.
+const RTO_TAG: Record<string, string> = {
+  ERCOT: "평시 저가 · 변동 큼", PJM: "용량가 급등 중", MISO: "중저가 · 남북 종단", SPP: "풍력 최상 · 저가",
+  CAISO: "고가 · 덕커브", ISONE: "고가 · 겨울 리스크", NYISO: "고가 · 송전 병목",
 };
-// 비ISO 지역(§2) — 물리 계통 소속 + 운영(공급) 주체. 유틸 폴리곤은 후속(EIA-861), 여기선 표로만.
-const NONISO_ROWS: { region: string; grid: string; op: string; desc: string }[] = [
-  { region: "남동부 (조지아·앨라배마)", grid: "동부 계통", op: "Southern Company", desc: "RTO 없이 서던컴퍼니가 발전~배전을 통합 운영합니다. 규제 인가 수익 구조라 데이터센터와의 전용 딜(요금 계약·발전 신설)이 빠른 지역." },
-  { region: "캐롤라이나", grid: "동부 계통", op: "Duke Energy", desc: "듀크에너지의 수직통합 권역. 2021년부터 남동부 유틸 간 거래 플랫폼(SEEM)에 참여합니다." },
-  { region: "플로리다", grid: "동부 계통", op: "NextEra(FPL) 등", desc: "반도 지형상 외부 연계가 약한 수직통합 지역." },
-  { region: "테네시밸리", grid: "동부 계통", op: "TVA (연방 공기업)", desc: "뉴딜 때 세워진 테네시밸리청이 발전·송전을 맡고 지역 배전사(멤피스 MLGW 등)가 공급합니다. xAI 멤피스가 이 권역." },
-  { region: "서부 산악·북서부 (CAISO 밖)", grid: "서부 계통", op: "PacifiCorp·NV Energy·APS·Xcel·BPA 등", desc: "유틸별 수직통합이되 다수가 CAISO의 WEIM 실시간 시장에 참여 — 비ISO 지역도 점진적으로 시장화 중입니다." },
+const RTO_DESC: Record<string, string> = {
+  ERCOT: "풍력·태양광·저가 가스 비중이 높아 평균 전기 가격이 낮음. 다만 희소성 가격제라 위기 때 급등. 규제가 가볍고 접속 절차가 빨라 DC 진입 최속 권역.",
+  PJM: "원래는 중간 가격대였으나 AI 수요가 경매가를 밀어올리며 소비자 요금 논쟁이 격화되고 있음. 버지니아 '데이터센터 앨리'가 이 권역.",
+  MISO: "중저가 가격이 특징인 권역으로, 하이페리온이 이쪽 권역에 속함.",
+  SPP: "풍력 비중이 최고로 높아 가격이 저렴하며, 바람이 많이 부는 날에는 마이너스 가격도 종종 등장. 땅도, 전력도 여유 있지만 송전 인프라 문제가 있어 DC 진입은 미미.",
+  CAISO: "낮에는 태양광이 과잉 생산되고, 저녁에는 가스가 피크를 찍는 에너지 불균형. 여기에 주 정책·인프라 비용이 얹혀 가격도 높은 편. 허가 난도 + 고비용으로 DC 진입이 어려운 권역.",
+  ISONE: "가스 반입 병목 문제가 있어 미국 내 전기 최고가권. 특히 가스 수요가 많아지는 겨울 수급이 타이트하고, DC 진입에는 부적합.",
+  NYISO: "수력·원전 덕에 업스테이트(북·중·서부)는 저렴하지만 뉴욕시·롱아일랜드는 고가인 이중 시장 — 사이를 잇는 송전 병목이 격차의 원인.",
+};
+// 비ISO 지역(§2) — 성격 태그 + 설명. 유틸 폴리곤은 후속(EIA-861), 여기선 목록으로만.
+const NONISO_ROWS: { region: string; tag: string; desc: string }[] = [
+  { region: "남동부 (조지아·캐롤라이나·플로리다 등)", tag: "인가 요금 · 딜 빠름", desc: "ISO를 거치지 않는 수직통합 체제로 시장가는 없지만 주 위원회가 직접 인가한 요금이 고정. 유틸리티 회사와 직접 딜을 맺을 수 있어 DC 전기 수급의 확실성과 높은 속도가 보장됨." },
+  { region: "테네시밸리 (TVA)", tag: "연방 공기업 · 저가", desc: "수력·원자력을 기반으로 저가 전기를 공급. 대형 DC 유치에 적극적 태도를 보이는 권역." },
+  { region: "북서부 (BPA)", tag: "수력 최저가", desc: "컬럼비아강 수원을 이용하는 수력 발전 덕분에 미국 최저가를 제공하는 권역." },
+  { region: "서부 산악 (CAISO 밖)", tag: "유틸별 상이", desc: "PacifiCorp·NV·APS 등 유틸마다 요금·딜 조건이 다름. 다수가 CAISO 실시간 시장(WEIM)에 참여." },
 ];
 const GRID_INTERCONNECT_NOTE = "미 본토는 동부·서부·텍사스 3개 물리 계통(Interconnection) 위에서, RTO/ISO(시장·급전) 또는 비ISO 유틸이 운영합니다. 경계는 근사(HIFLD).";
 const TX_WIDTH: Record<string, number> = { "345": 0.75, "500": 1.3, "735 and Above": 2.0 }; // 화면 px, 전압 등급별
@@ -1438,7 +1442,7 @@ export default function World() {
                     className={`flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} />
                     <span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
-                    <span className="truncate text-[10px] text-muted-foreground">{RTO_KO[code]}</span>
+                    <span className="shrink-0 whitespace-nowrap rounded px-1 py-px text-[9px] font-semibold" style={{ background: RTO_FILL[code] + "22", color: "hsl(var(--foreground))" }}>{RTO_TAG[code]}</span>
                     <ChevronDown className={`ml-auto h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
                   </button>
                   {open && (<div className="px-2.5 pb-2 pl-6 text-[10.5px] leading-snug text-muted-foreground"><div className="mb-0.5 font-medium text-foreground/75">{RTO_REGION_KO[code]}</div>{RTO_DESC[code]}</div>)}
@@ -1452,7 +1456,7 @@ export default function World() {
                     <ChevronDown className={`ml-auto h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
                   </button>
                   {open && (<div className="px-2.5 pb-2 text-[10px] leading-snug text-muted-foreground">
-                    {NONISO_ROWS.map((r) => (<div key={r.region} className="mb-1.5"><div className="text-foreground/80"><b>{r.region}</b></div><div className="text-muted-foreground/80">{r.grid} · {r.op}</div><div>{r.desc}</div></div>))}
+                    {NONISO_ROWS.map((r) => (<div key={r.region} className="mb-2"><div className="flex flex-wrap items-center gap-1"><b className="text-foreground/80">{r.region}</b><span className="whitespace-nowrap rounded bg-muted px-1 py-px text-[9px] font-semibold text-foreground/70">{r.tag}</span></div><div className="mt-0.5">{r.desc}</div></div>))}
                   </div>)}
                 </div>); })()}
               <div className="px-2.5 pb-0.5 pt-1 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
