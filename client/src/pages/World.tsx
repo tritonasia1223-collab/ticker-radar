@@ -308,6 +308,17 @@ export default function World() {
 
   // ── 투영 ──
   const [lon, setLon] = useState(CENTER_LON);
+  const lonRef = useRef(lon); lonRef.current = lon;
+  const lonTweenRaf = useRef(0);
+  // 경도(투영 회전) 부드러운 트윈 — 순간 점프 대신 zoom 트랜지션과 함께 회전(먼 경도 비행이 자연스럽게).
+  const tweenLon = useCallback((to: number, dur: number) => {
+    cancelAnimationFrame(lonTweenRaf.current);
+    const from = lonRef.current; let dd = to - from; while (dd > 180) dd -= 360; while (dd < -180) dd += 360;
+    if (Math.abs(dd) < 0.5) { setLon(to); return; }
+    const t0 = performance.now();
+    const tick = (now: number) => { const p = Math.min(1, (now - t0) / dur); const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; setLon(from + dd * e); if (p < 1) lonTweenRaf.current = requestAnimationFrame(tick); };
+    lonTweenRaf.current = requestAnimationFrame(tick);
+  }, []);
   const projection = useMemo(() => geoEqualEarth().rotate([-lon, 0]).fitExtent([[14, 14], [dim.w - 14, dim.h - 14]], { type: "Sphere" } as any), [dim, lon]);
   const pathGen = useMemo(() => geoPath(projection), [projection]);
   const paths = useMemo(() => features.map((f) => pathGen(f as any) || ""), [features, pathGen]);
@@ -456,6 +467,7 @@ export default function World() {
   const spinRef = useRef<{ x: number; lon: number } | null>(null);
   const onSpinDown = (e: React.PointerEvent) => {
     draggedRef.current = false;
+    cancelAnimationFrame(lonTweenRaf.current); // 사용자가 잡으면 진행 중 회전 트윈 중단
     if (e.pointerType !== "mouse" || kRef.current > 1.02) return;
     spinRef.current = { x: e.clientX, lon }; // ⚠ setPointerCapture 안 함 — 클릭(선택) 스틸 방지. 스핀은 svg onPointerMove/Up 으로 추적.
   };
@@ -468,7 +480,7 @@ export default function World() {
     const [x0, y0, x1, y1] = b, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     const k = Math.max(1, Math.min(9, fill / Math.max((x1 - x0) / dim.w || 1e-3, (y1 - y0) / dim.h || 1e-3)));
     fitKRef.current = k;
-    setLon(useLon);
+    tweenLon(useLon, 700); // 회전도 부드럽게(즉시 점프 제거) → 먼 경도 비행이 '내려꽂힘' 대신 자연스러운 이동
     const tr = zoomIdentity.translate(dim.w / 2 - k * cx, dim.h / 2 - k * cy).scale(k);
     select(svgRef.current).transition().duration(700).call(zoomRef.current.transform, tr);
   }, [dim]);
