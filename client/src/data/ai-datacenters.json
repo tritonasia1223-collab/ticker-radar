@@ -295,7 +295,7 @@
       "credit_wrapper_rating": "BBB-",
       "notes": "목표 용량은 단계별 공개, 1GW+로만 추정.",
       "power": {
-        "grid_operator": "WECC (비ISO)",
+        "grid_operator": "El Paso Electric (비ISO)",
         "utility": "El Paso Electric (관할)",
         "grid_share": "minimal",
         "onsite_generation": [
@@ -661,7 +661,7 @@
       "credit_wrapper_rating": "AAA",
       "notes": "",
       "power": {
-        "grid_operator": "SERC (Southern Co., 비ISO)",
+        "grid_operator": "Southern Co (비ISO)",
         "utility": "Georgia Power",
         "grid_share": "100%",
         "onsite_generation": [],

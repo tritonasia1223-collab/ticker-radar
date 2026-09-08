@@ -174,6 +174,29 @@ const loadFillColor = (share: number) => { for (const [th, c] of LOAD_FILL_STEPS
 type RtoRegion = { code: string; name: string; geometry: any };
 const rtoRegions = (rtoData as unknown as { regions: RtoRegion[] }).regions;
 const RTO_FILL: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b", CAISO: "#db2777", ISONE: "#9333ea", NYISO: "#0891b2" };
+// 전력계통 용어 사전(§1·§2) — 채색 뷰 해설 패널 + 지도 hover 한 줄 신원. 표시 순서·한글 병기·권역·설명.
+const RTO_ORDER = ["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as const;
+const rtoAbbr = (c: string) => (c === "ISONE" ? "ISO-NE" : c); // 표시용 약칭
+const RTO_KO: Record<string, string> = { ERCOT: "텍사스 전기신뢰성위원회", PJM: "펜실베이니아·뉴저지·메릴랜드 연합(기원)", MISO: "미드컨티넌트 독립계통운영자", SPP: "사우스웨스트 전력풀", CAISO: "캘리포니아 독립계통운영자", ISONE: "뉴잉글랜드 독립계통운영자", NYISO: "뉴욕 독립계통운영자" };
+const RTO_REGION_KO: Record<string, string> = { ERCOT: "텍사스 대부분 (주 부하의 ~90%)", PJM: "중부대서양~중서부 13개 주 + DC", MISO: "중서부~루이지애나, 남북 종단 15개 주", SPP: "대평원 (다코타~오클라호마·캔자스)", CAISO: "캘리포니아 + 네바다 일부", ISONE: "북동부 6개 주", NYISO: "뉴욕주 단독" };
+const RTO_DESC: Record<string, string> = {
+  ERCOT: "미국에서 유일하게 독립된 텍사스 계통을 운영합니다. 다른 주와 사실상 안 이어져 연방(FERC) 규제 밖이고, 용량시장 없는 에너지 단독 시장이라 가격 변동이 크고 신규 진입이 빠릅니다 — 데이터센터·현장발전이 몰리는 제도적 이유.",
+  PJM: "세계 최대 규모의 전력시장입니다. 버지니아 '데이터센터 앨리'를 품고 있어 AI 전력 수요 논쟁의 최전선이기도 합니다.",
+  MISO: "미네소타에서 멕시코만까지 대륙을 세로로 관통합니다. 루이지애나(엔터지 권역)가 여기 속해 하이페리온의 시장이 MISO입니다.",
+  SPP: "대평원 풍력 벨트의 시장 — 풍력 비중이 미국 RTO 중 선두권입니다. 서부 비ISO 유틸들을 위한 신시장(Markets+)도 준비 중.",
+  CAISO: "태양광 '덕 커브'의 본고장. 자기 권역 외에도 서부 전역 유틸들이 참여하는 실시간 불균형 시장(WEIM)을 운영합니다.",
+  ISONE: "가스 의존도가 높아 겨울 한파 때 수급이 타이트해지는 시장입니다.",
+  NYISO: "뉴욕주 하나를 단독 운영 — 업스테이트(수력·원전)와 뉴욕시(가스) 사이의 송전 병목이 만성 이슈입니다.",
+};
+// 비ISO 지역(§2) — 물리 계통 소속 + 운영(공급) 주체. 유틸 폴리곤은 후속(EIA-861), 여기선 표로만.
+const NONISO_ROWS: { region: string; grid: string; op: string; desc: string }[] = [
+  { region: "남동부 (조지아·앨라배마)", grid: "동부 계통", op: "Southern Company", desc: "RTO 없이 서던컴퍼니가 발전~배전을 통합 운영합니다. 규제 인가 수익 구조라 데이터센터와의 전용 딜(요금 계약·발전 신설)이 빠른 지역." },
+  { region: "캐롤라이나", grid: "동부 계통", op: "Duke Energy", desc: "듀크에너지의 수직통합 권역. 2021년부터 남동부 유틸 간 거래 플랫폼(SEEM)에 참여합니다." },
+  { region: "플로리다", grid: "동부 계통", op: "NextEra(FPL) 등", desc: "반도 지형상 외부 연계가 약한 수직통합 지역." },
+  { region: "테네시밸리", grid: "동부 계통", op: "TVA (연방 공기업)", desc: "뉴딜 때 세워진 테네시밸리청이 발전·송전을 맡고 지역 배전사(멤피스 MLGW 등)가 공급합니다. xAI 멤피스가 이 권역." },
+  { region: "서부 산악·북서부 (CAISO 밖)", grid: "서부 계통", op: "PacifiCorp·NV Energy·APS·Xcel·BPA 등", desc: "유틸별 수직통합이되 다수가 CAISO의 WEIM 실시간 시장에 참여 — 비ISO 지역도 점진적으로 시장화 중입니다." },
+];
+const GRID_INTERCONNECT_NOTE = "미 본토는 동부·서부·텍사스 3개 물리 계통(Interconnection) 위에서, RTO/ISO(시장·급전) 또는 비ISO 유틸이 운영합니다. 경계는 근사(HIFLD).";
 const TX_WIDTH: Record<string, number> = { "345": 0.75, "500": 1.3, "735 and Above": 2.0 }; // 화면 px, 전압 등급별
 const TX_OPACITY: Record<string, number> = { "345": 0.5, "500": 0.72, "735 and Above": 0.95 }; // 전압 낮을수록 투명
 const US_NAME_ABBR: Record<string, string> = { Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA", Colorado: "CO", Connecticut: "CT", Delaware: "DE", "District of Columbia": "DC", Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA", Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD", Massachusetts: "MA", Michigan: "MI", Minnesota: "MN", Mississippi: "MS", Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK", Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT", Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI", Wyoming: "WY" };
@@ -296,6 +319,11 @@ export default function World() {
   const [guideOpen, setGuideOpen] = useState(false); // 모드별 사용 가이드(처음 쓰는 사람용)
   const [dcTx, setDcTx] = useState(true); // 송전선 + 계통 스냅 레이어
   const [dcFill, setDcFill] = useState<"none" | "rto" | "load">("none"); // 국가 뷰 면 채색(§B) — 상호배타
+  // 전력계통 해설 패널(전력시장 채색 시 부속) — 펼친 권역·hover·접힘(세션 기억). 지도↔행 양방향.
+  const [dcGridSel, setDcGridSel] = useState<string | null>(null);
+  const [dcGridHover, setDcGridHover] = useState<string | null>(null);
+  const [gridPanelOpen, setGridPanelOpen] = useState(() => { try { return localStorage.getItem("tr-gridpanel") !== "0"; } catch { return true; } });
+  useEffect(() => { try { localStorage.setItem("tr-gridpanel", gridPanelOpen ? "1" : "0"); } catch { /* noop */ } }, [gridPanelOpen]);
   const [dcFabs, setDcFabs] = useState(false); // 반도체 팹 레이어
   const [fabSel, setFabSel] = useState<string | null>(null);
   const [nukeSel, setNukeSel] = useState<string | null>(null);
@@ -585,7 +613,13 @@ export default function World() {
           })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {/* 국가 뷰 면 채색 §B — 전력시장(RTO) 권역. 비ISO 지역은 무채색(안 그림) */}
-          {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => (r.d ? <path key={`rto${i}`} d={r.d} fill={RTO_FILL[r.code] || "#94a3b8"} fillOpacity={0.14} stroke={RTO_FILL[r.code] || "#94a3b8"} strokeOpacity={0.3} strokeWidth={0.5 / t.k} style={{ pointerEvents: "none" }} /> : null))}
+          {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => { if (!r.d) return null; const active = dcGridSel === r.code || dcGridHover === r.code; const col = RTO_FILL[r.code] || "#94a3b8";
+            return <path key={`rto${i}`} d={r.d} fill={col} fillOpacity={active ? 0.34 : 0.14} stroke={col} strokeOpacity={active ? 0.85 : 0.3} strokeWidth={(active ? 1.3 : 0.5) / t.k} style={{ cursor: "pointer" }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcGridSel((c) => (c === r.code ? null : r.code)); setGridPanelOpen(true); }}
+              onMouseEnter={(e) => { setDcGridHover(r.code); setTip({ x: e.clientX, y: e.clientY, text: `${rtoAbbr(r.code)} · ${RTO_KO[r.code]}` }); }}
+              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${rtoAbbr(r.code)} · ${RTO_KO[r.code]}` })}
+              onMouseLeave={() => { setDcGridHover(null); setTip(null); }} />; })}
           {/* 국가 뷰 면 채색 §B — 주별 AI 부하 비중 램프 */}
           {dcMode && dcFill === "load" && usStates.map((f: any, i: number) => { const ab = US_NAME_ABBR[f.properties?.name]; const share = ab ? stateLoadShare.get(ab) : undefined; if (share == null) return null;
             return <path key={`fill${i}`} d={usStatePaths[i]} fill={loadFillColor(share)} stroke="none" style={{ cursor: "default" }}
@@ -1035,8 +1069,45 @@ export default function World() {
               {([["none", "없음", "배경 채색 없음"], ["rto", "전력시장", "ISO/RTO 권역 — 이 지역이 누구 그리드 전기를 받나 (귀속).\nERCOT·PJM·MISO·SPP·CAISO·ISONE·NYISO 색, 비ISO(TVA·WECC 등)는 무채색.\n경계는 겹침·공백 있는 근사 (HIFLD)."], ["load", "AI 부하 비중", "그 주 전체 전력 수요 대비, 주 안 데이터센터들의 예상 전력 부하가 차지하는 비율.\n\n= (주내 DC 예상 IT 부하 합, MW)\n  ÷ (주 평균 전력 수요 = 연간 전력판매량 ÷ 8760시간, EIA 2023)\n\n예) 루이지애나 ≈ 5GW ÷ 10.9GW ≈ 46%.\n진할수록 그 주 전력망이 AI에 무겁게 눌림. (페르미는 단위 달라 제외)"]] as const).map(([m, lab, help]) => (<button key={m} onClick={() => setDcFill(m)} title={help} className={`flex-1 px-1 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
             {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음</span></div>)}
-            {dcFill === "rto" && (<div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">{(["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as const).map((k) => (<span key={k} className="flex items-center gap-0.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: RTO_FILL[k] }} />{k}</span>))}<span className="text-muted-foreground/70">· 무채색=비ISO(TVA·WECC 등)</span></div>)}
+            {dcFill === "rto" && (<div className="mt-1 text-[9px] text-muted-foreground/70">아래 <b className="font-semibold text-muted-foreground">전력계통</b> 목록 = 범례. 행·지도 권역 클릭 = 설명.</div>)}
           </div>
+          {/* 채색 뷰 해설 패널(§3) — '전력시장' 채색 시에만. 아코디언 = 세로 범례, 행/지도 양방향, 접힘 기억 */}
+          {dcFill === "rto" && (
+          <div className="flex max-h-[calc(100vh-15rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+            <button onClick={() => setGridPanelOpen((o) => !o)} className="flex items-center gap-1.5 p-2.5 pb-2 text-left hover:bg-muted/30">
+              <Zap className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-bold">전력계통</span><span className="text-[9px] text-muted-foreground">RTO/ISO 7 · 비ISO</span>
+              <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${gridPanelOpen ? "" : "-rotate-90"}`} />
+            </button>
+            {gridPanelOpen && (
+            <div className="min-h-0 overflow-auto border-t border-border py-1">
+              {RTO_ORDER.map((code) => { const open = dcGridSel === code; const hl = open || dcGridHover === code;
+                return (<div key={code}>
+                  <button onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
+                    className={`flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} />
+                    <span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
+                    <span className="truncate text-[10px] text-muted-foreground">{RTO_KO[code]}</span>
+                    <ChevronDown className={`ml-auto h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
+                  </button>
+                  {open && (<div className="px-2.5 pb-2 pl-6 text-[10.5px] leading-snug text-muted-foreground"><div className="mb-0.5 font-medium text-foreground/75">{RTO_REGION_KO[code]}</div>{RTO_DESC[code]}</div>)}
+                </div>); })}
+              {(() => { const open = dcGridSel === "noniso";
+                return (<div>
+                  <button onClick={() => setDcGridSel((c) => (c === "noniso" ? null : "noniso"))} className={`flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-[11.5px] ${open ? "bg-muted" : "hover:bg-muted/60"}`}>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/50" />
+                    <span className="shrink-0 font-semibold">비ISO</span>
+                    <span className="truncate text-[10px] text-muted-foreground">수직통합 유틸 (무채색)</span>
+                    <ChevronDown className={`ml-auto h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
+                  </button>
+                  {open && (<div className="px-2.5 pb-2 text-[10px] leading-snug text-muted-foreground">
+                    {NONISO_ROWS.map((r) => (<div key={r.region} className="mb-1.5"><div className="text-foreground/80"><b>{r.region}</b></div><div className="text-muted-foreground/80">{r.grid} · {r.op}</div><div>{r.desc}</div></div>))}
+                  </div>)}
+                </div>); })()}
+              <div className="px-2.5 pb-0.5 pt-1 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
+            </div>
+            )}
+          </div>
+          )}
           {dcFabs && (
           <div className="flex max-h-[calc(100vh-22rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
             <div className="flex items-center gap-1.5 p-2.5 pb-1"><Hexagon className="h-4 w-4" style={{ color: "#2563eb" }} /><span className="text-sm font-bold">반도체 팹</span><span className="ml-auto cursor-help text-[11px] text-muted-foreground" title="육각 = 팹(원=DC · 사각=발전소). 채움 = 상태(가동 꽉참 · 건설 반채움 · 발표 점선 · 지연 앰버 플래그). 크기 = 발표 투자액. 색 = 회사.">ⓘ</span></div>
