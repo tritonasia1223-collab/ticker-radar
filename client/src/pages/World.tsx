@@ -349,6 +349,8 @@ export default function World() {
     return {
       trunk: geo(trunkC), nsr: geo(nsrC), nwp: geo(nwpC),
       trunkMid: trunkC[Math.floor(trunkC.length / 2)] as [number, number],
+      trunkLabelAt: trunkC[Math.round((trunkC.length - 1) * 0.3)] as [number, number], // 공통 구간 라벨(상하이→베링 대각선 하단부)
+      branchPt: trunkC[trunkC.length - 1] as [number, number], // 베링 = 분기점
       nsrAt: (nsrC[Math.min(2, nsrC.length - 1)]) as [number, number],
       nwpAt: (nwpC[Math.min(2, nwpC.length - 1)]) as [number, number],
     };
@@ -855,13 +857,29 @@ export default function World() {
         {tradeMode && layers.routes && arcticBits && t.k < K_LOCAL && (() => {
           const on = hlRoutes.has("arctic") || hlRoutes.has("nsr") || hlRoutes.has("nwp");
           if (hasFocus && !on) return null;
+          // 주석(분기 화살표·공통 구간)은 선택(클릭) 시에만 — 스쳐가는 hover 툴팁과 겹침 방지.
+          const sticky = compareSet.has("arctic") || (sel?.kind === "route" && ARCTIC_IDS.has(sel.id));
           const arc = routeColor("nsr"); const lock = routeColor("nwp");
           const mid = toScreen(arcticBits.trunkMid[0], arcticBits.trunkMid[1]);
           const ns = toScreen(arcticBits.nsrAt[0], arcticBits.nsrAt[1]);
           const nw = toScreen(arcticBits.nwpAt[0], arcticBits.nwpAt[1]);
           const guard = (p: [number, number] | null) => p && inView(p[0], p[1]);
+          // 포커스 시: 분기 화살표(좌 NSR/우 NWP) + "공통 구간" 주석
+          const bp = toScreen(arcticBits.branchPt[0], arcticBits.branchPt[1]);
+          const tl = toScreen(arcticBits.trunkLabelAt[0], arcticBits.trunkLabelAt[1]);
+          const arrow = (B: [number, number], T: [number, number], len: number) => {
+            const dx = T[0] - B[0], dy = T[1] - B[1]; const L = Math.hypot(dx, dy) || 1; const ux = dx / L, uy = dy / L;
+            const s: [number, number] = [B[0] + ux * 9, B[1] + uy * 9]; const e: [number, number] = [B[0] + ux * (9 + len), B[1] + uy * (9 + len)];
+            const ang = Math.atan2(uy, ux), hl = 7, a1 = ang + Math.PI * 0.82, a2 = ang - Math.PI * 0.82;
+            return `M${s[0].toFixed(1)},${s[1].toFixed(1)} L${e[0].toFixed(1)},${e[1].toFixed(1)} M${(e[0] + Math.cos(a1) * hl).toFixed(1)},${(e[1] + Math.sin(a1) * hl).toFixed(1)} L${e[0].toFixed(1)},${e[1].toFixed(1)} L${(e[0] + Math.cos(a2) * hl).toFixed(1)},${(e[1] + Math.sin(a2) * hl).toFixed(1)}`;
+          };
           return (
             <g key="arctic-labels">
+              {sticky && guard(tl) && (() => { const lx = tl![0] + 16, ly = tl![1] + 16; return (<g style={{ pointerEvents: "none" }}>
+                <line x1={tl![0]} y1={tl![1]} x2={lx} y2={ly - 5} stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeDasharray="2 2" strokeOpacity={0.6} />
+                <rect x={lx - 3} y={ly - 13} width={54} height={16} rx={8} fill="hsl(var(--card))" stroke={arc} strokeWidth={1} strokeOpacity={0.55} />
+                <text x={lx + 24} y={ly - 1} textAnchor="middle" fontSize={9.5} fontWeight={700} fill={arc}>공통 구간</text>
+              </g>); })()}
               {guard(mid) && <text x={mid![0]} y={mid![1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={arc}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round", cursor: "pointer" }}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -873,6 +891,11 @@ export default function World() {
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북동(NSR)</text>}
               {guard(nw) && <text x={nw![0]} y={nw![1] - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={lock} fillOpacity={0.8}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북서(NWP)</text>}
+              {/* 분기 화살표(맨 위에 그려 라벨·선 위로) — 배경 헤일로 + 색 화살. 좌 NSR(청록)/우 NWP(회색) */}
+              {sticky && guard(bp) && guard(ns) && <path d={arrow(bp!, ns!, 24)} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
+              {sticky && guard(bp) && guard(nw) && <path d={arrow(bp!, nw!, 24)} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
+              {sticky && guard(bp) && guard(ns) && <path d={arrow(bp!, ns!, 24)} fill="none" stroke={arc} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
+              {sticky && guard(bp) && guard(nw) && <path d={arrow(bp!, nw!, 24)} fill="none" stroke={lock} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
             </g>
           );
         })()}
