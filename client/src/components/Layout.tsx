@@ -4,35 +4,36 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { useEditMode } from "@/components/EditModeProvider";
 
-const NAV = [
-  { href: "/capitalism", label: "자본주의 경제사", icon: History },
-  { href: "/fed", label: "미국 유동성", icon: Building2 },
-  { href: "/world", label: "세계 현황판", icon: Globe },
-  // 블록체인 구조 — 작업 일시 중단(paused). nav 에서 숨김. 라우트·페이지·엔진·테스트는 그대로 두고 재개 시 주석 해제.
-  // { href: "/learn/blockchain", label: "블록체인 구조", icon: Blocks },
-  { href: "/", label: "종목 발견", icon: Radar },
-  { href: "/accounts", label: "추적 계정", icon: Users },
-  { href: "/congress", label: "정치인 거래", icon: Landmark },
-  { href: "/insider", label: "내부자 거래", icon: UserSearch },
-  // CLO 모니터 — 작업 중단(paused). nav 에서 숨김. 라우트·페이지·서버 코드는 그대로 두고 재개 시 주석 해제.
-  // { href: "/clo", label: "CLO 모니터", icon: Layers },
-  // KIS 앱키 발급 후 이 줄 주석 해제하면 탭 활성화 (라우트·페이지·수집기 코드는 그대로 있음)
-  // { href: "/interest", label: "관심종목", icon: Star },
+// 네비 = 클릭 안 되는 단순 구분 라벨(그룹)로만 묶음. 계층 라우팅 아님 — 라벨은 표시 전용.
+const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar }[] }[] = [
+  { group: "매크로", items: [
+    { href: "/capitalism", label: "자본주의 경제사", icon: History },
+    { href: "/fed", label: "미국 유동성", icon: Building2 },
+    { href: "/world", label: "세계 현황판", icon: Globe },
+  ] },
+  { group: "종목 트래킹", items: [
+    { href: "/", label: "종목 발견", icon: Radar },
+    { href: "/accounts", label: "추적 계정", icon: Users },
+    { href: "/congress", label: "정치인 거래", icon: Landmark },
+    { href: "/insider", label: "내부자 거래", icon: UserSearch },
+  ] },
+  // 일시 중단(paused) — nav 숨김, 라우트·페이지·엔진은 그대로. 재개 시 위 그룹에 복원.
+  //   블록체인 구조 { href: "/learn/blockchain", icon: Blocks } · CLO 모니터 { href: "/clo", icon: Layers } · 관심종목 { href: "/interest", icon: Star }
 ];
 
+// 금고 문 다이얼 — 사각 문판 + 원형 다이얼 + 스포크 4개. 단일 스트로크(currentColor)라 다크 모드 자동 대응.
 function Logo() {
   return (
     <div className="flex items-center gap-2.5 px-2">
-      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-label="Ticker Radar logo">
-        <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
-        <circle cx="16" cy="16" r="7" stroke="currentColor" strokeWidth="1.5" opacity="0.55" />
-        <circle cx="16" cy="16" r="2.5" fill="hsl(var(--primary))" />
-        <path d="M16 16 L26 6" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="24" cy="9" r="2" fill="hsl(var(--primary))" />
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-label="피스쿠스 FISCUS logo">
+        <rect x="4.5" y="4.5" width="23" height="23" rx="6.5" />
+        <circle cx="16" cy="16" r="7.5" />
+        <path d="M16 8.5V12.4M16 19.6V23.5M8.5 16H12.4M19.6 16H23.5" />
+        <circle cx="16" cy="16" r="1.7" fill="currentColor" stroke="none" />
       </svg>
       <div className="leading-tight">
-        <div className="font-semibold text-sm">자본주의 경제사</div>
-        <div className="text-[11px] text-muted-foreground">달러 패권 · 유동성</div>
+        <div className="text-sm font-semibold">피스쿠스 <span className="text-[11px] font-normal text-muted-foreground">FISCUS</span></div>
+        <div className="text-[11px] text-muted-foreground">매크로 리서치 · 종목 트래킹</div>
       </div>
     </div>
   );
@@ -67,19 +68,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="h-16 flex items-center border-b border-sidebar-border">
           <Logo />
         </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {NAV.map((n) => {
-            const active = location === n.href;
-            const Icon = n.icon;
-            return (
-              <Link key={n.href} href={n.href} data-testid={`link-${n.href.replace("/", "") || "discover"}`}>
-                <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm cursor-pointer hover-elevate ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/80"}`}>
-                  <Icon className="h-4 w-4" />
-                  {n.label}
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-auto p-3 space-y-0.5">
+          {NAV_GROUPS.map((g) => (
+            <div key={g.group} className="pt-3 first:pt-0">
+              <div className="select-none px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
+              {g.items.map((n) => {
+                const active = location === n.href;
+                const Icon = n.icon;
+                return (
+                  <Link key={n.href} href={n.href} data-testid={`link-${n.href.replace("/", "") || "discover"}`}>
+                    <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm cursor-pointer hover-elevate ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/80"}`}>
+                      <Icon className="h-4 w-4" />
+                      {n.label}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="p-3 border-t border-sidebar-border space-y-2">
           <Button
