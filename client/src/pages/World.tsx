@@ -90,7 +90,11 @@ function densifyRoute(coords: number[][]): { pts: number[][]; len: number } {
 }
 function shipLngLat(samples: number[][], offset: number): [number, number] {
   const N = samples.length; const f = ((offset % 1) + 1) % 1 * (N - 1); const i0 = Math.floor(f), i1 = Math.min(N - 1, i0 + 1), fr = f - i0;
-  const a = samples[i0], b = samples[i1]; return [a[0] + (b[0] - a[0]) * fr, a[1] + (b[1] - a[1]) * fr];
+  const a = samples[i0], b = samples[i1];
+  // 날짜변경선(§3-2): 경도를 짧은 쪽으로 보간 → 이음새 넘는 항로 배가 지도를 가로지르는 유령 비행 방지
+  let dlng = b[0] - a[0]; if (dlng > 180) dlng -= 360; else if (dlng < -180) dlng += 360;
+  let lng = a[0] + dlng * fr; if (lng > 180) lng -= 360; else if (lng < -180) lng += 360;
+  return [lng, a[1] + (b[1] - a[1]) * fr];
 }
 
 // ── 미국 데이터센터 모드(지도 위 오버레이) ──
@@ -274,6 +278,9 @@ export default function World() {
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
   const [shipCargoView, setShipCargoView] = useState(false);
+  // 색 기준(§5): 항로별=항로 신원색 / 화물별=화물 유형색. 항로 선·라벨·목록 점·배 공통.
+  const rCol = (r: { id: string; cargo_type?: string }) => (shipCargoView ? (CARGO_COLOR[r.cargo_type || "container"] || SEA) : routeColor(r.id));
+  const cargoTypesPresent = useMemo(() => { const s = new Set<string>(); for (const r of infra.routes as any[]) s.add(r.cargo_type || "container"); return [...s]; }, []);
   const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
   const routeSamples = useMemo(() => { const m = new Map<string, { pts: number[][]; len: number }>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
   const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.004 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
@@ -529,9 +536,10 @@ export default function World() {
         const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) { el.style.display = "none"; continue; }
         const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y;
         const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0;
+        const seam = !!p2 && Math.abs(p2[0] - p[0]) > dim.w * 0.5; // 이음새 edge 점프(투영폭 절반↑) = 화면 가로지름 → 숨김
         const lx = x + ship.lane * -Math.sin(angR), ly = y + ship.lane * Math.cos(angR); // 회랑 차선(진행방향 수직, 스크린 px)
         const fy = Math.cos(angR) < 0 ? -0.78 : 0.78; // 서쪽행(옆모습 배 180° 뒤집힘) → 세로 반전으로 갑판 위 유지
-        el.style.display = lx < -20 || lx > dim.w + 20 || ly < -20 || ly > dim.h + 20 ? "none" : "";
+        el.style.display = seam || lx < -20 || lx > dim.w + 20 || ly < -20 || ly > dim.h + 20 ? "none" : "";
         el.setAttribute("transform", `translate(${lx.toFixed(1)},${ly.toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${fy})`);
       }
     };
@@ -544,7 +552,7 @@ export default function World() {
     return () => { running = false; cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); };
   }, [shipsOn, fleet, routeSamples, reducedMotion, dim]);
   // 정적(reducedMotion)·스핀/줌 시 재배치
-  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${Math.cos(angR) < 0 ? -0.78 : 0.78})`); } } });
+  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); el.style.display = p2 && Math.abs(p2[0] - p[0]) > dim.w * 0.5 ? "none" : ""; const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${Math.cos(angR) < 0 ? -0.78 : 0.78})`); } } });
 
   // 항만 라벨 클러스터(세계 뷰에서 밀집 시 최상위 1개만) — 순위 오름차순 그리디, 44px 이내 중복 제거
   const portLabelSet = useMemo(() => {
@@ -643,7 +651,7 @@ export default function World() {
           {tradeMode && layers.routes && infra.routes.map((r, i) => {
             const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
             return (
-              <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={routeColor(r.id)} strokeLinecap="round"
+              <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={rCol(r as any)} strokeLinecap="round"
                 className={on ? "wf-flow" : undefined}
                 strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.5}
                 strokeDasharray={`${(on ? 6 : 4) / t.k} ${3 / t.k}`} style={{ pointerEvents: "none" }} />
@@ -677,7 +685,7 @@ export default function World() {
           if (!sc || !inView(sc[0], sc[1]) || t.k >= K_LOCAL) return null;
           const on = hlRoutes.has(r.id); if (hasFocus && !on) return null;
           return (
-            <text key={`rl${i}`} x={sc[0]} y={sc[1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={routeColor(r.id)}
+            <text key={`rl${i}`} x={sc[0]} y={sc[1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={rCol(r as any)}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round", cursor: "pointer" }}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) => { setHoverInfra({ kind: "route", id: r.id }); setTip({ x: e.clientX, y: e.clientY, text: `➤ ${r.ko}`, sub: r.direction_note }); }}
@@ -916,14 +924,20 @@ export default function World() {
             </div>
             <span title="배 흐름 = 항로별 연간 물동량 등급의 연출(밀도 비례) · 실시간 선박 위치 아님 · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
           </div>
+          {/* 화물별 뷰: 칩 줄 = 화물 4종 범례로 교체(§5). 목록 색 점도 화물색으로 재채색됨. */}
+          {shipCargoView && (
+            <div className="flex flex-wrap gap-x-2 gap-y-1 px-2.5 pb-2 text-[10px] text-muted-foreground">
+              {cargoTypesPresent.map((c) => <span key={c} className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CARGO_COLOR[c] }} />{CARGO_KO[c]}</span>)}
+            </div>
+          )}
           {listOpen && (
             <div className="border-t border-border py-1">
               {infra.routes.map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
                 return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
                   className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"}`}>
-                  <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: routeColor(r.id) }} />
+                  <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: rCol(r as any) }} />
                   <button onClick={() => toggleCompare(r.id)} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 비교 켜기/끄기 + 이동 + 카드">
-                    <span className="h-2 w-3 shrink-0 rounded-sm" style={{ background: routeColor(r.id) }} /><span className="truncate">{r.ko}</span></button></div>); })}
+                    <span className="h-2 w-3 shrink-0 rounded-sm" style={{ background: rCol(r as any) }} /><span className="truncate">{r.ko}</span></button></div>); })}
               {compareSet.size > 0 && (
                 <div className="mt-0.5 border-t border-border px-2.5 pt-1">
                   <button onClick={() => setCompareSet(new Set())} className="text-[10.5px] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
