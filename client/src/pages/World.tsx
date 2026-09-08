@@ -278,12 +278,19 @@ export default function World() {
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
   const [shipCargoView, setShipCargoView] = useState(false);
-  // 색 기준(§5): 항로별=항로 신원색 / 화물별=화물 유형색. 항로 선·라벨·목록 점·배 공통.
-  const rCol = (r: { id: string; cargo_type?: string }) => (shipCargoView ? (CARGO_COLOR[r.cargo_type || "container"] || SEA) : routeColor(r.id));
-  const cargoTypesPresent = useMemo(() => { const s = new Set<string>(); for (const r of infra.routes as any[]) s.add(r.cargo_type || "container"); return [...s]; }, []);
+  const [cargoFilter, setCargoFilter] = useState<"container" | "crude" | null>(null); // 화물별 뷰 필터 — null=둘 다
+  // 항로가 싣는 화물 가닥(strand): 혼합=[컨테이너,원유] 2줄, 그 외=단일.
+  const routeStrands = (r: { cargo_type?: string }): string[] => (r.cargo_type === "mixed" ? ["container", "crude"] : [r.cargo_type || "container"]);
+  // 색 기준(§5): 항로별=항로 신원색 / 화물별=화물색. 혼합은 파랑 기본(필터 시 그 색). 라벨·체크박스·단일선 공통.
+  const rCol = (r: { id: string; cargo_type?: string }) => {
+    if (!shipCargoView) return routeColor(r.id);
+    const ct = r.cargo_type || "container";
+    if (ct === "mixed") return CARGO_COLOR[cargoFilter || "container"];
+    return CARGO_COLOR[ct] || SEA;
+  };
   const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
   const routeSamples = useMemo(() => { const m = new Map<string, { pts: number[][]; len: number }>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
-  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: r.cargo_type || "container", offset: (i + 0.5) / n, speed: (0.004 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
+  const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; const strands = r.cargo_type === "mixed" ? ["container", "crude"] : [r.cargo_type || "container"]; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: strands[i % strands.length], offset: (i + 0.5) / n, speed: (0.004 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
   const fleetRefs = useRef<(SVGGElement | null)[]>([]);
   // L4 분쟁 층 — 국경 내부 글로우 + 진앙 마커. 기본 전쟁(≥1000)만, 무력분쟁 토글. 색=유형·진하기=강도.
   const [conflictMode, setConflictMode] = useState(false);
@@ -647,21 +654,28 @@ export default function World() {
             <text key={`usl${i}`} x={l.c[0]} y={l.c[1]} textAnchor="middle" dominantBaseline="middle" fontSize={8 / t.k} fontWeight={500} fill="hsl(var(--muted-foreground))" fillOpacity={0.75}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5 / t.k, strokeLinejoin: "round", pointerEvents: "none" }}>{l.ko}</text>
           ))}
-          {/* L2 항로 — 항로별 색. 선택/hover 시 진하게+흐름 애니메이션, 나머지 감쇠 */}
-          {tradeMode && layers.routes && infra.routes.map((r, i) => {
-            const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
-            return (
-              <path key={`r${i}`} d={routePaths[i]} fill="none" stroke={rCol(r as any)} strokeLinecap="round"
-                className={on ? "wf-flow" : undefined}
-                strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.5}
-                strokeDasharray={`${(on ? 6 : 4) / t.k} ${3 / t.k}`} style={{ pointerEvents: "none" }} />
-            );
+          {/* L2 항로 — 항로별 색. 화물별 뷰: 화물색, 혼합=파랑+노랑 2줄(strand 대시 인터리브), 필터 시 해당 가닥만. 선택/hover 시 진하게+흐름. */}
+          {tradeMode && layers.routes && infra.routes.flatMap((r, i) => {
+            const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on; const d = (on ? 6 : 4) / t.k;
+            const strands = shipCargoView ? routeStrands(r as any) : [null];
+            return strands.map((strand, si) => {
+              if (shipCargoView && cargoFilter && strand !== cargoFilter) return null;
+              const col = strand ? (CARGO_COLOR[strand] || SEA) : routeColor(r.id);
+              const dual = strands.length > 1; // 혼합 2줄 → 색별 대시를 엇갈리게(한 줄이 다른 색 틈에)
+              return (
+                <path key={`r${i}-${si}`} d={routePaths[i]} fill="none" stroke={col} strokeLinecap="round"
+                  className={on ? "wf-flow" : undefined}
+                  strokeWidth={(on ? 2.4 : 1.4) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.5}
+                  strokeDasharray={dual ? `${d} ${d}` : `${d} ${3 / t.k}`} strokeDashoffset={dual ? si * d : 0} style={{ pointerEvents: "none" }} />
+              );
+            });
           })}
         </g>
 
         {/* 항로 배 흐름 — 밀도=물동량 등급(§1). 스크린 공간(크기 고정), 위치·회전은 rAF 로. */}
         {shipsOn && fleet.map((ship, i) => { const col = shipCargoView ? (CARGO_COLOR[ship.cargo] || SEA) : routeColor(ship.routeId); const dim2 = hasFocus && !hlRoutes.has(ship.routeId);
-          return <g key={`ship${i}`} ref={(el) => { fleetRefs.current[i] = el; }} transform="translate(-99,-99) scale(0.78)" style={{ opacity: dim2 ? 0.1 : 0.92, pointerEvents: "none" }}><use href={`#${shipSymbol(ship.cargo)}`} x={-8} y={-4} width={16} height={8} fill={col} /></g>; })}
+          const filteredOut = shipCargoView && !!cargoFilter && ship.cargo !== cargoFilter; // 필터 시 다른 화물 배 숨김(place는 display만 건드림)
+          return <g key={`ship${i}`} ref={(el) => { fleetRefs.current[i] = el; }} transform="translate(-99,-99) scale(0.78)" style={{ opacity: filteredOut ? 0 : dim2 ? 0.1 : 0.92, pointerEvents: "none" }}><use href={`#${shipSymbol(ship.cargo)}`} x={-8} y={-4} width={16} height={8} fill={col} /></g>; })}
 
         {/* 국가 라벨 */}
         <g style={{ pointerEvents: "none" }}>
@@ -921,24 +935,33 @@ export default function World() {
           <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-muted-foreground">
             <span>배 색</span>
             <div className="flex overflow-hidden rounded border border-border">
-              {([["route", "항로별"], ["cargo", "화물별"]] as const).map(([v, lab]) => (<button key={v} onClick={() => setShipCargoView(v === "cargo")} className={`px-1.5 py-0.5 ${(v === "cargo") === shipCargoView ? "bg-muted font-semibold text-foreground" : "hover:bg-muted/50"}`}>{lab}</button>))}
+              {([["route", "항로별"], ["cargo", "화물별"]] as const).map(([v, lab]) => (<button key={v} onClick={() => { setShipCargoView(v === "cargo"); if (v !== "cargo") setCargoFilter(null); }} className={`px-1.5 py-0.5 ${(v === "cargo") === shipCargoView ? "bg-muted font-semibold text-foreground" : "hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
             <span title="배 흐름 = 항로별 연간 물동량 등급의 연출(밀도 비례) · 실시간 선박 위치 아님 · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
           </div>
-          {/* 화물별 뷰: 칩 줄 = 화물 4종 범례로 교체(§5). 목록 색 점도 화물색으로 재채색됨. */}
+          {/* 화물별 뷰: 칩 줄 = 컨테이너/원유 필터(§5, 칩=범례+토글). 클릭 = 그 화물 라인만 · 다시 클릭 = 둘 다. 혼합은 두 색을 모두 가짐. */}
           {shipCargoView && (
-            <div className="flex flex-wrap gap-x-2 gap-y-1 px-2.5 pb-2 text-[10px] text-muted-foreground">
-              {cargoTypesPresent.map((c) => <span key={c} className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CARGO_COLOR[c] }} />{CARGO_KO[c]}</span>)}
+            <div className="flex flex-wrap items-center gap-1 px-2.5 pb-2 text-[10px]">
+              {(["container", "crude"] as const).map((c) => { const act = cargoFilter === c;
+                return <button key={c} onClick={() => setCargoFilter((f) => (f === c ? null : c))} title="클릭 = 이 화물 라인만 보기 (다시 클릭 = 둘 다)"
+                  className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${act ? "border-border bg-muted font-semibold" : "border-border/50 text-muted-foreground hover:bg-muted/50"}`}>
+                  <span className="h-2 w-2 rounded-sm" style={{ background: CARGO_COLOR[c] }} />{CARGO_KO[c]}</button>; })}
+              {cargoFilter && <button onClick={() => setCargoFilter(null)} className="text-muted-foreground hover:text-foreground">✕</button>}
+              <span className="text-muted-foreground/70">· 혼합=두 색</span>
             </div>
           )}
           {listOpen && (
             <div className="border-t border-border py-1">
               {infra.routes.map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
+                const strands = routeStrands(r as any); const faded = shipCargoView && !!cargoFilter && !strands.includes(cargoFilter); // 필터 화물 안 싣는 항로 = 감쇠
                 return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
-                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"} ${faded ? "opacity-35" : ""}`}>
                   <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: rCol(r as any) }} />
                   <button onClick={() => toggleCompare(r.id)} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 비교 켜기/끄기 + 이동 + 카드">
-                    <span className="h-2 w-3 shrink-0 rounded-sm" style={{ background: rCol(r as any) }} /><span className="truncate">{r.ko}</span></button></div>); })}
+                    {shipCargoView && strands.length > 1
+                      ? <span className="flex h-2 w-3 shrink-0 overflow-hidden rounded-sm">{strands.map((st) => <span key={st} className="flex-1" style={{ background: CARGO_COLOR[st] }} />)}</span>
+                      : <span className="h-2 w-3 shrink-0 rounded-sm" style={{ background: rCol(r as any) }} />}
+                    <span className="truncate">{r.ko}</span></button></div>); })}
               {compareSet.size > 0 && (
                 <div className="mt-0.5 border-t border-border px-2.5 pt-1">
                   <button onClick={() => setCompareSet(new Set())} className="text-[10.5px] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
