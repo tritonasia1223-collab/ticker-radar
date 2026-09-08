@@ -98,10 +98,13 @@ const AMBER = "#f59e0b";         // 해협
 const SEA = "#2563eb";           // 항만(파랑 점)
 // 항로별 색 — 앰버(해협)·청록(선택)·적(분쟁 예정) 회피한 범주형 팔레트
 const ROUTE_COLOR: Record<string, string> = {
-  "eu-asia-suez": "#2563eb", "cape": "#9333ea", "nsr": "#0891b2", "nwp": "#64748b",
+  "eu-asia-suez": "#2563eb", "cape": "#9333ea", "arctic": "#0891b2", "nsr": "#0891b2", "nwp": "#64748b",
   "trans-pacific": "#db2777", "panama": "#16a34a", "mideast-oil": "#4f46e5", "trans-atlantic": "#0ea5e9",
 };
 const routeColor = (id: string) => ROUTE_COLOR[id] ?? SEA;
+// 북극항로 패밀리 = 통합 개체(arctic) + 두 지선(nsr·nwp). 통합 렌더/라벨/리스트에서 하나로 취급.
+const ARCTIC_IDS = new Set(["arctic", "nsr", "nwp"]);
+const isArcticFam = (r: { id?: string; branch_of?: string }) => r.id === "arctic" || r.branch_of === "북극항로";
 // ── 항로 배 흐름(밀도=물동량 등급) ──
 const TIER_SHIPS: Record<string, number> = { high: 5, mid: 3, low: 1, none: 0 }; // 동시 척수(합 상한 40). none=배 0(상업 통항 없음)
 const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59e0b", mixed: "#9333ea", bulk: "#78716c" };
@@ -301,7 +304,7 @@ export default function World() {
     for (const c of capitalsData as Cap[]) out.push({ kind: "capital", label: c.ko, sub: c.en, iso: c.iso, lng: c.lng, lat: c.lat, key: norm(c.ko) + " " + norm(c.en) });
     for (const c of infra.chokepoints) out.push({ kind: "choke", label: c.ko, sub: c.en, id: c.id, key: norm(c.ko) + " " + norm(c.en) });
     for (const p of infra.ports) out.push({ kind: "port", label: p.ko, sub: p.en, id: p.id, key: norm(p.ko) + " " + norm(p.en) });
-    for (const r of infra.routes) out.push({ kind: "route", label: r.ko, sub: r.direction_note, id: r.id, key: norm(r.ko) });
+    for (const r of infra.routes) { if ((r as any).branch_of) continue; out.push({ kind: "route", label: r.ko, sub: r.direction_note, id: r.id, key: norm(r.ko) }); }
     return out;
   }, [features]);
 
@@ -334,6 +337,22 @@ export default function World() {
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: densifyRoute(r.coords).pts } as any) || ""), [pathGen]);
   // 관문 밖 페이드 스텁 경로(geoPath — 지오 클리핑으로 스핀·이음새 안전). {선 d, 라벨 앵커[lng,lat]}
   const routeStubs = useMemo(() => infra.routes.map((r) => { const s = (r as any).stub as number[][] | undefined; if (!s) return null; return { d: pathGen({ type: "LineString", coordinates: s } as any) || "", anchor: s[s.length - 1] as [number, number], label: (r as any).stub_label as string | undefined }; }), [pathGen]);
+  // 북극항로 통합 지오메트리 — 공통 줄기(1회) + NSR/NWP 지선. 줄기·지선은 nsr·nwp의 coords[0..branch_start]가 동일.
+  const arcticBits = useMemo(() => {
+    const nsr = routeById.get("nsr") as any, nwp = routeById.get("nwp") as any;
+    if (!nsr || !nwp) return null;
+    const k = nsr.branch_start ?? 0;
+    const trunkC = nsr.coords.slice(0, k + 1) as number[][];
+    const nsrC = nsr.coords.slice(k) as number[][];
+    const nwpC = nwp.coords.slice(nwp.branch_start ?? k) as number[][];
+    const geo = (c: number[][]) => pathGen({ type: "LineString", coordinates: c } as any) || "";
+    return {
+      trunk: geo(trunkC), nsr: geo(nsrC), nwp: geo(nwpC),
+      trunkMid: trunkC[Math.floor(trunkC.length / 2)] as [number, number],
+      nsrAt: (nsrC[Math.min(2, nsrC.length - 1)]) as [number, number],
+      nwpAt: (nwpC[Math.min(2, nwpC.length - 1)]) as [number, number],
+    };
+  }, [pathGen, routeById]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
   const [shipCargoView, setShipCargoView] = useState(false);
@@ -541,12 +560,12 @@ export default function World() {
   const goTo = useCallback((ent: EntitySel) => {
     setSel(ent);
     if (ent.kind === "country") flyFeatureCentered(features[ent.idx]);
-    else if (ent.kind === "port") { const p = portById.get(ent.id); if (p) flyPoint(p.lng, p.lat); }
+    else if (ent.kind === "port") { const p = portById.get(ent.id) ?? minorPortById.get(ent.id); if (p) flyPoint(p.lng, p.lat); }
     else if (ent.kind === "choke") { const c = chokeById.get(ent.id); if (c) flyPoint(c.lng, c.lat); }
     else if (ent.kind === "route") { const r = routeById.get(ent.id); if (r) flyRoute(r); }
     else if (ent.kind === "conflict") { const c = conflictById.get(ent.id); if (c) flyPoint(c.epicenter[0], c.epicenter[1]); }
     else if (ent.kind === "dispute") { const d = disputeById.get(ent.id); if (d) flyPoint(d.lng, d.lat); }
-  }, [features, portById, chokeById, routeById, conflictById, disputeById, flyFeatureCentered, flyPoint, flyRoute]);
+  }, [features, portById, minorPortById, chokeById, routeById, conflictById, disputeById, flyFeatureCentered, flyPoint, flyRoute]);
 
 
   // 여러 항로를 한 화면에 — 중심 경도는 항로 중점들의 원형 평균, 투영 후 좌표로 bbox(경계 넘김 안전)
@@ -581,6 +600,8 @@ export default function World() {
       if (focus.kind === "route") R.add(focus.id);
       else { (focus.kind === "choke" ? C : P).add(focus.id); (routesByNode.get(focus.id) ?? []).forEach((rid) => R.add(rid)); }
     }
+    // 북극 패밀리는 한 몸 — 통합 개체·두 지선이 함께 켜져야(지선 선·배 dim 방지, 경유지 귀속).
+    if ([...R].some((rid) => ARCTIC_IDS.has(rid))) ARCTIC_IDS.forEach((id) => R.add(id));
     // 하이라이트된 모든 항로의 경유지(해협·항만)도 함께 켠다 — 비교 시 경유지 대조가 핵심.
     for (const rid of R) { const r = routeById.get(rid); r?.waypoints.forEach((w) => { if (w.type === "chokepoint") C.add(w.ref); else if (w.type === "port") P.add(w.ref); }); }
     return { hlRoutes: R, hlChokes: C, hlPorts: P };
@@ -743,6 +764,7 @@ export default function World() {
           ))}
           {/* L2 항로 — 항로별 색. 화물별 뷰: 화물색, 혼합=파랑+노랑 평행 겹선(법선 offset, 살짝 간격), 필터 시 해당 가닥만. 선택/hover 시 진하게+흐름. */}
           {tradeMode && layers.routes && infra.routes.flatMap((r, i) => {
+            if (isArcticFam(r as any)) return []; // 북극 패밀리는 아래 통합 블록이 전담(줄기 1회 + 지선별 상태 스타일)
             const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on; const d = (on ? 6 : 4) / t.k;
             const tierNone = (r as any).volume_tier === "none"; // 배 0 · 선은 유지하되 더 옅게(잠든 선)
             const dual = routeDualPaths.get(r.id); // 혼합 항로면 {container, crude} offset 경로
@@ -762,6 +784,25 @@ export default function World() {
           {/* 관문 밖 페이드 스텁 선 — geoPath(클리핑) · 변환 그룹 내 · 배 없음 */}
           {tradeMode && layers.routes && infra.routes.map((r, i) => { const st = routeStubs[i]; if (!st?.d) return null; const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
             return <path key={`stub${i}`} d={st.d} fill="none" stroke={rCol(r as any)} strokeOpacity={dim2 ? 0.05 : on ? 0.5 : 0.22} strokeWidth={(on ? 1.6 : 1.2) / t.k} strokeLinecap="round" strokeDasharray={`${2 / t.k} ${3.5 / t.k}`} style={{ pointerEvents: "none" }} />; })}
+          {/* 북극항로 통합 렌더 — 공통 줄기(실선) + NSR 지선(실선·운영) + NWP 지선(회색 점선·잠김). 선 스타일이 상태를 말한다. */}
+          {tradeMode && layers.routes && arcticBits && (() => {
+            const on = hlRoutes.has("arctic") || hlRoutes.has("nsr") || hlRoutes.has("nwp");
+            const dim2 = hasFocus && !on; const arc = routeColor("nsr"); const lock = routeColor("nwp");
+            return (
+              <g key="arctic-lines" className="dz-in">
+                {/* 공통 줄기(상하이~베링) — 실선 */}
+                <path d={arcticBits.trunk} fill="none" stroke={arc} strokeLinecap="round" strokeLinejoin="round"
+                  strokeWidth={(on ? 2.4 : 1.5) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.6} style={{ pointerEvents: "none" }} />
+                {/* NSR 지선 — 실선(운영 중) */}
+                <path d={arcticBits.nsr} fill="none" stroke={arc} strokeLinecap="round" strokeLinejoin="round"
+                  strokeWidth={(on ? 2.4 : 1.5) / t.k} strokeOpacity={dim2 ? 0.1 : on ? 0.95 : 0.6} style={{ pointerEvents: "none" }} />
+                {/* NWP 지선 — 회색 점선 + 한 단계 옅게(잠김·배 0) */}
+                <path d={arcticBits.nwp} fill="none" stroke={lock} strokeLinecap="round" strokeLinejoin="round"
+                  strokeWidth={(on ? 1.6 : 1.1) / t.k} strokeOpacity={dim2 ? 0.06 : on ? 0.55 : 0.3}
+                  strokeDasharray={`${3 / t.k} ${3.5 / t.k}`} style={{ pointerEvents: "none" }} />
+              </g>
+            );
+          })()}
         </g>
 
         {/* 항로 배 흐름 — 밀도=물동량 등급(§1). 스크린 공간(크기 고정), 위치·회전은 rAF 로. */}
@@ -788,6 +829,7 @@ export default function World() {
 
         {/* 항로 이름 라벨(경로 중간) — 클릭/hover로 항로 선택·하이라이트 */}
         {tradeMode && layers.routes && infra.routes.map((r, i) => {
+          if (isArcticFam(r as any)) return null; // 북극 라벨은 아래 통합 블록(단일 "북극항로" + 분기 소자)
           const mid = r.coords[Math.floor(r.coords.length / 2)]; const sc = toScreen(mid[0], mid[1]);
           if (!sc || !inView(sc[0], sc[1]) || t.k >= K_LOCAL) return null;
           const on = hlRoutes.has(r.id); if (hasFocus && !on) return null;
@@ -809,6 +851,31 @@ export default function World() {
           const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
           return <text key={`stubl${i}`} x={b[0] + 4} y={b[1] + 3} fontSize={8.5} fontWeight={500} fill={rCol(r as any)} fillOpacity={dim2 ? 0.15 : 0.62} style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>{st.label} →</text>;
         })}
+        {/* 북극항로 통합 라벨 — 단일 "북극항로"(줄기 중점, 클릭 가능) + 분기점 부근 북동/북서 소자 */}
+        {tradeMode && layers.routes && arcticBits && t.k < K_LOCAL && (() => {
+          const on = hlRoutes.has("arctic") || hlRoutes.has("nsr") || hlRoutes.has("nwp");
+          if (hasFocus && !on) return null;
+          const arc = routeColor("nsr"); const lock = routeColor("nwp");
+          const mid = toScreen(arcticBits.trunkMid[0], arcticBits.trunkMid[1]);
+          const ns = toScreen(arcticBits.nsrAt[0], arcticBits.nsrAt[1]);
+          const nw = toScreen(arcticBits.nwpAt[0], arcticBits.nwpAt[1]);
+          const guard = (p: [number, number] | null) => p && inView(p[0], p[1]);
+          return (
+            <g key="arctic-labels">
+              {guard(mid) && <text x={mid![0]} y={mid![1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={arc}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round", cursor: "pointer" }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseEnter={(e) => { setHoverInfra({ kind: "route", id: "arctic" }); setTip({ x: e.clientX, y: e.clientY, text: "➤ 북극항로", sub: "베링에서 북동(NSR)/북서(NWP)로 분기" }); }}
+                onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: "➤ 북극항로", sub: "베링에서 북동(NSR)/북서(NWP)로 분기" })}
+                onMouseLeave={() => { setHoverInfra(null); setTip(null); }}
+                onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } toggleCompare("arctic"); }}>북극항로</text>}
+              {guard(ns) && <text x={ns![0]} y={ns![1] - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={arc} fillOpacity={0.85}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북동(NSR)</text>}
+              {guard(nw) && <text x={nw![0]} y={nw![1] - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={lock} fillOpacity={0.8}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북서(NWP)</text>}
+            </g>
+          );
+        })()}
 
         {/* 수도 점은 지도에서 제거(시각 복잡도↓). 수도 정보는 국가 카드·검색에서만 유지. */}
 
@@ -831,15 +898,17 @@ export default function World() {
             </g>
           );
         })}
-        {/* 북극 소항만(TOP20 아님) — 북서항로 후보 라인의 양끝. 순위 없음, 작은 링 마커 */}
+        {/* 부속 항만(TOP20 아님) — 북극 관문·캐나다 서안 등. 순위 없음, 작은 링 마커 · 클릭 = 개체 카드 */}
         {tradeMode && layers.ports && (infra.minor_ports ?? []).map((p) => {
           const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          const on = (sel?.kind === "port" && sel.id === p.id);
           return (
             <g key={`mp${p.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚓ ${p.ko}`, sub: p.note })}
               onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚓ ${p.ko}`, sub: p.note })}
-              onMouseLeave={() => setTip(null)}>
-              <circle cx={sc[0]} cy={sc[1]} r={3} fill="hsl(var(--background))" stroke={SEA} strokeWidth={1.4} />
+              onMouseLeave={() => setTip(null)}
+              onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "port", id: p.id }); }}>
+              <circle cx={sc[0]} cy={sc[1]} r={on ? 4 : 3} fill="hsl(var(--background))" stroke={SEA} strokeWidth={on ? 2 : 1.4} />
               <text x={sc[0]} y={sc[1] - 6} textAnchor="middle" fontSize={9} fontWeight={600} fill={SEA}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{p.ko}</text>
             </g>
@@ -1052,7 +1121,7 @@ export default function World() {
             <Route className="h-4 w-4" /><span className="text-sm font-bold">주요 항로</span>
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
           </button>
-          <div className="px-2.5 pb-1.5 text-[10.5px] text-muted-foreground">{infra.routes.length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
+          <div className="px-2.5 pb-1.5 text-[10.5px] text-muted-foreground">{infra.routes.filter((r) => !(r as any).branch_of).length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
           <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-muted-foreground">
             <span>배 색</span>
             <div className="flex overflow-hidden rounded border border-border">
@@ -1073,7 +1142,7 @@ export default function World() {
           )}
           {listOpen && (
             <div className="border-t border-border py-1">
-              {infra.routes.map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
+              {infra.routes.filter((r) => !(r as any).branch_of).map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
                 const strands = routeStrands(r as any); const faded = shipCargoView && !!cargoFilter && !strands.includes(cargoFilter); // 필터 화물 안 싣는 항로 = 감쇠
                 return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
                   className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"} ${faded ? "opacity-35" : ""}`}>
@@ -1143,7 +1212,7 @@ export default function World() {
                 <div className="flex flex-wrap gap-1">{adj[sel.idx].length === 0 && <span className="text-[11px] text-muted-foreground">인접 국경 없음</span>}
                   {adj[sel.idx].map((ni) => <Chip key={ni} color={TEAL} onClick={() => goTo({ kind: "country", idx: ni })}>{features[ni].properties.ko}</Chip>)}</div></div>
             </>); })()}
-          {sel.kind === "port" && (() => { const p = portById.get(sel.id)!; const ctyIdx = isoToIdx.get(p.country_iso); const rts = (routesByNode.get(p.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
+          {sel.kind === "port" && portById.has(sel.id) && (() => { const p = portById.get(sel.id)!; const ctyIdx = isoToIdx.get(p.country_iso); const rts = (routesByNode.get(p.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
             return (<>
               <div className="flex items-center gap-1.5"><Anchor className="h-4 w-4" style={{ color: SEA }} /><span className="text-base font-bold leading-tight">{p.ko}</span></div>
               <div className="text-[11px] text-muted-foreground">{p.en}</div>
@@ -1154,6 +1223,17 @@ export default function World() {
               {ctyIdx != null && <div className="mt-2 text-[11px] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
               {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={`https://lloydslist.com`} label={infra._meta.teu_source} />
+            </>); })()}
+          {sel.kind === "port" && !portById.has(sel.id) && minorPortById.has(sel.id) && (() => { const p = minorPortById.get(sel.id)! as any; const ctyIdx = isoToIdx.get(p.country_iso);
+            const rids: string[] = (p.linked_route_ids && p.linked_route_ids.length) ? p.linked_route_ids : (routesByNode.get(p.id) ?? []);
+            const rts = rids.map((id) => routeById.get(id)!).filter(Boolean);
+            return (<>
+              <div className="flex items-center gap-1.5"><Anchor className="h-4 w-4" style={{ color: SEA }} /><span className="text-base font-bold leading-tight">{p.ko}</span></div>
+              <div className="text-[11px] text-muted-foreground">{p.en}</div>
+              <div className="mt-2 text-[11.5px] leading-snug">{p.note}</div>
+              {ctyIdx != null && <div className="mt-2 text-[11px] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">연동 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
+              {p.source_url && <Src url={p.source_url} />}
             </>); })()}
           {sel.kind === "choke" && (() => { const c = chokeById.get(sel.id)!; const rts = (routesByNode.get(c.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
             return (<>
