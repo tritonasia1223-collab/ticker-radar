@@ -346,9 +346,9 @@ export default function World() {
     const geo = (c: number[][]) => pathGen({ type: "LineString", coordinates: c } as any) || "";
     return {
       trunk: geo(trunkC), nsr: geo(nsrC), nwp: geo(nwpC),
+      trunkStart: trunkC[0] as [number, number], // 상하이 = 공통 구간 포물선 시작점
       trunkMid: trunkC[Math.floor(trunkC.length / 2)] as [number, number],
-      trunkLabelAt: trunkC[Math.round((trunkC.length - 1) * 0.3)] as [number, number], // 공통 구간 라벨(상하이→베링 대각선 하단부)
-      branchPt: trunkC[trunkC.length - 1] as [number, number], // 베링 = 분기점
+      branchPt: trunkC[trunkC.length - 1] as [number, number], // 베링 = 분기점(포물선 끝점)
       nsrAt: (nsrC[Math.min(2, nsrC.length - 1)]) as [number, number],
       nwpAt: (nwpC[Math.min(2, nwpC.length - 1)]) as [number, number],
     };
@@ -843,26 +843,41 @@ export default function World() {
           // 주석(분기 화살표·공통 구간)은 선택(클릭) 시에만 — 스쳐가는 hover 툴팁과 겹침 방지.
           const sticky = compareSet.has("arctic") || (sel?.kind === "route" && ARCTIC_IDS.has(sel.id));
           const arc = routeColor("nsr"); const lock = routeColor("nwp");
+          const RED = "#E24B4A"; // 분기 화살표 — 항로선과 분리된 별도 주석색
           const mid = toScreen(arcticBits.trunkMid[0], arcticBits.trunkMid[1]);
           const ns = toScreen(arcticBits.nsrAt[0], arcticBits.nsrAt[1]);
           const nw = toScreen(arcticBits.nwpAt[0], arcticBits.nwpAt[1]);
           const guard = (p: [number, number] | null) => p && inView(p[0], p[1]);
-          // 포커스 시: 분기 화살표(좌 NSR/우 NWP) + "공통 구간" 주석
+          const st = toScreen(arcticBits.trunkStart[0], arcticBits.trunkStart[1]);
           const bp = toScreen(arcticBits.branchPt[0], arcticBits.branchPt[1]);
-          const tl = toScreen(arcticBits.trunkLabelAt[0], arcticBits.trunkLabelAt[1]);
-          const arrow = (B: [number, number], T: [number, number], len: number) => {
-            const dx = T[0] - B[0], dy = T[1] - B[1]; const L = Math.hypot(dx, dy) || 1; const ux = dx / L, uy = dy / L;
-            const s: [number, number] = [B[0] + ux * 9, B[1] + uy * 9]; const e: [number, number] = [B[0] + ux * (9 + len), B[1] + uy * (9 + len)];
-            const ang = Math.atan2(uy, ux), hl = 7, a1 = ang + Math.PI * 0.82, a2 = ang - Math.PI * 0.82;
-            return `M${s[0].toFixed(1)},${s[1].toFixed(1)} L${e[0].toFixed(1)},${e[1].toFixed(1)} M${(e[0] + Math.cos(a1) * hl).toFixed(1)},${(e[1] + Math.sin(a1) * hl).toFixed(1)} L${e[0].toFixed(1)},${e[1].toFixed(1)} L${(e[0] + Math.cos(a2) * hl).toFixed(1)},${(e[1] + Math.sin(a2) * hl).toFixed(1)}`;
+          // "공통 구간" — 상하이↔분기점을 바깥으로 휜 점선 포물선. 정점(sag)에 라벨(현 방향으로 회전, 정립).
+          let paraD = "", labX = 0, labY = 0, labAng = 0;
+          if (st && bp) {
+            const A = st, B = bp; const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+            const dx = B[0] - A[0], dy = B[1] - A[1]; const L = Math.hypot(dx, dy) || 1;
+            let nx = -dy / L, ny = dx / L; if (ny < 0) { nx = -nx; ny = -ny; } // 남쪽(아래)으로 볼록
+            const sag = Math.min(Math.max(L * 0.3, 70), 160);
+            const cx = mx + nx * sag * 2, cy = my + ny * sag * 2; // 2차 베지어 제어점(정점 offset = sag)
+            paraD = `M${A[0].toFixed(1)},${A[1].toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${B[0].toFixed(1)},${B[1].toFixed(1)}`;
+            labX = mx + nx * sag + nx * 4; labY = my + ny * sag + ny * 4; // 정점 살짝 바깥
+            let ang = Math.atan2(dy, dx) * 180 / Math.PI; if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;
+            labAng = ang;
+          }
+          // 분기 화살표(빨강) — 항로선 위에 겹치지 않게 분기점 '위쪽'에 별도 표기. 좌 ↖ 북동 / 우 ↗ 북서.
+          const redArrow = (sx: number, sy: number, angDeg: number, len: number) => {
+            const a = angDeg * Math.PI / 180, ex = sx + Math.cos(a) * len, ey = sy + Math.sin(a) * len, hl = 8, a1 = a + Math.PI * 0.83, a2 = a - Math.PI * 0.83;
+            return `M${sx.toFixed(1)},${sy.toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)} M${(ex + Math.cos(a1) * hl).toFixed(1)},${(ey + Math.sin(a1) * hl).toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)} L${(ex + Math.cos(a2) * hl).toFixed(1)},${(ey + Math.sin(a2) * hl).toFixed(1)}`;
           };
+          const aL = bp ? redArrow(bp[0] - 16, bp[1] - 34, 213, 26) : ""; // 좌 위로(북동)
+          const aR = bp ? redArrow(bp[0] + 16, bp[1] - 34, -33, 26) : "";  // 우 위로(북서)
           return (
             <g key="arctic-labels">
-              {sticky && guard(tl) && (() => { const lx = tl![0] + 16, ly = tl![1] + 16; return (<g style={{ pointerEvents: "none" }}>
-                <line x1={tl![0]} y1={tl![1]} x2={lx} y2={ly - 5} stroke="hsl(var(--muted-foreground))" strokeWidth={1} strokeDasharray="2 2" strokeOpacity={0.6} />
-                <rect x={lx - 3} y={ly - 13} width={54} height={16} rx={8} fill="hsl(var(--card))" stroke={arc} strokeWidth={1} strokeOpacity={0.55} />
-                <text x={lx + 24} y={ly - 1} textAnchor="middle" fontSize={9.5} fontWeight={700} fill={arc}>공통 구간</text>
-              </g>); })()}
+              {sticky && paraD && (<g style={{ pointerEvents: "none" }}>
+                <path d={paraD} fill="none" stroke={arc} strokeWidth={2.4} strokeLinecap="round" strokeDasharray="9 8" strokeOpacity={0.9} />
+                <text x={labX} y={labY} textAnchor="middle" transform={`rotate(${labAng.toFixed(1)} ${labX.toFixed(1)} ${labY.toFixed(1)})`}
+                  fontSize={15} fontWeight={800} fill={arc} letterSpacing="1"
+                  style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3.5, strokeLinejoin: "round" }}>공통 구간</text>
+              </g>)}
               {guard(mid) && <text x={mid![0]} y={mid![1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={arc}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round", cursor: "pointer" }}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -874,11 +889,13 @@ export default function World() {
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북동(NSR)</text>}
               {guard(nw) && <text x={nw![0]} y={nw![1] - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={lock} fillOpacity={0.8}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북서(NWP)</text>}
-              {/* 분기 화살표(맨 위에 그려 라벨·선 위로) — 배경 헤일로 + 색 화살. 좌 NSR(청록)/우 NWP(회색) */}
-              {sticky && guard(bp) && guard(ns) && <path d={arrow(bp!, ns!, 24)} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
-              {sticky && guard(bp) && guard(nw) && <path d={arrow(bp!, nw!, 24)} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
-              {sticky && guard(bp) && guard(ns) && <path d={arrow(bp!, ns!, 24)} fill="none" stroke={arc} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
-              {sticky && guard(bp) && guard(nw) && <path d={arrow(bp!, nw!, 24)} fill="none" stroke={lock} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />}
+              {/* 분기 화살표(빨강) — 분기점 위쪽 별도 표기, 항로선과 미겹침. 배경 헤일로 + 빨강. */}
+              {sticky && bp && guard(bp) && (<g style={{ pointerEvents: "none" }}>
+                <path d={aL} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={aR} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={aL} fill="none" stroke={RED} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={aR} fill="none" stroke={RED} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+              </g>)}
             </g>
           );
         })()}
