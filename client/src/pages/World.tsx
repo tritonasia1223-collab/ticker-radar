@@ -1375,9 +1375,9 @@ export default function World() {
                 </div>
               ) : (() => { const left = d.parties.filter((p) => p.controls); const right = d.parties.filter((p) => !p.controls);
                 return (<>
-                  <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-start gap-1.5">
+                  <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
                     <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[8.5px] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
-                    <div className="self-center pt-4 text-[10px] text-muted-foreground">vs</div>
+                    <div className="self-center text-[10px] text-muted-foreground">vs</div>
                     <div className="flex flex-col gap-1.5">{right.map((p, i) => pcol(p, `r${i}`))}</div>
                   </div>
                   {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[9px] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[9.5px] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
