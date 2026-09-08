@@ -324,6 +324,8 @@ export default function World() {
   const paths = useMemo(() => features.map((f) => pathGen(f as any) || ""), [features, pathGen]);
   const spherePath = useMemo(() => pathGen({ type: "Sphere" } as any) || "", [pathGen]);
   const routePaths = useMemo(() => infra.routes.map((r) => pathGen({ type: "LineString", coordinates: densifyRoute(r.coords).pts } as any) || ""), [pathGen]);
+  // 관문 밖 페이드 스텁 경로(geoPath — 지오 클리핑으로 스핀·이음새 안전). {선 d, 라벨 앵커[lng,lat]}
+  const routeStubs = useMemo(() => infra.routes.map((r) => { const s = (r as any).stub as number[][] | undefined; if (!s) return null; return { d: pathGen({ type: "LineString", coordinates: s } as any) || "", anchor: s[s.length - 1] as [number, number], label: (r as any).stub_label as string | undefined }; }), [pathGen]);
   const [layers, setLayers] = useState({ routes: true, chokes: true, ports: true });
   // 배 흐름: 함대(항로별 등급 척수), densify 캐시, 화물색 토글, 절제 가드
   const [shipCargoView, setShipCargoView] = useState(false);
@@ -734,6 +736,9 @@ export default function World() {
               );
             });
           })}
+          {/* 관문 밖 페이드 스텁 선 — geoPath(클리핑) · 변환 그룹 내 · 배 없음 */}
+          {tradeMode && layers.routes && infra.routes.map((r, i) => { const st = routeStubs[i]; if (!st?.d) return null; const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
+            return <path key={`stub${i}`} d={st.d} fill="none" stroke={rCol(r as any)} strokeOpacity={dim2 ? 0.05 : on ? 0.5 : 0.22} strokeWidth={(on ? 1.6 : 1.2) / t.k} strokeLinecap="round" strokeDasharray={`${2 / t.k} ${3.5 / t.k}`} style={{ pointerEvents: "none" }} />; })}
         </g>
 
         {/* 항로 배 흐름 — 밀도=물동량 등급(§1). 스크린 공간(크기 고정), 위치·회전은 rAF 로. */}
@@ -773,14 +778,13 @@ export default function World() {
               onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } toggleCompare(r.id); }}>{r.ko}</text>
           );
         })}
-        {/* 관문 밖 페이드 스텁 — 전체 연장선 아님, '계속됨'만 암시(유럽·미 동안 방면). 배 없음. */}
-        {tradeMode && layers.routes && infra.routes.map((r, i) => { const stub = (r as any).stub as number[][] | undefined; if (!stub) return null;
-          const pts = stub.map((c) => toScreen(c[0], c[1])).filter(Boolean) as [number, number][]; if (pts.length < 2) return null;
-          const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on; const col = rCol(r as any); const end = pts[pts.length - 1];
-          return (<g key={`stub${i}`} style={{ pointerEvents: "none" }}>
-            <path d={"M" + pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L")} fill="none" stroke={col} strokeOpacity={dim2 ? 0.05 : on ? 0.5 : 0.22} strokeWidth={on ? 1.6 : 1.2} strokeLinecap="round" strokeDasharray="2 3.5" />
-            {(r as any).stub_label && <text x={end[0] + 4} y={end[1] + 3} fontSize={8.5} fontWeight={500} fill={col} fillOpacity={dim2 ? 0.15 : 0.62} style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round" }}>{(r as any).stub_label} →</text>}
-          </g>);
+        {/* 스텁 라벨(스크린 공간) — 선은 위 변환그룹에서 geoPath로 그림. 이음새/뒷면이면 라벨 숨김. */}
+        {tradeMode && layers.routes && infra.routes.map((r, i) => { const st = routeStubs[i]; if (!st?.label) return null;
+          const stub = (r as any).stub as number[][]; const a = toScreen(stub[stub.length - 2][0], stub[stub.length - 2][1]); const b = toScreen(st.anchor[0], st.anchor[1]);
+          if (!a || !b || !inView(b[0], b[1])) return null;
+          if (Math.abs(b[0] - a[0]) > dim.w * 0.5 || Math.abs(b[1] - a[1]) > dim.h * 0.5) return null; // 이음새 wrap → 숨김
+          const on = hlRoutes.has(r.id); const dim2 = hasFocus && !on;
+          return <text key={`stubl${i}`} x={b[0] + 4} y={b[1] + 3} fontSize={8.5} fontWeight={500} fill={rCol(r as any)} fillOpacity={dim2 ? 0.15 : 0.62} style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>{st.label} →</text>;
         })}
 
         {/* 수도 점은 지도에서 제거(시각 복잡도↓). 수도 정보는 국가 카드·검색에서만 유지. */}
