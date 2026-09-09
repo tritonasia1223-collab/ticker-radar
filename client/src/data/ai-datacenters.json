@@ -975,16 +975,16 @@
         "lat": 33.6,
         "lng": -100.8
       },
-      "capacity_operational_mw": null,
+      "capacity_operational_mw": 133,
       "capacity_target_mw": {
-        "min": 800,
-        "max": 800
+        "min": 526,
+        "max": 526
       },
-      "status_stage": "construction",
-      "status_note": "건설 중",
+      "status_stage": "partial_operation",
+      "status_note": "1단계 IT 장비용 133MW 인도 완료·임대료 발생(2026년 2분기). 2단계 건설 중, 2027년 상반기 인도 목표.",
       "landlord": "갤럭시 디지털",
       "tenant": "코어위브",
-      "lease_term_years": null,
+      "lease_term_years": 15,
       "end_user": "코어위브 고객",
       "financing": [
         {
@@ -1003,7 +1003,7 @@
       "financing_total_usd_bn": null,
       "credit_wrapper": "코어위브",
       "credit_wrapper_rating": "BB-",
-      "notes": "",
+      "notes": "운영·목표 용량은 IT 장비용 전력 기준. 1단계 총 전력은 200MW, 1~3단계 계약 총 전력은 800MW이며 IT 장비용은 526MW.",
       "power": {
         "grid_operator": "ERCOT",
         "utility": null,
@@ -1011,9 +1011,11 @@
         "onsite_generation": [],
         "utility_new_build": [],
         "nuclear": false,
-        "note": "구 비트코인 채굴장, 800MW 계통 접속 승인분 활용. 유틸리티 미확인",
+        "note": "기존 채굴장을 AI 데이터센터로 전환. 1~3단계 계약 총 전력 800MW, 캠퍼스 전체 승인 전력 1.63GW(2026.7 발표). 유틸리티 미확인.",
         "confidence": "medium"
-      }
+      },
+      "reviewed_at": "2026-09-09",
+      "status_source_url": "https://www.galaxy.com/newsroom/galaxy-completes-phase-i-of-its-helios-data-center-campus"
     },
     {
       "id": "core-scientific-sites",
@@ -1355,12 +1357,14 @@
       },
       "deal": "20년 PPA, 약 160억",
       "target_year": 2027,
-      "status": "재가동 공사 중, FERC 송전 면제 2026.6.1 승인",
+      "status": "재가동 준비 중. FERC 송전권 이전 면제 및 NRC 연료 허가 변경 승인, 2027년 재가동 목표(2026.8.6 발표).",
       "site_bound": false,
       "feeds_sites": [],
       "confidence": "high",
       "site_type": "restart",
-      "site_type_basis": "plant/status 필드에서 파생(재가동·기존·신규 명시)"
+      "site_type_basis": "plant/status 필드에서 파생(재가동·기존·신규 명시)",
+      "reviewed_at": "2026-09-09",
+      "status_source_url": "https://investors.constellationenergy.com/news-releases/news-release-details/constellation-reports-second-quarter-2026-results"
     },
     {
       "id": "amzn-susquehanna",

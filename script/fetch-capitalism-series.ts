@@ -3,6 +3,7 @@
 // FRED 공개 CSV(키 불필요)에서 받아 client/src/data/capitalism-series.json 에 병합한다.
 // ── 병합 정책: APPEND-ONLY(비파괴) ─────────────────────────────────────────────
 //   기존 포인트는 그대로 보존하고, '마지막 저장 날짜 이후' 신규 포인트만 이어붙인다.
+//   --repair-last-month: 가장 최근 나스닥 월간 표본만 완료된 월말 값으로 교정 가능.
 //   → 오래된 역사(예: gold 1944·debt_gdp 1939), 과거 vintage(개정 전) 값이 절대 바뀌지 않음.
 //   각 시리즈는 병합 전에 '겹침 구간(마지막 N개)'을 재현하는지 자동 검증(overlap ✓/≠)하고,
 //   재현 실패 시 그 시리즈는 SKIP(경고) — 잘못된 FRED id/변환이 데이터를 오염시키는 것을 차단.
@@ -10,14 +11,14 @@
 //   inflation : CPIAUCSL(SA) 의 12개월 YoY(%) 파생. 최근값은 CPI 개정 전 vintage라 미세차 → 검증 면제, append.
 //   dollar    : 1973~2019 는 주요통화 명목지수(단종), 이후 BIS 명목광의(NBUSBIS)로 스티치.
 //               겹침 구간 비율의 중앙값으로 신규 포인트를 리베이스 접합 → 이음매 제거.
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, renameSync } from "fs";
+import { closedMonthEnds, annualChange, mergeObservations, type Point } from "../shared/capitalism-refresh.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, "../client/src/data/capitalism-series.json");
 
-type Point = [string, number];
 interface SeriesDef {
   key: string;          // capitalism-series.json 의 키 (config PANELS.series 와 일치)
   fredId?: string;      // FRED 시리즈 ID (url 미지정 시 CSV URL 구성)
@@ -61,9 +62,17 @@ const SERIES: SeriesDef[] = [
 
 async function fetchCsv(s: SeriesDef): Promise<Point[]> {
   const url = s.url ?? `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${s.fredId}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${s.key}: HTTP ${res.status}`);
-  const text = await res.text();
+  let text = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+      if (!res.ok) throw new Error(`${s.key}: HTTP ${res.status}`);
+      text = await res.text(); break;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
   const lines = text.trim().split("\n").slice(1); // 헤더 제외
   const col = s.valueCol ?? 1;
   const out: Point[] = [];
@@ -73,34 +82,19 @@ async function fetchCsv(s: SeriesDef): Promise<Point[]> {
     const raw = parts[col];
     if (!date || raw === undefined || raw === "." || raw.trim() === "") continue; // 결측치
     if (/^\d{4}-\d{2}$/.test(date)) date += "-01"; // YYYY-MM → YYYY-MM-01
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     const v = Number(raw);
     if (!Number.isFinite(v)) continue;
     out.push([date, v]);
   }
-  return out;
-}
-
-// 일별 → 월말(각 YYYY-MM 마지막 관측), 날짜 YYYY-MM-01 통일.
-function toMonthly(points: Point[]): Point[] {
-  const byMonth = new Map<string, number>();
-  for (const [date, v] of points) byMonth.set(date.slice(0, 7), v); // 정렬됨 → 마지막이 월말
-  return Array.from(byMonth.entries()).map(([ym, v]) => [`${ym}-01`, v] as Point);
-}
-
-// 12개월 YoY(%). 월별 연속 시리즈 가정.
-function yoy(points: Point[], dec: number): Point[] {
-  const out: Point[] = [];
-  for (let i = 12; i < points.length; i++) {
-    const prev = points[i - 12][1];
-    if (prev !== 0 && Number.isFinite(prev)) out.push([points[i][0], Number(((points[i][1] / prev - 1) * 100).toFixed(dec))]);
-  }
-  return out;
+  if (!out.length) throw new Error(`${s.key}: no valid observations`);
+  return out.sort(([a], [b]) => a.localeCompare(b));
 }
 
 async function buildFetched(s: SeriesDef): Promise<Point[]> {
   const raw = await fetchCsv(s);
-  let pts = s.freq === "monthly" ? toMonthly(raw) : raw;
-  if (s.transform === "yoy") pts = yoy(pts, s.decimals);
+  let pts = s.freq === "monthly" ? closedMonthEnds(raw) : raw;
+  if (s.transform === "yoy") pts = annualChange(pts, s.decimals);
   if (s.fromDate) pts = pts.filter(([d]) => d >= s.fromDate!);
   const scale = s.scale ?? 1;
   if (scale !== 1 || s.transform !== "yoy") pts = pts.map(([d, v]) => [d, Number((v * scale).toFixed(s.decimals))] as Point);
@@ -123,12 +117,17 @@ function verifyOverlap(stored: Point[], fMap: Map<string, number>, n = 8): { mat
 
 async function main() {
   const json = JSON.parse(readFileSync(OUT, "utf-8")) as Record<string, Point[]>;
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, corrected = 0;
+  const report: any = { checkedAt: new Date().toISOString(), policy: "append-only; completed monthly samples; optional latest Nasdaq month repair", series: [] };
+  const repair = process.argv.includes("--repair-last-month");
+  const reportDir = join(__dirname, "cap-export");
+  mkdirSync(reportDir, { recursive: true });
+  copyFileSync(OUT, join(reportDir, `capitalism-series-before-${Date.now()}.json`));
   for (const s of SERIES) {
     process.stdout.write(`  ${s.key.padEnd(11)} `);
     let fetched: Point[];
     try { fetched = await buildFetched(s); }
-    catch (e) { console.log(`ERR ${(e as Error).message} — SKIP`); skipped++; continue; }
+    catch (e) { console.log(`ERR ${(e as Error).message} — SKIP`); report.series.push({key:s.key,status:"error",error:String(e)}); skipped++; continue; }
 
     const stored = json[s.key] ?? [];
     const fMap = new Map(fetched.map(([d, v]) => [d, v]));
@@ -137,7 +136,7 @@ async function main() {
     if (stored.length && !s.noVerify) {
       const { matched, total, detail } = verifyOverlap(stored, fMap);
       if (matched < Math.ceil(total * 0.6)) {
-        console.log(`검증실패 ${matched}/${total} [${detail}] — SKIP(매핑 의심)`); skipped++; continue;
+        console.log(`검증실패 ${matched}/${total} [${detail}] — SKIP(매핑 의심)`); report.series.push({key:s.key,status:"overlap-error",detail}); skipped++; continue;
       }
     }
 
@@ -156,12 +155,17 @@ async function main() {
       process.stdout.write(`[splice×${factor.toFixed(4)}] `);
     }
 
-    if (!tail.length) { console.log(`최신 (…${lastStored}) 신규 0`); continue; }
-    json[s.key] = [...stored, ...tail];
-    added += tail.length;
-    console.log(`+${tail.length} → ${tail[0][0]}…${tail[tail.length - 1][0]}`);
+    const merged = mergeObservations(stored, s.stitch ? tail : fetched, repair && s.freq === "monthly");
+    json[s.key] = merged.points;
+    added += merged.added; corrected += merged.corrected.length;
+    report.series.push({ key:s.key, status:"ok", previous:lastStored, latest:merged.points.at(-1)?.[0], added:merged.added,
+      corrected:merged.corrected.map(([date,value]) => ({ date, before:stored.find(([d]) => d===date)?.[1], after:value })) });
+    console.log(`+${merged.added}, corrected ${merged.corrected.length} → ${merged.points.at(-1)?.[0]}`);
   }
-  writeFileSync(OUT, JSON.stringify(json));
+  writeFileSync(OUT + ".tmp", JSON.stringify(json));
+  renameSync(OUT + ".tmp", OUT);
+  writeFileSync(join(reportDir, "capitalism-refresh-latest.json"), JSON.stringify({ ...report, added, corrected, skipped }, null, 2));
+  if (skipped) process.exitCode = 1;
   console.log(`\n✅ 병합 완료 → 신규 ${added}개 포인트 추가, ${skipped}개 시리즈 SKIP (총 ${Object.keys(json).length}개 시리즈)`);
 }
 main().catch((e) => { console.error("실패:", e); process.exit(1); });

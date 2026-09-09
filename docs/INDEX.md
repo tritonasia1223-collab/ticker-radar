@@ -6,6 +6,8 @@
 |---|---|
 | [프로젝트 README](../README.md) | 기능 상태, 실행·검증·운영 원칙 |
 | [CAPITALISM](CAPITALISM.md) | 경제사 데이터·편집·차트 구조 |
+| [데이터 갱신 목록](DATA-UPDATES.md) | 자동 일정·수동 갱신·최근 실행·자료 기준일 |
+| [월간 갱신 운영](MONTHLY-DATA-REFRESH.md) | 매월 3일 09:00, 수집·근거 조사·검증·배포 절차 |
 | [협업 편집](COLLABORATION.md) | 2인 편집·충돌·초안 복구·저장 이력 |
 | [FED](FED.md) | 미국 유동성 구현과 수집 |
 | [WORLD](WORLD.md) | 지도 코드·데이터·개발 범위 |

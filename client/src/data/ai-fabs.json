@@ -82,33 +82,81 @@
     },
     {
       "id": "micron-ny",
-      "company": "micron", "site_name": "마이크론 뉴욕 (Clay)",
-      "location": { "city": "Clay (Onondaga Co.)", "state": "NY", "lat": 43.18, "lng": -76.18 },
-      "category": "memory", "node_note": "첨단 DRAM (메가팹, 최대 4팹)",
-      "invest_announced_usd_bn": 100, "chips_award_usd_bn": 6.1, "target_year": 2029,
-      "status": "construction", "status_as_of": "2026-08",
-      "status_note": "환경 심사 후 부지 착공. 20년간 최대 $100B 발표치(1단계 우선).",
-      "status_source_url": "https://www.micron.com/about/newsroom",
+      "company": "micron",
+      "site_name": "마이크론 뉴욕 (Clay)",
+      "location": {
+        "city": "Clay (Onondaga Co.)",
+        "state": "NY",
+        "lat": 43.18,
+        "lng": -76.18
+      },
+      "category": "memory",
+      "node_note": "첨단 DRAM (메가팹, 최대 4팹)",
+      "invest_announced_usd_bn": 100,
+      "chips_award_usd_bn": 6.1,
+      "target_year": 2030,
+      "status": "construction",
+      "status_as_of": "2026-07",
+      "status_note": "2026년 1월 착공, 7월 기초 콘크리트 타설·상부 구조 공사 진입. 생산 개시는 2030년 목표.",
+      "status_source_url": "https://investors.micron.com/news/press-release/2026/Micron-Accelerates-U-S--Investments-Pours-First-Concrete-at-New-York-Fab/default.aspx",
       "status_log": [
-        { "status": "announced", "changed_on": "2022-10", "note": "최대 $100B DRAM 메가팹 발표", "source_url": "https://www.micron.com/about/newsroom" },
-        { "status": "construction", "changed_on": "2025", "note": "부지 정지·착공", "source_url": "https://www.micron.com/about/newsroom" }
+        {
+          "status": "announced",
+          "changed_on": "2022-10",
+          "note": "최대 $100B DRAM 메가팹 발표",
+          "source_url": "https://www.micron.com/about/newsroom"
+        },
+        {
+          "status": "construction",
+          "changed_on": "2026-01-16",
+          "note": "공식 착공. 첫 생산 2030년 목표.",
+          "source_url": "https://investors.micron.com/news/press-release/2026/Micron-Celebrates-Official-Groundbreaking-at-New-York-Megafab-Site-01-16-2026/default.aspx"
+        },
+        {
+          "status": "construction",
+          "changed_on": "2026-07",
+          "note": "기초 콘크리트 타설·상부 구조 공사 진입.",
+          "source_url": "https://investors.micron.com/news/press-release/2026/Micron-Accelerates-U-S--Investments-Pours-First-Concrete-at-New-York-Fab/default.aspx"
+        }
       ],
-      "source_url": "https://www.micron.com/about/newsroom"
+      "source_url": "https://www.micron.com/about/newsroom",
+      "reviewed_at": "2026-09-09"
     },
     {
       "id": "micron-id",
-      "company": "micron", "site_name": "마이크론 아이다호 (Boise)",
-      "location": { "city": "Boise", "state": "ID", "lat": 43.53, "lng": -116.23 },
-      "category": "memory", "node_note": "첨단 DRAM (HBM 연계)",
-      "invest_announced_usd_bn": 15, "chips_award_usd_bn": 6.1, "target_year": 2027,
-      "status": "construction", "status_as_of": "2026-08",
-      "status_note": "본사 인접 신규 DRAM 팹 건설(2023 착공). CHIPS 보조금은 NY·ID 합산 배정.",
-      "status_source_url": "https://www.micron.com/about/newsroom",
+      "company": "micron",
+      "site_name": "마이크론 아이다호 (Boise)",
+      "location": {
+        "city": "Boise",
+        "state": "ID",
+        "lat": 43.53,
+        "lng": -116.23
+      },
+      "category": "memory",
+      "node_note": "첨단 DRAM (HBM 연계)",
+      "invest_announced_usd_bn": 15,
+      "chips_award_usd_bn": 6.1,
+      "target_year": 2027,
+      "status": "construction",
+      "status_as_of": "2026-07",
+      "status_note": "첫 팹은 2027년 중반 첫 웨이퍼 생산 목표. 두 번째 팹은 2028년 말 목표. CHIPS 보조금은 NY·ID 합산 배정.",
+      "status_source_url": "https://investors.micron.com/news/press-release/2026/Micron-Accelerates-U-S--Investments-Pours-First-Concrete-at-New-York-Fab/default.aspx",
       "status_log": [
-        { "status": "announced", "changed_on": "2022-09", "note": "$15B DRAM 팹 발표", "source_url": "https://www.micron.com/about/newsroom" },
-        { "status": "construction", "changed_on": "2023-10", "note": "착공", "source_url": "https://www.micron.com/about/newsroom" }
+        {
+          "status": "announced",
+          "changed_on": "2022-09",
+          "note": "$15B DRAM 팹 발표",
+          "source_url": "https://www.micron.com/about/newsroom"
+        },
+        {
+          "status": "construction",
+          "changed_on": "2023-10",
+          "note": "착공",
+          "source_url": "https://www.micron.com/about/newsroom"
+        }
       ],
-      "source_url": "https://www.micron.com/about/newsroom"
+      "source_url": "https://www.micron.com/about/newsroom",
+      "reviewed_at": "2026-09-09"
     },
     {
       "id": "skhynix-in",
@@ -142,15 +190,39 @@
     },
     {
       "id": "micron-va",
-      "company": "micron", "site_name": "마이크론 버지니아 (Manassas)",
-      "location": { "city": "Manassas", "state": "VA", "lat": 38.75, "lng": -77.48 },
-      "category": "memory", "node_note": "메모리(장수명 DRAM) 확장",
-      "invest_announced_usd_bn": 2, "chips_award_usd_bn": null, "target_year": 2027,
-      "status": "construction", "status_as_of": "2026-08",
-      "status_note": "기존 팹 확장.",
-      "status_source_url": "https://www.micron.com/about/newsroom",
-      "status_log": [{ "status": "construction", "changed_on": "2024", "note": "확장 착공", "source_url": "https://www.micron.com/about/newsroom" }],
-      "source_url": "https://www.micron.com/about/newsroom"
+      "company": "micron",
+      "site_name": "마이크론 버지니아 (Manassas)",
+      "location": {
+        "city": "Manassas",
+        "state": "VA",
+        "lat": 38.75,
+        "lng": -77.48
+      },
+      "category": "memory",
+      "node_note": "메모리(장수명 DRAM) 확장",
+      "invest_announced_usd_bn": 2,
+      "chips_award_usd_bn": null,
+      "target_year": 2026,
+      "status": "operating",
+      "status_as_of": "2026-05-22",
+      "status_note": "기존 팹에서 1α DRAM 초기 생산 개시(2026.5). 품질 인증을 마친 생산은 2026년 말 목표이며, 확장 전체 완료를 뜻하지 않음.",
+      "status_source_url": "https://investors.micron.com/news/press-release/2026/Micron-Advances-Made-in-America-Memory-With-Manufacturing-Expansion-in-Virginia/default.aspx",
+      "status_log": [
+        {
+          "status": "construction",
+          "changed_on": "2024",
+          "note": "확장 착공",
+          "source_url": "https://www.micron.com/about/newsroom"
+        },
+        {
+          "status": "operating",
+          "changed_on": "2026-05-22",
+          "note": "1α DRAM 초기 생산 개시. 인증 생산은 연말 목표.",
+          "source_url": "https://investors.micron.com/news/press-release/2026/Micron-Advances-Made-in-America-Memory-With-Manufacturing-Expansion-in-Virginia/default.aspx"
+        }
+      ],
+      "source_url": "https://www.micron.com/about/newsroom",
+      "reviewed_at": "2026-09-09"
     },
     {
       "id": "absolics-ga",

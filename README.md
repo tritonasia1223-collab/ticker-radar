@@ -67,7 +67,7 @@ npm run build
 
 백업·이력·조사 원본은 임시 파일이 아닙니다. script/cap-backup.*.json, script/cap-history/, script/cap-export/는 로컬 보존 및 gitignore 대상입니다. **공유 Supabase에 drizzle-kit push를 실행하지 않습니다.** 운영 DDL은 기존의 명시적 script/db-push-*.ts 등을 사용합니다.
 
-Fed 워크플로는 목요일 22:30 UTC에 연준 주간·재무부 월간 자료를 수집하고 검증합니다. 경제사 시계열과 지도 자료는 재생성 및 배포 후 갱신됩니다.
+Fed 워크플로는 목요일 22:30 UTC에 연준 주간·재무부 월간 자료를 수집하고 검증합니다. 경제사 시계열·세계 현황판은 매월 3일 09:00 KST에 Codex 예약으로 수집·공식 자료 조사·검증·배포합니다. 로컬 예약은 컴퓨터와 Codex 앱이 켜져 있어야 합니다. [전체 갱신 목록](docs/DATA-UPDATES.md)과 [월간 운영 절차](docs/MONTHLY-DATA-REFRESH.md)를 참고하세요.
 
 ## 문서
 
