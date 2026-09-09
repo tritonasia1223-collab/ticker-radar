@@ -67,11 +67,11 @@ const TERRITORIAL_YELLOW = "#F2C40F"; // 영토·주권 — 지도 요소(점선
 const TERRITORIAL_TEXT = "#8A6D00";   // 투톤 — 텍스트·뱃지(노랑은 밝은 배경 소자 가독 불가)
 // 유형 그룹(칩=범례+스위치). territorial 은 별도 층. category → group.
 const catGroup = (cat: string) => (cat === "interstate" ? "interstate" : cat === "civil" ? "civil" : "nonstate");
-const CONFLICT_LEGEND: { group: string; ko: string; color: string }[] = [
-  { group: "interstate", ko: "국가간전", color: CONFLICT_TYPE_COLOR.interstate },
-  { group: "civil", ko: "내전", color: CONFLICT_TYPE_COLOR.civil },
-  { group: "nonstate", ko: "무장세력·대민간", color: CONFLICT_TYPE_COLOR.nonstate },
-  { group: "territorial", ko: "영토·주권", color: TERRITORIAL_YELLOW },
+const CONFLICT_LEGEND: { group: string; ko: string; color: string; help: string }[] = [
+  { group: "interstate", ko: "국가간전", color: CONFLICT_TYPE_COLOR.interstate, help: "나라 대 나라의 전쟁" },
+  { group: "civil", ko: "내전", color: CONFLICT_TYPE_COLOR.civil, help: "한 나라 안에서 정부와 반군이 벌이는 전쟁" },
+  { group: "nonstate", ko: "무장세력·대민간", color: CONFLICT_TYPE_COLOR.nonstate, help: "정부가 아닌 무장조직끼리의 충돌 + 민간인을 상대로 한 일방적 폭력" },
+  { group: "territorial", ko: "영토·주권", color: TERRITORIAL_YELLOW, help: "총성 없는 영토·주권 다툼 (직접 정리)" },
 ];
 const CONFLICT_RED = CONFLICT_TYPE_COLOR.interstate; // 상단 알약 아이콘 등 잔여 참조용
 // category(파생) × 강도 → 직관 라벨.
@@ -155,6 +155,11 @@ const isReuseNuke = (t?: string) => t === "restart" || t === "existing";
 const dc = dcData as unknown as { meta: any; sites: Site[]; analysis_notes: string[]; nuclear_deals: Nuke[] };
 const GROUP_COLOR: Record<string, string> = { A: "#7c3aed", B: "#2563eb", C: "#db2777" };
 const GROUP_LABEL: Record<string, string> = { A: "스타게이트 계열", B: "하이퍼스케일러", C: "네오클라우드" };
+const GROUP_GLOSS: Record<string, string> = { A: "오픈AI '스타게이트' 계열 — 개발사가 이 사업만을 위한 별도 법인(SPV)으로 짓고 투자등급 임차인이 장기 임대로 신용을 댐", B: "자체 초대형 DC를 짓는 빅테크(하이퍼스케일러) — 대부분 자기 현금으로", C: "GPU를 빌려주는 신생 클라우드 업체(네오클라우드)" };
+// 자금 조달 유형 — 영문 enum 노출 금지, 한글로.
+const FIN_TYPE_KO: Record<string, string> = { equity: "지분 투자", debt: "대출", bond: "채권 발행", power: "전력 계약", self: "자기자본", project_finance: "프로젝트 파이낸싱" };
+// 발전 유형 한글 — 현장발전·유틸 신설 공용(영문 enum 노출 금지).
+const genTypeKo = (t: string) => t.includes("combined_cycle") ? "가스 복합화력" : t.includes("recip") ? "가스 엔진" : t.includes("turbine") ? "가스 터빈" : t.includes("gas") ? "가스" : (t.includes("nuclear") || t === "smr") ? "원전" : t.includes("battery") ? "배터리" : t.includes("solar") ? "태양광" : t.includes("wind") ? "풍력" : t;
 const GRID_COLOR: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b" };
 const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "#64748b";
 const STAGES = ["announced", "approved", "construction", "partial_operation", "operating"];
@@ -204,7 +209,7 @@ const fabs = (fabsData as unknown as { _meta: any; fabs: Fab[] }).fabs;
 const fabsMeta = (fabsData as unknown as { _meta: any })._meta;
 const FAB_COLOR: Record<string, string> = { intel: "#2563eb", tsmc: "#dc2626", samsung: "#7c3aed", skhynix: "#ea580c", micron: "#059669", ti: "#b45309", other: "#64748b" };
 const FAB_COMPANY_KO: Record<string, string> = { intel: "인텔", tsmc: "TSMC", samsung: "삼성", skhynix: "SK하이닉스", micron: "마이크론", ti: "TI", other: "기타" };
-const FAB_STATUS_KO: Record<string, string> = { operating: "가동", construction: "건설 중", announced: "발표만", paused: "지연·보류" };
+const FAB_STATUS_KO: Record<string, string> = { operating: "가동", construction: "건설 중", announced: "발표", paused: "중단" };
 const FAB_CAT_KO: Record<string, string> = { logic: "로직", memory: "메모리", packaging: "패키징", other: "기타" };
 const FAB_STATUS_ORDER: Record<string, number> = { operating: 0, construction: 1, announced: 2, paused: 3 };
 const fabFillOpacity = (s: string) => (s === "operating" ? 0.85 : s === "construction" || s === "paused" ? 0.4 : 0);
@@ -240,21 +245,21 @@ const RTO_KO: Record<string, string> = { ERCOT: "텍사스 전기신뢰성위원
 const RTO_REGION_KO: Record<string, string> = { ERCOT: "텍사스 대부분 (주 부하의 ~90%)", PJM: "중부대서양~중서부 13개 주 + DC", MISO: "중서부~루이지애나, 남북 종단 15개 주", SPP: "대평원 (다코타~오클라호마·캔자스)", CAISO: "캘리포니아 + 네바다 일부", ISONE: "북동부 6개 주", NYISO: "뉴욕주 단독" };
 // 성격 태그 배지(§1) — 조직 한글명 대신 권역 성격(가격대·특징) 요약. 패널 행 헤더에 배지로 표시.
 const RTO_TAG: Record<string, string> = {
-  ERCOT: "평시 저가 · 변동 큼", PJM: "용량가 급등 중", MISO: "중저가 · 남북 종단", SPP: "풍력 최상 · 저가",
-  CAISO: "고가 · 덕커브", ISONE: "고가 · 겨울 리스크", NYISO: "고가 · 송전 병목",
+  ERCOT: "평시 저가 · 변동 큼", PJM: "AI 수요로 가격 급등", MISO: "중저가 · 남북 종단", SPP: "풍력 최상 · 저가",
+  CAISO: "고가 · 낮밤 불균형", ISONE: "고가 · 겨울 리스크", NYISO: "고가 · 송전 병목",
 };
 const RTO_DESC: Record<string, string> = {
-  ERCOT: "풍력·태양광·저가 가스 비중이 높아 평균 전기 가격이 낮음. 다만 희소성 가격제라 위기 때 급등. 규제가 가볍고 접속 절차가 빨라 DC 진입 최속 권역.",
-  PJM: "원래는 중간 가격대였으나 AI 수요가 경매가를 밀어올리며 소비자 요금 논쟁이 격화되고 있음. 버지니아 '데이터센터 앨리'가 이 권역.",
+  ERCOT: "풍력·태양광·저가 가스 비중이 높아 평균 전기 가격이 낮음. 다만 전력이 모자랄 때 가격이 치솟도록 설계된 시장(희소성 가격제)이라 위기 때 급등. 규제가 가볍고 접속 절차가 빨라 DC 진입 최속 권역.",
+  PJM: "원래는 중간 가격대였으나 AI 수요가 발전소 확보 비용(용량 경매가)을 밀어올리며 소비자 요금 논쟁이 격화되고 있음. 버지니아 '데이터센터 앨리'가 이 권역.",
   MISO: "중저가 가격이 특징인 권역으로, 하이페리온이 이쪽 권역에 속함.",
   SPP: "풍력 비중이 최고로 높아 가격이 저렴하며, 바람이 많이 부는 날에는 마이너스 가격도 종종 등장. 땅도, 전력도 여유 있지만 송전 인프라 문제가 있어 DC 진입은 미미.",
-  CAISO: "낮에는 태양광이 과잉 생산되고, 저녁에는 가스가 피크를 찍는 에너지 불균형. 여기에 주 정책·인프라 비용이 얹혀 가격도 높은 편. 허가 난도 + 고비용으로 DC 진입이 어려운 권역.",
+  CAISO: "낮에는 태양광이 과잉 생산되고, 저녁에는 가스가 피크를 찍는 낮밤 불균형(수급 곡선이 오리 모양이라 '덕 커브'). 여기에 주 정책·인프라 비용이 얹혀 가격도 높은 편. 허가 난도 + 고비용으로 DC 진입이 어려운 권역.",
   ISONE: "가스 반입 병목 문제가 있어 미국 내 전기 최고가권. 특히 가스 수요가 많아지는 겨울 수급이 타이트하고, DC 진입에는 부적합.",
   NYISO: "수력·원전 덕에 업스테이트(북·중·서부)는 저렴하지만 뉴욕시·롱아일랜드는 고가인 이중 시장 — 사이를 잇는 송전 병목이 격차의 원인.",
 };
 // 비ISO 지역(§2) — 성격 태그 + 설명. 유틸 폴리곤은 후속(EIA-861), 여기선 목록으로만.
 const NONISO_ROWS: { region: string; tag: string; desc: string }[] = [
-  { region: "남동부 (조지아·캐롤라이나·플로리다 등)", tag: "인가 요금 · 딜 빠름", desc: "ISO를 거치지 않는 수직통합 체제로 시장가는 없지만 주 위원회가 직접 인가한 요금이 고정. 유틸리티 회사와 직접 딜을 맺을 수 있어 DC 전기 수급의 확실성과 높은 속도가 보장됨." },
+  { region: "남동부 (조지아·캐롤라이나·플로리다 등)", tag: "인가 요금 · 딜 빠름", desc: "ISO를 거치지 않고 발전부터 판매까지 한 회사가 다 하는 체제(수직통합)라 시장가는 없지만 주 위원회가 직접 인가한 요금이 고정. 유틸리티 회사와 직접 딜을 맺을 수 있어 DC 전기 수급의 확실성과 높은 속도가 보장됨." },
   { region: "테네시밸리 (TVA)", tag: "연방 공기업 · 저가", desc: "수력·원자력을 기반으로 저가 전기를 공급. 대형 DC 유치에 적극적 태도를 보이는 권역." },
   { region: "북서부 (BPA)", tag: "수력 최저가", desc: "컬럼비아강 수원을 이용하는 수력 발전 덕분에 미국 최저가를 제공하는 권역." },
   { region: "서부 산악 (CAISO 밖)", tag: "유틸별 상이", desc: "PacifiCorp·NV·APS 등 유틸마다 요금·딜 조건이 다름. 다수가 CAISO 실시간 시장(WEIM)에 참여." },
@@ -1201,22 +1206,24 @@ export default function World() {
         {conflictMode && (
         <div className="flex min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           {/* 1줄: 제목 */}
-          <div className="flex items-center gap-1.5 px-2.5 pt-2.5 pb-1"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-sm font-bold">분쟁</span><span className="ml-auto text-[9px] text-muted-foreground" title={`출처: ${conflictsMeta.source} · 집계 ${conflictsMeta.window} · 영토·주권 = 직접 큐레이션`}>UCDP · 직접</span></div>
+          <div className="flex items-center gap-1.5 px-2.5 pt-2.5 pb-1"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-sm font-bold">분쟁</span>
+            <span className="cursor-help text-[11px] text-muted-foreground" title={"국경 안쪽 빛(글로우) = 교전이 벌어지는 나라. 색은 분쟁 유형, 진하기는 규모.\n지도 위 점 = 최근 사건들의 지리적 중심점 — 정확한 격전지가 아니라 대략의 무게중심.\n노랑 점선 = 총성 없는 영토·주권 분쟁. 클릭하면 각국 주장이 열림.\n데이터: 웁살라대 분쟁 데이터(UCDP) 자동 + 영토 분쟁은 직접 정리."}>ⓘ</span>
+            <span className="ml-auto text-[9px] text-muted-foreground" title={`출처: ${conflictsMeta.source} · 집계 ${conflictsMeta.window} · 영토·주권 = 직접 큐레이션`}>UCDP · 직접</span></div>
           {/* 2줄: 칩=범례+스위치 (유형별 on/off) */}
           <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">
             {CONFLICT_LEGEND.map((l) => { const on = typeOn[l.group];
-              return <button key={l.group} onClick={() => setTypeOn((o) => ({ ...o, [l.group]: !o[l.group] }))} title="클릭 = 이 유형 켜기/끄기 (글로우·마커·목록·카운트 함께)"
+              return <button key={l.group} onClick={() => setTypeOn((o) => ({ ...o, [l.group]: !o[l.group] }))} title={`${l.help}\n(클릭 = 이 유형 켜기/끄기)`}
                 className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${on ? "border-border" : "border-border/40 text-muted-foreground/50"}`}>
                 <span className="h-2 w-2 rounded-full" style={{ background: on ? l.color : "#9ca3af" }} /><span className={on ? "" : "line-through"}>{l.ko}</span></button>; })}
           </div>
           {/* 3줄: 접힌 목록 헤더(기본 접힘) */}
           <button onClick={() => setListExpanded((v) => !v)} className="flex items-center gap-1.5 border-t border-border px-2.5 py-1.5 text-left text-[11px] hover:bg-muted/30">
-            <span className="font-medium">분쟁 {visConflicts.length}</span><span className="text-muted-foreground/60">·</span><span className="font-medium" style={{ color: TERRITORIAL_TEXT }}>분쟁지 {visDisputes.length}</span>
+            <span className="font-medium">교전 중 {visConflicts.length}</span><span className="text-muted-foreground/60">·</span><span className="font-medium" style={{ color: TERRITORIAL_TEXT }}>영토 분쟁 {visDisputes.length}</span>
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listExpanded ? "" : "-rotate-90"}`} />
           </button>
           {listExpanded && (
           <div className="min-h-0 overflow-auto border-t border-border">
-            <div className="px-2.5 py-1 text-[10px] text-muted-foreground">강도순 · <button onClick={() => setShowArmed((v) => !v)} className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "무력분쟁 포함"}</button></div>
+            <div className="px-2.5 py-1 text-[10px] text-muted-foreground">강도순 · <button onClick={() => setShowArmed((v) => !v)} title="연간 전투 사망 25명 이상~1,000명 미만도 표시 (기본은 전쟁급만)" className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "소규모 분쟁 포함"}</button></div>
             {visConflicts.map((c) => { const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id; const war = c.intensity === "war";
               return (<button key={c.id} onMouseEnter={() => setHoverConflict(c.id)} onMouseLeave={() => setHoverConflict(null)} onClick={() => goTo({ kind: "conflict", id: c.id })}
                 className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
@@ -1361,16 +1368,16 @@ export default function World() {
               return (<div key={key} className="flex min-w-0 flex-col gap-1">
                 {idx != null && !gray ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted" style={pillSt}>{inner}</button>
                   : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold" style={pillSt}>{inner}</span>}
-                <div className="rounded-lg border px-2 py-1.5 text-[10.5px] leading-snug" style={bubSt}>{p.claim}</div>
+                <div className="rounded-lg border px-2 py-1.5 text-[10.5px] leading-snug" style={bubSt}>{glossText(p.claim)}</div>
               </div>); };
             const layout = d.layout ?? "axis";
             return (<>
               <div className="flex items-center gap-1.5 pr-5"><Diamond className="h-4 w-4 shrink-0" style={{ color: TERRITORIAL_TEXT, fill: TERRITORIAL_YELLOW }} /><span className="text-[15px] font-bold leading-tight">{d.star ? "★ " : ""}{d.name_ko}</span>
                 <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: TERRITORIAL_YELLOW + "33", color: TERRITORIAL_TEXT }}>영토·주권</span></div>
-              {d.note && <div className="mt-0.5 text-[10px] text-muted-foreground">{d.note}</div>}
+              {d.note && <div className="mt-0.5 text-[10px] text-muted-foreground">{glossText(d.note)}</div>}
               {lc && <button onClick={() => goTo({ kind: "conflict", id: lc.id })} className="mt-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold" style={{ borderColor: CONFLICT_RED + "66", color: CONFLICT_RED }}><Swords className="h-3 w-3" />활성 분쟁 연동 · {lc.name_ko}</button>}
               <div className="mt-2 flex flex-wrap gap-1">
-                {d.stakes.map((s, i) => <span key={i} className="rounded-full border px-1.5 py-0.5 text-[10px]" style={{ borderColor: TERRITORIAL_YELLOW + "88", background: TERRITORIAL_YELLOW + "14" }}><b style={{ color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</b> <span className="text-muted-foreground">— {s.note}</span></span>)}
+                {d.stakes.map((s, i) => <span key={i} className="rounded-full border px-1.5 py-0.5 text-[10px]" style={{ borderColor: TERRITORIAL_YELLOW + "88", background: TERRITORIAL_YELLOW + "14" }}><b style={{ color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</b> <span className="text-muted-foreground">— {glossText(s.note)}</span></span>)}
               </div>
               {layout === "grid" ? (
                 <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-2">{d.parties.map((p, i) => pcol(p, i, !p.controls))}</div>
@@ -1416,7 +1423,7 @@ export default function World() {
         <div className="absolute right-4 flex gap-1" style={{ top: dim.w < 560 ? 112 : dim.w < 1050 ? 64 : 16 }}>
           <button onClick={() => setDcNuke((v) => !v)} title={`미국 전체 원전 ${nuclearPlants.length}기 — 상태별 색(가동 초록·퇴역 회색·재가동 앰버·취소). 보라 링 = AI 데이터센터 연계 · 보라 점선 ⚛ = AI 신규 SMR 계획.`}
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#16a34a" : undefined }} />원전</button>
-          <button onClick={() => setDcTx((v) => !v)} title="345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사)."
+          <button onClick={() => setDcTx((v) => !v)} title={"345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사).\n\n연결선 읽는 법:\n· 실선 = 발전소에서 전기가 직접 오는 물리 연결\n· 점선 = 전기를 사기로 계약한 관계 (실제 전기는 전력망으로 흐름)\n· 채색 없음 = 소속 전력망만 표시"}
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
           <button onClick={() => { setDcFabs((v) => !v); setFabSel(null); }} title={`반도체 팹 ${dcFabs ? "끄기" : "켜기"} — 육각 마커(회사색·상태 채움). 발표≠착공≠가동을 상태 필드로 추적.`}
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "#2563eb" : undefined }} />반도체 팹</button>
@@ -1444,8 +1451,12 @@ export default function World() {
           {dcFill === "rto" && (
           <div className="flex max-h-[calc(100vh-15rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
             <button onClick={() => setGridPanelOpen((o) => !o)} className="flex items-center gap-1.5 p-2.5 pb-2 text-left hover:bg-muted/30">
-              <Zap className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-bold">전력계통</span><span className="text-[9px] text-muted-foreground">RTO/ISO 7 · 비ISO</span>
-              <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${gridPanelOpen ? "" : "-rotate-90"}`} />
+              <Zap className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5"><span className="text-sm font-bold">전력계통</span><span className="text-[9px] text-muted-foreground">RTO/ISO 7 · 비ISO</span></span>
+                <span className="block text-[9.5px] leading-tight text-muted-foreground/80">권역 = 전기를 사고파는 시장의 경계 — 색이 곧 요금 문법</span>
+              </span>
+              <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform ${gridPanelOpen ? "" : "-rotate-90"}`} />
             </button>
             {gridPanelOpen && (
             <div className="min-h-0 overflow-auto border-t border-border py-1">
@@ -1497,7 +1508,7 @@ export default function World() {
           return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setDcSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} /><span className="text-base font-bold leading-tight">{s.name}</span></div>
-            <div className="text-[11px] text-muted-foreground">{s.location.city}, {s.location.state} · {GROUP_LABEL[s.group]}</div>
+            <div className="text-[11px] text-muted-foreground">{s.location.city}, {s.location.state} · <span className="tr-gloss" title={GROUP_GLOSS[s.group]}>{GROUP_LABEL[s.group]}</span></div>
             <div className="mt-2 flex items-baseline gap-1.5 text-[12px]"><b className="tabular-nums">{s.capacity_operational_mw ?? "—"}MW</b><span className="text-muted-foreground">운영 / 목표 {s.capacity_target_mw.max ? (s.capacity_target_mw.min === s.capacity_target_mw.max ? `${s.capacity_target_mw.max}` : `${s.capacity_target_mw.min}~${s.capacity_target_mw.max}`) : "—"}MW</span></div>
             {/* 생애 단계 5칸 — 셰브론(화살표) 진행 리본. 각 칸 끝이 뾰족→다음 칸 홈에 맞물림. 양끝은 한쪽만 뾰족/옴폭. 현재 단계 굵게. */}
             <div className="mt-2 flex gap-[2px]">{STAGES.map((st, i) => { const done = i <= stageIdx; const cur = i === stageIdx;
@@ -1511,20 +1522,20 @@ export default function World() {
             })}</div>
             {s.status_note && <div className="mt-1 text-[10.5px] text-muted-foreground">{s.status_note}</div>}
             <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
-              <span className="text-muted-foreground">개발/소유</span><span>{s.landlord}</span>
+              <span className="text-muted-foreground">개발/소유</span><span>{glossText(s.landlord)}</span>
               <span className="text-muted-foreground">임차</span><span>{s.tenant ?? "—"}{s.lease_term_years ? ` · ${s.lease_term_years}년` : ""}</span>
               <span className="text-muted-foreground">최종 사용</span><span>{s.end_user ?? "—"}</span></div>
-            <div className="mt-2 flex items-center gap-1.5 text-[11.5px]"><span className="text-muted-foreground">신용 래퍼</span><span className="font-medium">{s.credit_wrapper ?? "—"}</span>{s.credit_wrapper_rating && <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</div>
+            <div className="mt-2 flex items-center gap-1.5 text-[11.5px]"><span className="tr-gloss text-muted-foreground" title="전기·임대료를 낼 회사의 신용 — 이 사업의 돈줄이 얼마나 튼튼한가">임차인 신용등급</span><span className="font-medium">{s.credit_wrapper ?? "—"}</span>{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
               <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 <span className="ml-auto text-[10px] font-normal text-muted-foreground">신뢰도 {s.power.confidence}</span></div>
               <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px]">
                 <span className="text-muted-foreground">계통</span><span><b style={{ color: gridColor(s.power.grid_operator) }}>{s.power.grid_operator}</b>{s.power.utility ? ` · ${s.power.utility}` : ""} <span className="text-muted-foreground">({s.power.grid_share})</span></span>
-                {s.power.onsite_generation.length > 0 && <><span className="text-muted-foreground">현장 발전</span><span>{s.power.onsite_generation.map((g) => `${g.type.includes("gas") ? "가스" : g.type.includes("nuclear") || g.type === "smr" ? "원전" : g.type.includes("battery") ? "배터리" : g.type.includes("solar") ? "태양광" : g.type}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ")}</span></>}
-                {s.power.utility_new_build.length > 0 && <><span className="text-muted-foreground">유틸 신설</span><span>{s.power.utility_new_build.map((g) => `${g.type} ${g.mw ?? ""}MW`).join(" · ")}</span></>}</div>
-              {s.power.note && <div className="mt-1 text-[10.5px] text-muted-foreground">{s.power.note}</div>}</div>)}
+                {s.power.onsite_generation.length > 0 && <><span className="text-muted-foreground">현장 발전</span><span>{s.power.onsite_generation.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ")}</span></>}
+                {s.power.utility_new_build.length > 0 && <><span className="text-muted-foreground">유틸 신설</span><span>{s.power.utility_new_build.map((g) => `${genTypeKo(g.type)} ${g.mw ?? ""}MW`).join(" · ")}</span></>}</div>
+              {s.power.note && <div className="mt-1 text-[10.5px] text-muted-foreground">{glossText(s.power.note)}</div>}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
-              <div className="space-y-0.5">{s.financing.map((f, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">{f.type}</span><span className="truncate">{f.party}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>))}</div></div>
-            {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{s.notes}</div>}
+              <div className="space-y-0.5">{s.financing.map((f, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">{FIN_TYPE_KO[f.type] ?? f.type}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>))}</div></div>
+            {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{glossText(s.notes)}</div>}
           </div>);
         })()}
 
@@ -1625,7 +1636,7 @@ function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClo
           <GRow mark={dot(CONFLICT_TYPE_COLOR.nonstate)}><b>무장세력·대민간</b> — 비국가 무장세력 충돌·민간인 대상 폭력.</GRow>
         </GSection>
         <GSection title="이걸 보고 싶으면">
-          <GRow mark="▸">큰 전쟁 말고 <b>작은 분쟁까지 다</b> → 왼쪽 '무력분쟁 포함'.</GRow>
+          <GRow mark="▸">큰 전쟁 말고 <b>작은 분쟁까지 다</b> → 왼쪽 '소규모 분쟁 포함'.</GRow>
           <GRow mark="▸"><b>유형·당사국·사망자</b> → 진앙/목록 클릭하면 카드에.</GRow>
           <GRow mark="▸"><b>과거 전쟁</b>은 왼쪽 '에피소드' — 개별 재생은 준비 중입니다.</GRow>
         </GSection>

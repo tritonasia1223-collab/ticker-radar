@@ -491,7 +491,7 @@
       },
       "status_stage": "construction",
       "status_note": "1차 2GW 2028년, 최대 5GW",
-      "landlord": "SPV 베이녜 인베스터 LLC (블루아울 80% · 메타 20%)",
+      "landlord": "{{SPV|이 사업만을 위한 별도 법인}} 베이녜 인베스터 LLC ({{블루아울|사모펀드}} 80% · 메타 20%)",
       "tenant": "메타",
       "lease_term_years": null,
       "end_user": "메타",
@@ -623,7 +623,7 @@
         "onsite_generation": [],
         "utility_new_build": [],
         "nuclear": false,
-        "note": "We Energies 가스발전소 신설(오크크릭·패리스)과 연동",
+        "note": "전력회사(We Energies)가 이 수요를 위해 가스 발전소 신설 중(오크크릭·패리스)",
         "confidence": "medium"
       }
     },
