@@ -163,6 +163,13 @@ const genTypeKo = (t: string) => t.includes("combined_cycle") ? "가스 복합�
 // 전력 조달 구성 색(원별): 계통 파랑 · 가스 앰버 · 재생 녹 · 원전 보라 · 기타 회.
 const POWER_SRC_COLOR: Record<string, string> = { grid: "#2563eb", gas: "#f59e0b", renew: "#16a34a", nuclear: "#7c3aed", other: "#78716c" };
 const powerSrcCat = (t: string) => (t.includes("gas") ? "gas" : (t.includes("solar") || t.includes("wind") || t.includes("renew")) ? "renew" : (t.includes("nuclear") || t === "smr") ? "nuclear" : "other");
+// 전력 조달 대분류(층위 최상단) — grid_share·현장발전으로 4분류 확정. 막대 대신 이 텍스트를 강조.
+const POWER_TIER: Record<string, { label: string; color: string }> = {
+  grid: { label: "전량 전력망에서 구매", color: "#2563eb" },
+  mixed: { label: "전력망 + 자체 발전 병행", color: "#7c3aed" },
+  self: { label: "자체 발전 중심", color: "#f59e0b" },
+  unknown: { label: "수급 계획 미확인", color: "#78716c" },
+};
 const GRID_COLOR: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b" };
 const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "#64748b";
 const STAGES = ["announced", "approved", "construction", "partial_operation", "operating"];
@@ -1071,20 +1078,15 @@ export default function World() {
         {/* DC 모드: 데이터센터 마커 */}
         {dcMode && dcSites.filter((s) => dcGroups[s.group]).map((s) => {
           const sc = toScreen(s.location.lng!, s.location.lat!); if (!sc || !inView(sc[0], sc[1])) return null;
-          const on = s.id === dcSel; const col = dcColorOf(s); const r = dcMarkerR(s); const GenI = GEN_ICON[primaryGen(s.power)];
-          const frac = gridShareFrac(s.power?.grid_share); const RR = r + 3.2; const CIRC = 2 * Math.PI * RR;
+          const on = s.id === dcSel; const col = dcColorOf(s); const r = dcMarkerR(s);
           return (<g key={`dc${s.id}`} style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcSel(s.id); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${s.name} · ${s.location.state}`, sub: dcHoverSub(s) })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${s.name} · ${s.location.state}`, sub: dcHoverSub(s) })}
             onMouseLeave={() => setTip(null)}>
-            {/* 외곽 링 = 계통 의존도(grid_share): 꽉 참=100% 계통 → 빈 링=현장발전 위주. 점선=미공개 */}
-            <circle cx={sc[0]} cy={sc[1]} r={RR} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.16} strokeWidth={1.6} style={{ pointerEvents: "none" }} />
-            <circle cx={sc[0]} cy={sc[1]} r={RR} fill="none" stroke={col} strokeOpacity={0.9} strokeWidth={1.6} strokeLinecap="round"
-              strokeDasharray={frac == null ? "1.5 3" : `${(frac * CIRC).toFixed(2)} ${CIRC.toFixed(2)}`} transform={`rotate(-90 ${sc[0]} ${sc[1]})`} style={{ pointerEvents: "none" }} />
-            <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={on ? 0.55 : 0.32} stroke={col} strokeWidth={on ? 2 : 1.2} strokeDasharray={s.id === "fermi-matador" ? "3 2" : undefined} />
-            <GenI x={sc[0] - 3.5} y={sc[1] - 3.5} width={7} height={7} style={{ color: col, pointerEvents: "none" }} />
+            {/* 마커 = 단일 원(색=그룹, 크기=IT 용량). 단계·발전원·계통비중 등 2차 인코딩은 카드에서 — 지도는 단순하게. */}
+            <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={on ? 0.6 : 0.4} stroke={col} strokeWidth={on ? 2 : 1.2} />
             {/* 이름은 호버 툴팁으로(마커 크기=규모가 주인공). 선택 시에만 지도에 라벨 고정. */}
             {on && <text x={sc[0]} y={sc[1] - r - 3} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={col}
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>{s.name}</text>}
@@ -1435,7 +1437,7 @@ export default function World() {
         <div className="absolute left-4 w-60 space-y-2" style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }}>
           <div className="rounded-md border border-border bg-card/90 p-2.5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-1.5 text-sm font-bold"><Server className="h-4 w-4" /> 미국 AI 데이터센터
-              <span className="ml-auto cursor-help text-[12px] font-normal text-muted-foreground" title="원 = 데이터센터(크기=IT 용량) · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 내부 아이콘 = 발전원(가스·원전·배터리) · 사각 = 발전소(①·② 관련) · 점선 원판 = 페르미(확보전력)">ⓘ</span>
+              <span className="ml-auto cursor-help text-[12px] font-normal text-muted-foreground" title="원 = 데이터센터 (크기 = IT 용량, 색 = 그룹). 자세한 단계·발전원·자금은 마커 클릭 시 카드에서. · 사각 = 발전소">ⓘ</span>
             </div>
             <div className="text-[10.5px] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
             {/* 마커 색 = 그룹 고정. A/B/C 칩 = 범례 겸 필터. (전력계통·신용등급은 각각 면 채색·사이트 카드로) */}
@@ -1511,7 +1513,6 @@ export default function World() {
           return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setDcSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} /><span className="text-base font-bold leading-tight">{s.name}</span></div>
-            <div className="text-[11px] text-muted-foreground">{s.location.city}, {s.location.state} · <span className="tr-gloss" title={GROUP_GLOSS[s.group]}>{GROUP_LABEL[s.group]}</span></div>
             <div className="mt-2 flex items-baseline gap-1.5 text-[12px]"><b className="tabular-nums">{s.capacity_operational_mw ?? "—"}MW</b><span className="text-muted-foreground">운영 / 목표 {s.capacity_target_mw.max ? (s.capacity_target_mw.min === s.capacity_target_mw.max ? `${s.capacity_target_mw.max}` : `${s.capacity_target_mw.min}~${s.capacity_target_mw.max}`) : "—"}MW</span></div>
             {/* 생애 단계 5칸 — 셰브론(화살표) 진행 리본. 각 칸 끝이 뾰족→다음 칸 홈에 맞물림. 양끝은 한쪽만 뾰족/옴폭. 현재 단계 굵게. */}
             <div className="mt-2 flex gap-[2px]">{STAGES.map((st, i) => { const done = i <= stageIdx; const cur = i === stageIdx;
@@ -1530,27 +1531,22 @@ export default function World() {
               <span className="text-muted-foreground">최종 사용</span><span>{s.end_user ?? "—"}</span></div>
             <div className="mt-2 flex items-center gap-1.5 text-[11.5px]"><span className="tr-gloss text-muted-foreground" title="전기·임대료를 낼 회사의 신용 — 이 사업의 돈줄이 얼마나 튼튼한가">임차인 신용등급</span><span className="font-medium">{s.credit_wrapper ?? "—"}</span>{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
-              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 <span className="ml-auto text-[10px] font-normal text-muted-foreground">신뢰도 {s.power.confidence}</span></div>
-              {/* 원별 구성 — 계통 수급 vs 자가발전(원별 분해). 비율은 공표된 곳만 막대(=100% 계통 단독), 그 외는 지어내지 않고 칩만. 계통 운영자는 면 채색(RTO 뷰)이 전담해 카드에선 뺌. */}
+              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달</div>
+              {/* 층위 = 대분류(4) 강조 + 하위 자체발전 소스. 막대·계통운영자·유틸 신설(비DC정보)은 제외. */}
               {(() => {
-                const gs = (s.power.grid_share ?? "") as string; const gm = /^\s*(\d+)\s*%/.exec(gs); const gridPct = gm ? Number(gm[1]) : null;
-                const onsite = s.power.onsite_generation ?? []; const hasGrid = !!gs && !/^0\b/.test(gs);
-                const srcs: { label: string; cat: string }[] = [];
-                if (hasGrid) srcs.push({ label: "계통 수급", cat: "grid" });
-                for (const g of onsite) srcs.push({ label: `현장 ${genTypeKo(g.type)}${g.status === "planned" ? "(계획)" : ""}`, cat: powerSrcCat(g.type) });
-                const known = gridPct === 100 && onsite.length === 0; // 비율 확정 = 100% 계통 단독
+                const gs = (s.power.grid_share ?? "") as string; const num = Number((/^\s*(\d+)\s*%/.exec(gs) || [])[1]);
+                const onsite = s.power.onsite_generation ?? [];
+                const tierKey = (num === 100 && onsite.length === 0) ? "grid"
+                  : (/undisclosed/i.test(gs) || (!gs && onsite.length === 0)) ? "unknown"
+                  : /minimal/i.test(gs) ? "self" : "mixed";
+                const T = POWER_TIER[tierKey];
                 return (<div className="mt-1.5">
-                  {known ? (<><div className="flex h-2.5 w-full overflow-hidden rounded-full"><div style={{ width: "100%", background: POWER_SRC_COLOR.grid }} /></div>
-                    <div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: POWER_SRC_COLOR.grid }} />계통 수급 100</div></>)
-                  : (<><div className="flex flex-wrap items-center gap-1">
-                      {srcs.length === 0 ? <span className="text-[10px] text-muted-foreground/70">전력 구성 미공개</span>
-                        : srcs.map((x, i) => <span key={i} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: POWER_SRC_COLOR[x.cat] }} />{x.label}</span>)}
-                    </div>
-                    {srcs.length > 0 && <div className="mt-1 text-[9.5px] text-muted-foreground/70">구성만 확인 · 비율 미공개 (막대 생략)</div>}</>)}
+                  <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-bold" style={{ background: T.color + "18", color: T.color }}><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: T.color }} />{T.label}</div>
+                  {onsite.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[9.5px] text-muted-foreground/70">자체 발전</span>
+                    {onsite.map((g, i) => <span key={i} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: POWER_SRC_COLOR[powerSrcCat(g.type)] }} />{genTypeKo(g.type)}{g.mw ? ` ${g.mw}MW` : ""}{g.status === "planned" ? "(계획)" : ""}</span>)}
+                  </div>}
                 </div>);
-              })()}
-              {s.power.utility_new_build.length > 0 && <div className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground"><span className="text-muted-foreground/70">유틸 신설(계통에 공급): </span>{s.power.utility_new_build.map((g) => `${genTypeKo(g.type)} ${g.mw ?? ""}MW`).join(" · ")}</div>}
-              {s.power.note && <div className="mt-1 text-[10.5px] leading-snug text-muted-foreground">{glossText(s.power.note)}</div>}</div>)}
+              })()}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
               <div className="space-y-0.5">{s.financing.map((f, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">{FIN_TYPE_KO[f.type] ?? f.type}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>))}</div></div>
             {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{glossText(s.notes)}</div>}
