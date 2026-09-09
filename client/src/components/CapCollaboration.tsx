@@ -1,10 +1,10 @@
 import { useState, useSyncExternalStore } from "react";
-import { collaboration as engine, peers, syncError, identify, collabApi, activeResource, previousSession } from "@/lib/cap-collab-client";
+import { collaboration as engine, peers, syncError, collabApi, activeResource, previousSession } from "@/lib/cap-collab-client";
 import { pathLabel, type Change } from "../../../shared/cap-collaboration";
 const show = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value, null, 2);
 export function CapCollaboration() {
   useSyncExternalStore(engine.subscribe, engine.snapshot);
-  const [name, setName] = useState(engine.editor), [message, setMessage] = useState("");
+  const [message, setMessage] = useState("");
   const [choices, setChoices] = useState<Record<string, "remote" | "local">>({});
   const [restore, setRestore] = useState(false), [historyOpen, setHistoryOpen] = useState(false);
   const [selected, setSelected] = useState(""), [history, setHistory] = useState<any[]>([]), [detail, setDetail] = useState<any>(null);
@@ -17,8 +17,7 @@ export function CapCollaboration() {
     <div className="flex flex-wrap items-center gap-3" role="status">
       <b>{conflicts.length ? `충돌 ${conflicts.length}건 — 내용 선택 필요` : failed ? "저장 실패 — 초안 유지" : drafts.length ? "저장 중…" : "저장 완료"}</b>
       {failed && <button className="underline" onClick={() => void run(() => engine.flushAll())}>저장 다시 시도</button>}
-      <label>내 이름 <input aria-label="편집자 이름" className="w-28 rounded border bg-background px-1 py-0.5" value={name} maxLength={50} onChange={(e) => setName(e.target.value)} onBlur={() => identify(name)} /></label>
-      <span className="text-muted-foreground">{peers.length ? peers.map((p) => `${p.editor}${p.resource ? ` · ${label(p.resource)}` : " · 접속 중"}`).join(" / ") : "다른 편집자 없음"}</span>
+      {peers.length > 0 && <span className="text-muted-foreground">다른 창 {peers.length}개 접속 중</span>}
       <button className="underline" onClick={() => void run(async () => {
         setHistoryOpen(!historyOpen);
         if (!historyOpen) { const keys = (await collabApi("history-resources")).map((r: any) => r.key); setHistoryKeys(keys); const key = activeResource || [...engine.confirmed.keys(), ...keys][0]; if (key) await loadHistory(key); }

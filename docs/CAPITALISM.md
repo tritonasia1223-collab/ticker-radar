@@ -54,7 +54,7 @@
 | GET | `/api/capitalism/collab/resource?key=flow:slug` | 카드의 최신 문서와 버전. 메타 카드는 `meta:id` |
 | POST | `/api/capitalism/collab/edit` | 변경 경로·이전 값·새 값을 비교하고 원자적 저장. 충돌 409 |
 | GET | `/api/capitalism/collab/state` | 변경 버전과 최근 접속자. 화면에서 5초마다 확인 |
-| POST | `/api/capitalism/collab/presence` | 표시 이름·현재 카드·접속 시각. 15초 갱신, 45초 만료 |
+| POST | `/api/capitalism/collab/presence` | 자동 생성된 창 식별자·현재 카드·접속 시각. 15초 갱신, 45초 만료 |
 | GET | `/api/capitalism/collab/history[-resources]` | 카드별 최근 30개 이력 또는 이력이 있는 카드 목록 |
 | GET | `/api/capitalism/collab/history/:id` | 변경자, 변경 항목, 이전/이후 값 |
 | GET/POST/DELETE | `/api/capitalism/links` | 기존 전역 화살표 API. 전체 스냅샷 Undo에서 제외 |

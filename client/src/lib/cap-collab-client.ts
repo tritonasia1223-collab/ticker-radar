@@ -34,8 +34,8 @@ function publish(resource: Resource) {
 const session = crypto.randomUUID();
 export let previousSession: string | null = null;
 try { previousSession = sessionStorage.getItem("fiscus-tab-session"); sessionStorage.setItem("fiscus-tab-session", session); } catch { /* draft storage has separate error reporting */ }
-let editor: string;
-try { editor = localStorage.getItem("fiscus-editor") || `편집자-${session.slice(0, 4)}`; } catch { editor = `편집자-${session.slice(0, 4)}`; }
+// Automatic per-window label for history; no name entry or user setup is needed.
+const editor = `창-${session.slice(0, 8)}`;
 export const collaboration = new CollaborationEngine(session, editor, {
   read: (key) => collabApi(`resource?key=${encodeURIComponent(key)}`), send: (op) => collabApi("edit", op),
 }, indexedDraftStore(), publish);
@@ -43,11 +43,6 @@ export let peers: Peer[] = [];
 export let syncError = "";
 export let activeResource: string | null = null;
 let started = false, polling = false, metaVersion = -1;
-export function identify(name: string) {
-  collaboration.editor = name.trim().slice(0, 50) || editor;
-  try { localStorage.setItem("fiscus-editor", collaboration.editor); } catch { /* storage warning handled by draft journal */ }
-  collaboration.notify(); void presence();
-}
 export function focusResource(key: string | null) { if (activeResource === key) return; activeResource = key; collaboration.notify(); void presence(); }
 async function presence() {
   try { await collabApi("presence", { session, editor: collaboration.editor, resource: document.visibilityState === "hidden" ? null : activeResource }); } catch { /* poll reports connection health */ }
