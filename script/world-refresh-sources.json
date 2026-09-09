@@ -1,0 +1,110 @@
+[
+  {
+    "id": "ucdp",
+    "name": "UCDP 정식 GED 버전",
+    "url": "https://ucdp.uu.se/downloads/",
+    "include": "/ged/ged[0-9]+-csv\\.zip"
+  },
+  {
+    "id": "ports",
+    "name": "Lloyd’s List 항만 연간판",
+    "url": "https://www.lloydslist.com/one-hundred-ports-archive",
+    "include": "/one-hundred-container-ports-[0-9]+",
+    "manual": "공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요."
+  },
+  {
+    "id": "galaxy",
+    "name": "Galaxy / Helios",
+    "url": "https://www.galaxy.com/newsroom/",
+    "include": "/newsroom/.+",
+    "topic": "helios|data.center|coreweave|megawatt|gigawatt"
+  },
+  {
+    "id": "micron",
+    "name": "Micron 팹",
+    "url": "https://investors.micron.com/news/",
+    "include": "/news/press-release/.+",
+    "topic": "fab|manufactur|investment|Idaho|Virginia|New.York",
+    "manual": "공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요."
+  },
+  {
+    "id": "constellation",
+    "name": "Constellation 원전·계약",
+    "url": "https://www.constellationenergy.com/news.html",
+    "include": "/news/[0-9]{4}/",
+    "topic": "crane|nuclear|restart|agreement|quarter|power",
+    "manual": "최신 뉴스 목록이 브라우저에서 동적으로 생성됨. 원문 목록 수동 확인 필요."
+  },
+  {
+    "id": "microsoft",
+    "name": "Microsoft 데이터센터",
+    "url": "https://blogs.microsoft.com/",
+    "include": "/blog/[0-9]{4}/",
+    "topic": "data.center|infrastructure|fairwater|wisconsin|energy|power"
+  },
+  {
+    "id": "meta",
+    "name": "Meta 데이터센터·전력",
+    "url": "https://about.fb.com/news/",
+    "include": "/news/[0-9]{4}/",
+    "topic": "data.center|infrastructure|hyperion|prometheus|nuclear|energy"
+  },
+  {
+    "id": "google",
+    "name": "Google 데이터센터·전력",
+    "url": "https://blog.google/innovation-and-ai/infrastructure-and-cloud/global-network/",
+    "include": "/global-network/.+",
+    "topic": "data.center|nuclear|energy|power|infrastructure"
+  },
+  {
+    "id": "crusoe",
+    "name": "Crusoe / Stargate",
+    "url": "https://www.crusoe.ai/resources/newsroom",
+    "include": "/resources/newsroom/.+",
+    "topic": "data.center|abilene|stargate|campus|power|infrastructure"
+  },
+  {
+    "id": "tsmc",
+    "name": "TSMC 팹",
+    "url": "https://pr.tsmc.com/english/latest-news",
+    "include": "/english/news/",
+    "topic": "arizona|fab|manufactur|investment|quarter",
+    "manual": "공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요."
+  },
+  {
+    "id": "samsung",
+    "name": "Samsung Taylor",
+    "url": "https://news.samsung.com/us/category/product/product-semiconductor/",
+    "include": "^/us/(?!category/|tag/|page/)[^/]+/?$",
+    "topic": "taylor|fab|semiconductor|manufactur"
+  },
+  {
+    "id": "amkor",
+    "name": "Amkor 패키징",
+    "url": "https://ir.amkor.com/press-releases",
+    "include": "/press-releases/.+|/news-releases/news-release-details/",
+    "topic": "arizona|peoria|packaging|facility|quarter"
+  },
+  {
+    "id": "nrc",
+    "name": "NRC 원전 공지",
+    "url": "https://www.nrc.gov/reading-rm/doc-collections/news/2026/index",
+    "include": "/doc-collection-news/[0-9]{4}/.+\\.pdf",
+    "topic": "palisades|crane|restart|kairos|oklo|terrapower|x.energy|clinton|susquehanna"
+  },
+  {
+    "id": "entergy",
+    "name": "Entergy 데이터센터 전력",
+    "url": "https://www.entergy.com/news/releases",
+    "include": "/news/.+",
+    "topic": "meta|richland|data.center|generation|power.plant"
+  },
+  {
+    "id": "unctad",
+    "name": "UNCTAD 해운 자료",
+    "url": "https://unctad.org/topic/transport-and-trade-logistics/review-of-maritime-transport",
+    "include": "/publication/",
+    "topic": "maritime|transport",
+    "manual": "공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요."
+  }
+]

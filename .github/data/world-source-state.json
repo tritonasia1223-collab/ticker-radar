@@ -1,0 +1,448 @@
+{
+  "meta": {
+    "seen": [
+      {
+        "title": "Meta Upholds Texas Governor Greg Abbott’s Data Center Standards",
+        "url": "https://about.fb.com/news/2026/08/meta-upholds-texas-governor-greg-abbotts-data-center-standards/"
+      },
+      {
+        "title": "Why Meta Builds Its Own AI Data Centers",
+        "url": "https://about.fb.com/news/2026/08/why-meta-builds-its-own-data-centers/"
+      },
+      {
+        "title": "Inside Meta’s Infrastructure Lab",
+        "url": "https://about.fb.com/news/2026/09/inside-metas-infrastructure-lab/"
+      }
+    ],
+    "pending": [
+      {
+        "title": "Meta Upholds Texas Governor Greg Abbott’s Data Center Standards",
+        "url": "https://about.fb.com/news/2026/08/meta-upholds-texas-governor-greg-abbotts-data-center-standards/"
+      },
+      {
+        "title": "Why Meta Builds Its Own AI Data Centers",
+        "url": "https://about.fb.com/news/2026/08/why-meta-builds-its-own-data-centers/"
+      },
+      {
+        "title": "Inside Meta’s Infrastructure Lab",
+        "url": "https://about.fb.com/news/2026/09/inside-metas-infrastructure-lab/"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "ucdp": {
+    "seen": [
+      {
+        "title": "ged261 csv.zip",
+        "url": "https://ucdp.uu.se/downloads/ged/ged261-csv.zip"
+      }
+    ],
+    "pending": [
+      {
+        "title": "ged261 csv.zip",
+        "url": "https://ucdp.uu.se/downloads/ged/ged261-csv.zip"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "google": {
+    "seen": [
+      {
+        "title": "Our largest solar and battery storage project ever Google will both invest in and purchase energy and storage from Steel River Energy Center in Mississippi County, Arkansas.",
+        "url": "https://blog.google/innovation-and-ai/infrastructure-and-cloud/global-network/steel-river-arkansas/"
+      }
+    ],
+    "pending": [
+      {
+        "title": "Our largest solar and battery storage project ever Google will both invest in and purchase energy and storage from Steel River Energy Center in Mississippi County, Arkansas.",
+        "url": "https://blog.google/innovation-and-ai/infrastructure-and-cloud/global-network/steel-river-arkansas/"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "crusoe": {
+    "seen": [
+      {
+        "title": "bergen engines signs approx 750mw u s power agreement with crusoe for ai data centers",
+        "url": "https://www.crusoe.ai/resources/newsroom/bergen-engines-signs-approx-750mw-u-s-power-agreement-with-crusoe-for-ai-data-centers"
+      },
+      {
+        "title": "crusoe and aalo atomics form strategic partnership with goal of deploying first nuclear powered ai factory",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-aalo-atomics-form-strategic-partnership-with-goal-of-deploying-first-nuclear-powered-ai-factory"
+      },
+      {
+        "title": "crusoe and lancium announce 1 gigawatt ai data center campus in childress texas",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-lancium-announce-1-gigawatt-ai-data-center-campus-in-childress-texas"
+      },
+      {
+        "title": "crusoe and on energy to deploy 5 gw of ai ups tm at multiple hyperscale campuses",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-on-energy-to-deploy-5-gw-of-ai-ups-tm-at-multiple-hyperscale-campuses"
+      },
+      {
+        "title": "crusoe and redwood materials expand strategic partnership scaling to 7x the original ai infrastructure density",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-redwood-materials-expand-strategic-partnership-scaling-to-7x-the-original-ai-infrastructure-density"
+      },
+      {
+        "title": "crusoe announces new 900 mw ai factory campus in abilene texas to support microsoft ai infrastructure",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-announces-new-900-mw-ai-factory-campus-in-abilene-texas-to-support-microsoft-ai-infrastructure"
+      },
+      {
+        "title": "crusoe supports governor abbotts data center audits and responsible growth standards in texas",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-supports-governor-abbotts-data-center-audits-and-responsible-growth-standards-in-texas"
+      },
+      {
+        "title": "crusoes contracted ai infrastructure capacity approaches 5 gigawatts across data centers and cloud",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoes-contracted-ai-infrastructure-capacity-approaches-5-gigawatts-across-data-centers-and-cloud"
+      },
+      {
+        "title": "form energy crusoe announce agreement for 12 gigawatt hours of iron air batteries for ai data centers",
+        "url": "https://www.crusoe.ai/resources/newsroom/form-energy-crusoe-announce-agreement-for-12-gigawatt-hours-of-iron-air-batteries-for-ai-data-centers"
+      }
+    ],
+    "pending": [
+      {
+        "title": "bergen engines signs approx 750mw u s power agreement with crusoe for ai data centers",
+        "url": "https://www.crusoe.ai/resources/newsroom/bergen-engines-signs-approx-750mw-u-s-power-agreement-with-crusoe-for-ai-data-centers"
+      },
+      {
+        "title": "crusoe and aalo atomics form strategic partnership with goal of deploying first nuclear powered ai factory",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-aalo-atomics-form-strategic-partnership-with-goal-of-deploying-first-nuclear-powered-ai-factory"
+      },
+      {
+        "title": "crusoe and lancium announce 1 gigawatt ai data center campus in childress texas",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-lancium-announce-1-gigawatt-ai-data-center-campus-in-childress-texas"
+      },
+      {
+        "title": "crusoe and on energy to deploy 5 gw of ai ups tm at multiple hyperscale campuses",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-on-energy-to-deploy-5-gw-of-ai-ups-tm-at-multiple-hyperscale-campuses"
+      },
+      {
+        "title": "crusoe and redwood materials expand strategic partnership scaling to 7x the original ai infrastructure density",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-and-redwood-materials-expand-strategic-partnership-scaling-to-7x-the-original-ai-infrastructure-density"
+      },
+      {
+        "title": "crusoe announces new 900 mw ai factory campus in abilene texas to support microsoft ai infrastructure",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-announces-new-900-mw-ai-factory-campus-in-abilene-texas-to-support-microsoft-ai-infrastructure"
+      },
+      {
+        "title": "crusoe supports governor abbotts data center audits and responsible growth standards in texas",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoe-supports-governor-abbotts-data-center-audits-and-responsible-growth-standards-in-texas"
+      },
+      {
+        "title": "crusoes contracted ai infrastructure capacity approaches 5 gigawatts across data centers and cloud",
+        "url": "https://www.crusoe.ai/resources/newsroom/crusoes-contracted-ai-infrastructure-capacity-approaches-5-gigawatts-across-data-centers-and-cloud"
+      },
+      {
+        "title": "form energy crusoe announce agreement for 12 gigawatt hours of iron air batteries for ai data centers",
+        "url": "https://www.crusoe.ai/resources/newsroom/form-energy-crusoe-announce-agreement-for-12-gigawatt-hours-of-iron-air-batteries-for-ai-data-centers"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "amkor": {
+    "seen": [
+      {
+        "title": "Amkor Technology to Announce First Quarter 2026 Financial Results on April 27, 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announce-first-quarter-2026-financial-results"
+      },
+      {
+        "title": "Amkor Technology to Announce Fourth Quarter and Full Year 2025 Financial Results on February 9, 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announce-fourth-quarter-and-full-year-2025"
+      },
+      {
+        "title": "Amkor Technology to Announce Second Quarter 2026 Financial Results on July 27, 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announce-second-quarter-2026-financial-results"
+      },
+      {
+        "title": "Amkor Technology Announces Phase 2 of Arizona Advanced Packaging and Test Campus; Expands Investment to $12 Billion",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announces-phase-2-arizona-advanced-packaging"
+      },
+      {
+        "title": "Amkor Technology Announces Strategic Partnership with NVIDIA to Expand Advanced Packaging and Test for Next-Generation AI Infrastructure",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announces-strategic-partnership-nvidia-expand"
+      },
+      {
+        "title": "Amkor Technology Declares Quarterly Dividend",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-declares-quarterly-dividend-10"
+      },
+      {
+        "title": "Amkor Technology Declares Quarterly Dividend",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-declares-quarterly-dividend-11"
+      },
+      {
+        "title": "Amkor Technology Declares Quarterly Dividend",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-declares-quarterly-dividend-12"
+      },
+      {
+        "title": "Amkor Technology Expands U.S. Advanced Packaging Footprint with Additional Land in Arizona",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-expands-us-advanced-packaging-footprint"
+      },
+      {
+        "title": "Amkor Technology Reports Financial Results for the First Quarter 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-reports-financial-results-first-quarter-2026"
+      },
+      {
+        "title": "Amkor Technology Reports Financial Results for the Fourth Quarter and Full Year 2025",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-reports-financial-results-fourth-quarter-and-11"
+      },
+      {
+        "title": "Amkor Technology Reports Financial Results for the Second Quarter 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-reports-financial-results-second-quarter-2026"
+      },
+      {
+        "title": "TSMC and Amkor Technology Announce Long Term Partnership to Accelerate Advanced Packaging in the United States",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/tsmc-and-amkor-technology-announce-long-term-partnership"
+      }
+    ],
+    "pending": [
+      {
+        "title": "Amkor Technology to Announce First Quarter 2026 Financial Results on April 27, 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announce-first-quarter-2026-financial-results"
+      },
+      {
+        "title": "Amkor Technology to Announce Fourth Quarter and Full Year 2025 Financial Results on February 9, 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announce-fourth-quarter-and-full-year-2025"
+      },
+      {
+        "title": "Amkor Technology to Announce Second Quarter 2026 Financial Results on July 27, 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announce-second-quarter-2026-financial-results"
+      },
+      {
+        "title": "Amkor Technology Announces Phase 2 of Arizona Advanced Packaging and Test Campus; Expands Investment to $12 Billion",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announces-phase-2-arizona-advanced-packaging"
+      },
+      {
+        "title": "Amkor Technology Announces Strategic Partnership with NVIDIA to Expand Advanced Packaging and Test for Next-Generation AI Infrastructure",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-announces-strategic-partnership-nvidia-expand"
+      },
+      {
+        "title": "Amkor Technology Declares Quarterly Dividend",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-declares-quarterly-dividend-10"
+      },
+      {
+        "title": "Amkor Technology Declares Quarterly Dividend",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-declares-quarterly-dividend-11"
+      },
+      {
+        "title": "Amkor Technology Declares Quarterly Dividend",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-declares-quarterly-dividend-12"
+      },
+      {
+        "title": "Amkor Technology Expands U.S. Advanced Packaging Footprint with Additional Land in Arizona",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-expands-us-advanced-packaging-footprint"
+      },
+      {
+        "title": "Amkor Technology Reports Financial Results for the First Quarter 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-reports-financial-results-first-quarter-2026"
+      },
+      {
+        "title": "Amkor Technology Reports Financial Results for the Fourth Quarter and Full Year 2025",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-reports-financial-results-fourth-quarter-and-11"
+      },
+      {
+        "title": "Amkor Technology Reports Financial Results for the Second Quarter 2026",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/amkor-technology-reports-financial-results-second-quarter-2026"
+      },
+      {
+        "title": "TSMC and Amkor Technology Announce Long Term Partnership to Accelerate Advanced Packaging in the United States",
+        "url": "https://ir.amkor.com/news-releases/news-release-details/tsmc-and-amkor-technology-announce-long-term-partnership"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "entergy": {
+    "seen": [
+      {
+        "title": "Entergy customers begin seeing benefits from data center agreements, Fair Share Plus pledge keeps money in customers’ pockets",
+        "url": "https://www.entergy.com/news/entergy-customers-begin-seeing-benefits-from-data-center-agreements-fair-share-plus-pledge-keeps-money-in-customers-pockets"
+      },
+      {
+        "title": "First benefits from data centers appear in Entergy Mississippi customer bills, eliminating nearly $5 monthly increase",
+        "url": "https://www.entergy.com/news/first-benefits-from-data-centers-appear-in-entergy-mississippi-customer-bills-eliminating-nearly-5-monthly-increase"
+      }
+    ],
+    "pending": [
+      {
+        "title": "Entergy customers begin seeing benefits from data center agreements, Fair Share Plus pledge keeps money in customers’ pockets",
+        "url": "https://www.entergy.com/news/entergy-customers-begin-seeing-benefits-from-data-center-agreements-fair-share-plus-pledge-keeps-money-in-customers-pockets"
+      },
+      {
+        "title": "First benefits from data centers appear in Entergy Mississippi customer bills, eliminating nearly $5 monthly increase",
+        "url": "https://www.entergy.com/news/first-benefits-from-data-centers-appear-in-entergy-mississippi-customer-bills-eliminating-nearly-5-monthly-increase"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "galaxy": {
+    "seen": [
+      {
+        "title": "Our Stories • August 27, 2026 Galaxy Announces On-Campus Emergency Services Partnership with Total Safety at Helios Data Center Campus",
+        "url": "https://www.galaxy.com/newsroom/galaxy-announces-on-campus-emergency-services-partnership-with-total-safety-at-helios"
+      },
+      {
+        "title": "June 25, 2026 Galaxy Q2 2026 AMA: Mike Novogratz & Tony Paquette on Helios, GLXY Stock Valuation, Bitcoin & More",
+        "url": "https://www.galaxy.com/newsroom/videos/ama-q2-2026"
+      },
+      {
+        "title": "Videos • April 23, 2025 Reintroducing Galaxy’s Helios Data Center Campus",
+        "url": "https://www.galaxy.com/newsroom/videos/reintroducing-galaxys-helios-data-center-campus"
+      }
+    ],
+    "pending": [
+      {
+        "title": "Our Stories • August 27, 2026 Galaxy Announces On-Campus Emergency Services Partnership with Total Safety at Helios Data Center Campus",
+        "url": "https://www.galaxy.com/newsroom/galaxy-announces-on-campus-emergency-services-partnership-with-total-safety-at-helios"
+      },
+      {
+        "title": "June 25, 2026 Galaxy Q2 2026 AMA: Mike Novogratz & Tony Paquette on Helios, GLXY Stock Valuation, Bitcoin & More",
+        "url": "https://www.galaxy.com/newsroom/videos/ama-q2-2026"
+      },
+      {
+        "title": "Videos • April 23, 2025 Reintroducing Galaxy’s Helios Data Center Campus",
+        "url": "https://www.galaxy.com/newsroom/videos/reintroducing-galaxys-helios-data-center-campus"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "microsoft": {
+    "seen": [
+      {
+        "title": "Powering the next wave of AI: Expanding capacity with our new datacenter in Pecos",
+        "url": "https://blogs.microsoft.com/blog/2026/06/22/powering-the-next-wave-of-ai-expanding-capacity-with-our-new-datacenter-in-pecos/"
+      },
+      {
+        "title": "microsoft expands azure ai and hpc infrastructure with amd",
+        "url": "https://blogs.microsoft.com/blog/2026/07/20/microsoft-expands-azure-ai-and-hpc-infrastructure-with-amd/"
+      },
+      {
+        "title": "Powering America’s Genesis Mission: Microsoft’s commitment to scientific discovery",
+        "url": "https://blogs.microsoft.com/blog/2026/07/22/powering-americas-genesis-mission-microsofts-commitment-to-scientific-discovery/"
+      },
+      {
+        "title": "The yield imperative: Turning AI infrastructure into useful intelligence",
+        "url": "https://blogs.microsoft.com/blog/2026/09/01/the-yield-imperative-turning-ai-infrastructure-into-useful-intelligence/"
+      }
+    ],
+    "pending": [
+      {
+        "title": "Powering the next wave of AI: Expanding capacity with our new datacenter in Pecos",
+        "url": "https://blogs.microsoft.com/blog/2026/06/22/powering-the-next-wave-of-ai-expanding-capacity-with-our-new-datacenter-in-pecos/"
+      },
+      {
+        "title": "microsoft expands azure ai and hpc infrastructure with amd",
+        "url": "https://blogs.microsoft.com/blog/2026/07/20/microsoft-expands-azure-ai-and-hpc-infrastructure-with-amd/"
+      },
+      {
+        "title": "Powering America’s Genesis Mission: Microsoft’s commitment to scientific discovery",
+        "url": "https://blogs.microsoft.com/blog/2026/07/22/powering-americas-genesis-mission-microsofts-commitment-to-scientific-discovery/"
+      },
+      {
+        "title": "The yield imperative: Turning AI infrastructure into useful intelligence",
+        "url": "https://blogs.microsoft.com/blog/2026/09/01/the-yield-imperative-turning-ai-infrastructure-into-useful-intelligence/"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "samsung": {
+    "seen": [
+      {
+        "title": "samsung austin semiconductor pumps 13 6 billion dollars central texas economy 2022",
+        "url": "https://news.samsung.com/us/samsung-austin-semiconductor-pumps-13-6-billion-dollars-central-texas-economy-2022/"
+      },
+      {
+        "title": "samsung electronics commits 3 7 million dollars ut austin bolster semiconductor ecosystem central texas",
+        "url": "https://news.samsung.com/us/samsung-electronics-commits-3-7-million-dollars-ut-austin-bolster-semiconductor-ecosystem-central-texas/"
+      }
+    ],
+    "pending": [
+      {
+        "title": "samsung austin semiconductor pumps 13 6 billion dollars central texas economy 2022",
+        "url": "https://news.samsung.com/us/samsung-austin-semiconductor-pumps-13-6-billion-dollars-central-texas-economy-2022/"
+      },
+      {
+        "title": "samsung electronics commits 3 7 million dollars ut austin bolster semiconductor ecosystem central texas",
+        "url": "https://news.samsung.com/us/samsung-electronics-commits-3-7-million-dollars-ut-austin-bolster-semiconductor-ecosystem-central-texas/"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  },
+  "nrc": {
+    "seen": [
+      {
+        "title": "NRC Releases Partial Holtec Application for Small Modular Reactor Construction Permit at Palisades",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-008.pdf"
+      },
+      {
+        "title": "NRC to Hold Public Meeting to Discuss Progress on Potential Restart of Crane Clean Energy Center",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-009.pdf"
+      },
+      {
+        "title": "Updated - NRC Schedules Open House to Discuss Clinton Power Plant Performance",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-014-iii.pdf"
+      },
+      {
+        "title": "NRC Advisory: NRC to Update Public on Crane Clean Energy Center Restart",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-019-i-a.pdf"
+      },
+      {
+        "title": "NRC Announces Opportunity to Request Hearing for Crane Clean Energy Center Restart License Amendments",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-021.pdf"
+      },
+      {
+        "title": "NRC Announces Opportunity to Request a Hearing on Holtec’s Limited Work Authorization Application at Palisades",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-025.pdf"
+      },
+      {
+        "title": "NRC Issues First Commercial Reactor Construction Approval in 10 Years For TerraPower in Wyoming",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-028.pdf"
+      },
+      {
+        "title": "NRC Announces Opportunity to Request Hearing for Duane Arnold Energy Center Restart License Amendments",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-045.pdf"
+      },
+      {
+        "title": "NRC Finds No Significant Environmental Impact from Proposed Crane Clean Energy Center Restart",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-061.pdf"
+      }
+    ],
+    "pending": [
+      {
+        "title": "NRC Releases Partial Holtec Application for Small Modular Reactor Construction Permit at Palisades",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-008.pdf"
+      },
+      {
+        "title": "NRC to Hold Public Meeting to Discuss Progress on Potential Restart of Crane Clean Energy Center",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-009.pdf"
+      },
+      {
+        "title": "Updated - NRC Schedules Open House to Discuss Clinton Power Plant Performance",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-014-iii.pdf"
+      },
+      {
+        "title": "NRC Advisory: NRC to Update Public on Crane Clean Energy Center Restart",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-019-i-a.pdf"
+      },
+      {
+        "title": "NRC Announces Opportunity to Request Hearing for Crane Clean Energy Center Restart License Amendments",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-021.pdf"
+      },
+      {
+        "title": "NRC Announces Opportunity to Request a Hearing on Holtec’s Limited Work Authorization Application at Palisades",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-025.pdf"
+      },
+      {
+        "title": "NRC Issues First Commercial Reactor Construction Approval in 10 Years For TerraPower in Wyoming",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-028.pdf"
+      },
+      {
+        "title": "NRC Announces Opportunity to Request Hearing for Duane Arnold Energy Center Restart License Amendments",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-045.pdf"
+      },
+      {
+        "title": "NRC Finds No Significant Environmental Impact from Proposed Crane Clean Energy Center Restart",
+        "url": "https://www.nrc.gov/sites/default/files/cdn/doc-collection-news/2026/26-061.pdf"
+      }
+    ],
+    "lastSuccess": "2026-09-09T06:46:54.487Z"
+  }
+}

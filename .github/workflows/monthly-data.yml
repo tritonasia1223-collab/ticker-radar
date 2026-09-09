@@ -1,0 +1,93 @@
+name: Monthly research data
+
+on:
+  schedule:
+    - cron: "0 0 3 * *" # 매월 3일 09:00 KST. GitHub 사정에 따라 지연 가능.
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  statuses: read
+
+concurrency:
+  group: monthly-research-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Collect macro observations
+        id: macro
+        continue-on-error: true
+        run: npm run cap:series -- --repair-last-month
+      - name: Preserve macro data on any collection failure
+        if: steps.macro.outcome == 'failure'
+        run: git restore --source=HEAD -- client/src/data/capitalism-series.json
+      - name: Refresh RTO and collect World review candidates
+        id: world
+        continue-on-error: true
+        run: npm run world:refresh
+      - name: Create publication marker and summary
+        env:
+          MACRO_OUTCOME: ${{ steps.macro.outcome }}
+          WORLD_OUTCOME: ${{ steps.world.outcome }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const hash = path => createHash('sha256').update(JSON.stringify(JSON.parse(readFileSync(path, 'utf8')))).digest('hex');
+          mkdirSync('client/public', { recursive: true });
+          writeFileSync('client/public/data-refresh.json', JSON.stringify({ checkedAt: new Date().toISOString(), macroOutcome: process.env.MACRO_OUTCOME, worldOutcome: process.env.WORLD_OUTCOME, macroSha256: hash('client/src/data/capitalism-series.json'), rtoSha256: hash('client/src/data/us-rto-regions.json') }, null, 2) + '\n');
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n경제사 수집: ${process.env.MACRO_OUTCOME}; 세계 자료 확인: ${process.env.WORLD_OUTCOME}\n`);
+          NODE
+      - name: Validate publication
+        run: |
+          npm run check
+          npm test
+          npm run build
+      - name: Commit only refreshed data and review report
+        id: publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- client/src/data/capitalism-series.json client/src/data/us-rto-regions.json client/public/data-refresh.json
+          if test -f .github/data/world-source-state.json; then git add -- .github/data/world-source-state.json; fi
+          if test -f docs/data-refresh/world-latest.md; then git add -- docs/data-refresh/world-latest.md; fi
+          git diff --cached --check
+          git commit -m 'chore: monthly research data and source review'
+          # Normal push only: a concurrent editor's commit rejects this push, preserving their work.
+          git push origin HEAD:master
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Verify Vercel deployment and production data
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_SHA: ${{ steps.publish.outputs.sha }}
+        run: npm run data:verify-deployment
+      - name: Retain collection reports and original macro backup
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-research-reports
+          path: |
+            script/cap-export/capitalism-*.json
+            script/cap-export/world-refresh-latest.json
+            docs/data-refresh/world-latest.md
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Mark incomplete collection as failed
+        if: steps.macro.outcome == 'failure' || steps.world.outcome == 'failure'
+        run: |
+          echo 'Some sources failed. Existing data was preserved; check the summary and review report.'
+          exit 1

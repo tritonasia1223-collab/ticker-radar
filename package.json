@@ -45,6 +45,8 @@
     "cap:versions": "tsx script/cap-versions.ts",
     "cap:export": "tsx script/cap-export.ts",
     "cap:series": "tsx script/fetch-capitalism-series.ts",
+    "world:refresh": "tsx script/refresh-world.ts",
+    "data:verify-deployment": "tsx script/verify-monthly-deployment.ts",
     "cap:integrity": "tsx script/cap-integrity-check.ts",
     "probe:cap:race": "tsx script/probe-cap-save-race.ts",
     "fed:push": "tsx script/db-push-fed.ts",
