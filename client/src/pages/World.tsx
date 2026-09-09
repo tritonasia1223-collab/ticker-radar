@@ -1545,12 +1545,13 @@ export default function World() {
                 const gs = (s.power.grid_share ?? "") as string; const num = Number((/^\s*(\d+)\s*%/.exec(gs) || [])[1]);
                 const onsite = s.power.onsite_generation ?? [];
                 const tierKey = (num === 100 && onsite.length === 0) ? "grid"
-                  : (/undisclosed/i.test(gs) || (!gs && onsite.length === 0)) ? "unknown"
+                  : (onsite.length === 0 && (/undisclosed/i.test(gs) || !gs)) ? "unknown"
                   : /minimal/i.test(gs) ? "self" : "mixed";
                 const badges = POWER_TIER[tierKey];
+                const selfTxt = onsite.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ");
                 return (<div className="mt-1.5">
                   <div className="flex gap-1.5">{badges.map((bd, i) => <span key={i} className="flex-1 rounded-md px-2 py-1 text-center text-[12px] font-bold" style={{ background: bd.color + "18", color: bd.color }}>{bd.label}</span>)}</div>
-                  {onsite.length > 0 && <div className="mt-1 text-center text-[10px] font-medium" style={{ color: "#7c3aed" }}>{onsite.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ")}</div>}
+                  {onsite.length > 0 && <div className="mt-1 flex gap-1.5">{badges.length > 1 && <div className="flex-1" />}<div className="flex-1 text-center text-[10px] font-medium" style={{ color: "#7c3aed" }}>{selfTxt}</div></div>}
                 </div>);
               })()}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
