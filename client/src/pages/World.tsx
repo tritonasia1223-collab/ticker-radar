@@ -158,7 +158,16 @@ const GROUP_LABEL: Record<string, string> = { A: "스타게이트 계열", B: "�
 const GRID_COLOR: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b" };
 const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "#64748b";
 const STAGES = ["announced", "approved", "construction", "partial_operation", "operating"];
-const STAGE_KO: Record<string, string> = { announced: "발표", approved: "승인", construction: "건설", partial_operation: "부분가동", operating: "가동" };
+const STAGE_KO: Record<string, string> = { announced: "발표", approved: "인허가", construction: "건설", partial_operation: "부분가동", operating: "가동" };
+// 용어 병기 — 문자열 안 "{{보이는말|설명}}" 을 점선밑줄+title(hover) 스팬으로. 나머지는 평문. 용어는 지우지 않고 설명만 얹음(검색·학습 유지).
+function glossText(s?: string): React.ReactNode {
+  if (!s || !s.includes("{{")) return s ?? null;
+  const out: React.ReactNode[] = []; const re = /\{\{([^|{}]+)\|([^{}]+)\}\}/g;
+  let last = 0, m: RegExpExecArray | null, k = 0;
+  while ((m = re.exec(s))) { if (m.index > last) out.push(s.slice(last, m.index)); out.push(<span key={k++} className="tr-gloss" title={m[2]}>{m[1]}</span>); last = m.index + m[0].length; }
+  if (last < s.length) out.push(s.slice(last));
+  return out;
+}
 const creditColor = (r: string | null) => (!r ? "#94a3b8" : r === "BBB-" ? "#f59e0b" : r.startsWith("BB") ? "#dc2626" : "#16a34a");
 const capMW = (s: Site) => s.capacity_operational_mw ?? s.capacity_target_mw.max ?? s.capacity_target_mw.min ?? null;
 const dcMarkerR = (s: Site) => { if (s.id === "fermi-matador") return 7; const c = capMW(s); return c ? 4 + 0.16 * Math.sqrt(c) : 5; };
@@ -671,7 +680,7 @@ export default function World() {
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-background text-foreground">
-      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}.wf-flow-slow{animation:wf-flow 3.2s linear infinite}@keyframes cf-pulse{0%{transform:scale(1);opacity:.7}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}.cf-pulse{animation:cf-pulse 1.8s ease-out infinite}@keyframes dz-in{from{opacity:0}to{opacity:1}}.dz-in{animation:dz-in .4s ease-out}@media(prefers-reduced-motion:reduce){.cf-pulse{animation:none;opacity:0}.dz-in{animation:none}}`}</style>
+      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}.wf-flow-slow{animation:wf-flow 3.2s linear infinite}@keyframes cf-pulse{0%{transform:scale(1);opacity:.7}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}.cf-pulse{animation:cf-pulse 1.8s ease-out infinite}@keyframes dz-in{from{opacity:0}to{opacity:1}}.dz-in{animation:dz-in .4s ease-out}.tr-gloss{text-decoration:underline dotted;text-underline-offset:2px;text-decoration-thickness:1px;cursor:help}@media(prefers-reduced-motion:reduce){.cf-pulse{animation:none;opacity:0}.dz-in{animation:none}}`}</style>
       <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${dim.w} ${dim.h}`}
         className="block cursor-grab active:cursor-grabbing select-none"
         onPointerDown={onSpinDown} onPointerMove={onSpinMove} onPointerUp={onSpinUp} onPointerLeave={onSpinUp}
@@ -885,14 +894,14 @@ export default function World() {
               {guard(mid) && <text x={mid![0]} y={mid![1] - 4} textAnchor="middle" fontSize={on ? 11 : 9.5} fontWeight={on ? 700 : 500} fill={arc}
                 style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 3, strokeLinejoin: "round", cursor: "pointer" }}
                 onPointerDown={(e) => e.stopPropagation()}
-                onMouseEnter={(e) => { setHoverInfra({ kind: "route", id: "arctic" }); setTip({ x: e.clientX, y: e.clientY, text: "➤ 북극항로", sub: "베링에서 북동(NSR)/북서(NWP)로 분기" }); }}
-                onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: "➤ 북극항로", sub: "베링에서 북동(NSR)/북서(NWP)로 분기" })}
+                onMouseEnter={(e) => { setHoverInfra({ kind: "route", id: "arctic" }); setTip({ x: e.clientX, y: e.clientY, text: "➤ 북극항로", sub: "베링에서 북동(러시아 연안)/북서(캐나다 군도)로 분기" }); }}
+                onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: "➤ 북극항로", sub: "베링에서 북동(러시아 연안)/북서(캐나다 군도)로 분기" })}
                 onMouseLeave={() => { setHoverInfra(null); setTip(null); }}
                 onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } toggleCompare("arctic"); }}>북극항로</text>}
-              {guard(ns) && <text x={ns![0]} y={ns![1] - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={arc} fillOpacity={0.85}
-                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북동(NSR)</text>}
-              {guard(nw) && <text x={nw![0]} y={nw![1] - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={lock} fillOpacity={0.8}
-                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북서(NWP)</text>}
+              {guard(ns) && <text x={ns![0] - 8} y={ns![1] - 5} textAnchor="end" fontSize={8} fontWeight={600} fill={arc} fillOpacity={0.9}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북동(러시아 연안)</text>}
+              {guard(nw) && <text x={nw![0] + 8} y={nw![1] - 5} textAnchor="start" fontSize={8} fontWeight={600} fill={lock} fillOpacity={0.85}
+                style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>북서(캐나다 군도)</text>}
               {/* 분기 화살표(빨강) — 분기점 위쪽 별도 표기, 항로선과 미겹침. 배경 헤일로 + 빨강. */}
               {sticky && bp && guard(bp) && (<g style={{ pointerEvents: "none" }}>
                 <path d={aL} fill="none" stroke="hsl(var(--background))" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
@@ -1154,7 +1163,7 @@ export default function World() {
             <div className="flex overflow-hidden rounded border border-border">
               {([["route", "항로별"], ["cargo", "화물별"]] as const).map(([v, lab]) => (<button key={v} onClick={() => { setShipCargoView(v === "cargo"); if (v !== "cargo") setCargoFilter(null); }} className={`px-1.5 py-0.5 ${(v === "cargo") === shipCargoView ? "bg-muted font-semibold text-foreground" : "hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
-            <span title="배 흐름 = 항로별 연간 물동량 등급의 연출(밀도 비례) · 실시간 선박 위치 아님 · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
+            <span title="움직이는 배 = 물동량 등급의 표현 (많이 다니는 길일수록 배가 많음) — 실제 선박의 실시간 위치가 아님. · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
           </div>
           {/* 화물별 뷰: 칩 줄 = 컨테이너/원유 필터(§5, 칩=범례+토글). 클릭 = 그 화물 라인만 · 다시 클릭 = 둘 다. 혼합은 두 색을 모두 가짐. */}
           {shipCargoView && (
@@ -1164,7 +1173,7 @@ export default function World() {
                   className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${act ? "border-border bg-muted font-semibold" : "border-border/50 text-muted-foreground hover:bg-muted/50"}`}>
                   <span className="h-2 w-2 rounded-sm" style={{ background: CARGO_COLOR[c] }} />{CARGO_KO[c]}</button>; })}
               {cargoFilter && <button onClick={() => setCargoFilter(null)} className="text-muted-foreground hover:text-foreground">✕</button>}
-              <span className="text-muted-foreground/70">· 혼합=두 색</span>
+              <span className="text-muted-foreground/70">· {glossText("{{혼합|컨테이너·에너지·곡물이 다 섞여 다니는 길}}")}=두 색</span>
             </div>
           )}
           {listOpen && (
@@ -1293,7 +1302,11 @@ export default function World() {
                     </div>); })}
                 </div>
               </div>
-              {rc.fork_note && <div className="mt-1 text-[9.5px] leading-snug text-muted-foreground">⑂ {rc.fork_note}</div>}
+              <div className="mt-1 flex items-center gap-2 text-[8.5px] text-muted-foreground/80">
+                <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full border-[1.4px] bg-background" style={{ borderColor: SEA }} />항만</span>
+                <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rotate-45 border-[1.4px] bg-background" style={{ borderColor: AMBER }} />{glossText("{{해협·운하|배가 반드시 지나야 하는 좁은 길목 — 막히면 항로 전체가 영향}}")}</span>
+              </div>
+              {rc.fork_note && <div className="mt-1 text-[9.5px] leading-snug text-muted-foreground">⑂ {glossText(rc.fork_note)}</div>}
               {/* ② 화물 구성 막대(톤 기준 개략) 또는 상태 칩 */}
               {rc.bar ? (<div className="mt-2.5">
                 <div className="mb-1 text-[10.5px] text-muted-foreground">화물 구성 <span className="text-[9px]">(톤 기준 개략)</span></div>
@@ -1301,14 +1314,14 @@ export default function World() {
                   {rc.bar.map((b, i) => <div key={i} style={{ width: `${b.p}%`, background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other, boxShadow: i > 0 ? "inset 1.5px 0 0 hsl(var(--card))" : undefined }} />)}
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
-                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[9.5px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{b.l}</span>)}
+                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[9.5px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{glossText(b.l)}</span>)}
                 </div>
               </div>) : rc.status ? (<div className="mt-2.5 flex flex-col gap-1">
-                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[10.5px] leading-snug text-muted-foreground">{s}</span>)}
+                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[10.5px] leading-snug text-muted-foreground">{glossText(s)}</span>)}
               </div>) : null}
               {/* ③ 설명 — 끊긴 문장, 줄바꿈 유지 */}
               <div className="mt-2.5 flex flex-col gap-1 text-[11.5px] leading-snug text-foreground/85">
-                {rc.lines.map((l, i) => <div key={i}>{l}</div>)}
+                {rc.lines.map((l, i) => <div key={i}>{glossText(l)}</div>)}
               </div>
               {/* ④ 관계 칩 */}
               {rc.rel && <div className="mt-2.5"><button onClick={() => rc.rel!.rk === "route" ? goTo({ kind: "route", id: rc.rel!.ref }) : goTo({ kind: "dispute", id: rc.rel!.ref })}
