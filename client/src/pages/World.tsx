@@ -1513,6 +1513,8 @@ export default function World() {
         </div>
 
         {dcSel && (() => { const s = dc.sites.find((x) => x.id === dcSel); if (!s) return null; const stageIdx = STAGES.indexOf(s.status_stage); const gen = primaryGen(s.power); const GenI = GEN_ICON[gen];
+          // 신용보증인 = 임차인이면 임차 행에 등급을 합침. 다르면(밀람·로즈타운: 오픈AI vs 소프트뱅크) 별도 '신용 보증' 행. 접두 일치(IREN: MS vs "MS(선불)")는 동일 취급.
+          const sameCredit = !!(s.credit_wrapper && s.tenant && (s.credit_wrapper === s.tenant || s.credit_wrapper.startsWith(s.tenant) || s.tenant.startsWith(s.credit_wrapper)));
           return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setDcSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} /><span className="text-base font-bold leading-tight">{s.name}</span></div>
@@ -1530,9 +1532,13 @@ export default function World() {
             {s.status_note && <div className="mt-1 text-[10.5px] text-muted-foreground">{s.status_note}</div>}
             <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
               <span className="text-muted-foreground">개발/소유</span><span>{glossText(s.landlord)}</span>
-              <span className="text-muted-foreground">임차</span><span>{s.tenant ?? "—"}{s.lease_term_years ? ` · ${s.lease_term_years}년` : ""}</span>
+              <span className="text-muted-foreground">임차</span><span className="flex flex-wrap items-center gap-1.5">{s.tenant ?? "—"}{s.lease_term_years ? ` · ${s.lease_term_years}년` : ""}
+                {sameCredit && s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold" title="임차인 신용등급 — 전기·임대료를 낼 회사의 신용, 이 사업의 돈줄이 얼마나 튼튼한가 (AAA 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
+              {!sameCredit && s.credit_wrapper && <>
+                <span className="tr-gloss pl-2.5 text-[10.5px] text-muted-foreground/55" title="임대·전기료를 대신 갚아줄 보증 회사 — 임차인과 다를 수 있음">↳ 신용 보증은</span>
+                <span className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-muted-foreground/70">{s.credit_wrapper}{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[9.5px] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "1e", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
+              </>}
               <span className="text-muted-foreground">최종 사용</span><span>{s.end_user ?? "—"}</span></div>
-            <div className="mt-2 flex items-center gap-1.5 text-[11.5px]"><span className="tr-gloss text-muted-foreground" title="전기·임대료를 낼 회사의 신용 — 이 사업의 돈줄이 얼마나 튼튼한가">임차인 신용등급</span><span className="font-medium">{s.credit_wrapper ?? "—"}</span>{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
               <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달</div>
               {/* 층위 = 대분류(4) 강조 + 하위 자체발전 소스. 막대·계통운영자·유틸 신설(비DC정보)은 제외. */}
