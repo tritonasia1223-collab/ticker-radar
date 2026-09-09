@@ -256,27 +256,36 @@ const RTO_ORDER = ["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as 
 const rtoAbbr = (c: string) => (c === "ISONE" ? "ISO-NE" : c); // 표시용 약칭
 const RTO_KO: Record<string, string> = { ERCOT: "텍사스 전기신뢰성위원회", PJM: "펜실베이니아·뉴저지·메릴랜드 연합(기원)", MISO: "미드컨티넌트 독립계통운영자", SPP: "사우스웨스트 전력풀", CAISO: "캘리포니아 독립계통운영자", ISONE: "뉴잉글랜드 독립계통운영자", NYISO: "뉴욕 독립계통운영자" };
 const RTO_REGION_KO: Record<string, string> = { ERCOT: "텍사스 대부분 (주 부하의 ~90%)", PJM: "중부대서양~중서부 13개 주 + DC", MISO: "중서부~루이지애나, 남북 종단 15개 주", SPP: "대평원 (다코타~오클라호마·캔자스)", CAISO: "캘리포니아 + 네바다 일부", ISONE: "북동부 6개 주", NYISO: "뉴욕주 단독" };
-// 성격 태그 배지(§1) — 조직 한글명 대신 권역 성격(가격대·특징) 요약. 패널 행 헤더에 배지로 표시.
-const RTO_TAG: Record<string, string> = {
-  ERCOT: "평시 저가 · 변동 큼", PJM: "AI 수요로 가격 급등", MISO: "중저가 · 남북 종단", SPP: "풍력 최상 · 저가",
-  CAISO: "고가 · 낮밤 불균형", ISONE: "고가 · 겨울 리스크", NYISO: "고가 · 송전 병목",
+// 권역 특성(§1) — 통일 3속성: 가격 / 메인 발전원 / 송전. 줄글 대신 뱃지.
+type GridAttr = { price: string; gen: string; tx: string };
+const RTO_ATTR: Record<string, GridAttr> = {
+  ERCOT: { price: "저가", gen: "가스·풍력", tx: "우수" },
+  PJM: { price: "중간→고가", gen: "가스·원전", tx: "보통" },
+  MISO: { price: "중저가", gen: "가스·풍력", tx: "보통" },
+  SPP: { price: "저가", gen: "풍력·가스", tx: "병목" },
+  CAISO: { price: "고가", gen: "태양광·가스", tx: "보통" },
+  ISONE: { price: "고가", gen: "가스·원전", tx: "보통" },
+  NYISO: { price: "고가", gen: "가스·수력", tx: "병목" },
 };
-const RTO_DESC: Record<string, string> = {
-  ERCOT: "풍력·태양광·저가 가스 비중이 높아 평균 전기 가격이 낮음. 다만 전력이 모자랄 때 가격이 치솟도록 설계된 시장(희소성 가격제)이라 위기 때 급등. 규제가 가볍고 접속 절차가 빨라 DC 진입 최속 권역.",
-  PJM: "원래는 중간 가격대였으나 AI 수요가 발전소 확보 비용(용량 경매가)을 밀어올리며 소비자 요금 논쟁이 격화되고 있음. 버지니아 '데이터센터 앨리'가 이 권역.",
-  MISO: "중저가 가격이 특징인 권역으로, 하이페리온이 이쪽 권역에 속함.",
-  SPP: "풍력 비중이 최고로 높아 가격이 저렴하며, 바람이 많이 부는 날에는 마이너스 가격도 종종 등장. 땅도, 전력도 여유 있지만 송전 인프라 문제가 있어 DC 진입은 미미.",
-  CAISO: "낮에는 태양광이 과잉 생산되고, 저녁에는 가스가 피크를 찍는 낮밤 불균형(수급 곡선이 오리 모양이라 '덕 커브'). 여기에 주 정책·인프라 비용이 얹혀 가격도 높은 편. 허가 난도 + 고비용으로 DC 진입이 어려운 권역.",
-  ISONE: "가스 반입 병목 문제가 있어 미국 내 전기 최고가권. 특히 가스 수요가 많아지는 겨울 수급이 타이트하고, DC 진입에는 부적합.",
-  NYISO: "수력·원전 덕에 업스테이트(북·중·서부)는 저렴하지만 뉴욕시·롱아일랜드는 고가인 이중 시장 — 사이를 잇는 송전 병목이 격차의 원인.",
-};
-// 비ISO 지역(§2) — 성격 태그 + 설명. 유틸 폴리곤은 후속(EIA-861), 여기선 목록으로만.
-const NONISO_ROWS: { region: string; tag: string; desc: string }[] = [
-  { region: "남동부 (조지아·캐롤라이나·플로리다 등)", tag: "인가 요금 · 딜 빠름", desc: "ISO를 거치지 않고 발전부터 판매까지 한 회사가 다 하는 체제(수직통합)라 시장가는 없지만 주 위원회가 직접 인가한 요금이 고정. 유틸리티 회사와 직접 딜을 맺을 수 있어 DC 전기 수급의 확실성과 높은 속도가 보장됨." },
-  { region: "테네시밸리 (TVA)", tag: "연방 공기업 · 저가", desc: "수력·원자력을 기반으로 저가 전기를 공급. 대형 DC 유치에 적극적 태도를 보이는 권역." },
-  { region: "북서부 (BPA)", tag: "수력 최저가", desc: "컬럼비아강 수원을 이용하는 수력 발전 덕분에 미국 최저가를 제공하는 권역." },
-  { region: "서부 산악 (CAISO 밖)", tag: "유틸별 상이", desc: "PacifiCorp·NV·APS 등 유틸마다 요금·딜 조건이 다름. 다수가 CAISO 실시간 시장(WEIM)에 참여." },
+// 가격/송전 뱃지 색(의미). 발전원은 무채색.
+const gridPriceColor = (v: string) => (v.startsWith("최저") || v === "저가") ? "#16a34a" : /고가/.test(v) ? "#dc2626" : /중/.test(v) ? "#64748b" : "#78716c";
+const gridTxColor = (v: string) => v.includes("우수") ? "#16a34a" : v.includes("병목") ? "#f59e0b" : "#64748b";
+// 비ISO 지역(§2) — 동일 3속성. 유틸 폴리곤은 후속(EIA-861), 여기선 목록으로만.
+const NONISO_ROWS: ({ region: string } & GridAttr)[] = [
+  { region: "비ISO 남동부", price: "중저가", gen: "가스·원전", tx: "우수" },
+  { region: "TVA (테네시밸리)", price: "저가", gen: "원전·수력", tx: "우수" },
+  { region: "BPA (북서부)", price: "최저가", gen: "수력", tx: "보통" },
+  { region: "서부 산악", price: "유틸별 상이", gen: "혼합", tx: "보통" },
 ];
+// 권역 특성 3뱃지 — 가격(의미색)/발전원(무채색)/송전(의미색).
+function GridBadges({ a }: { a: GridAttr }) {
+  const pc = gridPriceColor(a.price), tc = gridTxColor(a.tx);
+  return (<div className="mt-1 flex flex-wrap gap-1 text-[9px]">
+    <span className="rounded px-1.5 py-px font-semibold" style={{ background: pc + "1e", color: pc }}><span className="font-normal opacity-60">가격 </span>{a.price}</span>
+    <span className="rounded bg-muted px-1.5 py-px font-semibold text-foreground/70"><span className="font-normal opacity-60">발전원 </span>{a.gen}</span>
+    <span className="rounded px-1.5 py-px font-semibold" style={{ background: tc + "1e", color: tc }}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
+  </div>);
+}
 const GRID_INTERCONNECT_NOTE = "미 본토는 동부·서부·텍사스 3개 물리 계통(Interconnection) 위에서, RTO/ISO(시장·급전) 또는 비ISO 유틸이 운영합니다. 경계는 근사(HIFLD).";
 const TX_WIDTH: Record<string, number> = { "345": 0.75, "500": 1.3, "735 and Above": 2.0 }; // 화면 px, 전압 등급별
 const TX_OPACITY: Record<string, number> = { "345": 0.5, "500": 0.72, "735 and Above": 0.95 }; // 전압 낮을수록 투명
@@ -1468,30 +1477,19 @@ export default function World() {
             </button>
             {gridPanelOpen && (
             <div className="min-h-0 overflow-auto border-t border-border py-1">
-              {RTO_ORDER.map((code) => { const open = dcGridSel === code; const hl = open || dcGridHover === code;
-                return (<div key={code}>
-                  <button onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
-                    className={`flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} />
-                    <span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
-                    <span className="shrink-0 whitespace-nowrap rounded px-1 py-px text-[9px] font-semibold" style={{ background: RTO_FILL[code] + "22", color: "hsl(var(--foreground))" }}>{RTO_TAG[code]}</span>
-                    <ChevronDown className={`ml-auto h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
-                  </button>
-                  {open && (<div className="px-2.5 pb-2 pl-6 text-[10.5px] leading-snug text-muted-foreground"><div className="mb-0.5 font-medium text-foreground/75">{RTO_REGION_KO[code]}</div>{RTO_DESC[code]}</div>)}
+              {/* 아코디언 폐기 — 각 권역 abbr + 3뱃지 상시 표시. 행 클릭/hover = 지도 권역 하이라이트. */}
+              {RTO_ORDER.map((code) => { const hl = dcGridSel === code || dcGridHover === code;
+                return (<div key={code} onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
+                  className={`cursor-pointer px-2.5 py-1.5 ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  <div className="flex items-center gap-1.5 text-[11.5px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} /><span className="font-semibold">{rtoAbbr(code)}</span></div>
+                  <GridBadges a={RTO_ATTR[code]} />
                 </div>); })}
-              {(() => { const open = dcGridSel === "noniso";
-                return (<div>
-                  <button onClick={() => setDcGridSel((c) => (c === "noniso" ? null : "noniso"))} className={`flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-[11.5px] ${open ? "bg-muted" : "hover:bg-muted/60"}`}>
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/50" />
-                    <span className="shrink-0 font-semibold">비ISO</span>
-                    <span className="truncate text-[10px] text-muted-foreground">수직통합 유틸 (무채색)</span>
-                    <ChevronDown className={`ml-auto h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} />
-                  </button>
-                  {open && (<div className="px-2.5 pb-2 text-[10px] leading-snug text-muted-foreground">
-                    {NONISO_ROWS.map((r) => (<div key={r.region} className="mb-2"><div className="flex flex-wrap items-center gap-1"><b className="text-foreground/80">{r.region}</b><span className="whitespace-nowrap rounded bg-muted px-1 py-px text-[9px] font-semibold text-foreground/70">{r.tag}</span></div><div className="mt-0.5">{r.desc}</div></div>))}
-                  </div>)}
-                </div>); })()}
-              <div className="px-2.5 pb-0.5 pt-1 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
+              <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
+              {NONISO_ROWS.map((r) => (<div key={r.region} className="px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5 text-[11.5px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" /><span className="font-semibold">{r.region}</span></div>
+                <GridBadges a={r} />
+              </div>))}
+              <div className="px-2.5 pb-0.5 pt-1.5 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
             </div>
             )}
           </div>
