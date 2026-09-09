@@ -160,6 +160,9 @@ const GROUP_GLOSS: Record<string, string> = { A: "오픈AI '스타게이트' 계
 const FIN_TYPE_KO: Record<string, string> = { equity: "지분 투자", debt: "대출", bond: "채권 발행", power: "전력 계약", self: "자기자본", project_finance: "프로젝트 파이낸싱" };
 // 발전 유형 한글 — 현장발전·유틸 신설 공용(영문 enum 노출 금지).
 const genTypeKo = (t: string) => t.includes("combined_cycle") ? "가스 복합화력" : t.includes("recip") ? "가스 엔진" : t.includes("turbine") ? "가스 터빈" : t.includes("gas") ? "가스" : (t.includes("nuclear") || t === "smr") ? "원전" : t.includes("battery") ? "배터리" : t.includes("solar") ? "태양광" : t.includes("wind") ? "풍력" : t;
+// 전력 조달 구성 색(원별): 계통 파랑 · 가스 앰버 · 재생 녹 · 원전 보라 · 기타 회.
+const POWER_SRC_COLOR: Record<string, string> = { grid: "#2563eb", gas: "#f59e0b", renew: "#16a34a", nuclear: "#7c3aed", other: "#78716c" };
+const powerSrcCat = (t: string) => (t.includes("gas") ? "gas" : (t.includes("solar") || t.includes("wind") || t.includes("renew")) ? "renew" : (t.includes("nuclear") || t === "smr") ? "nuclear" : "other");
 const GRID_COLOR: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b" };
 const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "#64748b";
 const STAGES = ["announced", "approved", "construction", "partial_operation", "operating"];
@@ -1528,11 +1531,26 @@ export default function World() {
             <div className="mt-2 flex items-center gap-1.5 text-[11.5px]"><span className="tr-gloss text-muted-foreground" title="전기·임대료를 낼 회사의 신용 — 이 사업의 돈줄이 얼마나 튼튼한가">임차인 신용등급</span><span className="font-medium">{s.credit_wrapper ?? "—"}</span>{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
               <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 <span className="ml-auto text-[10px] font-normal text-muted-foreground">신뢰도 {s.power.confidence}</span></div>
-              <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px]">
-                <span className="text-muted-foreground">계통</span><span><b style={{ color: gridColor(s.power.grid_operator) }}>{s.power.grid_operator}</b>{s.power.utility ? ` · ${s.power.utility}` : ""} <span className="text-muted-foreground">({s.power.grid_share})</span></span>
-                {s.power.onsite_generation.length > 0 && <><span className="text-muted-foreground">현장 발전</span><span>{s.power.onsite_generation.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ")}</span></>}
-                {s.power.utility_new_build.length > 0 && <><span className="text-muted-foreground">유틸 신설</span><span>{s.power.utility_new_build.map((g) => `${genTypeKo(g.type)} ${g.mw ?? ""}MW`).join(" · ")}</span></>}</div>
-              {s.power.note && <div className="mt-1 text-[10.5px] text-muted-foreground">{glossText(s.power.note)}</div>}</div>)}
+              {/* 원별 구성 — 계통 수급 vs 자가발전(원별 분해). 비율은 공표된 곳만 막대(=100% 계통 단독), 그 외는 지어내지 않고 칩만. 계통 운영자는 면 채색(RTO 뷰)이 전담해 카드에선 뺌. */}
+              {(() => {
+                const gs = (s.power.grid_share ?? "") as string; const gm = /^\s*(\d+)\s*%/.exec(gs); const gridPct = gm ? Number(gm[1]) : null;
+                const onsite = s.power.onsite_generation ?? []; const hasGrid = !!gs && !/^0\b/.test(gs);
+                const srcs: { label: string; cat: string }[] = [];
+                if (hasGrid) srcs.push({ label: "계통 수급", cat: "grid" });
+                for (const g of onsite) srcs.push({ label: `현장 ${genTypeKo(g.type)}${g.status === "planned" ? "(계획)" : ""}`, cat: powerSrcCat(g.type) });
+                const known = gridPct === 100 && onsite.length === 0; // 비율 확정 = 100% 계통 단독
+                return (<div className="mt-1.5">
+                  {known ? (<><div className="flex h-2.5 w-full overflow-hidden rounded-full"><div style={{ width: "100%", background: POWER_SRC_COLOR.grid }} /></div>
+                    <div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: POWER_SRC_COLOR.grid }} />계통 수급 100</div></>)
+                  : (<><div className="flex flex-wrap items-center gap-1">
+                      {srcs.length === 0 ? <span className="text-[10px] text-muted-foreground/70">전력 구성 미공개</span>
+                        : srcs.map((x, i) => <span key={i} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: POWER_SRC_COLOR[x.cat] }} />{x.label}</span>)}
+                    </div>
+                    {srcs.length > 0 && <div className="mt-1 text-[9.5px] text-muted-foreground/70">구성만 확인 · 비율 미공개 (막대 생략)</div>}</>)}
+                </div>);
+              })()}
+              {s.power.utility_new_build.length > 0 && <div className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground"><span className="text-muted-foreground/70">유틸 신설(계통에 공급): </span>{s.power.utility_new_build.map((g) => `${genTypeKo(g.type)} ${g.mw ?? ""}MW`).join(" · ")}</div>}
+              {s.power.note && <div className="mt-1 text-[10.5px] leading-snug text-muted-foreground">{glossText(s.power.note)}</div>}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
               <div className="space-y-0.5">{s.financing.map((f, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">{FIN_TYPE_KO[f.type] ?? f.type}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>))}</div></div>
             {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{glossText(s.notes)}</div>}
