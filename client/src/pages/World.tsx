@@ -1486,8 +1486,13 @@ export default function World() {
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} /><span className="text-base font-bold leading-tight">{s.name}</span></div>
             <div className="text-[11px] text-muted-foreground">{s.location.city}, {s.location.state} · {GROUP_LABEL[s.group]}</div>
             <div className="mt-2 flex items-baseline gap-1.5 text-[12px]"><b className="tabular-nums">{s.capacity_operational_mw ?? "—"}MW</b><span className="text-muted-foreground">운영 / 목표 {s.capacity_target_mw.max ? (s.capacity_target_mw.min === s.capacity_target_mw.max ? `${s.capacity_target_mw.max}` : `${s.capacity_target_mw.min}~${s.capacity_target_mw.max}`) : "—"}MW</span></div>
-            <div className="mt-1.5 flex gap-0.5">{STAGES.map((st, i) => <div key={st} className="h-1.5 flex-1 rounded-sm" style={{ background: i <= stageIdx ? GROUP_COLOR[s.group] : "hsl(var(--muted))" }} title={STAGE_KO[st]} />)}</div>
-            <div className="mt-0.5 text-[10.5px] text-muted-foreground">{STAGE_KO[s.status_stage]} · {s.status_note}</div>
+            {/* 생애 단계 5칸(누적) — 각 칸에 단계명, 현재 단계는 굵게+안쪽 링 강조 */}
+            <div className="mt-2 flex gap-0.5">{STAGES.map((st, i) => { const done = i <= stageIdx; const cur = i === stageIdx;
+              return <div key={st} title={STAGE_KO[st]}
+                className={`flex-1 rounded-sm px-0.5 py-1 text-center text-[9px] leading-none ${cur ? "font-bold" : "font-medium"}`}
+                style={{ background: done ? GROUP_COLOR[s.group] : "hsl(var(--muted))", color: done ? "#fff" : "hsl(var(--muted-foreground))", boxShadow: cur ? "inset 0 0 0 1.5px rgba(255,255,255,0.75)" : undefined }}>{STAGE_KO[st]}</div>;
+            })}</div>
+            {s.status_note && <div className="mt-1 text-[10.5px] text-muted-foreground">{s.status_note}</div>}
             <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
               <span className="text-muted-foreground">개발/소유</span><span>{s.landlord}</span>
               <span className="text-muted-foreground">임차</span><span>{s.tenant ?? "—"}{s.lease_term_years ? ` · ${s.lease_term_years}년` : ""}</span>
