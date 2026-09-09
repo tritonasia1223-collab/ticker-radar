@@ -273,19 +273,19 @@ const gridPriceColor = (v: string) => (v.startsWith("최저") || v === "저가")
 const gridTxColor = (v: string) => v.includes("우수") ? "#16a34a" : v.includes("병목") ? "#f59e0b" : "#64748b";
 // 비ISO 지역(§2) — 동일 3속성. 유틸 폴리곤은 후속(EIA-861), 여기선 목록으로만.
 const NONISO_ROWS: ({ region: string } & GridAttr)[] = [
-  { region: "비ISO 남동부", price: "중저가", gen: "가스·원전", tx: "우수" },
-  { region: "TVA (테네시밸리)", price: "저가", gen: "원전·수력", tx: "우수" },
-  { region: "BPA (북서부)", price: "최저가", gen: "수력", tx: "보통" },
+  { region: "남동부", price: "중저가", gen: "가스·원전", tx: "우수" },
+  { region: "TVA", price: "저가", gen: "원전·수력", tx: "우수" },
+  { region: "BPA", price: "최저가", gen: "수력", tx: "보통" },
   { region: "서부 산악", price: "유틸별 상이", gen: "혼합", tx: "보통" },
 ];
-// 권역 특성 3뱃지 — 가격(의미색)/발전원(무채색)/송전(의미색).
+// 권역 특성 뱃지 — 값만(가격·발전원은 자명), 송전만 라벨 유지. abbr와 한 줄에 들어가는 인라인 프래그먼트.
 function GridBadges({ a }: { a: GridAttr }) {
   const pc = gridPriceColor(a.price), tc = gridTxColor(a.tx);
-  return (<div className="mt-1 flex flex-wrap gap-1 text-[9px]">
-    <span className="rounded px-1.5 py-px font-semibold" style={{ background: pc + "1e", color: pc }}><span className="font-normal opacity-60">가격 </span>{a.price}</span>
-    <span className="rounded bg-muted px-1.5 py-px font-semibold text-foreground/70"><span className="font-normal opacity-60">발전원 </span>{a.gen}</span>
-    <span className="rounded px-1.5 py-px font-semibold" style={{ background: tc + "1e", color: tc }}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
-  </div>);
+  return (<>
+    <span className="shrink-0 rounded px-1.5 py-px text-[9px] font-semibold" style={{ background: pc + "1e", color: pc }}>{a.price}</span>
+    <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[9px] font-semibold text-foreground/70">{a.gen}</span>
+    <span className="shrink-0 rounded px-1.5 py-px text-[9px] font-semibold" style={{ background: tc + "1e", color: tc }}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
+  </>);
 }
 const GRID_INTERCONNECT_NOTE = "미 본토는 동부·서부·텍사스 3개 물리 계통(Interconnection) 위에서, RTO/ISO(시장·급전) 또는 비ISO 유틸이 운영합니다. 경계는 근사(HIFLD).";
 const TX_WIDTH: Record<string, number> = { "345": 0.75, "500": 1.3, "735 and Above": 2.0 }; // 화면 px, 전압 등급별
@@ -1481,13 +1481,13 @@ export default function World() {
               {/* 아코디언 폐기 — 각 권역 abbr + 3뱃지 상시 표시. 행 클릭/hover = 지도 권역 하이라이트. */}
               {RTO_ORDER.map((code) => { const hl = dcGridSel === code || dcGridHover === code;
                 return (<div key={code} onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
-                  className={`cursor-pointer px-2.5 py-1.5 ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
-                  <div className="flex items-center gap-1.5 text-[11.5px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} /><span className="font-semibold">{rtoAbbr(code)}</span></div>
+                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} /><span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
                   <GridBadges a={RTO_ATTR[code]} />
                 </div>); })}
               <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
-              {NONISO_ROWS.map((r) => (<div key={r.region} className="px-2.5 py-1.5">
-                <div className="flex items-center gap-1.5 text-[11.5px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" /><span className="font-semibold">{r.region}</span></div>
+              {NONISO_ROWS.map((r) => (<div key={r.region} className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 text-[11.5px]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" /><span className="shrink-0 font-semibold">{r.region}</span>
                 <GridBadges a={r} />
               </div>))}
               <div className="px-2.5 pb-0.5 pt-1.5 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
