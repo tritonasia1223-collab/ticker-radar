@@ -11,7 +11,11 @@ export type SeriesMap = Record<string, [string, number][]>;
 export function useCapSeries() {
   return useQuery<SeriesMap>({
     queryKey: ["capitalism-series"],
-    queryFn: async () => (await fetch(seriesUrl)).json() as Promise<SeriesMap>,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(seriesUrl, { signal });
+      if (!response.ok) throw new Error(`시계열 로드 실패: ${response.status}`);
+      return response.json() as Promise<SeriesMap>;
+    },
     staleTime: Infinity, // 정적 데이터 — 세션 내 재요청 안 함
     gcTime: Infinity,
   });

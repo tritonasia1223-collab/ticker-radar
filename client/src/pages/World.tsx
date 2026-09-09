@@ -1098,7 +1098,7 @@ export default function World() {
 
       {/* 우상: L2 층 토글 (세계·무역 모드에서만) */}
       {tradeMode && (
-      <div className="absolute right-4 top-4 flex gap-1">
+      <div className="absolute right-4 flex gap-1" style={{ top: dim.w < 560 ? 112 : dim.w < 1050 ? 64 : 16 }}>
         {([["routes", "항로", Route, SEA], ["ports", "항만", Anchor, SEA], ["chokes", "해협", Diamond, AMBER]] as const).map(([k, label, Icon, color]) => (
           <button key={k} onClick={() => setLayers((l) => ({ ...l, [k]: !l[k] }))}
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${layers[k] ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}
@@ -1109,7 +1109,7 @@ export default function World() {
 
       {/* 좌상: 검색 */}
       {!dcMode && (
-      <div className="absolute left-4 top-4 w-64">
+      <div className="absolute left-4 z-30 w-64" style={{ top: dim.w < 1050 ? 64 : 16, maxWidth: "calc(100% - 32px)" }}>
         <div className="rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           <div className="flex items-center gap-1.5 px-2.5 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -1141,7 +1141,7 @@ export default function World() {
 
       {/* 주요 항로 목록/범례 — 접기 가능(향후 층위 위해 상시 점유 안 함). 색=항로 신원 */}
       {((tradeMode && layers.routes) || conflictMode) && (
-      <div className="absolute left-4 top-[4.75rem] flex max-h-[calc(100%-6rem)] w-60 flex-col gap-2">
+      <div className="absolute left-4 flex max-h-[calc(100%-11rem)] w-60 flex-col gap-2" style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 124 : 76 }}>
         {tradeMode && layers.routes && (
         <div className="shrink-0 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center gap-1.5 p-2.5 pb-1 text-left hover:bg-muted/30">
@@ -1228,7 +1228,7 @@ export default function World() {
 
       {/* 개체 카드 — 유형별 필드, 칩 = 크로스링크 */}
       {sel && (
-        <div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+        <div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
           <button onClick={() => setSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
           {sel.kind === "country" && (() => { const f = features[sel.idx]; const cap = capByIso.get(f.properties.iso);
             return (<>
@@ -1400,7 +1400,7 @@ export default function World() {
       {/* ── 데이터센터 모드 패널 ── */}
       {dcMode && (<>
         {/* 우상단 레이어 토글 — 세계·무역 모드의 항로/항만/해협 알약과 통일 */}
-        <div className="absolute right-4 top-4 flex gap-1">
+        <div className="absolute right-4 flex gap-1" style={{ top: dim.w < 560 ? 112 : dim.w < 1050 ? 64 : 16 }}>
           <button onClick={() => setDcNuke((v) => !v)} title={`미국 전체 원전 ${nuclearPlants.length}기 — 상태별 색(가동 초록·퇴역 회색·재가동 앰버·취소). 보라 링 = AI 데이터센터 연계 · 보라 점선 ⚛ = AI 신규 SMR 계획.`}
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#16a34a" : undefined }} />원전</button>
           <button onClick={() => setDcTx((v) => !v)} title="345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사)."
@@ -1409,7 +1409,7 @@ export default function World() {
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "#2563eb" : undefined }} />반도체 팹</button>
         </div>
 
-        <div className="absolute left-4 top-16 w-60 space-y-2">
+        <div className="absolute left-4 w-60 space-y-2" style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }}>
           <div className="rounded-md border border-border bg-card/90 p-2.5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-1.5 text-sm font-bold"><Server className="h-4 w-4" /> 미국 AI 데이터센터
               <span className="ml-auto cursor-help text-[12px] font-normal text-muted-foreground" title="원 = 데이터센터(크기=IT 용량) · 외곽 링 = 계통 의존도(꽉 참=100% 계통, 빈 링=현장발전 위주, 점선=미공개) · 내부 아이콘 = 발전원(가스·원전·배터리) · 사각 = 발전소(①·② 관련) · 점선 원판 = 페르미(확보전력)">ⓘ</span>
@@ -1481,7 +1481,7 @@ export default function World() {
         </div>
 
         {dcSel && (() => { const s = dc.sites.find((x) => x.id === dcSel); if (!s) return null; const stageIdx = STAGES.indexOf(s.status_stage); const gen = primaryGen(s.power); const GenI = GEN_ICON[gen];
-          return (<div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+          return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setDcSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} /><span className="text-base font-bold leading-tight">{s.name}</span></div>
             <div className="text-[11px] text-muted-foreground">{s.location.city}, {s.location.state} · {GROUP_LABEL[s.group]}</div>
@@ -1507,7 +1507,7 @@ export default function World() {
         })()}
 
         {nukeSel && (() => { const p = nuclearPlants.find((x) => x.id === nukeSel); if (!p) return null; const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8";
-          return (<div className="absolute right-4 top-16 w-72 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+          return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 w-72 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setNukeSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><Atom className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{p.name}</span></div>
             <div className="text-[11px] text-muted-foreground">{p.state ?? ""} · 원자력</div>
@@ -1517,7 +1517,7 @@ export default function World() {
           </div>); })()}
 
         {fabSel && (() => { const f = fabs.find((x) => x.id === fabSel); if (!f) return null; const col = FAB_COLOR[f.company] || FAB_COLOR.other;
-          return (<div className="absolute right-4 top-16 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
+          return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setFabSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><Hexagon className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{f.site_name}</span></div>
             <div className="text-[11px] text-muted-foreground">{FAB_COMPANY_KO[f.company]} · {f.location.city}, {f.location.state} · {FAB_CAT_KO[f.category]}</div>

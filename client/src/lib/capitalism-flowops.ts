@@ -62,12 +62,64 @@ export function newNodeKey(): string {
 // Fix②: 같은 카드(slug)의 저장을 '순차 실행'해 동시 full-replace 로 서로를 덮는 손실을 막는다.
 //   runFn 은 반드시 '실행 시점'에 최신 상태를 읽어 보내야 한다(스테일 스냅샷 금지) → 누적 보존.
 const saveChains = new Map<string, Promise<unknown>>();
-export function enqueueSave<T>(key: string, runFn: () => Promise<T>): Promise<T> {
+const failedSaves = new Map<string, { key: string; run: () => Promise<unknown> }>();
+const scheduledSaves = new Map<string, { timer: ReturnType<typeof setTimeout>; run: () => void }>();
+const listeners = new Set<() => void>();
+let revision = 0;
+let guardingUnload = false;
+const guardUnload = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges()) return;
+  flushScheduledSaves();
+  event.preventDefault(); event.returnValue = "";
+};
+const notify = () => {
+  // 다른 메뉴로 이동해 Capitalism이 unmount되어도 진행 중/실패한 저장의 이탈 경고는 유지한다.
+  if (typeof window !== "undefined" && guardingUnload !== hasUnsavedChanges()) {
+    guardingUnload = hasUnsavedChanges();
+    if (guardingUnload) window.addEventListener("beforeunload", guardUnload);
+    else window.removeEventListener("beforeunload", guardUnload);
+  }
+  revision++; listeners.forEach((fn) => fn());
+};
+export const subscribeSaves = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
+export const saveRevision = () => revision;
+export const hasUnsavedChanges = () => !!(saveChains.size || scheduledSaves.size || failedSaves.size);
+export const hasFailedSaves = () => failedSaves.size > 0;
+export function scheduleSave(operation: string, run: () => void) {
+  const previous = scheduledSaves.get(operation);
+  if (previous) clearTimeout(previous.timer);
+  const flush = () => { scheduledSaves.delete(operation); run(); notify(); };
+  scheduledSaves.set(operation, { timer: setTimeout(flush, 600), run: flush });
+  notify();
+}
+export function flushScheduledSaves() {
+  for (const item of [...scheduledSaves.values()]) { clearTimeout(item.timer); item.run(); }
+}
+export async function waitForSaves() {
+  flushScheduledSaves();
+  while (saveChains.size) await Promise.all([...saveChains.values()]);
+  if (failedSaves.size) throw new Error("미저장 변경 사항이 있습니다. 저장을 다시 시도하세요.");
+}
+export async function retryFailedSaves() {
+  await Promise.allSettled([...failedSaves.entries()].map(([operation, item]) => enqueueSave(item.key, item.run, operation)));
+}
+export function enqueueSave<T>(key: string, runFn: () => Promise<T>, operation = key): Promise<T> {
   const prev = saveChains.get(key) ?? Promise.resolve();
-  const run = prev.then(runFn, runFn); // 앞 저장 성패와 무관하게 이어서 실행(직렬화)
+  const execute = async () => {
+    try {
+      const result = await runFn();
+      failedSaves.delete(operation);
+      return result;
+    } catch (error) {
+      failedSaves.set(operation, { key, run: runFn });
+      throw error;
+    } finally { notify(); }
+  };
+  const run = prev.then(execute, execute);
   const tracker = run.then(() => {}, () => {}); // 다음 저장이 기다릴 '완료' 신호
   saveChains.set(key, tracker);
-  void tracker.finally(() => { if (saveChains.get(key) === tracker) saveChains.delete(key); });
+  notify();
+  void tracker.finally(() => { if (saveChains.get(key) === tracker) saveChains.delete(key); notify(); });
   return run;
 }
 
@@ -77,7 +129,12 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try { return await fn(); }
-    catch (e) { lastErr = e; if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i)); }
+    catch (e) {
+      lastErr = e;
+      // 검증/충돌 오류는 같은 요청으로 해결되지 않는다. 408·429만 일시 오류로 재시도.
+      if (/^4\d\d\b/.test(String((e as Error)?.message)) && !/^(408|429)\b/.test(String((e as Error)?.message))) throw e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i));
+    }
   }
   throw lastErr;
 }
@@ -88,8 +145,13 @@ export function nodeHasContent(n: FlowNodeDTO): boolean {
   return !!(n.text.trim() || n.table || (n.ref && n.ref.trim()));
 }
 
+export function hasInsightContent(flow: FlowDTO): boolean {
+  const i = flow.insight;
+  return !!(i && (i.text?.trim() || i.charts?.length || i.tables?.length || i.blocks?.some((b) => b.type !== "text" || b.text.trim())));
+}
+
 // 플로우의 노드 배열을 통째로 저장. 진짜 빈 노드(텍스트·표·메모 모두 없음)만 제외.
-// 모든 노드가 비면 플로우 자체를 삭제한다. 반환: "deleted" | 저장된 최신 FlowDTO(버전 포함).
+// 노드와 인사이트가 모두 비면 플로우 자체를 삭제한다. 반환: "deleted" | 최신 FlowDTO.
 //   baseVersion(불러온 시점 updatedAt)을 함께 보내 낙관적 동시성 검사를 받는다 — 그새 다른 곳에서
 //   먼저 저장됐으면 서버가 409 를 던지고, 여기서는 그 에러가 그대로 위로 전파된다(호출부가 처리).
 export async function persistNodes(
@@ -97,7 +159,7 @@ export async function persistNodes(
   nodes: FlowNodeDTO[]
 ): Promise<"deleted" | FlowDTO> {
   const clean = nodes.filter(nodeHasContent);
-  if (clean.length === 0) {
+  if (clean.length === 0 && !hasInsightContent(flow)) {
     await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(flow.slug)}`);
     return "deleted";
   }

@@ -1,7 +1,7 @@
 // 자본주의 타임라인 — 가벼운 되돌리기(Undo) 스택.
 //  - 텍스트 글자 단위 편집은 제외(편집창 내 브라우저 기본 Undo 가 처리).
 //  - 대상 동작: 화살표 생성/삭제, 카드(사건) 생성/삭제, 노드 추가/삭제.
-//  - 방식: 각 동작 "직전 상태"를 스냅샷으로 쌓고, Undo 시 그 상태로 서버를 되돌린다.
+//  - 방식: 각 동작 "직전 상태"를 스냅샷으로 쌓고, Undo 시 삭제한 노드만 최신 서버본에 복원한다.
 //  - 메모리 전용 스택(새로고침하면 히스토리는 사라짐 — 되돌린 결과 자체는 DB 에 반영됨).
 import { apiRequest } from "@/lib/queryClient";
 import { toInput, nodeHasContent } from "@/lib/capitalism-flowops";
@@ -12,6 +12,7 @@ export interface FlowSnapshotEntry {
   kind: "flow";
   label: string; // 사용자 안내용 라벨(예: "화살표 추가")
   slug: string;
+  removedIds?: string[]; // 이 동작이 삭제한 노드만 복원한다.
   prev: FlowDTO | null; // 동작 전 그 flow 상태(없었으면 null)
 }
 
@@ -30,9 +31,9 @@ export function clone<T>(v: T): T {
 }
 
 // flow 스냅샷 항목 생성. flows 캐시에서 현재 상태를 찾아 깊은 복제로 보관.
-export function makeFlowEntry(label: string, slug: string, flows: FlowDTO[] | undefined): FlowSnapshotEntry {
+export function makeFlowEntry(label: string, slug: string, flows: FlowDTO[] | undefined, nextNodes?: FlowNodeDTO[]): FlowSnapshotEntry {
   const cur = flows?.find((f) => f.slug === slug) ?? null;
-  return { kind: "flow", label, slug, prev: cur ? clone(cur) : null };
+  return { kind: "flow", label, slug, prev: cur ? clone(cur) : null, removedIds: cur && nextNodes ? cur.nodes.filter((n) => !nextNodes.some((next) => next.id === n.id)).map((n) => n.id) : undefined };
 }
 
 // links 스냅샷 항목 생성.
@@ -41,36 +42,34 @@ export function makeLinksEntry(label: string, links: LinkDTO[] | undefined): Lin
 }
 
 // flow 스냅샷으로 되돌리기: prev 가 있으면 그 상태로 upsert 복원, 없으면(=신규 생성이었음) 삭제.
-async function applyFlowUndo(entry: FlowSnapshotEntry): Promise<void> {
+export function restoreDeletedNodes(entry: FlowSnapshotEntry, current: FlowDTO | undefined): FlowDTO {
+  const before = entry.prev!;
+  const restored = clone(current ?? before);
+  if (!current) return restored;
+  const removed = new Set(entry.removedIds ?? before.nodes.filter((n) => !current.nodes.some((c) => c.id === n.id)).map((n) => n.id));
+  for (let i = 0; i < before.nodes.length; i++) {
+    const node = before.nodes[i];
+    if (!removed.has(node.id) || restored.nodes.some((n) => n.id === node.id) || !nodeHasContent(node)) continue;
+    const next = before.nodes.slice(i + 1).find((n) => restored.nodes.some((c) => c.id === n.id));
+    const at = next ? restored.nodes.findIndex((n) => n.id === next.id) : restored.nodes.length;
+    restored.nodes.splice(at, 0, clone(node));
+  }
+  return restored;
+}
+
+async function applyFlowUndo(entry: FlowSnapshotEntry): Promise<FlowDTO | undefined> {
   if (!entry.prev) {
-    // 동작 전엔 이 카드가 없었음 → 삭제로 되돌림. (실패는 위로 던져 호출부가 사용자에게 알림)
     await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(entry.slug)}`);
     return;
   }
-  // 동작 전 상태로 복원. 표·메모만 있는 노드(텍스트 빈)도 nodeHasContent 기준으로 '보존'한다
-  //   (text.trim() 기준으로 거르면 표/메모 노드가 되돌리기 때 통째로 삭제되던 손실이 있었다).
-  const f = entry.prev;
-  const snapNodes = f.nodes.filter(nodeHasContent);
-
-  // 스냅샷 이후 '다른 곳(동료)에서 추가된' 노드는 되돌리기가 지우지 않도록 병합 보존한다.
-  //   현재 서버 상태를 읽어, 스냅샷에 없던 노드만 뒤에 덧붙인다(위상은 다음 구조 편집이 정리).
-  let merged: FlowNodeDTO[] = snapNodes;
-  try {
-    const flows = (await apiRequest("GET", "/api/capitalism/flows").then((r) => r.json())) as FlowDTO[];
-    const cur = flows.find((x) => x.slug === f.slug);
-    if (cur) {
-      const snapKeys = new Set(snapNodes.map((n) => n.id));
-      const extras = cur.nodes.filter((n) => !snapKeys.has(n.id) && nodeHasContent(n));
-      merged = [...snapNodes, ...extras];
-    }
-  } catch { /* 현재 상태를 못 읽으면 스냅샷만으로 복원(최소 안전) */ }
-
-  // 남는 노드가 하나도 없으면(실질 빈 카드였음) 삭제로 복원.
-  if (merged.length === 0) {
-    await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(f.slug)}`);
-    return;
-  }
-  await apiRequest("POST", "/api/capitalism/flows", toInput({ ...f, nodes: merged }, merged));
+  // 최신 읽기 실패 시 중단한다. 과거 스냅샷으로 현재 서버 내용을 덮지 않는다.
+  const flows: FlowDTO[] = await apiRequest("GET", "/api/capitalism/flows").then((r) => r.json());
+  const current = flows.find((f) => f.slug === entry.slug);
+  const restored = restoreDeletedNodes(entry, current);
+  const response = await apiRequest("POST", "/api/capitalism/flows", {
+    ...toInput(restored, restored.nodes), baseVersion: current?.updatedAt ?? 0,
+  });
+  return response.json();
 }
 
 // links 스냅샷으로 되돌리기: 현재 서버 링크와 비교해 추가/삭제로 동기화.
@@ -98,7 +97,8 @@ async function applyLinksUndo(entry: LinksSnapshotEntry): Promise<void> {
 }
 
 // 한 항목 되돌리기 실행.
-export async function applyUndo(entry: UndoEntry): Promise<void> {
+export async function applyUndo(entry: UndoEntry): Promise<FlowDTO | undefined> {
   if (entry.kind === "flow") return applyFlowUndo(entry);
-  return applyLinksUndo(entry);
+  await applyLinksUndo(entry);
+  return undefined;
 }

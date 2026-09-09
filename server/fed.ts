@@ -3,6 +3,7 @@
 // 원칙(계획서 §3~§4): 원값은 million USD 로 '통일'해 저장, 파생값(SOMA·순유동성·워터폴·잔차)은
 //   저장하지 않고 여기 순수함수로 계산 — 정의 변경 시 백필 불필요.
 // 다른 모듈(capitalism/insider/congress)과 완전 분리: fed_balance_sheet 테이블만 사용.
+import { consecutiveMonths } from "../shared/time-series.js";
 import { db } from "./storage.js";
 import { fedBalanceSheet } from "../shared/schema.js";
 
@@ -16,7 +17,7 @@ export interface SeriesSpec {
   freq: "weekly" | "daily";
   role: Role;
   group?: string;      // 자산: soma|loans / 부채: reserves|rrp|tga|currency
-  optionalZero?: boolean; // 프로그램 비활성 시기엔 관측이 없을 수 있음 → 파생계산에서 0 취급
+  optionalZero?: boolean; // 레거시 카탈로그 표식. 결측을 0으로 대체하는 데 사용하지 않는다.
 }
 
 // ── H.4.1 주간(수요일 기준) ──
@@ -91,11 +92,11 @@ export function weeklyDates(all: Map<string, Map<string, number>>): string[] {
   return seriesSorted(all, "WALCL").map(([d]) => d);
 }
 
-// 특정 날짜의 시리즈 값. optionalZero 계열은 결측 시 0, 그 외 결측은 NaN.
+// 특정 날짜의 시리즈 값. 모든 결측은 NaN으로 전파한다.
 function valAt(all: Map<string, Map<string, number>>, id: string, date: string): number {
   const v = all.get(id)?.get(date);
   if (v != null) return v;
-  return BY_ID[id]?.optionalZero ? 0 : NaN;
+  return NaN; // 관측 부재는 0의 증거가 아니다. 비활성 프로그램도 실제 0 관측이 필요하다.
 }
 
 export interface AssetBreak { total: number; soma: number; loans: number; residual: number; }
@@ -161,7 +162,7 @@ export function waterfall(all: Map<string, Map<string, number>>, prev: string, n
 function v(all: Map<string, Map<string, number>>, id: string, date: string): number {
   const x = all.get(id)?.get(date);
   if (x != null) return x;
-  return BY_ID[id]?.optionalZero ? 0 : NaN;
+  return NaN; // 관측 부재는 0의 증거가 아니다. 비활성 프로그램도 실제 0 관측이 필요하다.
 }
 
 export interface WeekPoint {
@@ -264,6 +265,7 @@ export function buildTreasury(all: Map<string, Map<string, number>>): TreasuryVi
   for (const d of dates) {
     const bills = mB.get(d)!, notes = mN.get(d)!, bonds = mBo.get(d)!, tips = mT.get(d)!, frn = mF.get(d)!;
     if (![bills, notes, bonds, tips, frn].every(Number.isFinite)) continue;
+    if (prev && !consecutiveMonths(prev.date, d)) prev = null;
     const total = bills + notes + bonds + tips + frn;
     const fedBills = ffillAt(fedBillsArr, d), fedNotesBonds = ffillAt(fedNBArr, d), fedTips = ffillAt(fedTipsArr, d);
     const fedTotal = ffillAt(fedTotArr, d);

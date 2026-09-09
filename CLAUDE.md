@@ -1,7 +1,7 @@
-# ticker-radar — 작업 가이드
+# FISCUS — 작업 가이드
 
-통합 금융 대시보드: **정치인 거래 / 내부자 거래 / SNS 인플루언서 / 자본주의 경제사** 4개 모듈.
-작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 피처 브랜치 푸시는 비공개 Preview만 만들어지니 평소엔 master 에서 바로 작업. 커밋 끝에 `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+개인용 매크로 리서치 도구. 현재 메인: **자본주의 경제사 / 미국 유동성 / 세계 현황판**. 종목 발견·정치인·내부자 거래는 개발 보류 상태이며 코드와 수집 설정은 보존한다. 현재 안내는 README.md 및 docs/INDEX.md를 따른다.
+작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 피처 브랜치 푸시는 비공개 Preview만 만들어지니 평소엔 master 에서 바로 작업. 커밋·푸시는 사용자의 요청 범위에 따라 진행하며, 푸시의 자동 배포 영향을 확인한다.
 
 ## 스택
 React 18 + Vite + TS, wouter(#hash 라우트), @tanstack/react-query, shadcn/ui(@radix-ui),
@@ -14,9 +14,9 @@ postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 
 - `script/` — 수집/보강(collect-*, enrich-*) + **검증 하네스**(아래).
 - 수집 주기는 **비대칭**(소스 신선도에 맞춤): 내부자 Form4 = **일 1회**(`.github/workflows/insider.yml`, 03:00 UTC — 클러스터 매수 알파가 공시 직후 수일에 가장 강함, T+2라 인트라데이는 무의미) / 정치인 PTR = **주 1회**(`congress.yml` — 최대 45일 지연이라 충분). 둘 다 수집 직후 `npm run healthcheck`(#27) 자동, orphan B(진짜깨짐)>0면 RED. 겹침-증분 멱등은 external_id 유니크(`uniq_itrade_ext`)가 보장.
 - 데이터: 정치인·내부자는 완전 분리(DB 테이블·API 라우트·페이지 파일). format.ts 유틸만 공유.
-- **자본주의 경제사**(`/capitalism`) — 4번째 모듈, 위 3개와 완전 분리(테이블 `cap_*`·라우트 `/api/capitalism/*`·컴포넌트 `Cap*`). 전후 달러 패권사를 인과 플로우 타임라인 + 전 구간 FRED 거시지표(정적 JSON `client/src/data/capitalism-series.json`, 런타임 fetch 0) + 사건별 인사이트로 편집·열람. 서버 `server/capitalism.ts`(upsert/delete 는 트랜잭션). `/capitalism` 라우트는 `React.lazy` 코드 스플릿(357KB JSON·framer-motion 분리). 입력 사건 데이터(현재 1968~1994) **손실 금지**, 시드는 전부 비파괴. **상세: `docs/CAPITALISM.md`**.
+- **자본주의 경제사**(`/capitalism`) — 메인 편집 모듈, 위 3개와 완전 분리(테이블 `cap_*`·라우트 `/api/capitalism/*`·컴포넌트 `Cap*`). 전후 달러 패권사를 인과 플로우 타임라인 + 전 구간 FRED 거시지표(별도 정적 JSON 에셋을 진입 후 1회 fetch하여 캐시) + 사건별 인사이트로 편집·열람. 서버 `server/capitalism.ts`(upsert/delete 는 트랜잭션). `/capitalism` 라우트는 `React.lazy` 코드 스플릿(357KB JSON·framer-motion 분리). 입력 사건 데이터(현재 1968~1994) **손실 금지**, 시드는 전부 비파괴. **상세: `docs/CAPITALISM.md`**.
 
-## 내부자 클러스터 점수 (현재 레버)
+## 보류 모듈: 내부자 클러스터 점수
 방향(매수×2) × Σ(티어가중 × 보유대비배율 × 절대규모log) / √n × thin페널티, 클래스캡·post0게이트.
 - 티어 가중: T1 전사·재무 1.0 / 대주주 0.9 / T2 운영 0.7 / T3 기능 0.4 / 미확인 0.3 / T4 이사 0.25
 - 보유대비 배율: >50% ×1.5 / 10–50% ×1.0 / <10% ×0.5 (분모 = change/pre)
@@ -60,4 +60,4 @@ postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 
 - 공유 Supabase에 **대량 파괴적 UPDATE 금지**(분류기가 차단). 비파괴 query-time 가드로 처리.
 - **공유 Supabase에 `drizzle-kit push` 절대 금지**(#26). 전-DB diff 라 미선언 테이블을 `DROP ... CASCADE` 로 날린다(=insiders orphan #23~#26 근본원인). 운영 DDL 은 raw 스크립트로만: `script/db-push-*.ts`(CREATE TABLE IF NOT EXISTS) · `script/db-fk-insider.ts`(ADD CONSTRAINT). `npm run db:push` 는 가드(db-push-guard)로 차단. FK 는 부분 보호일 뿐(평 DROP만 차단, CASCADE 못 막음) — 진짜 방어는 이 도구운용 규약 + FK + orphan 헬스체크(#27).
 - 시크릿/.env 는 gitignore 유지. 절대 커밋 안 함.
-- bash cwd가 가끔 리셋됨 → `cd /c/Users/1/Desktop/ticker-radar &&` 프리픽스로 실행.
+- 현재 프로젝트 루트에서 명령을 실행한다. PowerShell 실행법은 README.md를 참고한다.

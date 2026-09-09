@@ -1,10 +1,10 @@
 # 자본주의 경제사 모듈 (Capitalism)
 
-> 사이드바 **자본주의 경제사**(`/#/capitalism`). 정치인·내부자·SNS 와 **완전히 분리된 네 번째 모듈** —
+> 사이드바 **자본주의 경제사**(`/#/capitalism`). **메인 편집 모듈** —
 > DB 테이블(`cap_*`)·API 라우트(`/api/capitalism/*`)·페이지/컴포넌트(`Cap*`) 전부 별도 네임스페이스.
 
 전후(1944~) 달러 패권의 역사를 **인과 플로우(마인드맵형) 타임라인**으로 직접 편집·열람하는 도구.
-각 사건을 카드로 쌓고, 카드 안/사이를 화살표로 잇고, 전 구간 FRED 거시지표 그래프를 옆에 띄워
+각 사건을 카드로 쌓고, 카드 안의 인과관계를 연결하고, 전 구간 FRED 거시지표 그래프를 옆에 띄워
 "그때 무슨 일이 있었나 + 지표가 어떻게 움직였나 + 그게 지금과 어떻게 연결되나(인사이트)"를 한 화면에서 본다.
 
 ---
@@ -38,9 +38,9 @@
 | `cap_nodes` | 플로우 안 블록(노드) | `flowId`→flows(cascade), `nodeKey`(플로우 내 고유), `kind`(cause·event·effect·result), `inLabel`, `text`, `ref`(메모), `col`(branch: center·left·right), **`tableData`**(nullable JSON 표), `pos` |
 | `cap_edges` | 플로우 **내부** 화살표 | `flowId`, `fromKey`/`toKey`(nodeKey) |
 | `cap_links` | 보드 **전역** 화살표(카드 경계 넘음) | `(fromSlug,fromKey)→(toSlug,toKey)`, unique |
-| `cap_settings` | 도메인 app-level 키-값 | `key` PK, `value` — 메타 테제는 `insight_overview` 키 |
+| `cap_settings` | 도메인 app-level 키-값 | `key` PK, `value` — 현재 메타 카드는 `insight_overview_v2`, `insight_overview`는 레거시 |
 
-- **`insight` JSON** = `{ text: 리치텍스트마커, charts: [{series, from, to}] }`. 비면 `null`(빈 인사이트 저장 안 함).
+- **`insight` JSON** = `{ text, charts, tables?, blocks? }`. `blocks`가 있으면 텍스트·표·이미지·그래프·HTML·구분선의 순서를 결정합니다. 레거시 필드는 호환용입니다.
 - **`tableData` JSON** = `{ title?, widths[], cells[][] }`. 노드 메모(`ref`)와 **같은 층위**(별도 열 아님).
 - 노드 본문/메모는 **리치텍스트 마커 문자열**로 직렬화: `[[hl-y|텍스트]]`(하이라이트)·`[[c-r|텍스트]]`(색)·`[[link:slug|텍스트]]`(내부링크), 불릿은 `\t`×레벨 + `• `.
 
@@ -52,9 +52,11 @@
 |---|---|---|
 | GET | `/api/capitalism/flows` | `listFlows()` — 노드·엣지·표·인사이트까지 조립(`assemble`) |
 | POST | `/api/capitalism/flows` | `upsertFlow()` — **트랜잭션**(flow+nodes+edges 원자적 교체) |
+| PATCH | `/api/capitalism/flows/:slug/nodes/:key` | `patchNode()` — 단일 노드 내용 변경 |
+| PUT | `/api/capitalism/flows/:slug/insight` | `setInsight()` — 사건 인사이트 변경 |
 | DELETE | `/api/capitalism/flows/:slug` | `deleteFlow()` — 트랜잭션, 연결된 전역 링크도 정리 |
 | GET/POST/DELETE | `/api/capitalism/links` | 전역 화살표(`cap_links`) CRUD |
-| GET/PUT | `/api/capitalism/settings/:key` | `getSetting`/`setSetting` — 메타 테제 등 |
+| GET/PUT | `/api/capitalism/settings/:key` | `getSetting`/`setSetting` — 메타 카드 등 |
 
 - `upsertFlow`/`deleteFlow` 는 **Supabase 세션 풀러에서 트랜잭션 동작 확인됨**(`db.transaction`).
 - 빈 노드(텍스트·표·메모 다 없음)는 저장 전 `nodeHasContent`로 걸러짐(client `capitalism-flowops.ts`).
@@ -64,7 +66,7 @@
 ## 4. FRED 거시지표 그래프
 
 전 구간 시계열을 **빌드타임 정적 JSON**(`client/src/data/capitalism-series.json`, ~357KB)으로 안고 들어간다.
-런타임 API 호출 없음 — 그래서 `/capitalism` 라우트는 **코드 스플릿**으로 분리(이 JSON이 초기 번들에 안 섞이게).
+외부 FRED 런타임 API 호출 없음; 정적 JSON 에셋을 별도로 fetch — 그래서 `/capitalism` 라우트는 **코드 스플릿**으로 분리(이 JSON이 초기 번들에 안 섞이게).
 
 ### 패널 (`client/src/lib/capitalism-config.ts` — `PANELS`)
 
@@ -79,9 +81,9 @@
 - **기본 ON 6개**: 실질 GDP 성장률 · 인플레이션 · 미국 시총 · GDP 대비 정부부채 · 연준 정책금리 · 달러지수.
 - **Y축 기본 = "시점 맞춤"**(window) — 슬라이더 구간에 보이는 값 범위로 자동 스케일.
 - **달러→원화 토글** — `$B`/`$/oz` 등 **단위 라벨을 클릭**하면 고정환율(`USD_KRW=1380`)로 환산(`krwConversion`). 조₩·₩/bbl·₩/oz.
-- **라벨 클릭 → 전체범위 팝업** — 슬라이더 ±10년이 아니라 그 지표 전 구간을 크게.
+- **라벨 클릭 → 전체범위 팝업** — 슬라이더 ±5년이 아니라 그 지표 전 구간을 크게.
 - **호버 툴팁** — 세로 안 넓고 그래프 안 가리게 1줄 압축(`tickFmt`, `position={{y:0}}`).
-- **연도 헤더 지도자 병기**(`leadersForYear`) — 대통령/연준의장(존슨~트럼프2기 / 마틴~파월·워시). 2026.5.22 파월→워시 취임 병기.
+- **연도 헤더 지도자 병기** — `leadersForYear`의 저장소 설정값을 표시합니다. 현직 정보를 실시간 조회하지 않습니다.
 
 ### 시리즈 갱신
 
@@ -101,9 +103,16 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 
 - 카드 헤더 **★**(빨강, 네온 글로우 펄스 `cap-star-neon`) = 인사이트 있음 → 클릭 시 오른쪽이 인사이트 모드로 전환.
 - **본문**: 리치텍스트(왼쪽 정렬, 하이라이트·색 마커). **그래프**: 여러 개 첨부 가능, 추가 시 기본 범위 = **카드 시점 ±5년 창**(자유 조정).
-- **인사이트끼리 직접 링크는 없음**(카드 점프 방식 폐기) — 대신 **모아보기 탭**에서 시간순으로 읽는다.
-- **메타 테제**(`insight_overview` 세팅) — 사건에 안 묶이는 전체 논증("달러 패권 = 숙주를 갈아타는 바이러스") 한 곳에.
-- POST-per-keystroke 방지: 편집은 로컬, **blur 시 1회 커밋**(`chartsRef`/`textRef`).
+- **모아보기 탭**에서 시간순으로 읽고, 리치텍스트의 내부 링크로 사건 카드를 찾아갑니다.
+- **메타 카드** — `insight_overview_v2`에 `{ cards: [...] }`로 저장합니다. 사건과 무관한 전체 논증을 여러 카드로 작성합니다. 이전 단일 `insight_overview`는 v2가 없을 때만 읽습니다.
+- 노드 본문·인사이트 블록·메타 카드 입력은 캐시에 즉시 반영하고, 600ms 디바운스 후 저장합니다. 사건 제목·날짜·노드 메모·표의 입력 완료는 기존 blur/확정 경로를 사용합니다.
+- 카드별 구조 POST·노드 PATCH·인사이트 PUT은 같은 저장 큐를 공유합니다. 메타 카드 배열도 별도 큐에서 순서대로 저장합니다.
+- 저장 대기·전송 중·실패 상태를 추적합니다. 실패 시 화면의 편집본을 유지하며 상단에서 재시도할 수 있습니다. 입력창에서 새로고침하면 blur 커밋과 대기 저장을 실행하고 이탈 경고를 띄웁니다.
+- 창 focus 복귀 시 자동 refetch는 하지 않습니다. 서버 최신본을 확인하려면 저장 완료 후 새로고침합니다.
+- 구조 저장은 `baseVersion`으로 충돌을 검사합니다. 409를 자동 병합하거나 강제 덮어쓰지 않습니다. 로컬 편집을 복사해 보관한 뒤 서버본과 비교합니다.
+- Undo는 저장 대기가 끝난 뒤, 삭제한 노드만 최신 서버본에 복원합니다. 다른 노드 본문·인사이트·제목의 이후 수정은 보존합니다. 최신 조회 또는 저장 실패 시 Undo 항목을 스택에 남깁니다.
+- 마지막 노드를 삭제해도 인사이트가 있으면 사건을 남기고 `+ 칸 추가` 버튼을 표시합니다.
+- 초안/실패 큐는 메모리 기반입니다. 이탈 경고를 무시한 종료나 브라우저 강제 종료 뒤 복구하는 기능, 여러 창의 동시 편집 자동 병합은 제공하지 않습니다.
 
 ---
 
@@ -113,7 +122,7 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 |---|---|
 | `client/src/pages/Capitalism.tsx` | 페이지 셸 — 보드·슬라이더·오른쪽 패널·탭 상태 |
 | `client/src/components/CapFlow.tsx` | 사건 카드(노드 열, branch 분기, ★, 인사이트 클릭) |
-| `client/src/components/CapInsight.tsx` | `InsightPanel`·`InsightsCollection`·`OverviewBlock`·`InsightChartView` |
+| `client/src/components/CapInsight.tsx` | `InsightPanel`·`InsightsCollection`·메타 카드 편집; 본문 블록은 `CapBlocks.tsx` |
 | `client/src/components/CapChartPanel.tsx` | `PanelChart`(스케일·압축포맷) + 확대 모달·원화 토글 |
 | `client/src/components/CapRichEditor.tsx` | contentEditable 리치 에디터(마커 직렬화, `align` 옵션) |
 | `client/src/components/CapRichText.tsx` | 읽기 전용 리치텍스트 렌더 |
@@ -121,13 +130,16 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 | `client/src/components/CapLinkOverlay.tsx` | 전역 화살표 오버레이(SVG) |
 | `client/src/lib/capitalism-config.ts` | `PANELS`·`CATEGORIES`·`leadersForYear`·`krwConversion`·불릿 |
 | `client/src/lib/capitalism-types.ts` | DTO 타입(Flow·Node·Insight·Table) |
-| `client/src/lib/capitalism-flowops.ts` | `nodeHasContent`·`toInput`·persist 필터 |
+| `client/src/lib/capitalism-flowops.ts` | 카드별 저장 큐·디바운스·실패 추적·재시도·persist 필터 |
 | `client/src/lib/capitalism-richtext.ts` | 마커 ↔ DOM 직렬화 |
 | `client/src/lib/capitalism-undo.ts` | 편집 undo 스택 |
 
 ---
 
 ## 7. 운영 스크립트
+
+운영 데이터를 수정하기 전 `npm run cap:backup`으로 백업합니다. `npm run cap:integrity`는 최신 백업 대비 카드·노드 ID 소멸을 검사하며, 정상은 exit 0, 손실/조회 실패는 exit 1, 백업 부재는 exit 2입니다. 내용의 정확성이나 의도적인 삭제 여부까지 판정하는 검사는 아닙니다. 백업·이력 파일을 보존하세요.
+
 
 | 명령 | 설명 |
 |---|---|
@@ -141,12 +153,12 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 
 > ⚠️ **DDL 은 raw 스크립트로만**(`ADD COLUMN/CREATE TABLE IF NOT EXISTS`). 공유 Supabase 에 `drizzle-kit push` 절대 금지 —
 > 전-DB diff 라 미선언 테이블을 DROP 한다. 대량 파괴적 UPDATE 도 금지.
-> 입력된 사건 데이터(현재 1968~1994)는 **손실 금지** — 시드는 전부 비파괴(존재 시 건너뜀).
+> 입력된 사건 데이터는 **손실 금지** — 시드는 전부 비파괴(존재 시 건너뜀).
 
 ---
 
 ## 8. 성능
 
 - `/capitalism` 라우트는 `React.lazy`로 **코드 스플릿** — 357KB 시계열 JSON + framer-motion + 리치에디터가
-  별도 청크로 빠져 다른 페이지 초기 번들에 안 섞인다(메인 번들 gzip 420KB→90KB).
-- 시계열은 정적 JSON(런타임 fetch 0). 진입 시 청크 1회 로드 후 캐시.
+  별도 청크로 빠져 다른 페이지 초기 번들에 안 섞입니다. 실제 번들 크기는 현재 빌드 출력을 확인합니다.
+- 시계열은 정적 JSON(별도 정적 JSON 에셋 1회 fetch). 진입 시 청크 1회 로드 후 캐시.

@@ -1,0 +1,37 @@
+{
+  "undo": {
+    "expectedB": "B edited after deletion",
+    "actualB": "B old",
+    "expectedInsight": "Insight edited after deletion",
+    "actualInsight": "Insight old",
+    "hasVersionGuard": false
+  },
+  "lastNodeDelete": {
+    "insightBefore": "Insight old",
+    "request": {
+      "method": "DELETE",
+      "url": "/api/capitalism/flows/audit",
+      "body": null
+    }
+  },
+  "missingMonth": {
+    "months": [
+      "2026-01-31",
+      "2026-03-31"
+    ],
+    "expectedMarchNetBills": 100,
+    "actualMarchNetBills": 200
+  },
+  "missingOptionalSeries": {
+    "inputLoanObservations": 0,
+    "reportedLoans": 0,
+    "weekIncluded": true
+  },
+  "staticData": {
+    "worldReferenceIssues": [
+      "dispute conflict:taiwan:13243_none"
+    ],
+    "capitalismSeriesCount": 19,
+    "capitalismSeriesIssues": []
+  }
+}

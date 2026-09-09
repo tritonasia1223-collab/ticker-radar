@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-09",
+  "environment": "Actual local frontend, memory-only API fixture; no production DB",
+  "unblurredDraft": {"beforeUnloadPrevented": false, "writes": 0, "afterReload": "Original A 1971", "draft": "Unblurred draft"},
+  "focusDuringPatch": {"patchDelayMs":2200,"beforeFocus":"Edited A must survive","duringAndAfterFocus":"Original A 1971","serverAfterPatch":"Edited A must survive","serverAfterSubsequentTitleSave":"Original A 1971"},
+  "metaWriteReorder": {"olderRequestDelayMs":4500,"screenTitle":"Meta newest","serverTitle":"Meta older","arrivalOrder":["Meta newest","Meta newest","Meta older"]},
+  "fedApiFailure": {"status":503,"display":"데이터가 없습니다."},
+  "fedCompleteFixture": {"rendered":true,"pageErrors":[]},
+  "worldWideWindow": {"width":1600,"height":1000,"checked":["trade","datacenters","conflicts","rto","load","transmission","fabs","nuclear"],"pageErrors":[]},
+  "worldNarrowWindow": {"width":929,"height":861,"tradeButton":{"x":449.640625,"y":19,"width":87.484375,"height":25.25},"searchInput":{"x":287,"y":23,"width":214,"height":18.75},"result":"search input intercepts trade button click"}
+}

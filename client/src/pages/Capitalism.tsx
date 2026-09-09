@@ -1,7 +1,7 @@
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
-import { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback, Fragment } from "react";
+import { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback, useSyncExternalStore, Fragment } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion, LayoutGroup } from "framer-motion";
 import { spring, fadeRise, reducedTransition } from "@/lib/motion-presets";
@@ -14,12 +14,12 @@ import { CapChartPanel } from "@/components/CapChartPanel";
 import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
 import { useEditMode } from "@/components/EditModeProvider";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
-import { persistNodes, toInput, newNodeKey, nodeHasContent, enqueueSave, withRetry, patchNodeContent, putInsight } from "@/lib/capitalism-flowops";
+import { persistNodes, newNodeKey, nodeHasContent, enqueueSave, withRetry, patchNodeContent, putInsight, hasInsightContent, hasUnsavedChanges, hasFailedSaves, subscribeSaves, saveRevision, scheduleSave, flushScheduledSaves, waitForSaves, retryFailedSaves } from "@/lib/capitalism-flowops";
 import type { NodeContentPatch } from "@/lib/capitalism-types";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
-import type { FlowDTO, FlowNodeDTO, FlowInputDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
+import type { FlowDTO, FlowNodeDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
 import { useCapSeries } from "@/lib/capitalism-series";
 
 const YEAR_MIN = 1971;
@@ -28,10 +28,13 @@ const YEAR_MAX = 1980;
 // 소수 연도 → YYYY-MM-DD (월 1일). 새 사건 기본 날짜 산출용.
 export default function Capitalism() {
   const qc = useQueryClient();
-  const { editable } = useEditMode(); // 보기/편집 모드 — 편집 UI(에디터·추가·저장) 게이트
-  const { data: flows, isLoading } = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
+  const { editable: editMode } = useEditMode();
+  useSyncExternalStore(subscribeSaves, saveRevision); // 보기/편집 모드 — 편집 UI(에디터·추가·저장) 게이트
+  const flowQuery = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
+  const { data: flows, isLoading } = flowQuery;
   // 거시 시계열(357KB)은 별도 에셋으로 분리 로드(코드 청크 다이어트). 로드 전엔 SERIES=undefined.
-  const { data: SERIES } = useCapSeries();
+  const seriesQuery = useCapSeries();
+  const { data: SERIES } = seriesQuery;
   // 각 패널(시리즈)의 데이터 시작 소수 연도 — 슬라이더 현재 시점이 이보다 이르면 라벨을 흐리게.
   //   (예: 연준 유동성 walcl/wresbal=2002, rrp=2003부터) 데이터 로드 후 계산(모듈 최상위 X → useMemo).
   const PANEL_START_FRAC = useMemo<Record<string, number>>(() => {
@@ -43,12 +46,22 @@ export default function Capitalism() {
     }));
   }, [SERIES]);
   // 보드 전역 화살표(카드 내/간 드래그앤드롭 연결).
-  const { data: links } = useQuery<LinkDTO[]>({ queryKey: ["/api/capitalism/links"] });
+  const linksQuery = useQuery<LinkDTO[]>({ queryKey: ["/api/capitalism/links"] });
+  const { data: links } = linksQuery;
   // 메타 인사이트(전체 관통 논증) — 사건에 안 묶이는 app-level 카드들(표·이미지 포함).
   //   v2 키(insight_overview_v2)에 { cards } JSON 으로 저장. 레거시 단일 문자열(insight_overview)은
   //   손실 방지를 위해 그대로 두고, v2 가 비어 있을 때만 첫 카드로 시드(수동 편집본 보존).
-  const { data: metaV2 } = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview_v2"] });
-  const { data: overviewData } = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview"] });
+  const metaQuery = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview_v2"] });
+  const overviewQuery = useQuery<{ value: string | null }>({ queryKey: ["/api/capitalism/settings/insight_overview"] });
+  const { data: metaV2 } = metaQuery;
+  const { data: overviewData } = overviewQuery;
+  const [undoBusy, setUndoBusy] = useState(false);
+  const editable = !undoBusy && editMode && flowQuery.isSuccess && linksQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess;
+  const readFailed = [flowQuery, linksQuery, metaQuery, overviewQuery, seriesQuery].some((q) => q.isError);
+  const retryReads = () => {
+    if (hasUnsavedChanges()) return;
+    for (const q of [flowQuery, linksQuery, metaQuery, overviewQuery, seriesQuery]) if (q.isError) void q.refetch();
+  };
   const metaCards = useMemo<CapMetaCard[]>(() => {
     if (metaV2?.value) {
       try { const parsed = JSON.parse(metaV2.value); if (Array.isArray(parsed?.cards)) return parsed.cards; } catch { /* fall through */ }
@@ -60,9 +73,12 @@ export default function Capitalism() {
   const saveMetaCards = (next: CapMetaCard[]) => {
     const value = JSON.stringify({ cards: next });
     qc.setQueryData(["/api/capitalism/settings/insight_overview_v2"], { value });
-    // 실패를 삼키지 않고 사용자에게 알림(조용한 손실 금지). 화면 값은 낙관적 캐시로 유지된다.
-    apiRequest("PUT", "/api/capitalism/settings/insight_overview_v2", { value })
-      .catch(() => toast({ description: "메타 카드 저장 실패 — 편집 내용은 화면에 남아 있어요. 잠시 후 다시 시도하세요.", variant: "destructive" }));
+    scheduleSave("meta-overview", () => {
+      void enqueueSave("__meta", () => withRetry(async () => {
+        const latest = qc.getQueryData<{ value: string }>(["/api/capitalism/settings/insight_overview_v2"]);
+        await apiRequest("PUT", "/api/capitalism/settings/insight_overview_v2", latest);
+      })).catch(reportSaveError);
+    });
   };
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
@@ -95,7 +111,6 @@ export default function Capitalism() {
   // ref 로 보관(렌더와 무관). 최대 50개까지 유지.
   const undoStack = useRef<UndoEntry[]>([]);
   const [canUndo, setCanUndo] = useState(false);
-  const [undoBusy, setUndoBusy] = useState(false);
   const pushUndo = (entry: UndoEntry) => {
     undoStack.current.push(entry);
     if (undoStack.current.length > 50) undoStack.current.shift();
@@ -103,17 +118,24 @@ export default function Capitalism() {
   };
   const doUndo = async () => {
     if (undoBusy) return;
+    (document.activeElement as HTMLElement | null)?.blur();
     const entry = undoStack.current.pop();
     setCanUndo(undoStack.current.length > 0);
     if (!entry) return;
     setUndoBusy(true);
     try {
-      await applyUndo(entry);
-      await qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
-      await qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] });
+      await waitForSaves();
+      const restored = await applyUndo(entry);
+      if (entry.kind === "flow") {
+        qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
+          const rest = (prev ?? []).filter((f) => f.slug !== entry.slug);
+          return restored ? [...rest, restored].sort((a, b) => a.date.localeCompare(b.date) || a.sortOrder - b.sortOrder) : rest;
+        });
+      } else await qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] });
       toast({ description: `되돌림: ${entry.label}` });
     } catch {
-      toast({ description: "되돌리기에 실패했어요.", variant: "destructive" });
+      undoStack.current.push(entry); setCanUndo(true);
+      toast({ description: "되돌리기에 실패했어요. 저장 상태를 확인한 뒤 다시 시도하세요.", variant: "destructive" });
     } finally {
       setUndoBusy(false);
     }
@@ -404,13 +426,8 @@ export default function Capitalism() {
   const reduceMotion = useReducedMotion();
   const panelSpring = reduceMotion ? reducedTransition : spring.ios;
 
-  // ── 통합 저장기 (Fix①②③) ─────────────────────────────────────────────
-  // 최신 '캐시' 상태의 그 카드를 slug별 직렬화(②)·재시도(③)로 저장한다. invalidate/refetch 안 함(①).
-  //   · 직렬화: 같은 카드 동시 저장이 서로를 덮지 않음. 실행 시점에 최신 캐시를 읽어 누적 보존.
-  //   · 실패해도 편집을 '유지'하고 토스트로 알림(조용한 손실 금지). 캐시에서 사라진 카드는 서버 삭제.
-  //   · withRetry(빠른 3회) 도 실패하면, 사용자가 손대지 않아도 몇 초 뒤 자동 재시도(콜드스타트·풀러
-  //     히컵은 수 초면 회복). 자동 재시도도 소진되면 그제서야 토스트로 알림.
-  // 캐시의 그 카드 버전(updatedAt)만 서버 최신값으로 갱신 — 세분화 저장 뒤 '자기저장' 409 오탐 방지.
+  // 구조·내용 저장은 카드별 큐를 공유하며 실행 시점의 캐시를 읽는다.
+  // 성공 응답에서는 버전만 갱신하여 요청 이후 입력한 내용을 보존한다.
   const bumpVersion = useCallback((slug: string, updatedAt: number) => {
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === slug ? { ...f, updatedAt } : f)) : prev
@@ -424,7 +441,9 @@ export default function Capitalism() {
     toast({
       description: tooLarge
         ? "저장 실패: 내용(특히 붙여넣은 이미지)이 너무 커서 서버가 거부했어요. 이미지를 줄인 뒤 다시 저장하세요."
-        : "저장 실패(재시도도 안 됨). 편집 내용은 화면에만 있고 아직 저장되지 않았어요. ⚠ 새로고침하지 마세요 — 그 부분을 한 번 더 편집하면 재저장됩니다.",
+        : /^409\b/.test(msg)
+          ? "다른 창의 저장과 충돌했습니다. 현재 편집본을 유지했습니다. 내용을 복사해 보관한 뒤 새로고침하여 서버본과 비교하세요."
+          : "저장하지 못했습니다. 현재 편집본은 화면에 남아 있습니다. 상단 ‘저장 다시 시도’를 누르세요.",
       variant: "destructive",
     });
   }, [toast]);
@@ -433,77 +452,14 @@ export default function Capitalism() {
   //   patch 가 아니라 구조 저장(saveFlow)으로 보내 pos·col·edges 를 확립한다. (캐시 전체를 '저장됨'으로
   //   표시하던 옛 방식은 낙관적 새 노드까지 저장됨으로 오인해 우측 열이 맨아래로 떨어지던 버그를 냈다.)
   const newNodesRef = useRef<Set<string>>(new Set());
-  const saveFlow = useCallback((slug: string, autoRetryLeft = 2) => {
+  const saveFlow = useCallback((slug: string) => {
     return enqueueSave(slug, () => withRetry(async () => {
       const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
       if (!latest) { await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(slug)}`); return; }
-      const saved = await persistNodes(latest, latest.nodes); // 빈 칸 정리, 전부 비면 삭제
-      // 저장 성공 → 이 클라의 캐시 버전(updatedAt)을 서버 최신값으로 올린다. 노드는 '현재 캐시'를 유지
-      //   (저장 사이 추가된 편집분 보존). 이걸 안 하면 같은 클라의 연속 저장이 스테일 버전으로 나가
-      //   자기 자신과 409 충돌한다(오탐).
-      if (saved !== "deleted") {
-        qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
-          prev ? prev.map((f) => (f.slug === slug ? { ...f, updatedAt: saved.updatedAt } : f)) : prev
-        );
-      }
-    })).catch((err: unknown) => {
-      // 413(요청이 너무 큼)은 재시도해도 결정적으로 실패한다 — 원인(대개 붙여넣은 이미지)이 그대로라
-      // 자동 재시도로 시간 끌지 말고 즉시 '줄이라'고 정확히 안내한다(재편집 안내는 여기선 오답).
-      const msg = String((err as Error)?.message ?? err);
-      // 409(동시편집 충돌): 스테일 baseVersion 으로 full-replace 를 시도했고 그새 다른 곳에서 저장됨.
-      //   '폐기(invalidate)' 하면 캐시에만 있던 미저장 신규 노드가 사라진다(=유실). 대신 '병합 재시도':
-      //   서버 최신 ∪ 로컬 캐시(로컬 우선, 양쪽 노드 모두 보존)를 서버 버전으로 딱 1회 재저장한다.
-      if (/^409\b/.test(msg)) {
-        void (async () => {
-          try {
-            const serverFlows = (await apiRequest("GET", "/api/capitalism/flows").then((r) => r.json())) as FlowDTO[];
-            const serverFlow = serverFlows.find((f) => f.slug === slug);
-            const localFlow = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === slug);
-            if (!serverFlow || !localFlow) { void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] }); return; }
-            // 병합(applyFlowUndo 의 snapKeys/extras 패턴): 로컬 노드(내용·순서 우선, 로컬-only 포함) +
-            //   서버에만 있는 노드(상대가 추가) 를 뒤에 보존. 공통 nodeKey 는 로컬(지금 편집자) 내용 우선.
-            const localIds = new Set(localFlow.nodes.map((n) => n.id));
-            const mergedNodes = [...localFlow.nodes, ...serverFlow.nodes.filter((n) => !localIds.has(n.id))];
-            const mergedFlow: FlowDTO = {
-              ...serverFlow,
-              insight: localFlow.insight ?? serverFlow.insight, // 편집 중인 사람 기준(로컬 우선)
-              layout: localFlow.layout,
-              nodes: mergedNodes,
-              updatedAt: serverFlow.updatedAt,                  // 서버 최신 버전으로 재시도 → 가드 통과
-            };
-            qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
-              prev ? prev.map((f) => (f.slug === slug ? mergedFlow : f)) : prev
-            );
-            const saved = await persistNodes(mergedFlow, mergedFlow.nodes); // baseVersion = 서버 updatedAt, 1회만
-            if (saved !== "deleted") bumpVersion(slug, saved.updatedAt);
-          } catch (e) {
-            // 재시도도 409/실패 → 그때는 폐기 + 안내(무한루프 금지 — 여기서 재귀하지 않음).
-            const m = String((e as Error)?.message ?? e);
-            if (/^409\b/.test(m)) {
-              void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
-              toast({ description: "동시편집 충돌이 계속돼 최신본을 불러왔어요. 방금 편집분을 확인 후 다시 저장해 주세요.", variant: "destructive" });
-            } else {
-              reportSaveError(e);
-            }
-          }
-        })();
-        return;
-      }
-      const tooLarge = /^413\b/.test(msg) || /too large|payloadtoolarge/i.test(msg);
-      if (!tooLarge && autoRetryLeft > 0) {
-        // 손 안 대도 4초 뒤 자동 재저장(실행 시점 최신 캐시를 다시 읽음 → 그새 편집분까지 포함).
-        setTimeout(() => { void saveFlow(slug, autoRetryLeft - 1); }, 4000);
-        return;
-      }
-      toast({
-        description: tooLarge
-          ? "저장 실패: 이 카드 내용(특히 붙여넣은 이미지)이 너무 커서 서버가 거부했어요. 이미지를 줄이거나 개수를 줄인 뒤 다시 저장하세요."
-          : "저장 실패(자동 재시도도 안 됨). 편집 내용은 화면에만 있고 아직 DB에 저장되지 않았어요. " +
-            "⚠ 새로고침하지 마세요 — 저장 안 된 내용이 사라집니다. 그 카드를 한 번 더 편집하면 재저장됩니다.",
-        variant: "destructive",
-      });
-    });
-  }, [qc, toast, bumpVersion, reportSaveError]);
+      const saved = await persistNodes(latest, latest.nodes);
+      if (saved !== "deleted") bumpVersion(slug, saved.updatedAt);
+    }), `flow:${slug}`).catch(reportSaveError);
+  }, [qc, bumpVersion, reportSaveError]);
 
   // 카드 안에서 칸을 추가만 할 때(빈 칸) — 캐시에만 반영, 서버 저장은 입력 완료(commit) 시.
   // 전달된 flow의 layout도 함께 동기화(stack→branch 자동 전환 시 캐시 layout 갱신).
@@ -518,14 +474,14 @@ export default function Capitalism() {
     );
   };
 
-  // 칸 내용 확정/삭제 — 캐시 즉시 반영 + 서버 저장(빈 칸 정리, 전부 비면 플로우 삭제).
+  // 칸 내용 확정/삭제 — 캐시 즉시 반영 + 서버 저장(빈 칸 정리, 노드와 인사이트 모두 비면 삭제).
   const onMutateNodes: MutateNodes = (flow, nextNodes) => {
     // 변경 직전 flow 스냅샷을 쌓아둔다(노드 추가/삭제·카드 삭제를 되돌릴 수 있게).
-    pushUndo(makeFlowEntry("사건 수정", flow.slug, flows));
+    pushUndo(makeFlowEntry("사건 수정", flow.slug, qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"]), nextNodes));
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
       if (!prev) return prev;
       const clean = nextNodes.filter(nodeHasContent);
-      if (clean.length === 0) return prev.filter((f) => f.slug !== flow.slug);
+      if (clean.length === 0 && !hasInsightContent(prev.find((f) => f.slug === flow.slug) ?? flow)) return prev.filter((f) => f.slug !== flow.slug);
       return prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: clean } : f));
     });
     saveFlow(flow.slug);
@@ -564,80 +520,57 @@ export default function Capitalism() {
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === slug ? { ...f, insight: nextInsight } : f)) : prev
     );
-    enqueueSave(slug, () => withRetry(() => putInsight(slug, nextInsight)))
-      .then((r) => { if (r) bumpVersion(slug, r.updatedAt); })
-      .catch(reportSaveError);
+    scheduleSave(`insight:${slug}`, () => {
+      void enqueueSave(slug, () => withRetry(async () => {
+        const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === slug);
+        if (!latest) return;
+        const result = await putInsight(slug, latest.insight ?? null);
+        bumpVersion(slug, result.updatedAt);
+      }), `insight:${slug}`).catch(reportSaveError);
+    });
   };
 
-  // ── 세분화 콘텐츠 저장(실시간 경량 + 소실 차단) ────────────────────────────
-  // 기존 노드의 text/메모/표 편집은 '그 노드 1건'만 PATCH 로 저장(디바운스로 묶음). insight·전체 노드를
-  // 안 실으므로 가볍고, 전체목록 덮어쓰기가 없어 스테일 스냅샷 소실이 사라진다.
-  const patchBufRef = useRef<Map<string, { slug: string; nodeId: string; patch: NodeContentPatch; timer: number }>>(new Map());
-  const flushPatch = useCallback((key: string) => {
-    const buf = patchBufRef.current.get(key);
-    if (!buf) return;
-    patchBufRef.current.delete(key);
-    const { slug, nodeId, patch } = buf;
-    enqueueSave(slug, () => withRetry(() => patchNodeContent(slug, nodeId, patch)))
-      .then((r) => { if (r) bumpVersion(slug, r.updatedAt); })
-      .catch((err) => {
-        // 404 = 서버에 그 노드가 없음(신규 미저장/경합). patch 로 만들지 않고 구조 저장으로 pos·col·edges 포함 재반영.
-        if (/^404\b/.test(String((err as Error)?.message ?? err))) { newNodesRef.current.delete(nodeId); saveFlow(slug); return; }
-        reportSaveError(err);
-      });
-  }, [bumpVersion, reportSaveError, saveFlow]);
+  // 입력 즉시 캐시에 반영하고 600ms 후 전송한다. 대기·전송·실패 상태는 페이지 이동 뒤에도 유지된다.
   const onEditContent = useCallback((flow: FlowDTO, nodeId: string, patch: NodeContentPatch) => {
-    // 1) 캐시 즉시 반영(낙관적).
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
-      prev ? prev.map((f) => (f.slug !== flow.slug ? f : { ...f, nodes: f.nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)) })) : prev
+      prev?.map((f) => f.slug !== flow.slug ? f : { ...f, nodes: f.nodes.map((n) => n.id === nodeId ? { ...n, ...patch } : n) })
     );
-    // 2) 아직 서버에 없는 신규 노드 → 구조 저장(saveFlow)으로 pos·col·edges 확립. 트리거 후 신규 표시 해제
-    //    (실패해도 이후 편집이 patch→404→saveFlow 로 자동 복구되므로 즉시 해제해도 안전).
-    if (newNodesRef.current.has(nodeId)) {
-      newNodesRef.current.delete(nodeId);
-      saveFlow(flow.slug);
-      return;
-    }
-    // 3) 기존 노드 내용 → 디바운스(600ms) 후 그 노드 1건만 PATCH. 연속 편집은 병합.
-    const key = `${flow.slug}::${nodeId}`;
-    const cur = patchBufRef.current.get(key);
-    if (cur) window.clearTimeout(cur.timer);
-    const merged: NodeContentPatch = { ...(cur?.patch ?? {}), ...patch };
-    const timer = window.setTimeout(() => flushPatch(key), 600);
-    patchBufRef.current.set(key, { slug: flow.slug, nodeId, patch: merged, timer });
-  }, [qc, saveFlow, flushPatch]);
+    scheduleSave(`node:${flow.slug}:${nodeId}`, () => {
+      void enqueueSave(flow.slug, () => withRetry(async () => {
+        const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === flow.slug);
+        const node = latest?.nodes.find((n) => n.id === nodeId);
+        if (!latest || !node) return; // 대기 중 명시적으로 삭제된 노드는 복구하지 않는다.
+        if (newNodesRef.current.has(nodeId)) {
+          const saved = await persistNodes(latest, latest.nodes);
+          if (saved !== "deleted") { bumpVersion(flow.slug, saved.updatedAt); newNodesRef.current.delete(nodeId); }
+        } else {
+          const result = await patchNodeContent(flow.slug, nodeId, { text: node.text, ref: node.ref, table: node.table });
+          bumpVersion(flow.slug, result.updatedAt);
+        }
+      }), `node:${flow.slug}:${nodeId}`).catch(reportSaveError);
+    });
+  }, [qc, bumpVersion, reportSaveError]);
 
-  // 페이지 이동·새로고침·탭 숨김 시: 아직 안 나간 디바운스 저장을 즉시 발사하고, 저장 미완이면 경고.
-  //   (600ms 디바운스가 blur 직후 이탈 시 만들 수 있는 유실 창을 막는다.)
   useEffect(() => {
-    const flushAll = () => { for (const key of [...patchBufRef.current.keys()]) flushPatch(key); };
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (patchBufRef.current.size === 0) return;
-      flushAll();
-      e.preventDefault();
-      e.returnValue = ""; // 브라우저 기본 "저장 안 됨" 경고 표시
+      const active = document.activeElement;
+      const editing = active instanceof HTMLElement && (active.isContentEditable || active.matches("input:not([type=range]), textarea"));
+      if (!hasUnsavedChanges() && !editing) return;
+      // blur 전의 제목·표 편집도 기존 커밋 경로로 전달한다.
+      if (editing) active.blur();
+      flushScheduledSaves();
+      e.preventDefault(); e.returnValue = "";
     };
-    const onHide = () => { if (document.visibilityState === "hidden") flushAll(); };
+    const onHide = () => { if (document.visibilityState === "hidden") flushScheduledSaves(); };
     window.addEventListener("beforeunload", onBeforeUnload);
     document.addEventListener("visibilitychange", onHide);
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("visibilitychange", onHide);
+      flushScheduledSaves();
     };
-  }, [flushPatch]);
-
-  // 창 포커스 복귀 시 flows/links 를 서버본으로 갱신 → 두 사람의 캐시가 세션 내내 벌어져 409 나던 것을 줄인다.
-  //   가드: 편집 중(디바운스 저장 대기 patchBufRef 또는 편집 중 노드 editingId)이면 낙관적 캐시를 덮지 않게 스킵.
-  //   전역 refetchOnWindowFocus 는 false 유지(다른 모듈 탭 정책은 의도된 설계) — 여기 두 쿼리만 조건부 invalidate.
-  useEffect(() => {
-    const onFocus = () => {
-      if (patchBufRef.current.size > 0 || editingId) return;
-      void qc.invalidateQueries({ queryKey: ["/api/capitalism/flows"] });
-      void qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] });
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [qc, editingId]);
+  }, []);
+  // 자동 focus refetch는 저장 응답 전의 서버본으로 편집 캐시를 덮을 수 있어 사용하지 않는다.
 
   // 새 사건(플로우) 추가 — 팝업 없이 기본값으로 생성하고 첫 칸을 편집 모드로.
   // 낙관적으로 카드를 캐시에 추가(클라 slug = 서버 slug → temp→real 스왑/remount 없음, ④) 후
@@ -734,6 +667,11 @@ export default function Capitalism() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 text-xs" role="status" data-testid="cap-save-status">
+        <span>{hasFailedSaves() ? "저장 실패 — 새로고침 전에 편집 내용을 보관하세요." : hasUnsavedChanges() ? "저장 중…" : "입력 후 자동 저장"}</span>
+        {hasFailedSaves() && <button className="underline" onClick={() => void retryFailedSaves()}>저장 다시 시도</button>}
+        {readFailed && <span role="alert">데이터를 불러오지 못했습니다. <button className="underline" disabled={hasUnsavedChanges()} onClick={retryReads}>다시 불러오기</button></span>}
+      </div>
       {viewMode === "insights" ? (
         <div className="flex-1 min-h-0 overflow-y-auto cap-noscrollbar">
           <InsightsCollection

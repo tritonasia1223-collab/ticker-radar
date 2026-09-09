@@ -46,10 +46,10 @@ export function InsightPanel({
   const eventFrac = toFracYear(flow.date);
 
   const persist = (next: CapBlock[]) => onCommit(flow.slug, blocksToInsight(next));
-  // doCommit=false → 텍스트 입력 중(로컬), true → 구조 변경/blur(저장).
-  const handleChange = (next: CapBlock[], doCommit: boolean) => {
+  // 입력과 구조 변경 모두 부모 저장기에 전달한다. 부모에서 디바운스·직렬화한다.
+  const handleChange = (next: CapBlock[], _doCommit: boolean) => {
     setBlocks(next); blocksRef.current = next;
-    if (doCommit) persist(next);
+    persist(next);
   };
   const finishEditing = () => { persist(blocksRef.current); setEditing(false); };
 
@@ -147,9 +147,9 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
 
   const commit = (nextBlocks: CapBlock[] = blocksRef.current, nextTitle: string = titleRef.current) =>
     onChange({ ...card, title: nextTitle, ...blocksToMetaFields(nextBlocks) });
-  const handleChange = (next: CapBlock[], doCommit: boolean) => {
+  const handleChange = (next: CapBlock[], _doCommit: boolean) => {
     setBlocks(next); blocksRef.current = next;
-    if (doCommit) commit(next);
+    commit(next);
   };
   const finishEditing = () => { commit(); setEditing(false); };
 
@@ -158,7 +158,7 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
       <div className="mb-2 flex items-center justify-between gap-2">
         {showEditor ? (
           <input
-            type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => commit()}
+            type="text" value={title} onChange={(e) => { setTitle(e.target.value); titleRef.current = e.target.value; commit(blocksRef.current, e.target.value); }} onBlur={() => commit()}
             placeholder="소제목 (선택)"
             className="min-w-0 flex-1 rounded border-0 bg-transparent text-sm font-bold text-primary outline-none placeholder:font-medium placeholder:text-primary/40 focus:bg-background/40"
             data-testid="meta-title"

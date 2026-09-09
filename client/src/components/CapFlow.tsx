@@ -29,7 +29,7 @@ function blankNode(col = "center"): FlowNodeDTO {
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemoClick, onTableClick, onLink, linkTargets, onJump, onFocusNode, focusedId,
+  flow, node, editable, editing, onStartEdit, onCommit, onDraft, onDelete, onAdd, onMemoClick, onTableClick, onLink, linkTargets, onJump, onFocusNode, focusedId,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -37,6 +37,7 @@ function Node({
   editing: boolean;
   onStartEdit: (id: string) => void;
   onCommit: (id: string, text: string) => void;
+  onDraft?: (id: string, text: string) => void;
   onDelete: (id: string) => void;
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
   // 메모 버튼 클릭 — 우측 메모 컬럼에서 이 노드의 메모를 추가/편집 시작.
@@ -118,7 +119,7 @@ function Node({
       {editing ? (
         <CapRichEditor
           value={draft}
-          onChange={setDraft}
+          onChange={(text) => { setDraft(text); onDraft?.(node.id, text); }}
           autoFocus
           placeholder="내용 입력 (드래그하여 강조 · 삭제는 우측 상단 X)"
           rows={2}
@@ -652,6 +653,7 @@ export function FlowColumn({
     flow, editable,
     onStartEdit: setEditingId,
     onCommit: commit,
+    onDraft: (id: string, text: string) => onEditContent?.(flow, id, { text }),
     onDelete: deleteNode,
     onAdd: addNode,
     onMemoClick,
@@ -873,6 +875,7 @@ export function FlowColumn({
       <div className="flex items-start">
         {/* 본문: 독립적 세로 스택. 노드 간격은 메모 높이와 무관하게 자신의 내용만으로 결정. */}
         <div ref={setBodyEl} style={{ width: bodyWidth }} className="flex shrink-0 flex-col">
+          {editable && bodyRows.length === 0 && <button type="button" className="p-3 text-sm text-primary" onClick={() => addNode("", "down")}>+ 칸 추가</button>}
           {bodyRows.map((row, ri) => (
             // 행 key는 행에 속한 노드 id 조합으로 안정화(인덱스 key는 행 삽입/제거 시
             // 잘못된 reconcile를 유발한다). 빈 행은 ri로 폴백.

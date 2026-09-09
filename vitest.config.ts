@@ -1,11 +1,14 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
 
-// 블록체인 학습 탭의 수수료 엔진(순수함수) 단위테스트 전용 스코프.
-//   앱 vite.config(React 플러그인·alias)와 분리 — 엔진은 React import 없는 순수 TS라 node 환경이면 충분.
-//   실행: npm test   (feeEngine.test.ts 반증 7종 게이트)
+// 앱 번들과 분리한 Node 테스트. 경제사 저장·유동성·무결성 및 기존 수수료 엔진을 검사한다.
 export default defineConfig({
+  resolve: { alias: {
+    "@": fileURLToPath(new URL("./client/src", import.meta.url)),
+    "@shared": fileURLToPath(new URL("./shared", import.meta.url)),
+  } },
   test: {
     environment: "node",
-    include: ["client/src/lib/blockchain-edu/**/*.test.ts"],
+    include: ["client/src/lib/**/*.test.ts", "tests/**/*.test.ts"],
   },
 });

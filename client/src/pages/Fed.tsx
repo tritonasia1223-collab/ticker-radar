@@ -1,3 +1,5 @@
+import { consecutiveMonths, completeYear, weeksBefore, restoreMissingNumbers, monthIndex } from "@shared/time-series";
+import { apiRequest } from "@/lib/queryClient";
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -70,7 +72,7 @@ const asMoney = (v: number) => {
   return `${s}$${(a / 100).toFixed(2)}억`;
 };
 const T = asMoney;
-const signed = (v: number) => (v >= 0 ? "+" : "−") + asMoney(Math.abs(v));
+const signed = (v: number) => Number.isFinite(v) ? (v >= 0 ? "+" : "−") + asMoney(Math.abs(v)) : "—";
 const yr = (d: string) => d.slice(0, 4);
 const weekLabel = (d: string) => `${Number(d.slice(5, 7))}월 ${Math.ceil(Number(d.slice(8, 10)) / 7)}주차`;
 const textOn = (hex: string) => {
@@ -94,7 +96,7 @@ function StackColumn({ segs, total, align, group, selected, onSelect }: {
   const stack = (
     <div className="flex flex-1 flex-col rounded-md" style={{ height: STACK_H }}>
       {segs.map((s, i) => {
-        const h = Math.max(0, (s.val / total) * STACK_H);
+        const h = Number.isFinite(s.val) ? Math.max(0, (s.val / total) * STACK_H) : 0;
         const pct = ((s.val / total) * 100).toFixed(1);
         const fg = textOn(s.color);
         const isSel = !!s.node && s.node === selected;
@@ -126,7 +128,7 @@ function StackColumn({ segs, total, align, group, selected, onSelect }: {
   if (!group) return stack;
   // 상위 분류 브래킷: 앞 count 세그먼트(예: SOMA=국채+MBS+기관채)의 합산 높이만큼 왼쪽에 세로 괄호.
   const gval = segs.slice(0, group.count).reduce((s, x) => s + x.val, 0);
-  const gh = (gval / total) * STACK_H;
+  const gh = Number.isFinite(gval) ? (gval / total) * STACK_H : 0;
   const gpct = ((gval / total) * 100).toFixed(1);
   return (
     <div className="flex gap-1" style={{ height: STACK_H }}>
@@ -518,7 +520,7 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
     const mk = (sup: number, fed: number) => ({ sup, fed, res: sup - fed });
     return tm.map((pt, i) => {
       const fn = reps[i], fp = i > 0 ? reps[i - 1] : null;
-      if (!fn || !fp) return null;
+      if (!fn || !fp || !consecutiveMonths(tm[i - 1].date, pt.date)) return null;
       const dBills = fn.bills - fp.bills, dNb = fn.notesBonds - fp.notesBonds, dTips = fn.tips - fp.tips; // dTips = ΔWSHONBIIL(물가보정 제외)
       return { date: pt.date, bills: mk(pt.netBills, dBills), nb: mk(pt.netNotes + pt.netBonds + pt.netFrn, dNb), tips: mk(pt.netTips, dTips), total: mk(pt.netTotal, dBills + dNb + dTips) };
     });
@@ -528,20 +530,21 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
   const selMonth = selDate?.slice(0, 7);
   const firstMonth = tm[0]?.date.slice(0, 7);
   const flowBefore = !!selMonth && !!firstMonth && selMonth < firstMonth;
-  const selMi = selMonth ? tm.findIndex((p) => p.date.slice(0, 7) === selMonth) : -1;
-  // 창 정중앙 월. 데이터 이전(2014 미만)이면 첫 월로 클램프 → 2014 경계 넘을 때 점프 없이 이어짐. 이후/미래는 최신.
-  const centerMi = selMi >= 0 ? selMi : (flowBefore ? 0 : tm.length - 1);
+  const lastMonth = tm[tm.length - 1].date.slice(0, 7);
+  const centerMonth = flowBefore ? firstMonth : !selMonth || selMonth > lastMonth ? lastMonth : selMonth;
+  const center = monthIndex(centerMonth);
   const fk = fbucket;
-  // 중앙 고정: centerMi 를 정중앙, 좌우 HALF 개월. 범위 밖(미래/이전)은 빈 슬롯 패딩 → 선이 항상 정중앙(0.5).
+  // 달력의 실제 달을 배치한다. 누락된 달도 빈 슬롯으로 남기고 선택한 달을 정중앙에 둔다.
   const chartData: any[] = [];
-  for (let k = centerMi - HALF; k <= centerMi + HALF; k++) {
-    const r = k >= 0 && k < flow.length ? flow[k] : null;
-    chartData.push(r ? { date: r.date, sup: r[fk].sup, fed: r[fk].fed, res: r[fk].res, real: true } : { date: `pad${k}`, sup: null, fed: null, res: null, real: false });
+  for (let k = center - HALF; k <= center + HALF; k++) {
+    const r = flow.find((point) => point && monthIndex(point.date) === k);
+    const date = `${Math.floor(k / 12)}-${String(k % 12 + 1).padStart(2, "0")}-01`;
+    chartData.push(r ? { date: r.date, sup: r[fk].sup, fed: r[fk].fed, res: r[fk].res, real: [r[fk].sup, r[fk].fed].every(Number.isFinite) } : { date, sup: null, fed: null, res: null, real: false });
   }
-  const centerRow = chartData[HALF]; // = centerMi 월(정중앙, 선 아래)
-  const last12 = flow.slice(Math.max(0, centerMi - 11), centerMi + 1).filter(Boolean) as any[];
-  const sumFed = last12.reduce((s, r) => s + r[fk].fed, 0), sumSup = last12.reduce((s, r) => s + r[fk].sup, 0);
-  const flow12 = Math.abs(sumSup) > 20_000 ? sumFed / sumSup : NaN; // 순발행 합 $200억 미만이면 비율 생략(§2-4)
+  const centerRow = chartData[HALF];
+  const last12 = completeYear(flow.filter((p): p is NonNullable<typeof p> => p !== null), centerMonth);
+  const sumFed = (last12 ?? []).reduce((s, r) => s + r[fk].fed, 0), sumSup = (last12 ?? []).reduce((s, r) => s + r[fk].sup, 0);
+  const flow12 = last12 && Math.abs(sumSup) > 20_000 ? sumFed / sumSup : NaN; // 순발행 합 $200억 미만이면 비율 생략(§2-4)
   const FB = [{ k: "total", label: "전체" }, { k: "bills", label: "단기" }, { k: "nb", label: "중장기 N·B·FRN" }, { k: "tips", label: "TIPS" }] as const;
   const fym = (d: string) => (/^\d{4}-/.test(d) ? `${d.slice(2, 4)}.${d.slice(5, 7)}` : "");
 
@@ -708,7 +711,10 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
 }
 
 export default function Fed() {
-  const { data, isLoading } = useQuery<Overview>({ queryKey: ["/api/fed/overview"] });
+  const { data, isLoading, isError, refetch } = useQuery<Overview>({
+    queryKey: ["/api/fed/overview"],
+    queryFn: async () => restoreMissingNumbers<Overview>(await apiRequest("GET", "/api/fed/overview").then((r) => r.json())),
+  });
   const [idx, setIdx] = useState<number>(-1);
   const [crisisOpen, setCrisisOpen] = useState<boolean>(false); // L4 위기감지기 수동 펼침
   const [node, setNode] = useState<string>("reserves");         // L2 선택 노드(우측 캔버스). 기본=준비금
@@ -717,7 +723,7 @@ export default function Fed() {
   const weeks = data?.weeks ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
   const sel = weeks.length ? weeks[curIdx] : null;
-  const selPrev = weeks.length && curIdx > 0 ? weeks[curIdx - 1] : null;
+  const selPrev = sel ? weeksBefore(weeks, sel.date, 1) ?? null : null;
 
   const activePhase = useMemo(() => {
     if (!weeks.length) return null;
@@ -728,32 +734,35 @@ export default function Fed() {
 
 
   if (isLoading) return <div className="p-6 space-y-4"><Skeleton className="h-40 w-full" /><Skeleton className="h-96 w-full" /></div>;
+  if (isError) return <div className="p-6 text-sm" role="alert">유동성 데이터를 불러오지 못했습니다. <button className="underline" onClick={() => void refetch()}>다시 불러오기</button></div>;
   if (!weeks.length) return <div className="p-6 text-sm text-muted-foreground">데이터가 없습니다.</div>;
 
   const latest = weeks[weeks.length - 1];
   const selLoans = sel ? sel.loans : latest.loans;          // 위기감지기도 선택 주 기준(Phase 1 timeState 연동)
   // L4 상태(§7): 2단계 임계 — 경계 $500억 / 위기 $2,000억(2008·2020·2023 피크 대비, 설정 상수).
   const CRISIS_CAUTION = 50_000, CRISIS_ALERT = 200_000;
-  const crisisLevel = selLoans >= CRISIS_ALERT ? "위기" : selLoans >= CRISIS_CAUTION ? "경계" : "평상시";
-  const crisisDot = crisisLevel === "위기" ? "#dc2626" : crisisLevel === "경계" ? "#f59e0b" : "#16a34a";
+  const crisisLevel = !Number.isFinite(selLoans) ? "자료 부족" : selLoans >= CRISIS_ALERT ? "위기" : selLoans >= CRISIS_CAUTION ? "경계" : "평상시";
+  const crisisDot = crisisLevel === "자료 부족" ? "#94a3b8" : crisisLevel === "위기" ? "#dc2626" : crisisLevel === "경계" ? "#f59e0b" : "#16a34a";
   const crisisAuto = selLoans >= CRISIS_CAUTION;             // 임계 초과 시 자동 펼침
   // QT/QE 속도 = 선택 주차의 총자산 분기(13주) 변화를 월평균으로(musd/월). 기본=최신=현재.
   //   국면(배지·푸터 공통 단일출처, §2.5): 월평균 ≥+$50억=QE / ≤−$50억=QT / 사이=중립.
   //   임계 $50억(=5,000musd)은 0 근처에서 배지가 깜빡이지 않게 하는 데드밴드.
   const REGIME_BAND = 5_000; // ±$50억/월 데드밴드(설정 상수)
-  const paceSel = curIdx >= 13 ? (weeks[curIdx].total - weeks[curIdx - 13].total) / 3 : NaN;
+  const priorQuarter = weeksBefore(weeks, weeks[curIdx].date, 13);
+  const paceSel = priorQuarter ? (weeks[curIdx].total - priorQuarter.total) / 3 : NaN;
   const phase = !Number.isFinite(paceSel) ? "unknown" : paceSel >= REGIME_BAND ? "QE" : paceSel <= -REGIME_BAND ? "QT" : "중립";
   const phaseCol = phase === "QE" ? "text-emerald-500" : phase === "QT" ? "text-red-500" : "text-muted-foreground";
   // ── L0 이중 판정(§3) ── 주=유동성(준비금 13주 평활 월율, =워터폴 Δ준비금의 13주 누적), 보조=정책(총자산=phase)
-  const liqRate = curIdx >= 13 ? (weeks[curIdx].reserves - weeks[curIdx - 13].reserves) / 3 : NaN;
+  const liqRate = priorQuarter ? (weeks[curIdx].reserves - priorQuarter.reserves) / 3 : NaN;
   const liq = !Number.isFinite(liqRate) ? "unknown" : liqRate >= REGIME_BAND ? "확장" : liqRate <= -REGIME_BAND ? "수축" : "중립";
   const dReserves = sel && selPrev ? sel.reserves - selPrev.reserves : NaN; // 이번 주 준비금 변화
   const isPast = curIdx < weeks.length - 1;                                 // 과거 시점 보는 중
   // L1 국면 배경 밴드: 총자산 13주 흐름으로 QE(청록)/QT(적색) 구간 병합(플레인, 렌더당 1회).
   const regimeBands: { x1: string; x2: string; kind: "QE" | "QT" }[] = [];
   { let curB: { x1: string; x2: string; kind: "QE" | "QT" } | null = null;
-    for (let i = 13; i < weeks.length; i++) {
-      const r = (weeks[i].total - weeks[i - 13].total) / 3;
+    for (let i = 0; i < weeks.length; i++) {
+      const prior = weeksBefore(weeks, weeks[i].date, 13);
+      const r = prior ? (weeks[i].total - prior.total) / 3 : NaN;
       const k = r >= REGIME_BAND ? "QE" : r <= -REGIME_BAND ? "QT" : null;
       if (k && curB && curB.kind === k) curB.x2 = weeks[i].date;
       else { if (curB) regimeBands.push(curB); curB = k ? { x1: weeks[i].date, x2: weeks[i].date, kind: k } : null; }
@@ -832,6 +841,7 @@ export default function Fed() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <Card className="p-3.5">
           <div className="mb-2 text-sm font-semibold">T-계정 <span className="text-[11px] font-normal text-muted-foreground tabular-nums">{sel && weekLabel(sel.date)} · 구성비 · <span style={{ color: NODE_META[node]?.color }}>항목을 클릭</span>하면 우측에 분해/추이</span></div>
+          {sel && (!Number.isFinite(sel.soma) || !Number.isFinite(sel.loans)) && <p className="mb-2 text-xs text-amber-600" role="status">일부 자산 관측이 없어 구성비와 위기 판정이 불완전합니다. 누락 항목은 0으로 표시하지 않습니다.</p>}
           {sel && <TAccount w={sel} selected={node} onSelect={setNode} />}
         </Card>
         <Card className="p-3.5 flex flex-col">
