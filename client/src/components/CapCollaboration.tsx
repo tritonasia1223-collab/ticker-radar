@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { collaboration as engine, peers, syncError, collabApi, activeResource, previousSession } from "@/lib/cap-collab-client";
+import { collaboration as engine, peers, collabApi, activeResource, previousSession } from "@/lib/cap-collab-client";
 import { pathLabel, type Change } from "../../../shared/cap-collaboration";
 const show = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value, null, 2);
 export function CapCollaboration() {
@@ -23,7 +23,7 @@ export function CapCollaboration() {
         if (!historyOpen) { const keys = (await collabApi("history-resources")).map((r: any) => r.key); setHistoryKeys(keys); const key = activeResource || [...engine.confirmed.keys(), ...keys][0]; if (key) await loadHistory(key); }
       })}>변경 이력</button>
     </div>
-    {(syncError || engine.storageError || message) && <p role="alert" className="text-amber-600">{[syncError && "동기화 연결 확인 중 · 내 초안 유지", engine.storageError, message].filter(Boolean).join(" / ")}</p>}
+    {(engine.storageError || message) && <p role="alert" className="text-amber-600">{[engine.storageError, message].filter(Boolean).join(" / ")}</p>}
     {engine.recoverable.filter((d) => d.session === previousSession || !peers.some((p) => p.session === d.session)).map((d) => <div key={d.id} className="rounded border border-amber-500 p-2" role="alert">
       남아 있는 기기 초안: {label(d.base.key)} · {d.editor} · {new Date(d.savedAt).toLocaleString()}
       <button className="ml-3 underline" onClick={() => void run(() => engine.recover(d.id))}>서버와 비교해 복구</button>
