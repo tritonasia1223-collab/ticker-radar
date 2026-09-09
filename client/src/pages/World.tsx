@@ -157,7 +157,10 @@ const GROUP_COLOR: Record<string, string> = { A: "#7c3aed", B: "#2563eb", C: "#d
 const GROUP_LABEL: Record<string, string> = { A: "스타게이트 계열", B: "하이퍼스케일러", C: "네오클라우드" };
 const GROUP_GLOSS: Record<string, string> = { A: "오픈AI '스타게이트' 계열 — 개발사가 이 사업만을 위한 별도 법인(SPV)으로 짓고 투자등급 임차인이 장기 임대로 신용을 댐", B: "자체 초대형 DC를 짓는 빅테크(하이퍼스케일러) — 대부분 자기 현금으로", C: "GPU를 빌려주는 신생 클라우드 업체(네오클라우드)" };
 // 자금 조달 유형 — 영문 enum 노출 금지, 한글로.
-const FIN_TYPE_KO: Record<string, string> = { equity: "지분 투자", debt: "대출", bond: "채권 발행", power: "전력 계약", self: "자기자본", project_finance: "프로젝트 파이낸싱" };
+// 자금 조달 — 세부 타입(hover) + 3분류 대뱃지. 14종을 자본구조상 위치로 묶음.
+const FIN_TYPE_KO: Record<string, string> = { equity: "지분 투자", debt: "대출", bond: "채권 발행", power: "전력 계약", self: "자기자본(자기 현금)", project_finance: "프로젝트 파이낸싱(PF)", gpu_ddtl: "GPU 담보 대출", contract_backed_debt: "계약 담보 대출", gpu_spv: "GPU 담보 SPV", customer_prepay: "고객 선불", vendor: "벤더 금융", convertible: "전환사채", ipo: "상장(IPO)", epc: "EPC 시공금융" };
+const FIN_BUCKET: Record<string, string> = { self: "자기자본", equity: "자기자본", ipo: "자기자본", convertible: "자기자본", debt: "대출", project_finance: "대출", bond: "대출", contract_backed_debt: "대출", gpu_ddtl: "대출", gpu_spv: "대출", vendor: "대출", epc: "대출", power: "고객 선지급", customer_prepay: "고객 선지급" };
+const FIN_BUCKET_COLOR: Record<string, string> = { "자기자본": "#16a34a", "대출": "#64748b", "고객 선지급": "#f59e0b" };
 // 발전 유형 한글 — 현장발전·유틸 신설 공용(영문 enum 노출 금지).
 const genTypeKo = (t: string) => t.includes("combined_cycle") ? "가스 복합화력" : t.includes("recip") ? "가스 엔진" : t.includes("turbine") ? "가스 터빈" : t.includes("gas") ? "가스" : (t.includes("nuclear") || t === "smr") ? "원전" : t.includes("battery") ? "배터리" : t.includes("solar") ? "태양광" : t.includes("wind") ? "풍력" : t;
 // 전력 조달 구성 색(원별): 계통 파랑 · 가스 앰버 · 재생 녹 · 원전 보라 · 기타 회.
@@ -1548,7 +1551,8 @@ export default function World() {
                 </div>);
               })()}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
-              <div className="space-y-0.5">{s.financing.map((f, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">{FIN_TYPE_KO[f.type] ?? f.type}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>))}</div></div>
+              <div className="space-y-0.5">{s.financing.map((f, i) => { const bucket = FIN_BUCKET[f.type] ?? (FIN_TYPE_KO[f.type] ?? f.type); const bc = FIN_BUCKET_COLOR[bucket] ?? "#78716c";
+                return (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 cursor-help rounded px-1 py-0.5 text-[9px] font-semibold" title={FIN_TYPE_KO[f.type] ?? f.type} style={{ background: bc + "22", color: bc }}>{bucket}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>); })}</div></div>
             {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{glossText(s.notes)}</div>}
           </div>);
         })()}
