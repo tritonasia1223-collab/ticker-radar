@@ -174,7 +174,7 @@ function normEndDate(v: string | null | undefined): string | null {
   return s.length ? s : null;
 }
 
-function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
+export function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
   return {
     id: flow.id,
     updatedAt: Number(flow.updatedAt),
@@ -195,16 +195,18 @@ function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): FlowDTO {
 }
 
 export async function listFlows(): Promise<FlowDTO[]> {
+  return db.transaction(async (tx) => {
   // 연대기 타임라인: 날짜 우선 정렬(동일 날짜는 sortOrder로 안정화).
-  const flows = await db.select().from(capFlows).orderBy(asc(capFlows.date), asc(capFlows.sortOrder));
+  const flows = await tx.select().from(capFlows).orderBy(asc(capFlows.date), asc(capFlows.sortOrder));
   if (flows.length === 0) return [];
-  const allNodes = await db.select().from(capNodes);
-  const allEdges = await db.select().from(capEdges);
+  const allNodes = await tx.select().from(capNodes);
+  const allEdges = await tx.select().from(capEdges);
   const nodesByFlow = new Map<number, CapNode[]>();
   const edgesByFlow = new Map<number, CapEdge[]>();
   for (const n of allNodes) (nodesByFlow.get(n.flowId) ?? nodesByFlow.set(n.flowId, []).get(n.flowId)!).push(n);
   for (const e of allEdges) (edgesByFlow.get(e.flowId) ?? edgesByFlow.set(e.flowId, []).get(e.flowId)!).push(e);
   return flows.map((f) => assemble(f, nodesByFlow.get(f.id) ?? [], edgesByFlow.get(f.id) ?? []));
+  }, { isolationLevel: "repeatable read" });
 }
 
 // upsert by slug: 같은 slug면 통째로 교체(노드/엣지 삭제 후 재삽입). 에디터 저장용.

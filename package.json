@@ -35,6 +35,8 @@
     "probe:clo:csv": "tsx script/probe-clo-etf-csv.ts",
     "probe:clo:join": "tsx script/probe-clo-cusip-join.ts",
     "probe:bdc": "tsx script/probe-bdc-nonaccrual.ts",
+    "cap:collab:init": "tsx script/db-push-cap-collaboration.ts",
+    "cap:collab:test-db": "tsx script/test-cap-collaboration-db.ts",
     "cap:backup": "tsx script/cap-backup.ts",
     "cap:watch": "tsx script/cap-backup-watch.ts",
     "cap:history": "tsx script/cap-history.ts",

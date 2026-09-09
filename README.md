@@ -52,6 +52,8 @@ npm run build
 |---|---|
 | npm run cap:backup | 경제사 전체 데이터의 로컬 백업. 운영 데이터 변경 전 실행 |
 | npm run cap:integrity | 최신 백업 대비 카드·노드 손실 검사. 정상 0 / 손실·실패 1 / 백업 없음 2 |
+| npm run cap:collab:init | 협업 이력·접속 표시 테이블 2개만 추가 |
+| npm run cap:collab:test-db | 기존 데이터와 분리한 임시 스키마에서 실제 동시 저장 검증 후 정리 |
 | npm run cap:versions | 사건별 저장 이력 도구. 인자는 script/cap-versions.ts 참고 |
 | npm run cap:series | 경제사 정적 시계열 갱신 |
 | npm run fed:backfill -- --only weekly --recent 35 | 연준 주간 관측 수집 |
@@ -70,6 +72,7 @@ Fed 워크플로는 목요일 22:30 UTC에 연준 주간·재무부 월간 자�
 ## 문서
 
 - [문서 색인](docs/INDEX.md) — 현재 안내와 과거 계획 구분
+- [2인 협업 편집](docs/COLLABORATION.md) — 자동 병합·충돌 선택·기기 초안 복구·변경 이력
 - [경제사 구조](docs/CAPITALISM.md), [미국 유동성](docs/FED.md), [세계 현황판](docs/WORLD.md)
 - [안정성 점검 기록](docs/STABILITY-AUDIT-2026-09-09.md)
 - [보류 기능의 과거 안내](docs/LEGACY-TRACKING.md) — SNS·정치인·내부자 거래 및 수집 키

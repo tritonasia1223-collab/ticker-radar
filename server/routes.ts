@@ -8,6 +8,7 @@ import { cloOverview } from "./clo.js";
 import { cloMacro } from "./clo-macro.js";
 import { fedOverview } from "./fed.js";
 import { z } from "zod";
+import { registerCollaborationRoutes } from "./cap-collaboration.js";
 
 // Writes that hit Apify (and run for a long time) must not run on Vercel's
 // serverless functions — they'd time out. Collection runs from a local/worker
@@ -15,6 +16,14 @@ import { z } from "zod";
 const COLLECTION_DISABLED = process.env.DEPLOY_TARGET === "vercel";
 
 export function registerRoutes(app: Express) {
+  registerCollaborationRoutes(app);
+  // Old, already-open clients must not bypass the collaboration protocol after deployment.
+  app.use("/api/capitalism", (req, res, next) => {
+    if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && /^\/(flows|settings)(\/|$)/.test(req.path)) {
+      res.status(428).json({ error: "협업 편집 기능이 업데이트되었습니다. 작성 내용을 복사해 보관한 뒤 새로고침하세요." }); return;
+    }
+    next();
+  });
   // CDN edge caching for collect-driven read endpoints. The data changes only when the
   // collector runs (weekly cron / manual 갱신), so let Vercel serve cached JSON from the
   // edge — repeat and multi-user loads skip the function entirely. Clients bucket their

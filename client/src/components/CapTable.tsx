@@ -37,6 +37,7 @@ export function TableCard({
 }) {
   const focused = focusedId === node.id;
   const [t, setT] = useState<CapTableData>(() => node.table ?? makeDefaultTable());
+  const tableRef = useRef(t); tableRef.current = t;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const editingRef = useRef(false);
@@ -44,9 +45,7 @@ export function TableCard({
 
   // 외부(서버) 변경 동기화 — 드래그/입력 포커스 중이 아닐 때만(클로버 방지).
   useEffect(() => {
-    if (draggingRef.current || editingRef.current) return;
-    const host = hostRef.current;
-    if (host && host.contains(document.activeElement)) return;
+    if (draggingRef.current) return;
     setT(node.table ?? makeDefaultTable());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.table]);
@@ -61,15 +60,12 @@ export function TableCard({
   const rows = t.cells.length;
   const commit = (next: CapTableData) => { setT(next); onCommit(node.id, next); };
 
-  const setTitle = (v: string) => setT((prev) => ({ ...cloneTable(prev), title: v }));
-
+  const setTitle = (v: string) => commit({ ...cloneTable(t), title: v });
   const setCell = (r: number, c: number, v: string) => {
-    setT((prev) => {
-      const next = cloneTable(prev);
-      if (!next.cells[r]) next.cells[r] = [];
-      next.cells[r][c] = v;
-      return next;
-    });
+    const next = cloneTable(t);
+    if (!next.cells[r]) next.cells[r] = [];
+    next.cells[r][c] = v;
+    commit(next);
   };
 
   // 열 추가 — 총 너비 고정, 모든 열을 균등(1/N)으로. 각 행에 빈 셀 추가.
@@ -125,7 +121,7 @@ export function TableCard({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       draggingRef.current = false;
-      setT((cur) => { onCommit(node.id, cur); return cur; });
+      onCommit(node.id, tableRef.current);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);

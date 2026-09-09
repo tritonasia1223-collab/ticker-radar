@@ -1,9 +1,11 @@
 // Disposable audit harness: all API writes stay in memory; never imports DB code.
 import express from 'express';
+import { flowDocument, documentFlow, metaDocument, diff, merge } from '../shared/cap-collaboration.js';
 import { createServer } from 'vite';
 const app = express();
 app.use(express.json({limit:'10mb'}));
 let flows: any[] = [], settings: Record<string,string> = {}, log: any[] = [];
+let operations = new Map<string, any>(), peers = new Map<string, any>(), metaVersion = 100;
 let patchDelay = 0, metaDelay = false, failReads = false, seq = 0;
 const clone = (x: any) => JSON.parse(JSON.stringify(x));
 function reset() {
@@ -11,6 +13,7 @@ function reset() {
     insight:{text:`Insight ${year}`,charts:[],blocks:[{type:'text',text:`Insight ${year}`}]},
     nodes:[{id:`n${i}a`,kind:'cause',text:`Original A ${year}`,inLabel:null,ref:null,col:null,table:null},{id:`n${i}b`,kind:'effect',text:`Original B ${year}`,inLabel:null,ref:null,col:null,table:null}],edges:[]}));
   settings={insight_overview_v2:JSON.stringify({cards:[{id:'m1',title:'Meta original',text:'Meta body',tables:[],images:[],blocks:[{type:'text',text:'Meta body'}]}]})};
+  operations.clear(); peers.clear(); metaVersion=100;
   log=[]; patchDelay=0;metaDelay=false;failReads=false;seq=0;
 }
 reset();
@@ -21,6 +24,31 @@ app.use('/api',async(q,r)=>{
   const path=q.path, id=++seq, body=clone(q.body??{});
   log.push({id,method:q.method,path,body,phase:'start'});
   if(failReads && q.method==='GET') return r.status(500).json({error:'Simulated read failure'});
+  if(path.startsWith('/capitalism/collab/')) {
+    const resource = (key:string) => ({key, version:key.startsWith('flow:') ? (flows.find(f=>f.slug===key.slice(5))?.updatedAt ?? 0) : metaVersion,
+      doc:key.startsWith('flow:') ? flowDocument(flows.find(f=>f.slug===key.slice(5))) : metaDocument(JSON.parse(settings.insight_overview_v2).cards.find((c:any)=>c.id===key.slice(5)))});
+    if(path.endsWith('/state')) return r.json({flows:flows.map(f=>({key:f.slug,version:f.updatedAt})),metaVersion,peers:[...peers.values()].filter(p=>p.seenAt>Date.now()-45000)});
+    if(path.endsWith('/presence')) {peers.set(body.session,{...body,seenAt:Date.now()});return r.json({ok:true});}
+    if(path.endsWith('/resource')) return r.json(resource(String(q.query.key)));
+    if(path.endsWith('/history-resources'))return r.json([...new Set([...operations.values()].map(o=>o.resource))].map(key=>({key})));
+    if(path.endsWith('/history')) return r.json([...operations.values()].filter(o=>o.resource===q.query.resource).reverse());
+    if(path.includes('/history/')) return r.json(operations.get(path.split('/').at(-1)!));
+    if(path.endsWith('/edit')) {
+      if(patchDelay) await new Promise(resolve=>setTimeout(resolve,patchDelay));
+      if(operations.has(body.id))return r.json({...resource(body.resource),operation:body.id});
+      const current=resource(body.resource), result=merge(current.doc,body.changes);
+      if(result.conflicts.length)return r.status(409).json({current,conflicts:result.conflicts});
+      if(body.resource.startsWith('flow:')) {
+        flows=flows.filter(f=>f.slug!==body.resource.slice(5));
+        if(result.doc)flows.push(documentFlow(body.resource,result.doc,Math.max(Date.now(),current.version+1),Date.now()));
+      } else {
+        const cards=JSON.parse(settings.insight_overview_v2).cards.filter((c:any)=>c.id!==body.resource.slice(5));
+        if(result.doc)cards.push(result.doc);settings.insight_overview_v2=JSON.stringify({cards});metaVersion=Math.max(Date.now(),metaVersion+1);
+      }
+      operations.set(body.id,{...body,changes:diff(current.doc,result.doc),takenAt:Date.now()});
+      return r.json({...resource(body.resource),operation:body.id});
+    }
+  }
   if(path==='/capitalism/flows' && q.method==='GET') return r.json(flows);
   if(path==='/capitalism/links') return r.json([]);
   if(path.startsWith('/capitalism/settings/')) {

@@ -14,11 +14,12 @@ import { CapChartPanel } from "@/components/CapChartPanel";
 import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
 import { useEditMode } from "@/components/EditModeProvider";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
-import { persistNodes, newNodeKey, nodeHasContent, enqueueSave, withRetry, patchNodeContent, putInsight, hasInsightContent, hasUnsavedChanges, hasFailedSaves, subscribeSaves, saveRevision, scheduleSave, flushScheduledSaves, waitForSaves, retryFailedSaves } from "@/lib/capitalism-flowops";
+import { newNodeKey, enqueueSave, withRetry, hasInsightContent, hasUnsavedChanges, hasFailedSaves, subscribeSaves, saveRevision, flushScheduledSaves, retryFailedSaves } from "@/lib/capitalism-flowops";
 import type { NodeContentPatch } from "@/lib/capitalism-types";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { applyUndo, makeFlowEntry, makeLinksEntry, type UndoEntry } from "@/lib/capitalism-undo";
+import { collaboration, seedCollaboration, saveFlowDraft, saveMetaDrafts } from "@/lib/cap-collab-client";
+import { CapCollaboration } from "@/components/CapCollaboration";
 import type { FlowDTO, FlowNodeDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
 import { useCapSeries } from "@/lib/capitalism-series";
 
@@ -29,6 +30,7 @@ const YEAR_MAX = 1980;
 export default function Capitalism() {
   const qc = useQueryClient();
   const { editable: editMode } = useEditMode();
+  useSyncExternalStore(collaboration.subscribe, collaboration.snapshot);
   useSyncExternalStore(subscribeSaves, saveRevision); // 보기/편집 모드 — 편집 UI(에디터·추가·저장) 게이트
   const flowQuery = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
   const { data: flows, isLoading } = flowQuery;
@@ -56,7 +58,7 @@ export default function Capitalism() {
   const { data: metaV2 } = metaQuery;
   const { data: overviewData } = overviewQuery;
   const [undoBusy, setUndoBusy] = useState(false);
-  const editable = !undoBusy && editMode && flowQuery.isSuccess && linksQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess;
+  const editable = !undoBusy && ![...collaboration.drafts.values()].some((d) => d.conflicts?.length) && editMode && flowQuery.isSuccess && linksQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess;
   const readFailed = [flowQuery, linksQuery, metaQuery, overviewQuery, seriesQuery].some((q) => q.isError);
   const retryReads = () => {
     if (hasUnsavedChanges()) return;
@@ -70,16 +72,10 @@ export default function Capitalism() {
     if (legacy && legacy.trim()) return [{ id: "meta-legacy", title: "", text: legacy, tables: [], images: [] }];
     return [];
   }, [metaV2?.value, overviewData?.value]);
-  const saveMetaCards = (next: CapMetaCard[]) => {
-    const value = JSON.stringify({ cards: next });
-    qc.setQueryData(["/api/capitalism/settings/insight_overview_v2"], { value });
-    scheduleSave("meta-overview", () => {
-      void enqueueSave("__meta", () => withRetry(async () => {
-        const latest = qc.getQueryData<{ value: string }>(["/api/capitalism/settings/insight_overview_v2"]);
-        await apiRequest("PUT", "/api/capitalism/settings/insight_overview_v2", latest);
-      })).catch(reportSaveError);
-    });
-  };
+  useEffect(() => {
+    if (flowQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess) seedCollaboration(flows ?? [], metaCards);
+  }, [flows, metaCards, flowQuery.isSuccess, metaQuery.isSuccess, overviewQuery.isSuccess]);
+  const saveMetaCards = saveMetaDrafts;
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))
@@ -107,38 +103,14 @@ export default function Capitalism() {
   const pendingRafRef = useRef<number | null>(null);
   const { toast } = useToast();
 
-  // ── 되돌리기(Undo) 스택 ── 텍스트 글자 편집 제외, 구조 변경만.
-  // ref 로 보관(렌더와 무관). 최대 50개까지 유지.
-  const undoStack = useRef<UndoEntry[]>([]);
-  const [canUndo, setCanUndo] = useState(false);
-  const pushUndo = (entry: UndoEntry) => {
-    undoStack.current.push(entry);
-    if (undoStack.current.length > 50) undoStack.current.shift();
-    setCanUndo(true);
-  };
+  const canUndo = collaboration.canUndo;
   const doUndo = async () => {
     if (undoBusy) return;
     (document.activeElement as HTMLElement | null)?.blur();
-    const entry = undoStack.current.pop();
-    setCanUndo(undoStack.current.length > 0);
-    if (!entry) return;
     setUndoBusy(true);
-    try {
-      await waitForSaves();
-      const restored = await applyUndo(entry);
-      if (entry.kind === "flow") {
-        qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
-          const rest = (prev ?? []).filter((f) => f.slug !== entry.slug);
-          return restored ? [...rest, restored].sort((a, b) => a.date.localeCompare(b.date) || a.sortOrder - b.sortOrder) : rest;
-        });
-      } else await qc.invalidateQueries({ queryKey: ["/api/capitalism/links"] });
-      toast({ description: `되돌림: ${entry.label}` });
-    } catch {
-      undoStack.current.push(entry); setCanUndo(true);
-      toast({ description: "되돌리기에 실패했어요. 저장 상태를 확인한 뒤 다시 시도하세요.", variant: "destructive" });
-    } finally {
-      setUndoBusy(false);
-    }
+    try { await collaboration.undoLast(); }
+    catch (e) { toast({ description: (e as Error).message, variant: "destructive" }); }
+    finally { setUndoBusy(false); }
   };
 
   // 최신 doUndo 를 ref 에 담아 키 핸들러 effect 가 매번 재등록되지 않게 한다.
@@ -426,65 +398,26 @@ export default function Capitalism() {
   const reduceMotion = useReducedMotion();
   const panelSpring = reduceMotion ? reducedTransition : spring.ios;
 
-  // 구조·내용 저장은 카드별 큐를 공유하며 실행 시점의 캐시를 읽는다.
-  // 성공 응답에서는 버전만 갱신하여 요청 이후 입력한 내용을 보존한다.
-  const bumpVersion = useCallback((slug: string, updatedAt: number) => {
-    qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
-      prev ? prev.map((f) => (f.slug === slug ? { ...f, updatedAt } : f)) : prev
-    );
-  }, [qc]);
+  const saveFlow = useCallback(async (slug: string, remember = false) => { saveFlowDraft(slug, remember); }, []);
 
-  // 세분화 저장(patch/insight) 실패 알림 — withRetry 소진 후에도 실패하면 조용히 잃지 않고 토스트.
-  const reportSaveError = useCallback((err: unknown) => {
-    const msg = String((err as Error)?.message ?? err);
-    const tooLarge = /^413\b/.test(msg) || /too large|payloadtoolarge/i.test(msg);
-    toast({
-      description: tooLarge
-        ? "저장 실패: 내용(특히 붙여넣은 이미지)이 너무 커서 서버가 거부했어요. 이미지를 줄인 뒤 다시 저장하세요."
-        : /^409\b/.test(msg)
-          ? "다른 창의 저장과 충돌했습니다. 현재 편집본을 유지했습니다. 내용을 복사해 보관한 뒤 새로고침하여 서버본과 비교하세요."
-          : "저장하지 못했습니다. 현재 편집본은 화면에 남아 있습니다. 상단 ‘저장 다시 시도’를 누르세요.",
-      variant: "destructive",
-    });
-  }, [toast]);
-
-  // 아직 서버에 저장 안 된 '신규 노드' id 집합(낙관적으로 캐시에만 추가된 것). 이 노드의 첫 편집은
-  //   patch 가 아니라 구조 저장(saveFlow)으로 보내 pos·col·edges 를 확립한다. (캐시 전체를 '저장됨'으로
-  //   표시하던 옛 방식은 낙관적 새 노드까지 저장됨으로 오인해 우측 열이 맨아래로 떨어지던 버그를 냈다.)
-  const newNodesRef = useRef<Set<string>>(new Set());
-  const saveFlow = useCallback((slug: string) => {
-    return enqueueSave(slug, () => withRetry(async () => {
-      const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((x) => x.slug === slug);
-      if (!latest) { await apiRequest("DELETE", `/api/capitalism/flows/${encodeURIComponent(slug)}`); return; }
-      const saved = await persistNodes(latest, latest.nodes);
-      if (saved !== "deleted") bumpVersion(slug, saved.updatedAt);
-    }), `flow:${slug}`).catch(reportSaveError);
-  }, [qc, bumpVersion, reportSaveError]);
-
-  // 카드 안에서 칸을 추가만 할 때(빈 칸) — 캐시에만 반영, 서버 저장은 입력 완료(commit) 시.
+  // 빈 칸 추가도 즉시 초안에 기록하고 자동 저장한다.
   // 전달된 flow의 layout도 함께 동기화(stack→branch 자동 전환 시 캐시 layout 갱신).
   const onAddLocal: MutateNodes = (flow, nextNodes) => {
-    // 새로 생긴(직전 캐시에 없던) 노드 id 를 '미저장 신규'로 기록 → 첫 편집이 구조 저장으로 가게 한다.
-    const prevIds = new Set(
-      (qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === flow.slug)?.nodes ?? []).map((n) => n.id)
-    );
-    for (const n of nextNodes) if (!prevIds.has(n.id)) newNodesRef.current.add(n.id);
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === flow.slug ? { ...f, layout: flow.layout, nodes: nextNodes } : f)) : prev
     );
+    void saveFlow(flow.slug, true);
   };
 
-  // 칸 내용 확정/삭제 — 캐시 즉시 반영 + 서버 저장(빈 칸 정리, 노드와 인사이트 모두 비면 삭제).
+  // 칸 내용 확정/명시 삭제. 노드와 인사이트 모두 없으면 카드 삭제.
   const onMutateNodes: MutateNodes = (flow, nextNodes) => {
-    // 변경 직전 flow 스냅샷을 쌓아둔다(노드 추가/삭제·카드 삭제를 되돌릴 수 있게).
-    pushUndo(makeFlowEntry("사건 수정", flow.slug, qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"]), nextNodes));
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
       if (!prev) return prev;
-      const clean = nextNodes.filter(nodeHasContent);
+      const clean = nextNodes; // Remove only explicitly selected nodes; another editor may be filling a blank node.
       if (clean.length === 0 && !hasInsightContent(prev.find((f) => f.slug === flow.slug) ?? flow)) return prev.filter((f) => f.slug !== flow.slug);
       return prev.map((f) => (f.slug === flow.slug ? { ...f, nodes: clean } : f));
     });
-    saveFlow(flow.slug);
+    void saveFlow(flow.slug, true);
   };
 
   // 카드 메타(날짜/제목/레이아웃) 변경 — year 자동 재산출, 날짜순 재정렬, 서버 upsert 저장.
@@ -513,21 +446,14 @@ export default function Capitalism() {
     saveFlow(flow.slug); // 낙관적 캐시(merged)를 직렬화·재시도 저장. invalidate 안 함(①).
   };
 
-  // 사건 인사이트 저장 — insight 만 전송(PUT). 노드·위상은 안 실어 노드 저장과 완전 분리(①).
+  // 인사이트의 변경분을 카드별 협업 저장기에 전달한다.
   const onCommitInsight = (slug: string, insight: CapInsight) => {
     const hasContent = !!(insight.text.trim() || insight.charts.length || insight.tables?.length || insight.blocks?.length);
     const nextInsight = hasContent ? insight : null;
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev ? prev.map((f) => (f.slug === slug ? { ...f, insight: nextInsight } : f)) : prev
     );
-    scheduleSave(`insight:${slug}`, () => {
-      void enqueueSave(slug, () => withRetry(async () => {
-        const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === slug);
-        if (!latest) return;
-        const result = await putInsight(slug, latest.insight ?? null);
-        bumpVersion(slug, result.updatedAt);
-      }), `insight:${slug}`).catch(reportSaveError);
-    });
+    void saveFlow(slug);
   };
 
   // 입력 즉시 캐시에 반영하고 600ms 후 전송한다. 대기·전송·실패 상태는 페이지 이동 뒤에도 유지된다.
@@ -535,30 +461,17 @@ export default function Capitalism() {
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev?.map((f) => f.slug !== flow.slug ? f : { ...f, nodes: f.nodes.map((n) => n.id === nodeId ? { ...n, ...patch } : n) })
     );
-    scheduleSave(`node:${flow.slug}:${nodeId}`, () => {
-      void enqueueSave(flow.slug, () => withRetry(async () => {
-        const latest = qc.getQueryData<FlowDTO[]>(["/api/capitalism/flows"])?.find((f) => f.slug === flow.slug);
-        const node = latest?.nodes.find((n) => n.id === nodeId);
-        if (!latest || !node) return; // 대기 중 명시적으로 삭제된 노드는 복구하지 않는다.
-        if (newNodesRef.current.has(nodeId)) {
-          const saved = await persistNodes(latest, latest.nodes);
-          if (saved !== "deleted") { bumpVersion(flow.slug, saved.updatedAt); newNodesRef.current.delete(nodeId); }
-        } else {
-          const result = await patchNodeContent(flow.slug, nodeId, { text: node.text, ref: node.ref, table: node.table });
-          bumpVersion(flow.slug, result.updatedAt);
-        }
-      }), `node:${flow.slug}:${nodeId}`).catch(reportSaveError);
-    });
-  }, [qc, bumpVersion, reportSaveError]);
+    void saveFlow(flow.slug);
+  }, [qc, saveFlow]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       const active = document.activeElement;
       const editing = active instanceof HTMLElement && (active.isContentEditable || active.matches("input:not([type=range]), textarea"));
-      if (!hasUnsavedChanges() && !editing) return;
+      if (!hasUnsavedChanges() && !collaboration.drafts.size && !editing) return;
       // blur 전의 제목·표 편집도 기존 커밋 경로로 전달한다.
       if (editing) active.blur();
-      flushScheduledSaves();
+      flushScheduledSaves(); void collaboration.flushAll();
       e.preventDefault(); e.returnValue = "";
     };
     const onHide = () => { if (document.visibilityState === "hidden") flushScheduledSaves(); };
@@ -567,7 +480,7 @@ export default function Capitalism() {
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("visibilitychange", onHide);
-      flushScheduledSaves();
+      flushScheduledSaves(); void collaboration.flushAll();
     };
   }, []);
   // 자동 focus refetch는 저장 응답 전의 서버본으로 편집 캐시를 덮을 수 있어 사용하지 않는다.
@@ -581,7 +494,6 @@ export default function Capitalism() {
       // (슬라이더 위치와 무관, 동일 날짜여도 sortOrder=maxOrder+1 이라 뒤로). 위로 스크롤할 필요 없음.
       const date = `${Math.floor(playYear)}-12-31`;
       const slug = `flow-${Date.now().toString(36)}`;
-      pushUndo(makeFlowEntry("사건 추가", slug, flows)); // prev=null → Undo 는 삭제
       const firstKey = newNodeKey();
       const year = Number(date.slice(0, 4));
       qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
@@ -591,7 +503,7 @@ export default function Capitalism() {
         return [...(prev ?? []), nf].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sortOrder - b.sortOrder));
       });
       setEditingId(firstKey);
-      await saveFlow(slug);
+      await saveFlow(slug, true);
       return { firstKey };
     },
   });
@@ -601,7 +513,6 @@ export default function Capitalism() {
     mutationFn: async (targetYear: number) => {
       const date = `${targetYear}-01-01`;
       const slug = `flow-${Date.now().toString(36)}`;
-      pushUndo(makeFlowEntry("사건 추가", slug, flows)); // 신규 → Undo 는 삭제
       const firstKey = newNodeKey();
       qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) => {
         const maxOrder = (prev ?? []).reduce((m, f) => Math.max(m, f.sortOrder), -1);
@@ -610,7 +521,7 @@ export default function Capitalism() {
         return [...(prev ?? []), nf].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sortOrder - b.sortOrder));
       });
       setEditingId(firstKey);
-      await saveFlow(slug);
+      await saveFlow(slug, true);
       window.setTimeout(() => seekToYear(targetYear), 80); // 새 그룹으로 스크롤
       return { firstKey, targetYear };
     },
@@ -618,8 +529,6 @@ export default function Capitalism() {
 
   // 드래그앤드롭 화살표 연결 — 낙관적 캐시 추가 후 서버 저장.
   const onLink: LinkNodes = (from, to) => {
-    // 화살표 추가 직전의 전체 링크 스냅샷을 쌓아둔다.
-    pushUndo(makeLinksEntry("화살표 추가", links));
     const tempId = -Date.now();
     qc.setQueryData<LinkDTO[]>(["/api/capitalism/links"], (prev) => {
       const list = prev ?? [];
@@ -637,8 +546,6 @@ export default function Capitalism() {
 
   // 화살표 삭제(오버레이에서 클릭).
   const onDeleteLink = (id: number) => {
-    // 삭제 직전 스냅샷 → Undo 는 복원.
-    pushUndo(makeLinksEntry("화살표 삭제", links));
     qc.setQueryData<LinkDTO[]>(["/api/capitalism/links"], (prev) => (prev ? prev.filter((l) => l.id !== id) : prev));
     if (id < 0) return; // 낙관적 임시 id 는 서버 호출 불필요
     enqueueSave("__links__", () => withRetry(() => apiRequest("DELETE", `/api/capitalism/links/${id}`)))
@@ -667,8 +574,9 @@ export default function Capitalism() {
         ))}
       </div>
 
+      <CapCollaboration />
       <div className="flex flex-wrap items-center gap-3 text-xs" role="status" data-testid="cap-save-status">
-        <span>{hasFailedSaves() ? "저장 실패 — 새로고침 전에 편집 내용을 보관하세요." : hasUnsavedChanges() ? "저장 중…" : "입력 후 자동 저장"}</span>
+        {hasUnsavedChanges() && <span>화살표 저장 중…</span>}
         {hasFailedSaves() && <button className="underline" onClick={() => void retryFailedSaves()}>저장 다시 시도</button>}
         {readFailed && <span role="alert">데이터를 불러오지 못했습니다. <button className="underline" disabled={hasUnsavedChanges()} onClick={retryReads}>다시 불러오기</button></span>}
       </div>

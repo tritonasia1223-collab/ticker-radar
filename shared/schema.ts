@@ -392,6 +392,17 @@ export const capSettings = pgTable("cap_settings", {
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
 
+// Additive collaboration schema. Applied only by script/db-push-cap-collaboration.ts.
+export const capEditOperations = pgTable("cap_edit_operations", {
+  id: text("id").primaryKey(), resource: text("resource").notNull(),
+  editor: text("editor").notNull(), session: text("session").notNull(),
+  takenAt: bigint("taken_at", { mode: "number" }).notNull(), changes: text("changes").notNull(), request: text("request").notNull(),
+}, (t) => ({ byResource: index("idx_cap_edit_resource").on(t.resource, t.takenAt) }));
+export const capEditors = pgTable("cap_editors", {
+  session: text("session").primaryKey(), editor: text("editor").notNull(), resource: text("resource"),
+  seenAt: bigint("seen_at", { mode: "number" }).notNull(),
+});
+
 // --- 카드 버전 히스토리(version-on-write). 저장/삭제로 카드를 덮어쓰기 '직전' 상태를 스냅샷으로
 //     남긴다(편집 순간에만 쌓임 → 유휴 시 낭비 0). 유실 시 카드별 직전 버전으로 복구.
 //     ⚠️ DDL 은 raw 스크립트(script/db-push-cap-history.ts)로만 — drizzle push 금지(#26). ---

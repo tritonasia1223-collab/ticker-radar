@@ -46,20 +46,23 @@
 
 ---
 
-## 3. API (`server/capitalism.ts` ↔ `server/routes.ts`)
+## 3. API (`server/cap-collaboration.ts`)
 
-| 메서드 | 경로 | 함수 |
+| 메서드 | 경로 | 동작 |
 |---|---|---|
-| GET | `/api/capitalism/flows` | `listFlows()` — 노드·엣지·표·인사이트까지 조립(`assemble`) |
-| POST | `/api/capitalism/flows` | `upsertFlow()` — **트랜잭션**(flow+nodes+edges 원자적 교체) |
-| PATCH | `/api/capitalism/flows/:slug/nodes/:key` | `patchNode()` — 단일 노드 내용 변경 |
-| PUT | `/api/capitalism/flows/:slug/insight` | `setInsight()` — 사건 인사이트 변경 |
-| DELETE | `/api/capitalism/flows/:slug` | `deleteFlow()` — 트랜잭션, 연결된 전역 링크도 정리 |
-| GET/POST/DELETE | `/api/capitalism/links` | 전역 화살표(`cap_links`) CRUD |
-| GET/PUT | `/api/capitalism/settings/:key` | `getSetting`/`setSetting` — 메타 카드 등 |
+| GET | `/api/capitalism/flows` | 일관된 트랜잭션 스냅샷으로 카드·노드·엣지 조립 |
+| GET | `/api/capitalism/collab/resource?key=flow:slug` | 카드의 최신 문서와 버전. 메타 카드는 `meta:id` |
+| POST | `/api/capitalism/collab/edit` | 변경 경로·이전 값·새 값을 비교하고 원자적 저장. 충돌 409 |
+| GET | `/api/capitalism/collab/state` | 변경 버전과 최근 접속자. 화면에서 5초마다 확인 |
+| POST | `/api/capitalism/collab/presence` | 표시 이름·현재 카드·접속 시각. 15초 갱신, 45초 만료 |
+| GET | `/api/capitalism/collab/history[-resources]` | 카드별 최근 30개 이력 또는 이력이 있는 카드 목록 |
+| GET | `/api/capitalism/collab/history/:id` | 변경자, 변경 항목, 이전/이후 값 |
+| GET/POST/DELETE | `/api/capitalism/links` | 기존 전역 화살표 API. 전체 스냅샷 Undo에서 제외 |
+| GET | `/api/capitalism/settings/:key` | 메타 카드 설정 읽기 |
 
-- `upsertFlow`/`deleteFlow` 는 **Supabase 세션 풀러에서 트랜잭션 동작 확인됨**(`db.transaction`).
-- 빈 노드(텍스트·표·메모 다 없음)는 저장 전 `nodeHasContent`로 걸러짐(client `capitalism-flowops.ts`).
+기존 flows/settings 쓰기 API는 428로 거절해 이전에 열린 브라우저의 전체 덮어쓰기를 차단합니다. CLI에서 직접 호출하는 `server/capitalism.ts`의 기존 관리 함수는 남아 있으므로 공동 편집 중에 별도 일괄 수정 스크립트를 실행하지 않습니다.
+
+`cap_edit_operations`는 요청 ID·원본 요청·실제로 반영된 변경·표시 이름을 저장합니다. 같은 요청 재전송은 재적용하지 않습니다. `cap_editors`는 접속 표시용이며 인증이나 편집 잠금이 아닙니다. 추가 DDL은 `npm run cap:collab:init`으로만 적용합니다.
 
 ---
 
@@ -105,14 +108,14 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 - **본문**: 리치텍스트(왼쪽 정렬, 하이라이트·색 마커). **그래프**: 여러 개 첨부 가능, 추가 시 기본 범위 = **카드 시점 ±5년 창**(자유 조정).
 - **모아보기 탭**에서 시간순으로 읽고, 리치텍스트의 내부 링크로 사건 카드를 찾아갑니다.
 - **메타 카드** — `insight_overview_v2`에 `{ cards: [...] }`로 저장합니다. 사건과 무관한 전체 논증을 여러 카드로 작성합니다. 이전 단일 `insight_overview`는 v2가 없을 때만 읽습니다.
-- 노드 본문·인사이트 블록·메타 카드 입력은 캐시에 즉시 반영하고, 600ms 디바운스 후 저장합니다. 사건 제목·날짜·노드 메모·표의 입력 완료는 기존 blur/확정 경로를 사용합니다.
-- 카드별 구조 POST·노드 PATCH·인사이트 PUT은 같은 저장 큐를 공유합니다. 메타 카드 배열도 별도 큐에서 순서대로 저장합니다.
-- 저장 대기·전송 중·실패 상태를 추적합니다. 실패 시 화면의 편집본을 유지하며 상단에서 재시도할 수 있습니다. 입력창에서 새로고침하면 blur 커밋과 대기 저장을 실행하고 이탈 경고를 띄웁니다.
-- 창 focus 복귀 시 자동 refetch는 하지 않습니다. 서버 최신본을 확인하려면 저장 완료 후 새로고침합니다.
-- 구조 저장은 `baseVersion`으로 충돌을 검사합니다. 409를 자동 병합하거나 강제 덮어쓰지 않습니다. 로컬 편집을 복사해 보관한 뒤 서버본과 비교합니다.
-- Undo는 저장 대기가 끝난 뒤, 삭제한 노드만 최신 서버본에 복원합니다. 다른 노드 본문·인사이트·제목의 이후 수정은 보존합니다. 최신 조회 또는 저장 실패 시 Undo 항목을 스택에 남깁니다.
-- 마지막 노드를 삭제해도 인사이트가 있으면 사건을 남기고 `+ 칸 추가` 버튼을 표시합니다.
-- 초안/실패 큐는 메모리 기반입니다. 이탈 경고를 무시한 종료나 브라우저 강제 종료 뒤 복구하는 기능, 여러 창의 동시 편집 자동 병합은 제공하지 않습니다.
+- 노드 본문·메모·표·제목·인사이트·메타 카드는 입력 즉시 기기 초안(IndexedDB)에 기록하고 600ms 후 저장합니다. 날짜·기간은 기존 날짜 패널의 **저장** 버튼으로 확정합니다. 표 너비는 드래그 종료 시 저장합니다.
+- 서로 다른 카드·노드·필드는 병합합니다. 같은 본문, 같은 표, 같은 사건 인사이트, 같은 메타 본문 블록 배열은 한 단위로 비교하며 충돌 시 서버/내 내용을 선택합니다. 삭제와 수정도 충돌로 처리합니다.
+- 서버는 카드 단위 트랜잭션 잠금 안에서 최신 값 비교 → 필요한 행 변경 → 변경 이력을 함께 기록합니다. 메타 카드는 공유 설정을 잠근 뒤 해당 카드만 반영합니다.
+- 다른 창의 변경은 5초 주기로 확인합니다. 내 미저장 필드를 보존하고 충돌을 표시합니다. 포커스가 남은 리치 에디터도 서버 변경을 반영해 blur 시 옛 본문을 다시 제출하지 않게 합니다.
+- 새로고침 뒤 남은 초안은 **서버와 비교해 복구**로 확인합니다. 기기 저장소를 지우거나 비공개 창을 종료한 경우에는 로컬 초안이 남지 않을 수 있습니다. 기기 저장 실패는 화면에 표시합니다.
+- 구조 Undo와 **변경 이력 → 이 변경만 되돌리기**는 당시 변경한 부분만 역적용합니다. 이후 같은 부분이 바뀌었으면 충돌 선택을 요구합니다. 삭제된 카드도 이력 목록에서 찾을 수 있습니다.
+- 마지막 노드를 삭제해도 인사이트가 있으면 사건을 유지합니다. 다른 사람이 작성 중일 수 있는 빈 노드를 일괄 정리하지 않습니다.
+- 상세 사용법·배포·검증 범위: [협업 편집](COLLABORATION.md).
 
 ---
 
@@ -130,9 +133,12 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 | `client/src/components/CapLinkOverlay.tsx` | 전역 화살표 오버레이(SVG) |
 | `client/src/lib/capitalism-config.ts` | `PANELS`·`CATEGORIES`·`leadersForYear`·`krwConversion`·불릿 |
 | `client/src/lib/capitalism-types.ts` | DTO 타입(Flow·Node·Insight·Table) |
-| `client/src/lib/capitalism-flowops.ts` | 카드별 저장 큐·디바운스·실패 추적·재시도·persist 필터 |
+| `client/src/lib/capitalism-flowops.ts` | 노드 키·엣지·내용 유틸 및 기존 링크 저장 큐 |
+| `client/src/lib/cap-collab-engine.ts` | 요청 직렬화·초안·충돌·필드 단위 Undo |
+| `client/src/lib/cap-collab-client.ts` | 서버 연결·캐시 반영·동기화 주기 |
+| `client/src/components/CapCollaboration.tsx` | 저장 상태·충돌 비교·초안 복구·이력 UI |
 | `client/src/lib/capitalism-richtext.ts` | 마커 ↔ DOM 직렬화 |
-| `client/src/lib/capitalism-undo.ts` | 편집 undo 스택 |
+| `client/src/lib/capitalism-undo.ts` | 이전 Undo 유틸·회귀 테스트용. 현재 페이지에서 사용하지 않음 |
 
 ---
 

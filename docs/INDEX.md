@@ -6,6 +6,7 @@
 |---|---|
 | [프로젝트 README](../README.md) | 기능 상태, 실행·검증·운영 원칙 |
 | [CAPITALISM](CAPITALISM.md) | 경제사 데이터·편집·차트 구조 |
+| [협업 편집](COLLABORATION.md) | 2인 편집·충돌·초안 복구·저장 이력 |
 | [FED](FED.md) | 미국 유동성 구현과 수집 |
 | [WORLD](WORLD.md) | 지도 코드·데이터·개발 범위 |
 | [DATACENTERS](DATACENTERS.md) | 데이터센터 지도 표현·계산 |

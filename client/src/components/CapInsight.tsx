@@ -41,6 +41,7 @@ export function InsightPanel({
     setEditing(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flow.slug, editable]);
+  useEffect(() => { const next = seedBlocks(flow); setBlocks(next); blocksRef.current = next; }, [flow.insight]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
   const eventFrac = toFracYear(flow.date);
@@ -145,6 +146,8 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   const [editing, setEditing] = useState(editable && !hasContent);
   const showEditor = editing && editable;
 
+  useEffect(() => { setTitle(card.title ?? ""); titleRef.current = card.title ?? ""; }, [card.title]);
+  useEffect(() => { const next = seedBlocks(card); setBlocks(next); blocksRef.current = next; }, [card.blocks, card.text, card.tables, card.images]);
   const commit = (nextBlocks: CapBlock[] = blocksRef.current, nextTitle: string = titleRef.current) =>
     onChange({ ...card, title: nextTitle, ...blocksToMetaFields(nextBlocks) });
   const handleChange = (next: CapBlock[], _doCommit: boolean) => {

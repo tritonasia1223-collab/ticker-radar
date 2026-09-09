@@ -3,7 +3,7 @@
 //  - 칸 클릭 → 그 자리에서 리치텍스트 편집(드래그 색상 툴바). 포커스 해제 시 저장.
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 그 칸 삭제(내용 비워도 자동 삭제). 마지막 칸이면 플로우 삭제.
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { X, MessageSquare, Table2, Star } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
@@ -55,6 +55,7 @@ function Node({
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [draft, setDraft] = useState(node.text);
+  useEffect(() => { setDraft(node.text); }, [node.text]);
   const hasMemo = !!(node.ref && node.ref.trim());
   const hasTable = !!node.table;
   // 이 노드(또는 그 메모)에 마우스가 올라가 있어 강조 대상인지.
@@ -266,6 +267,7 @@ function MemoCard({
   const focused = focusedId === node.id;
   const [editing, setEditing] = useState(!!autoEdit);
   const [draft, setDraft] = useState(node.ref ?? "");
+  useEffect(() => { setDraft(node.ref ?? ""); }, [node.ref]);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const grow = (el: HTMLTextAreaElement | null) => {
     if (!el) return;
@@ -311,7 +313,7 @@ function MemoCard({
           value={draft}
           autoFocus
           rows={3}
-          onChange={(e) => { setDraft(e.target.value); grow(e.target); }}
+          onChange={(e) => { setDraft(e.target.value); onMemo?.(node.id, e.target.value); grow(e.target); }}
           onBlur={finish}
           onKeyDown={(e) => {
             // 스페이스 인라인 치환: "-> "→"→ ", "(1) "→"① " (본문 리치에디터와 동일 규칙). IME 조합 중엔 건너뜀.
@@ -321,7 +323,7 @@ function MemoCard({
                 const res = applyInlineTextCommand(ta.value, ta.selectionStart);
                 if (res) {
                   e.preventDefault();
-                  setDraft(res.text);
+                  setDraft(res.text); onMemo?.(node.id, res.text);
                   requestAnimationFrame(() => {
                     if (taRef.current) { taRef.current.selectionStart = taRef.current.selectionEnd = res.caret; grow(taRef.current); }
                   });
@@ -329,10 +331,10 @@ function MemoCard({
                 }
               }
             }
-            if (e.key === "Escape") { cancel(); }
+            if (e.key === "Escape") { finish(); }
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
           }}
-          placeholder="메모 입력 (Esc 취소 · ⌘/Ctrl+Enter 저장 · -> 화살표 · (1) 원문자 · 비워서 저장하면 삭제)"
+          placeholder="메모 입력 (자동 저장 · Esc 닫기 · ⌘/Ctrl+Enter 완료 · -> 화살표 · (1) 원문자 · 비워서 저장하면 삭제)"
           className="block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border border-amber-300/60 bg-background px-1.5 py-1 text-[12.5px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-amber-400"
           data-testid={`memo-input-${node.id}`}
         />
@@ -498,6 +500,7 @@ export function FlowColumn({
   const [dateDraft, setDateDraft] = useState(flow.date);
   const [endDateDraft, setEndDateDraft] = useState(flow.endDate ?? "");
   const [titleDraft, setTitleDraft] = useState(flow.title);
+  useEffect(() => { setTitleDraft(flow.title); }, [flow.title]);
   // 노드 텍스트 커밋: 빈 칸이면 제거, 아니면 갱신. 그리고 서버 반영.
   function commit(id: string, text: string) {
     setEditingId(null);
@@ -608,7 +611,7 @@ export function FlowColumn({
   // 노드 메모(보충 설명) 커밋. ref 컬럼에 저장. 빈 문자열 → null(메모 삭제).
   function commitMemo(id: string, memo: string) {
     if (!onMutateNodes) return;
-    const next: string | null = memo.trim() || null;
+    const next: string | null = memo || null;
     const cur = flow.nodes.find((n) => n.id === id);
     if (!cur || (cur.ref ?? null) === next) return; // 변경 없음
     if (onEditContent) onEditContent(flow, id, { ref: next }); // 메모만 세분화 저장
@@ -853,7 +856,7 @@ export function FlowColumn({
             type="text"
             autoFocus
             value={titleDraft}
-            onChange={(e) => setTitleDraft(e.target.value)}
+            onChange={(e) => { setTitleDraft(e.target.value); onMutateMeta?.(flow, { title: e.target.value }); }}
             onClick={(e) => e.stopPropagation()}
             onBlur={commitTitle}
             onKeyDown={(e) => { if (e.key === "Enter") commitTitle(); if (e.key === "Escape") { setTitleDraft(flow.title); setMetaEdit(null); } }}
@@ -867,7 +870,7 @@ export function FlowColumn({
             title={editable ? "클릭해 제목 수정" : undefined}
             data-testid={`text-title-${flow.slug}`}
           >
-            {flow.title}
+            {flow.title || "제목 입력 필요"}
           </div>
         )}
       </div>

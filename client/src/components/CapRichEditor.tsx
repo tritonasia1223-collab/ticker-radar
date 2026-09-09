@@ -262,12 +262,15 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     blur() { ref.current?.blur(); },
   }));
 
-  // value(외부) → DOM 초기화 (포커스 없을 때만 재렌더하여 커서 튐 방지).
+  // Own keystrokes already match the DOM. Apply actual remote changes even while focused:
+  // leaving stale DOM here would re-submit old text on blur after the base advanced.
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    if (document.activeElement === el) return;
+    if (!el || composingRef.current || serializeEl(el) === (value || "")) return;
+    const focused = document.activeElement === el;
+    const caret = focused ? caretRange(el).end : 0;
     renderToEl(el, value || "");
+    if (focused) setCaretAtSerializeOffset(el, Math.min(caret, (value || "").length));
   }, [value]);
 
   // 자동 포커스: 인라인 편집 진입 시 바로 커서를 끝으로.
@@ -881,7 +884,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         onPaste={onPaste}
         onCopy={onCopy}
         onCut={onCut}
-        onInput={() => { if (!composingRef.current) emit(); }}
+        onInput={() => { emit(); }}
         onCompositionStart={() => { composingRef.current = true; }}
         onCompositionEnd={() => { composingRef.current = false; emit(); }}
         onBlur={() => {
