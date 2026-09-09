@@ -6,7 +6,7 @@ import { geoEqualEarth, geoPath, geoArea } from "d3-geo";
 import { select } from "d3-selection";
 import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
-import { feature, neighbors } from "topojson-client";
+import { feature, neighbors, merge } from "topojson-client";
 import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown, Server, Flame, Atom, BatteryCharging, Zap, Info, Globe, Swords, Hexagon, Clapperboard } from "lucide-react";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
@@ -271,13 +271,20 @@ const RTO_ATTR: Record<string, GridAttr> = {
 // 가격/송전 뱃지 색(의미). 발전원은 무채색.
 const gridPriceColor = (v: string) => (v.startsWith("최저") || v === "저가") ? "#16a34a" : /고가/.test(v) ? "#dc2626" : /중/.test(v) ? "#64748b" : "#78716c";
 const gridTxColor = (v: string) => v.includes("우수") ? "#16a34a" : v.includes("병목") ? "#f59e0b" : "#64748b";
-// 비ISO 지역(§2) — 동일 3속성. 유틸 폴리곤은 후속(EIA-861), 여기선 목록으로만.
+// 비ISO 지역(§2) — 동일 3속성. 정밀 유틸 폴리곤은 후속(EIA-861); 여기선 주 경계 병합으로 대략적 영역만(무채색, hover 강조).
 const NONISO_ROWS: ({ region: string } & GridAttr)[] = [
   { region: "남동부", price: "중저가", gen: "가스·원전", tx: "우수" },
   { region: "TVA", price: "저가", gen: "원전·수력", tx: "우수" },
   { region: "BPA", price: "최저가", gen: "수력", tx: "보통" },
   { region: "서부 산악", price: "유틸별 상이", gen: "혼합", tx: "보통" },
 ];
+// 비ISO 권역 대략 영역 = 구성 주 병합(state name 기준). RTO 코드와 키 충돌 없음(한글/약어).
+const NONISO_STATES: Record<string, string[]> = {
+  "남동부": ["North Carolina", "South Carolina", "Georgia", "Alabama", "Mississippi", "Florida"],
+  "TVA": ["Tennessee", "Kentucky"],
+  "BPA": ["Washington", "Oregon", "Idaho"],
+  "서부 산악": ["Montana", "Wyoming", "Colorado", "Utah", "Arizona", "New Mexico", "Nevada"],
+};
 // 권역 특성 뱃지 — 값만(가격·발전원은 자명), 송전만 라벨 유지. abbr와 한 줄에 들어가는 인라인 프래그먼트.
 function GridBadges({ a }: { a: GridAttr }) {
   const pc = gridPriceColor(a.price), tc = gridTxColor(a.tx);
@@ -467,6 +474,17 @@ export default function World() {
   const newSmrDeals = useMemo(() => dc.nuclear_deals.filter((n) => n.location?.lat != null && !["amzn-susquehanna", "msft-crane", "meta-constellation-clinton", "meta-vistra", "stargate-none", "orcl-smr-claim"].includes(n.id)), []);
   const fabsSorted = useMemo(() => [...fabs].sort((a, b) => (FAB_STATUS_ORDER[a.status] - FAB_STATUS_ORDER[b.status]) || (b.invest_announced_usd_bn - a.invest_announced_usd_bn)), []);
   const rtoPaths = useMemo(() => (dcMode && dcFill === "rto" ? rtoRegions.map((r) => ({ code: r.code, d: pathGen(r.geometry) || "" })) : []), [dcMode, dcFill, pathGen]);
+  // 비ISO 대략 영역: 구성 주 topology 병합(경계선 사라진 단일 면) → 무채색 오버레이
+  const nonIsoPaths = useMemo(() => {
+    if (!dcMode || dcFill !== "rto") return [];
+    const geoms = (usStatesTopo as any).objects.states.geometries;
+    return NONISO_ROWS.map((r) => {
+      const members = new Set(NONISO_STATES[r.region] || []);
+      const sel = geoms.filter((g: any) => members.has(g.properties?.name));
+      if (!sel.length) return { region: r.region, d: "" };
+      return { region: r.region, d: pathGen(merge(usStatesTopo as any, sel)) || "" };
+    });
+  }, [dcMode, dcFill, pathGen]);
   const usStates = useMemo(() => (feature(usStatesTopo as any, (usStatesTopo as any).objects.states) as any).features, []);
   const usStatePaths = useMemo(() => (dcMode ? usStates.map((f: any) => pathGen(f) || "") : []), [dcMode, usStates, pathGen]);
   // 주 이름 라벨 — 투영 후 중심점(그룹 transform 좌표계). NaN(클립됨) 제외.
@@ -768,6 +786,14 @@ export default function World() {
               onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcGridSel((c) => (c === r.code ? null : r.code)); setGridPanelOpen(true); }}
               onMouseEnter={(e) => { setDcGridHover(r.code); setTip({ x: e.clientX, y: e.clientY, text: `${rtoAbbr(r.code)} · ${RTO_KO[r.code]}` }); }}
               onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${rtoAbbr(r.code)} · ${RTO_KO[r.code]}` })}
+              onMouseLeave={() => { setDcGridHover(null); setTip(null); }} />; })}
+          {/* 비ISO 권역 대략 영역 — 무채색(수직통합 유틸). hover/선택 시 진해짐 */}
+          {dcMode && dcFill === "rto" && nonIsoPaths.map((r, i) => { if (!r.d) return null; const active = dcGridSel === r.region || dcGridHover === r.region;
+            return <path key={`niso${i}`} d={r.d} fill="#94a3b8" fillOpacity={active ? 0.28 : 0.08} stroke="#94a3b8" strokeOpacity={active ? 0.7 : 0.3} strokeWidth={(active ? 1.2 : 0.5) / t.k} strokeDasharray={active ? undefined : `${2.5 / t.k} ${2.5 / t.k}`} style={{ cursor: "pointer" }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcGridSel((c) => (c === r.region ? null : r.region)); setGridPanelOpen(true); }}
+              onMouseEnter={(e) => { setDcGridHover(r.region); setTip({ x: e.clientX, y: e.clientY, text: `${r.region} · 비ISO 수직통합 유틸`, sub: "정밀 서비스 영역 아닌 구성 주 근사" }); }}
+              onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${r.region} · 비ISO 수직통합 유틸`, sub: "정밀 서비스 영역 아닌 구성 주 근사" })}
               onMouseLeave={() => { setDcGridHover(null); setTip(null); }} />; })}
           {/* 국가 뷰 면 채색 §B — 주별 AI 부하 비중 램프 */}
           {dcMode && dcFill === "load" && usStates.map((f: any, i: number) => { const ab = US_NAME_ABBR[f.properties?.name]; const share = ab ? stateLoadShare.get(ab) : undefined; if (share == null) return null;
@@ -1486,10 +1512,12 @@ export default function World() {
                   <GridBadges a={RTO_ATTR[code]} />
                 </div>); })}
               <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
-              {NONISO_ROWS.map((r) => (<div key={r.region} className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 text-[11.5px]">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" /><span className="shrink-0 font-semibold">{r.region}</span>
-                <GridBadges a={r} />
-              </div>))}
+              {NONISO_ROWS.map((r) => { const hl = dcGridSel === r.region || dcGridHover === r.region;
+                return (<div key={r.region} onClick={() => { setDcGridSel((c) => (c === r.region ? null : r.region)); }} onMouseEnter={() => setDcGridHover(r.region)} onMouseLeave={() => setDcGridHover(null)}
+                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" style={hl ? { background: "#94a3b8", borderColor: "#94a3b8" } : undefined} /><span className="shrink-0 font-semibold">{r.region}</span>
+                  <GridBadges a={r} />
+                </div>); })}
               <div className="px-2.5 pb-0.5 pt-1.5 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
             </div>
             )}
