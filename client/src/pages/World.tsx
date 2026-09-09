@@ -167,11 +167,12 @@ const genTypeKo = (t: string) => t.includes("combined_cycle") ? "가스 복합�
 const POWER_SRC_COLOR: Record<string, string> = { grid: "#2563eb", gas: "#f59e0b", renew: "#16a34a", nuclear: "#7c3aed", other: "#78716c" };
 const powerSrcCat = (t: string) => (t.includes("gas") ? "gas" : (t.includes("solar") || t.includes("wind") || t.includes("renew")) ? "renew" : (t.includes("nuclear") || t === "smr") ? "nuclear" : "other");
 // 전력 조달 대분류(층위 최상단) — grid_share·현장발전으로 4분류 확정. 막대 대신 이 텍스트를 강조.
-const POWER_TIER: Record<string, { label: string; color: string }> = {
-  grid: { label: "전량 전력망에서 구매", color: "#2563eb" },
-  mixed: { label: "전력망 + 자체 발전 병행", color: "#7c3aed" },
-  self: { label: "자체 발전 중심", color: "#f59e0b" },
-  unknown: { label: "수급 계획 미확인", color: "#78716c" },
+// 전력 조달 방법 — 대분류를 뱃지로. 혼합/자체 중심은 [일부 전력망]+[자체발전] 2뱃지, 나머지는 1뱃지.
+const POWER_TIER: Record<string, { label: string; color: string }[]> = {
+  grid: [{ label: "전량 전력망에서 구매", color: "#2563eb" }],
+  mixed: [{ label: "일부 전력망", color: "#2563eb" }, { label: "자체 발전 병행", color: "#7c3aed" }],
+  self: [{ label: "일부 전력망", color: "#2563eb" }, { label: "자체 발전 중심", color: "#7c3aed" }],
+  unknown: [{ label: "수급 계획 미확인", color: "#78716c" }],
 };
 const GRID_COLOR: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b" };
 const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "#64748b";
@@ -1538,20 +1539,18 @@ export default function World() {
               </>}
               <span className="text-muted-foreground">최종 사용</span><span>{s.end_user ?? "—"}</span></div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
-              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달</div>
-              {/* 층위 = 대분류(4) 강조 + 하위 자체발전 소스. 막대·계통운영자·유틸 신설(비DC정보)은 제외. */}
+              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 방법</div>
+              {/* 대분류 뱃지(혼합/자체중심은 2뱃지) + 하위 자체발전은 작은 텍스트. 막대·계통운영자·유틸 신설(비DC정보) 제외. */}
               {(() => {
                 const gs = (s.power.grid_share ?? "") as string; const num = Number((/^\s*(\d+)\s*%/.exec(gs) || [])[1]);
                 const onsite = s.power.onsite_generation ?? [];
                 const tierKey = (num === 100 && onsite.length === 0) ? "grid"
                   : (/undisclosed/i.test(gs) || (!gs && onsite.length === 0)) ? "unknown"
                   : /minimal/i.test(gs) ? "self" : "mixed";
-                const T = POWER_TIER[tierKey];
+                const badges = POWER_TIER[tierKey];
                 return (<div className="mt-1.5">
-                  <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-bold" style={{ background: T.color + "18", color: T.color }}><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: T.color }} />{T.label}</div>
-                  {onsite.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[9.5px] text-muted-foreground/70">자체 발전</span>
-                    {onsite.map((g, i) => <span key={i} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: POWER_SRC_COLOR[powerSrcCat(g.type)] }} />{genTypeKo(g.type)}{g.mw ? ` ${g.mw}MW` : ""}{g.status === "planned" ? "(계획)" : ""}</span>)}
-                  </div>}
+                  <div className="flex gap-1.5">{badges.map((bd, i) => <span key={i} className="flex-1 rounded-md px-2 py-1 text-center text-[12px] font-bold" style={{ background: bd.color + "18", color: bd.color }}>{bd.label}</span>)}</div>
+                  {onsite.length > 0 && <div className="mt-1 text-center text-[10px] font-medium" style={{ color: "#7c3aed" }}>{onsite.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ")}</div>}
                 </div>);
               })()}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
