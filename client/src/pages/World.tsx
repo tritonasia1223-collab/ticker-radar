@@ -309,6 +309,28 @@ function GridBadges({ a, why }: { a: GridAttr; why?: { price?: string; gen?: str
     <span className={`shrink-0 rounded px-1.5 py-px text-[9px] font-semibold${why?.tx ? " cursor-help" : ""}`} style={{ background: tc + "1e", color: tc }} title={why?.tx}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
   </>);
 }
+// 레이어 토글 hover 범례(우상단) — 줄글 툴팁 대신 실제 마커 모양 스와치 + 짧은 라벨(표 옆 범례처럼).
+const SwCircle = ({ c, filled = true, ring }: { c: string; filled?: boolean; ring?: string }) => (
+  <svg width="18" height="14" viewBox="0 0 18 14">{ring && <circle cx="9" cy="7" r="6" fill="none" stroke={ring} strokeWidth="1.7" />}<circle cx="9" cy="7" r="4" fill={c} fillOpacity={filled ? 0.9 : 0.28} stroke={c} strokeWidth="1.3" /></svg>
+);
+const SwDiamond = ({ c }: { c: string }) => (
+  <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1 15.5,7 9,13 2.5,7" fill={c} fillOpacity={0.18} stroke={c} strokeWidth="1.6" strokeDasharray="2 1.5" strokeLinejoin="round" /></svg>
+);
+const SwLine = ({ w, dash, c = "#0ea5e9" }: { w: number; dash?: string; c?: string }) => (
+  <svg width="18" height="14" viewBox="0 0 18 14"><line x1="1" y1="7" x2="17" y2="7" stroke={c} strokeWidth={w} strokeDasharray={dash} strokeLinecap="round" /></svg>
+);
+const SwHex = ({ c, fill }: { c: string; fill: number }) => (
+  <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1.5 14.5,4.5 14.5,9.5 9,12.5 3.5,9.5 3.5,4.5" fill={c} fillOpacity={fill} stroke={c} strokeWidth="1.3" strokeLinejoin="round" /></svg>
+);
+const LegRow = ({ sw, label }: { sw: React.ReactNode; label: string }) => (
+  <div className="flex items-center gap-1.5"><span className="flex h-3.5 w-[18px] shrink-0 items-center justify-center">{sw}</span><span className="text-[10.5px] leading-tight text-popover-foreground/80">{label}</span></div>
+);
+function LegendCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (<div className="pointer-events-none absolute right-0 top-full z-[60] mt-1 hidden w-max min-w-[140px] rounded-lg border border-border bg-popover/95 p-2 shadow-lg backdrop-blur-sm group-hover:block">
+    <div className="mb-1.5 text-[10px] font-semibold text-muted-foreground">{title}</div>
+    <div className="space-y-1">{children}</div>
+  </div>);
+}
 const GRID_INTERCONNECT_NOTE = "미 본토는 동부·서부·텍사스 3개 물리 계통(Interconnection) 위에서, RTO/ISO(시장·급전) 또는 비ISO 유틸이 운영합니다. 경계는 근사(HIFLD).";
 const TX_WIDTH: Record<string, number> = { "345": 0.75, "500": 1.3, "735 and Above": 2.0 }; // 화면 px, 전압 등급별
 const TX_OPACITY: Record<string, number> = { "345": 0.5, "500": 0.72, "735 and Above": 0.95 }; // 전압 낮을수록 투명
@@ -1096,25 +1118,27 @@ export default function World() {
 
         {/* DC 모드: 미국 전체 원전 — 상태 색(가동·퇴역·재가동·취소) + AI 연계 보라 링 */}
         {dcMode && dcNuke && nuclearPlants.map((p) => { const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
-          const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8"; const on = p.id === nukeSel; const r = 4.5 * (on ? 1.2 : 1);
+          const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8"; const on = p.id === nukeSel; const r = 6 * (on ? 1.25 : 1);
           const solid = p.status === "operating" || p.status === "restarting";
           return (<g key={`nk${p.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setNukeSel(p.id); setDcSel(null); setFabSel(null); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: `${NUKE_STATUS_KO[p.status]}${p.capacity_mw ? ` · ${p.capacity_mw.toLocaleString()}MW` : ""}${p.ai_linked ? " · AI 연계" : ""}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: NUKE_STATUS_KO[p.status] })}
             onMouseLeave={() => setTip(null)}>
-            {p.ai_linked && <circle cx={sc[0]} cy={sc[1]} r={r + 2.6} fill="none" stroke={AI_SMR} strokeWidth={1.4} strokeDasharray="2 1.5" />}
-            <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={solid ? 0.85 : 0.25} stroke={col} strokeWidth={on ? 2 : 1.3} strokeDasharray={p.status === "canceled" ? "2 1.5" : undefined} />
-            <text x={sc[0]} y={sc[1] + 2.3} textAnchor="middle" fontSize={5.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            {/* AI 데이터센터 연계 = 두꺼운 실선 보라 링(기존 얇은 점선은 안 보임 → 재편) */}
+            {p.ai_linked && <circle cx={sc[0]} cy={sc[1]} r={r + 3.4} fill="none" stroke={AI_SMR} strokeWidth={2} />}
+            <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={solid ? 0.9 : 0.28} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeDasharray={p.status === "canceled" ? "2.5 1.8" : undefined} />
+            <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
-        {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) */}
+        {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) = 보라 점선 마름모(기존 fleet 원형과 형태로 구분) */}
         {dcMode && dcNuke && newSmrDeals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
+          const dr = 8; const dpts = `${sc[0]},${sc[1] - dr} ${sc[0] + dr},${sc[1]} ${sc[0]},${sc[1] + dr} ${sc[0] - dr},${sc[1]}`;
           return (<g key={`smr${n.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `AI 신규 계획 · ${n.buyer} · ${n.reactor_type}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.reactor_type}` })}
             onMouseLeave={() => setTip(null)}>
-            <circle cx={sc[0]} cy={sc[1]} r={4.2} fill={AI_SMR} fillOpacity={0.12} stroke={AI_SMR} strokeWidth={1.4} strokeDasharray="2 1.5" />
-            <text x={sc[0]} y={sc[1] + 2.3} textAnchor="middle" fontSize={5.5} fill={AI_SMR} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            <polygon points={dpts} fill={AI_SMR} fillOpacity={0.18} stroke={AI_SMR} strokeWidth={1.8} strokeDasharray="2.5 1.8" strokeLinejoin="round" />
+            <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={AI_SMR} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
 
         {/* DC 모드: 반도체 팹 — 육각(원=DC·사각=발전소와 형태 구분). 회사색·상태 채움 */}
@@ -1456,13 +1480,18 @@ export default function World() {
                     </div>
                   ))}
                 </div>
-              ) : (() => { const left = d.parties.filter((p) => p.controls); const right = d.parties.filter((p) => !p.controls);
+              ) : (() => { let left = d.parties.filter((p) => p.controls); let right = d.parties.filter((p) => !p.controls);
+                // 한쪽 열이 비는 대칭 대립(전원 실효 지배 or 전원 미지배)은 인덱스로 균등 분할 — 매달린 vs 방지.
+                const symmetric = left.length === 0 || right.length === 0;
+                if (symmetric) { const mid = Math.ceil(d.parties.length / 2); left = d.parties.slice(0, mid); right = d.parties.slice(mid); }
+                const allCtrl = d.parties.every((p) => p.controls);
                 return (<>
                   <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
                     <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[8.5px] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
                     <div className="self-center text-[10px] text-muted-foreground">vs</div>
                     <div className="flex flex-col gap-1.5">{right.map((p, i) => pcol(p, `r${i}`))}</div>
                   </div>
+                  {symmetric && <div className="mt-1.5 text-center text-[9px] text-muted-foreground">{allCtrl ? "양측이 서로 다른 구역을 실효 지배 · 상호 미승인" : "실효 지배자 없음 · 양측 주장 중첩"}</div>}
                   {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[9px] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[9.5px] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
                 </>); })()}
               {(d.linked_choke_ids.length > 0 || d.linked_route_ids.length > 0) && (
@@ -1480,12 +1509,39 @@ export default function World() {
       {dcMode && (<>
         {/* 우상단 레이어 토글 — 세계·무역 모드의 항로/항만/해협 알약과 통일 */}
         <div className="absolute right-4 flex gap-1" style={{ top: dim.w < 560 ? 112 : dim.w < 1050 ? 64 : 16 }}>
-          <button onClick={() => setDcNuke((v) => !v)} title={`미국 전체 원전 ${nuclearPlants.length}기 — 상태별 색(가동 초록·퇴역 회색·재가동 앰버·취소). 보라 링 = AI 데이터센터 연계 · 보라 점선 ⚛ = AI 신규 SMR 계획.`}
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#16a34a" : undefined }} />원전</button>
-          <button onClick={() => setDcTx((v) => !v)} title={"345kV+ 고압 송전선(HIFLD, 2022년 기준·신설선 미포함) 배경 + 사이트 줌에서 계통 급전 DC를 최근접 선로로 잇는 스냅 점선(근사).\n\n연결선 읽는 법:\n· 실선 = 발전소에서 전기가 직접 오는 물리 연결\n· 점선 = 전기를 사기로 계약한 관계 (실제 전기는 전력망으로 흐름)\n· 채색 없음 = 소속 전력망만 표시"}
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
-          <button onClick={() => { setDcFabs((v) => !v); setFabSel(null); }} title={`반도체 팹 ${dcFabs ? "끄기" : "켜기"} — 육각 마커(회사색·상태 채움). 발표≠착공≠가동을 상태 필드로 추적.`}
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "#2563eb" : undefined }} />반도체 팹</button>
+          <div className="group relative">
+            <button onClick={() => setDcNuke((v) => !v)}
+              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#16a34a" : undefined }} />원전</button>
+            <LegendCard title={`미국 원전 ${nuclearPlants.length}기`}>
+              <LegRow sw={<SwCircle c="#16a34a" />} label="가동 중" />
+              <LegRow sw={<SwCircle c="#f59e0b" />} label="재가동 추진" />
+              <LegRow sw={<SwCircle c="#94a3b8" filled={false} />} label="퇴역" />
+              <LegRow sw={<SwCircle c="#16a34a" ring={AI_SMR} />} label="AI 데이터센터 연계" />
+              <LegRow sw={<SwDiamond c={AI_SMR} />} label="AI 신규 원전·SMR 계획" />
+            </LegendCard>
+          </div>
+          <div className="group relative">
+            <button onClick={() => setDcTx((v) => !v)}
+              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
+            <LegendCard title="고압 송전망 · HIFLD 2022">
+              <LegRow sw={<SwLine w={2.6} />} label="765kV+ 초고압" />
+              <LegRow sw={<SwLine w={1.4} />} label="500kV" />
+              <LegRow sw={<SwLine w={0.7} />} label="345kV" />
+              <div className="my-1 border-t border-border/60" />
+              <LegRow sw={<SwLine w={1.6} c="#64748b" />} label="실선 = 발전소 직결" />
+              <LegRow sw={<SwLine w={1.6} dash="2 1.5" c="#64748b" />} label="점선 = 계약 급전(구매)" />
+            </LegendCard>
+          </div>
+          <div className="group relative">
+            <button onClick={() => { setDcFabs((v) => !v); setFabSel(null); }}
+              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "#2563eb" : undefined }} />반도체 팹</button>
+            <LegendCard title={`반도체 팹 ${fabs.length}개`}>
+              <LegRow sw={<SwHex c="#2563eb" fill={0.85} />} label="가동" />
+              <LegRow sw={<SwHex c="#2563eb" fill={0.4} />} label="건설 중" />
+              <LegRow sw={<SwHex c="#2563eb" fill={0.12} />} label="발표(미착공)" />
+              <div className="mt-1 text-[9.5px] text-muted-foreground">색 = 회사 구분</div>
+            </LegendCard>
+          </div>
         </div>
 
         <div className="absolute left-4 w-60 space-y-2" style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }}>
@@ -1499,9 +1555,9 @@ export default function World() {
             <div className="mt-1 flex flex-wrap gap-1">
               {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
             </div>
-            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색<span title={"지도 배경을 색칠 (둘 중 하나만).\n▸ 전력시장 = 이 지역이 어느 그리드에서 전기를 받나 (누구 전기인가·귀속)\n▸ AI 부하 비중 = 그 주 전체 전력 수요 중 AI 데이터센터가 차지하는 몫 (얼마나 무겁게·부담)"} className="cursor-help">ⓘ</span></div>
+            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색</div>
             <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[10.5px]">
-              {([["none", "없음", "배경 채색 없음"], ["rto", "전력시장", "ISO/RTO 권역 — 이 지역이 누구 그리드 전기를 받나 (귀속).\nERCOT·PJM·MISO·SPP·CAISO·ISONE·NYISO 색, 비ISO(TVA·WECC 등)는 무채색.\n경계는 겹침·공백 있는 근사 (HIFLD)."], ["load", "AI 부하 비중", "그 주 전체 전력 수요 대비, 주 안 데이터센터들의 예상 전력 부하가 차지하는 비율.\n\n= (주내 DC 예상 IT 부하 합, MW)\n  ÷ (주 평균 전력 수요 = 연간 전력판매량 ÷ 8760시간, EIA 2023)\n\n예) 루이지애나 ≈ 5GW ÷ 10.9GW ≈ 46%.\n진할수록 그 주 전력망이 AI에 무겁게 눌림. (페르미는 단위 달라 제외)"]] as const).map(([m, lab, help]) => (<button key={m} onClick={() => setDcFill(m)} title={help} className={`flex-1 px-1 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
+              {([["none", "없음"], ["rto", "전력시장"], ["load", "AI 부하 비중"]] as const).map(([m, lab]) => (<button key={m} onClick={() => setDcFill(m)} className={`flex-1 px-1 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
             {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음</span></div>)}
             {dcFill === "rto" && (<div className="mt-1 text-[9px] text-muted-foreground/70">아래 <b className="font-semibold text-muted-foreground">전력계통</b> 목록 = 범례. 행·지도 권역 클릭 = 설명.</div>)}
@@ -1591,10 +1647,10 @@ export default function World() {
                   : (onsite.length === 0 && (/undisclosed/i.test(gs) || !gs)) ? "unknown"
                   : /minimal/i.test(gs) ? "self" : "mixed";
                 const badges = POWER_TIER[tierKey];
-                const selfTxt = onsite.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`).join(" · ");
+                const selfLines = onsite.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`);
                 return (<div className="mt-1.5">
                   <div className="flex gap-1.5">{badges.map((bd, i) => <span key={i} className="flex-1 rounded-md px-2 py-1 text-center text-[12px] font-bold" style={{ background: bd.color + "18", color: bd.color }}>{bd.label}</span>)}</div>
-                  {onsite.length > 0 && <div className="mt-1 flex gap-1.5">{badges.length > 1 && <div className="flex-1" />}<div className="flex-1 text-center text-[10px] font-medium" style={{ color: "#7c3aed" }}>{selfTxt}</div></div>}
+                  {onsite.length > 0 && <div className="mt-1 flex gap-1.5">{badges.length > 1 && <div className="flex-1" />}<div className="flex-1 space-y-0.5 text-center text-[10px] font-medium leading-tight" style={{ color: "#7c3aed" }}>{selfLines.map((ln, i) => <div key={i}>{ln}</div>)}</div></div>}
                 </div>);
               })()}</div>)}
             <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
