@@ -18,7 +18,8 @@ export default function GlobalTooltip() {
   const targetRef = useRef<Element | null>(null);
 
   useEffect(() => {
-    const SEL = "[title], [data-tip]";
+    // 이미 뜬 뒤엔 title 이 벗겨지므로(data-native-title 로 스태시) 셀렉터에 그것도 포함해야 재hover·해제가 잡힘.
+    const SEL = "[title], [data-tip], [data-native-title]";
     const readText = (el: Element): string | null => {
       const dt = el.getAttribute("data-tip");
       if (dt && dt.trim()) return dt;
@@ -27,6 +28,7 @@ export default function GlobalTooltip() {
       const s = el.getAttribute("data-native-title");
       return s && s.trim() ? s : null;
     };
+    const hide = () => { targetRef.current = null; setTip(null); setPos(null); };
     const showFor = (el: Element) => {
       const text = readText(el);
       if (!text) return;
@@ -40,14 +42,13 @@ export default function GlobalTooltip() {
       if (!el || el === targetRef.current) return;
       showFor(el);
     };
+    // 해제는 셀렉터 재매칭이 아니라 현재 대상 요소 기준으로 판정(title 이 벗겨져 있어도 안전).
     const onOut = (e: Event) => {
-      const el = (e.target as Element | null)?.closest?.(SEL);
-      if (!el) return;
+      if (!targetRef.current) return;
       const rt = (e as MouseEvent).relatedTarget as Node | null;
-      if (rt && el.contains(rt)) return;
-      if (el === targetRef.current) { targetRef.current = null; setTip(null); setPos(null); }
+      if (rt && targetRef.current.contains(rt)) return; // 대상 내부로 이동 → 유지
+      hide();
     };
-    const hide = () => { targetRef.current = null; setTip(null); setPos(null); };
     document.addEventListener("mouseover", onOver, true);
     document.addEventListener("mouseout", onOut, true);
     document.addEventListener("focusin", onOver, true);
