@@ -285,13 +285,27 @@ const NONISO_STATES: Record<string, string[]> = {
   "BPA": ["Washington", "Oregon", "Idaho"],
   "서부 산악": ["Montana", "Wyoming", "Colorado", "Utah", "Arizona", "New Mexico", "Nevada"],
 };
-// 권역 특성 뱃지 — 값만(가격·발전원은 자명), 송전만 라벨 유지. abbr와 한 줄에 들어가는 인라인 프래그먼트.
-function GridBadges({ a }: { a: GridAttr }) {
+// 뱃지 hover 해설(§1·§2) — 가격/발전원/송전 각 뱃지의 "왜 그런가" 한 줄. 지역 id(RTO 코드·비ISO 한글) 기준.
+const GRID_WHY: Record<string, { price?: string; gen?: string; tx?: string }> = {
+  ERCOT: { price: "가스·풍력 풍부 + 용량요금 없는 에너지-온리 시장 → 평시 도매가 최저권", gen: "가스 기저 위에 서부 풍력·태양광 급증", tx: "타 계통과 거의 단절된 섬형 계통이나 내부 송전은 잘 갖춰짐" },
+  PJM: { price: "원래 중저가였으나 데이터센터發 수요 폭증으로 용량경매가 급등(2024/25 사상 최고)", gen: "셰일가스 + 대형 원전 다수로 기저 안정", tx: "메시망은 촘촘하나 신규 발전 접속 대기열이 길게 적체" },
+  MISO: { price: "대형 통합시장 + 풍력·가스 믹스로 평균권", gen: "중서부 풍력 + 가스", tx: "남북으로 길어 남↔북 이송 용량에 한계" },
+  SPP: { price: "풍력 침투율 최고로 도매가 낮음(대신 바람 변동성 큼)", gen: "풍력 비중 최고 — 순간 100% 넘긴 날도", tx: "풍력 발전지(대평원)와 수요지 거리가 멀어 송전 부족 → 감발(커테일먼트) 잦음" },
+  CAISO: { price: "가스 의존 + 기후정책 비용 + 순수입 의존 → 소매가 전국 최고권", gen: "낮 태양광 과잉 → 저녁 가스로 급전(덕 커브)", tx: "주내 남북 송전 + 역외 수입선에 의존" },
+  ISONE: { price: "가스 파이프라인 제약으로 겨울 LNG 수입 의존 → 한파 때 급등", gen: "가스 발전이 지배 + 잔존 원전", tx: "가스·전력 동시 제약(파이프라인 병목이 전력가로 전이)" },
+  NYISO: { price: "뉴욕시(다운스테이트) 송전 혼잡 + 가스 제약으로 지역가 높음", gen: "다운스테이트 가스 + 업스테이트 수력·원전", tx: "업스테이트 청정발전과 다운스테이트 수요 사이 송전 혼잡 → 구간별 가격차 큼" },
+  "남동부": { price: "수직통합 유틸 규제요금 + 가스·원전 안정 공급", gen: "가스 + 대형 원전 기저", tx: "발전·송전을 한 유틸이 일괄 계획 → 혼잡 적음" },
+  "TVA": { price: "연방 공기업이 원전·수력 대량 보유 → 저렴·안정", gen: "원전 + TVA 댐 수력", tx: "단일 운영자가 발전·송전을 통합 관리" },
+  "BPA": { price: "컬럼비아강 연방 수력 대량 → 전국 최저 수준", gen: "컬럼비아강 수력이 거의 전량", tx: "수력 집중지에서 수요지까지 장거리 송전(대형 DC 라인 의존)" },
+  "서부 산악": { price: "유틸마다 보유 자원·요금제가 제각각(단일 시장 없음)", gen: "석탄 퇴조 + 가스·태양광·풍력 혼재", tx: "광역·저밀도라 장거리 송전 필요" },
+};
+// 권역 특성 뱃지 — 값만(가격·발전원은 자명), 송전만 라벨 유지. abbr와 한 줄에 들어가는 인라인 프래그먼트. why 있으면 hover 해설(title).
+function GridBadges({ a, why }: { a: GridAttr; why?: { price?: string; gen?: string; tx?: string } }) {
   const pc = gridPriceColor(a.price), tc = gridTxColor(a.tx);
   return (<>
-    <span className="shrink-0 rounded px-1.5 py-px text-[9px] font-semibold" style={{ background: pc + "1e", color: pc }}>{a.price}</span>
-    <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[9px] font-semibold text-foreground/70">{a.gen}</span>
-    <span className="shrink-0 rounded px-1.5 py-px text-[9px] font-semibold" style={{ background: tc + "1e", color: tc }}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
+    <span className={`shrink-0 rounded px-1.5 py-px text-[9px] font-semibold${why?.price ? " cursor-help" : ""}`} style={{ background: pc + "1e", color: pc }} title={why?.price}>{a.price}</span>
+    <span className={`shrink-0 rounded bg-muted px-1.5 py-px text-[9px] font-semibold text-foreground/70${why?.gen ? " cursor-help" : ""}`} title={why?.gen}>{a.gen}</span>
+    <span className={`shrink-0 rounded px-1.5 py-px text-[9px] font-semibold${why?.tx ? " cursor-help" : ""}`} style={{ background: tc + "1e", color: tc }} title={why?.tx}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
   </>);
 }
 const GRID_INTERCONNECT_NOTE = "미 본토는 동부·서부·텍사스 3개 물리 계통(Interconnection) 위에서, RTO/ISO(시장·급전) 또는 비ISO 유틸이 운영합니다. 경계는 근사(HIFLD).";
@@ -1509,14 +1523,14 @@ export default function World() {
                 return (<div key={code} onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
                   className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} /><span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
-                  <GridBadges a={RTO_ATTR[code]} />
+                  <GridBadges a={RTO_ATTR[code]} why={GRID_WHY[code]} />
                 </div>); })}
               <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
               {NONISO_ROWS.map((r) => { const hl = dcGridSel === r.region || dcGridHover === r.region;
                 return (<div key={r.region} onClick={() => { setDcGridSel((c) => (c === r.region ? null : r.region)); }} onMouseEnter={() => setDcGridHover(r.region)} onMouseLeave={() => setDcGridHover(null)}
                   className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" style={hl ? { background: "#94a3b8", borderColor: "#94a3b8" } : undefined} /><span className="shrink-0 font-semibold">{r.region}</span>
-                  <GridBadges a={r} />
+                  <GridBadges a={r} why={GRID_WHY[r.region]} />
                 </div>); })}
               <div className="px-2.5 pb-0.5 pt-1.5 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
             </div>
