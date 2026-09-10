@@ -21,6 +21,27 @@ export class CollaborationEngine {
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private storage = Promise.resolve();
   private undo: { resource: string; changes: Change[] }[] = [];
+  private localEditors = new Map<string, { count: number; done: Promise<void>; finish: () => void }>();
+  // Keep the comparison base stable while a field is buffered in its component.
+  // Other windows may keep saving; their changes are compared after our blur commit.
+  beginLocalEdit(key: string) {
+    let entry = this.localEditors.get(key);
+    if (!entry) {
+      let finish!: () => void;
+      const done = new Promise<void>(resolve => { finish = resolve; });
+      entry = { count: 0, done, finish }; this.localEditors.set(key, entry);
+    }
+    entry.count++;
+    let ended = false;
+    return () => {
+      if (ended) return; ended = true;
+      if (--entry.count === 0) { this.localEditors.delete(key); entry.finish(); }
+      void this.flush(key);
+    };
+  }
+  private async waitForLocalEdit(key: string) {
+    while (this.localEditors.has(key)) await this.localEditors.get(key)!.done;
+  }
   constructor(public session: string, public editor: string, private transport: Transport, private store: DraftStore,
     private publish: (resource: Resource) => void, private delay = 600) {}
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
@@ -71,6 +92,7 @@ export class CollaborationEngine {
     await this.durable();
     try {
       const saved = await this.transport.send(copy(draft.request));
+      await this.waitForLocalEdit(key);
       const later = diff(draft.sent!, draft.desired);
       this.confirmed.set(key, copy(saved));
       delete draft.request; delete draft.sent;
@@ -86,6 +108,7 @@ export class CollaborationEngine {
         else { this.journal(draft); this.display(key); this.schedule(key); }
       }
     } catch (e) {
+      await this.waitForLocalEdit(key);
       if (e instanceof RemoteConflict) {
         delete draft.request; delete draft.sent;
         const result = merge(e.current.doc, diff(draft.base.doc, draft.desired));
@@ -103,7 +126,7 @@ export class CollaborationEngine {
   async flushAll() { await Promise.all([...this.drafts.keys()].map((key) => this.flush(key))); }
   async receive(resource: Resource) {
     const key = resource.key, draft = this.drafts.get(key);
-    if (this.busy.has(key) || draft?.request || draft?.conflicts?.length) return;
+    if (this.localEditors.has(key) || this.busy.has(key) || draft?.request || draft?.conflicts?.length) return;
     this.confirmed.set(key, copy(resource));
     if (draft) {
       const rebased = merge(resource.doc, diff(draft.base.doc, draft.desired));

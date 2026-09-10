@@ -1,7 +1,7 @@
 // 인라인 리치텍스트 에디터: 텍스트를 드래그 선택하면 색상/하이라이트 팝업 툴바가 떠서
 // 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
 // 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
-import { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef, type ClipboardEvent } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback, useImperativeHandle, forwardRef, type ClipboardEvent } from "react";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
   parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, type RichSeg,
@@ -227,15 +227,26 @@ export interface CapRichEditorProps {
   rows?: number;
   autoFocus?: boolean;
   onBlur?: (value: string) => void; // blur 시 emit 한 '최신 값'을 넘긴다(IME 마지막 음절 보존).
+  commitOnUnmount?: boolean;
   // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
   linkTargets?: LinkTarget[];
   // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, linkTargets, align = "center",
+  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
+  const committed = useRef(value);
+  const blurCommit = useRef(onBlur); blurCommit.current = onBlur;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    return () => {
+      if (!commitOnUnmount || !el) return;
+      const latest = serializeEl(el);
+      if (latest !== committed.current) { committed.current = latest; blurCommit.current?.(latest); }
+    };
+  }, [commitOnUnmount]);
   const [toolbar, setToolbar] = useState<{ x: number; y: number } | null>(null);
   const composingRef = useRef(false);
   // 링크 카드 선택 패널 열림 여부 + 선택 구간 오프셋 보관(패널 조작 중 선택이 풀려도 복원).
@@ -891,6 +902,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
           const v = emit();
           // 링크 패널 조작 중에는 편집 종료(커밋)를 미루다 — 패널 input 포커스로 인한 의도치 않은 blur 방지.
           if (linkPanelRef.current) return;
+          committed.current = v;
           onBlur?.(v); // stale state 대신 방금 직렬화한 값으로 커밋 → IME 마지막 음절 유실 방지.
         }}
         data-richeditor

@@ -456,7 +456,7 @@ export default function Capitalism() {
     void saveFlow(slug);
   };
 
-  // 입력 즉시 캐시에 반영하고 600ms 후 전송한다. 대기·전송·실패 상태는 페이지 이동 뒤에도 유지된다.
+  // 칸을 벗어날 때 확정된 내용만 캐시에 반영한다. 재시도·충돌 처리는 기존 협업 저장기가 담당한다.
   const onEditContent = useCallback((flow: FlowDTO, nodeId: string, patch: NodeContentPatch) => {
     qc.setQueryData<FlowDTO[]>(["/api/capitalism/flows"], (prev) =>
       prev?.map((f) => f.slug !== flow.slug ? f : { ...f, nodes: f.nodes.map((n) => n.id === nodeId ? { ...n, ...patch } : n) })

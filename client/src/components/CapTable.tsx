@@ -2,7 +2,7 @@
 //  - 열 너비 = flex 비율(weight). 표 전체 너비는 컨테이너에 고정 → 열을 추가해도 총 너비는
 //    그대로이고 각 열이 1/N 로 균등 분할된다. 드래그(열 경계)는 이웃 두 열끼리 너비를 주고받는다.
 //  - 행 높이는 내용에 따라 자동.
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import type { CapTableData, FlowNodeDTO } from "@/lib/capitalism-types";
 
@@ -41,11 +41,28 @@ export function TableCard({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const editingRef = useRef(false);
+  const dirty = useRef(false);
+  const save = useRef(onCommit); save.current = onCommit;
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    return () => {
+      if (!dirty.current && !editingRef.current) return;
+      dirty.current = false;
+      const next = cloneTable(tableRef.current);
+      const title = host?.querySelector<HTMLInputElement>('input');
+      if (title) next.title = title.value;
+      host?.querySelectorAll<HTMLTextAreaElement>('textarea[data-row][data-col]').forEach(el => {
+        const r = Number(el.dataset.row), c = Number(el.dataset.col);
+        if (next.cells[r]) next.cells[r][c] = el.value;
+      });
+      save.current(node.id, next);
+    };
+  }, [node.id]);
   const firstCellRef = useRef<HTMLTextAreaElement | null>(null);
 
   // 외부(서버) 변경 동기화 — 드래그/입력 포커스 중이 아닐 때만(클로버 방지).
   useEffect(() => {
-    if (draggingRef.current) return;
+    if (draggingRef.current || editingRef.current || dirty.current) return;
     setT(node.table ?? makeDefaultTable());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.table]);
@@ -58,14 +75,15 @@ export function TableCard({
 
   const cols = t.widths.length;
   const rows = t.cells.length;
-  const commit = (next: CapTableData) => { setT(next); onCommit(node.id, next); };
+  const stage = (next: CapTableData) => { tableRef.current = next; dirty.current = true; setT(next); return next; };
+  const commit = (next: CapTableData) => { stage(next); dirty.current = false; onCommit(node.id, next); };
 
-  const setTitle = (v: string) => commit({ ...cloneTable(t), title: v });
+  const setTitle = (v: string) => stage({ ...cloneTable(tableRef.current), title: v });
   const setCell = (r: number, c: number, v: string) => {
-    const next = cloneTable(t);
+    const next = cloneTable(tableRef.current);
     if (!next.cells[r]) next.cells[r] = [];
     next.cells[r][c] = v;
-    commit(next);
+    return stage(next);
   };
 
   // 열 추가 — 총 너비 고정, 모든 열을 균등(1/N)으로. 각 행에 빈 셀 추가.
@@ -147,7 +165,7 @@ export function TableCard({
           value={t.title ?? ""}
           onFocus={() => { editingRef.current = true; }}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => { editingRef.current = false; onCommit(node.id, t); }}
+          onBlur={(e) => { editingRef.current = false; commit(setTitle(e.currentTarget.value)); }}
           placeholder="표 제목 (선택)"
           className="mb-1 w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-[12px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:bg-background/60"
           data-testid={`table-title-${node.id}`}
@@ -202,10 +220,12 @@ export function TableCard({
                   <textarea
                     ref={(el) => { if (el) autoGrow(el); if (r === 0 && c === 0) firstCellRef.current = el; }}
                     value={cell}
+                    data-row={r}
+                    data-col={c}
                     rows={1}
                     onFocus={() => { editingRef.current = true; }}
                     onChange={(e) => { setCell(r, c, e.target.value); autoGrow(e.target); }}
-                    onBlur={() => { editingRef.current = false; onCommit(node.id, t); }}
+                    onBlur={(e) => { editingRef.current = false; commit(setCell(r, c, e.currentTarget.value)); }}
                     className="block w-full resize-none overflow-hidden bg-transparent px-1 py-0.5 text-[11.5px] leading-snug text-foreground outline-none focus:bg-background/60"
                     data-testid={`cell-${node.id}-${r}-${c}`}
                   />

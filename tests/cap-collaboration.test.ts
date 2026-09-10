@@ -57,6 +57,50 @@ function harness(initial: Document = doc()) {
 }
 afterEach(() => vi.useRealTimers());
 describe("durable collaboration queue", () => {
+  it("keeps typing local until blur, then detects a concurrent edit of the same field", async () => {
+    const h = harness(), end = h.engine.beginLocalEdit("flow:f");
+    h.remote([change(["nodes", "a", "text"], "a", "상대방")]);
+    await h.engine.receive(h.current());
+    await h.engine.flushAll();
+    expect(h.ledger.size).toBe(0); expect(h.published).toHaveLength(0);
+    expect((h.engine.get("flow:f")!.nodes as any).a.text).toBe("a");
+    h.engine.edit("flow:f", merge(h.engine.get("flow:f"), [change(["nodes", "a", "text"], "a", "내 초안")]).doc);
+    end();
+    await vi.waitFor(() => expect(h.engine.drafts.get("flow:f")?.conflicts).toHaveLength(1));
+    expect((h.current().doc!.nodes as any).a.text).toBe("상대방");
+    expect((h.engine.get("flow:f")!.nodes as any).a.text).toBe("내 초안");
+  });
+  it("merges a different node after blur without sending each keystroke", async () => {
+    const h = harness(), end = h.engine.beginLocalEdit("flow:f");
+    h.remote([change(["nodes", "b", "text"], "b", "상대 노드")]); await h.engine.receive(h.current());
+    h.engine.edit("flow:f", merge(h.engine.get("flow:f"), [change(["nodes", "a", "text"], "a", "작성 완료")]).doc); end();
+    await vi.waitFor(() => expect(h.engine.drafts.size).toBe(0));
+    expect(h.ledger.size).toBe(1);
+    expect((h.current().doc!.nodes as any).a.text).toBe("작성 완료");
+    expect((h.current().doc!.nodes as any).b.text).toBe("상대 노드");
+  });
+  it("does not advance the comparison base when an earlier save returns while editing", async () => {
+    const h = harness(), send = h.transport.send;
+    let release!: () => void;
+    h.transport.send = async op => { await new Promise<void>(resolve => { release = resolve; }); return send(op); };
+    h.engine.edit("flow:f", { ...h.engine.get("flow:f"), title: "새 제목" });
+    const saving = h.engine.flush("flow:f"); await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    const end = h.engine.beginLocalEdit("flow:f");
+    h.remote([change(["nodes", "a", "text"], "a", "상대방")]); release();
+    await vi.waitFor(() => expect(h.ledger.size).toBe(1));
+    expect((h.engine.get("flow:f")!.nodes as any).a.text).toBe("a");
+    h.engine.edit("flow:f", merge(h.engine.get("flow:f"), [change(["nodes", "a", "text"], "a", "내 초안")]).doc);
+    end(); await saving;
+    expect(h.engine.drafts.get("flow:f")?.conflicts).toHaveLength(1);
+    expect((h.current().doc!.nodes as any).a.text).toBe("상대방");
+  });
+  it("does not resurrect a card deleted while its field is focused", async () => {
+    const h = harness(), end = h.engine.beginLocalEdit("flow:f");
+    h.remote([change([], h.current().doc, null)]); await h.engine.receive(h.current());
+    h.engine.edit("flow:f", { ...h.engine.get("flow:f"), title: "내 초안" }); end();
+    await vi.waitFor(() => expect(h.engine.drafts.get("flow:f")?.conflicts?.length).toBeGreaterThan(0));
+    expect(h.current().doc).toBeNull();
+  });
   it("keeps typing made during a slow save and merges an unrelated remote field", async () => {
     const h = harness(), send = h.transport.send;
     let release!: () => void;
