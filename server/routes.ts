@@ -7,6 +7,7 @@ import { listFlows, upsertFlow, deleteFlow, patchNode, setInsight, listLinks, ad
 import { cloOverview } from "./clo.js";
 import { cloMacro } from "./clo-macro.js";
 import { fedOverview } from "./fed.js";
+import { monthBounds, treasuryTransactions } from "./treasury-transactions.js";
 import { z } from "zod";
 import { registerCollaborationRoutes } from "./cap-collaboration.js";
 
@@ -393,6 +394,19 @@ export function registerRoutes(app: Express) {
       res.json(await fedOverview());
     } catch (e: any) {
       res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
+  // Loaded only when the additional transaction waterfall is opened.
+  app.get("/api/fed/treasury-transactions", async (req, res) => {
+    const month = typeof req.query.month === "string" ? req.query.month : "";
+    try { monthBounds(month); } catch { return res.status(400).json({ error: "조회 월을 YYYY-MM 형식으로 지정하세요." }); }
+    try {
+      const data = await treasuryTransactions(month);
+      res.setHeader("Cache-Control", Object.keys(data.errors).length ? "no-store" : "public, max-age=300, s-maxage=21600");
+      res.json(data);
+    } catch {
+      res.status(502).json({ error: "공식 거래 자료를 불러오지 못했습니다." });
     }
   });
 

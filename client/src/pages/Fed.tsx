@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { TreasuryFlowDetails } from "@/components/TreasuryFlowDetails";
 
 // 온커서 설명(스타일 툴팁) — native title 대체. 커서 위 항목에 '?'(cursor-help) + 깔끔한 팝오버.
 function Hint({ content, children, side = "top", className }: {
@@ -547,8 +548,10 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
   const flow12 = last12 && Math.abs(sumSup) > 20_000 ? sumFed / sumSup : NaN; // 순발행 합 $200억 미만이면 비율 생략(§2-4)
   const FB = [{ k: "total", label: "전체" }, { k: "bills", label: "단기" }, { k: "nb", label: "중장기 N·B·FRN" }, { k: "tips", label: "TIPS" }] as const;
   const fym = (d: string) => (/^\d{4}-/.test(d) ? `${d.slice(2, 4)}.${d.slice(5, 7)}` : "");
+  const detailRow = flow.find(point => point && monthIndex(point.date) === center);
 
   return (
+    <>
     <Card className="p-3.5">
       <div className="mb-1 flex items-start justify-between gap-2 flex-wrap">
         <div className="text-sm font-semibold flex items-center gap-1">월별 순발행 vs 연준 보유 증감 <span className="text-[11px] font-normal text-muted-foreground">만기별 · 월간</span>
@@ -630,6 +633,13 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
         </div>
       </div>
     </Card>
+    <TreasuryFlowDetails
+      month={centerMonth}
+      bucketLabel={FB.find(bucket => bucket.k === fk)!.label}
+      selected={!flowBefore && centerRow?.real ? centerRow : null}
+      total={!flowBefore && detailRow ? detailRow.total : null}
+    />
+    </>
   );
 }
 
