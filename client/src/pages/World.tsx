@@ -216,7 +216,8 @@ const nuclearPlants = (nuclearData as unknown as { _meta: any; plants: NukePlant
 const nuclearMeta = (nuclearData as unknown as { _meta: any })._meta;
 const NUKE_STATUS_COLOR: Record<string, string> = { operating: "#16a34a", retired: "#94a3b8", restarting: "#f59e0b", canceled: "#cbd5e1" };
 const NUKE_STATUS_KO: Record<string, string> = { operating: "가동", retired: "퇴역", restarting: "재가동 진행", canceled: "취소" };
-const AI_SMR = "#a855f7"; // AI 연계·신규 SMR 색
+const AI_SMR = "#a855f7"; // AI 데이터센터 연계(기존 가동 원전) — 보라 마름모
+const AI_NEW = "#0d9488"; // AI 신규 원전·SMR 계획 — 청록 마름모(점선)
 // ── 반도체 팹 층(DC 모드 안 레이어) ──
 type FabLog = { status: string; changed_on: string; note: string; source_url: string };
 type Fab = { id: string; company: string; site_name: string; location: { city: string; state: string; lat: number; lng: number }; category: string; node_note: string; invest_announced_usd_bn: number; chips_award_usd_bn: number | null; target_year: number | null; status: string; status_as_of: string; status_note: string; status_source_url: string; status_log: FabLog[]; source_url: string };
@@ -313,8 +314,8 @@ function GridBadges({ a, why }: { a: GridAttr; why?: { price?: string; gen?: str
 const SwCircle = ({ c, filled = true, ring }: { c: string; filled?: boolean; ring?: string }) => (
   <svg width="18" height="14" viewBox="0 0 18 14">{ring && <circle cx="9" cy="7" r="6" fill="none" stroke={ring} strokeWidth="1.7" />}<circle cx="9" cy="7" r="4" fill={c} fillOpacity={filled ? 0.9 : 0.28} stroke={c} strokeWidth="1.3" /></svg>
 );
-const SwDiamond = ({ c }: { c: string }) => (
-  <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1 15.5,7 9,13 2.5,7" fill={c} fillOpacity={0.18} stroke={c} strokeWidth="1.6" strokeDasharray="2 1.5" strokeLinejoin="round" /></svg>
+const SwDiamond = ({ c, solid }: { c: string; solid?: boolean }) => (
+  <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1 15.5,7 9,13 2.5,7" fill={c} fillOpacity={solid ? 0.85 : 0.18} stroke={c} strokeWidth="1.6" strokeDasharray={solid ? undefined : "2 1.5"} strokeLinejoin="round" /></svg>
 );
 const SwLine = ({ w, dash, c = "#0ea5e9" }: { w: number; dash?: string; c?: string }) => (
   <svg width="18" height="14" viewBox="0 0 18 14"><line x1="1" y1="7" x2="17" y2="7" stroke={c} strokeWidth={w} strokeDasharray={dash} strokeLinecap="round" /></svg>
@@ -1067,10 +1068,11 @@ export default function World() {
 
         {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시). 사이트 줌에서만(§A) */}
         {dcMode && dcSiteZoom && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
-          const phys = link.tier === "physical"; const col = FUEL_COLOR[plant.fuel] || "#f97316";
+          // 연료색(대시로만 구분)은 잘 안 보여 → 물리/계약을 색으로 구분: 초록=실제 조류, 회색=종이 계약. 연료는 발전소 마커가 표시.
+          const phys = link.tier === "physical"; const col = phys ? "#16a34a" : "#94a3b8";
           const txt = phys ? "물리 전용 · 실제 조류" : "계약 관계 · 물리 조류 아님";
-          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={col} strokeOpacity={0.9} strokeWidth={phys ? 2 : 1.6}
-            strokeDasharray={phys ? "4 4" : "7 5"} strokeLinecap="round" className={phys ? "wf-flow" : undefined} style={{ cursor: "pointer" }}
+          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={col} strokeOpacity={phys ? 0.95 : 0.85} strokeWidth={phys ? 2.4 : 1.8}
+            strokeDasharray={phys ? "5 4" : "7 5"} strokeLinecap="round" className={phys ? "wf-flow" : undefined} style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: txt, sub: link.note })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: txt, sub: link.note })}
@@ -1118,27 +1120,31 @@ export default function World() {
 
         {/* DC 모드: 미국 전체 원전 — 상태 색(가동·퇴역·재가동·취소) + AI 연계 보라 링 */}
         {dcMode && dcNuke && nuclearPlants.map((p) => { const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
-          const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8"; const on = p.id === nukeSel; const r = 6 * (on ? 1.25 : 1);
-          const solid = p.status === "operating" || p.status === "restarting";
+          const on = p.id === nukeSel; const ai = p.ai_linked;
+          // AI 데이터센터 연계 = 보라 마름모(원+점선 링은 가독성 낮아 재편) · 일반 fleet = 상태색 원.
+          const col = ai ? AI_SMR : (NUKE_STATUS_COLOR[p.status] || "#94a3b8");
+          const solid = ai || p.status === "operating" || p.status === "restarting";
+          const r = (ai ? 8 : 6) * (on ? 1.22 : 1);
+          const dpts = `${sc[0]},${sc[1] - r} ${sc[0] + r},${sc[1]} ${sc[0]},${sc[1] + r} ${sc[0] - r},${sc[1]}`;
           return (<g key={`nk${p.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setNukeSel(p.id); setDcSel(null); setFabSel(null); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: `${NUKE_STATUS_KO[p.status]}${p.capacity_mw ? ` · ${p.capacity_mw.toLocaleString()}MW` : ""}${p.ai_linked ? " · AI 연계" : ""}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: NUKE_STATUS_KO[p.status] })}
             onMouseLeave={() => setTip(null)}>
-            {/* AI 데이터센터 연계 = 두꺼운 실선 보라 링(기존 얇은 점선은 안 보임 → 재편) */}
-            {p.ai_linked && <circle cx={sc[0]} cy={sc[1]} r={r + 3.4} fill="none" stroke={AI_SMR} strokeWidth={2} />}
-            <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={solid ? 0.9 : 0.28} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeDasharray={p.status === "canceled" ? "2.5 1.8" : undefined} />
+            {ai
+              ? <polygon points={dpts} fill={col} fillOpacity={0.9} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeLinejoin="round" />
+              : <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={solid ? 0.9 : 0.28} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeDasharray={p.status === "canceled" ? "2.5 1.8" : undefined} />}
             <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
-        {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) = 보라 점선 마름모(기존 fleet 원형과 형태로 구분) */}
+        {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) = 청록 점선 마름모(연계=보라 마름모와 색으로 구분) */}
         {dcMode && dcNuke && newSmrDeals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
           const dr = 8; const dpts = `${sc[0]},${sc[1] - dr} ${sc[0] + dr},${sc[1]} ${sc[0]},${sc[1] + dr} ${sc[0] - dr},${sc[1]}`;
           return (<g key={`smr${n.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `AI 신규 계획 · ${n.buyer} · ${n.reactor_type}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.reactor_type}` })}
             onMouseLeave={() => setTip(null)}>
-            <polygon points={dpts} fill={AI_SMR} fillOpacity={0.18} stroke={AI_SMR} strokeWidth={1.8} strokeDasharray="2.5 1.8" strokeLinejoin="round" />
-            <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={AI_SMR} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            <polygon points={dpts} fill={AI_NEW} fillOpacity={0.18} stroke={AI_NEW} strokeWidth={1.8} strokeDasharray="2.5 1.8" strokeLinejoin="round" />
+            <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={AI_NEW} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
 
         {/* DC 모드: 반도체 팹 — 육각(원=DC·사각=발전소와 형태 구분). 회사색·상태 채움 */}
@@ -1516,8 +1522,9 @@ export default function World() {
               <LegRow sw={<SwCircle c="#16a34a" />} label="가동 중" />
               <LegRow sw={<SwCircle c="#f59e0b" />} label="재가동 추진" />
               <LegRow sw={<SwCircle c="#94a3b8" filled={false} />} label="퇴역" />
-              <LegRow sw={<SwCircle c="#16a34a" ring={AI_SMR} />} label="AI 데이터센터 연계" />
-              <LegRow sw={<SwDiamond c={AI_SMR} />} label="AI 신규 원전·SMR 계획" />
+              <div className="my-1 border-t border-border/60" />
+              <LegRow sw={<SwDiamond c={AI_SMR} solid />} label="AI 데이터센터 연계" />
+              <LegRow sw={<SwDiamond c={AI_NEW} />} label="AI 신규 원전·SMR 계획" />
             </LegendCard>
           </div>
           <div className="group relative">
@@ -1528,8 +1535,9 @@ export default function World() {
               <LegRow sw={<SwLine w={1.4} />} label="500kV" />
               <LegRow sw={<SwLine w={0.7} />} label="345kV" />
               <div className="my-1 border-t border-border/60" />
-              <LegRow sw={<SwLine w={1.6} c="#64748b" />} label="실선 = 발전소 직결" />
-              <LegRow sw={<SwLine w={1.6} dash="2 1.5" c="#64748b" />} label="점선 = 계약 급전(구매)" />
+              <div className="text-[9px] text-muted-foreground/70">사이트 확대 시 DC↔발전소 연결선</div>
+              <LegRow sw={<SwLine w={2.4} c="#16a34a" />} label="초록 = 발전소 직결(실제 조류)" />
+              <LegRow sw={<SwLine w={1.8} dash="2 1.5" c="#94a3b8" />} label="회색 = 계약 급전(전력망 경유)" />
             </LegendCard>
           </div>
           <div className="group relative">
