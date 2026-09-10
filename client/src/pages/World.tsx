@@ -630,6 +630,21 @@ export default function World() {
   }, [flyRegion]);
   const zoomBy = (f: number) => zoomRef.current && svgRef.current && select(svgRef.current).transition().duration(250).call(zoomRef.current.scaleBy, f);
   const resetWorldView = useCallback(() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).transition().duration(500).call(zoomRef.current.transform, zoomIdentity); }, []);
+  // DC 모드: 미국만 보는 화면 → 훨씬 깊게 확대(캡 12→40) + 좌우 패닝을 미국 프레임으로 제한(다른 대륙 표류 방지).
+  // 기존 zoom 동작을 in-place 갱신(재생성 안 함 → 진행 중 트윈·현재 변환 안 깨짐).
+  useEffect(() => {
+    const z = zoomRef.current; if (!z) return;
+    z.scaleExtent([1, dcMode ? 40 : 12]);
+    if (dcMode) {
+      const proj = projFor(-95); const [w, s, e, n] = US_BBOX; const N = 8;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i <= N; i++) { const fx = w + (e - w) * (i / N), fy = s + (n - s) * (i / N);
+        for (const pt of [[fx, s], [fx, n], [w, fy], [e, fy]] as [number, number][]) { const p = proj(pt); if (!p) continue; x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); } }
+      if (Number.isFinite(x0)) { const px = (x1 - x0) * 0.25, py = (y1 - y0) * 0.25; z.translateExtent([[x0 - px, y0 - py], [x1 + px, y1 + py]]); }
+    } else {
+      z.translateExtent([[0, 0], [dim.w, dim.h]]);
+    }
+  }, [dcMode, dim, projFor]);
   // 3-way 모드: trade(세계·무역) / dc(데이터센터) / conflict(분쟁). 상호배타.
   const enterMode = useCallback((m: "trade" | "dc" | "conflict") => {
     setSel(null); setDcSel(null); setDcMode(m === "dc"); setConflictMode(m === "conflict");
@@ -1073,16 +1088,13 @@ export default function World() {
         {dcSiteZoom && snapLines.map((sl) => { const a = toScreen(sl.dc[0], sl.dc[1]), b = toScreen(sl.snap[0], sl.snap[1]); if (!a || !b) return null;
           return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#0ea5e9" strokeOpacity={0.8} strokeWidth={1.2} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
 
-        {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시). 사이트 줌에서만(§A) */}
-        {dcMode && dcSiteZoom && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
-          // 연료색(대시로만 구분)은 잘 안 보여 → 물리/계약을 색으로 구분: 초록=실제 조류, 회색=종이 계약. 연료는 발전소 마커가 표시.
-          const phys = link.tier === "physical"; const col = phys ? "#16a34a" : "#dc2626";
-          const txt = phys ? "물리 전용 · 실제 조류" : "계약 관계 · 물리 조류 아님";
-          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={col} strokeOpacity={phys ? 0.95 : 0.85} strokeWidth={phys ? 2.4 : 1.8}
-            strokeDasharray={phys ? "5 4" : "7 5"} strokeLinecap="round" className={phys ? "wf-flow" : undefined} style={{ cursor: "pointer" }}
+        {/* ① 물리 연결선(흐름 애니메이션 = 실제 조류) — DC 마커 아래(원래 자리). 사이트 줌에서만(§A) */}
+        {dcMode && dcSiteZoom && dcLinksR.filter(({ link }) => link.tier === "physical").map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
+          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#16a34a" strokeOpacity={0.95} strokeWidth={2.4}
+            strokeDasharray="5 4" strokeLinecap="round" className="wf-flow" style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
-            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: txt, sub: link.note })}
-            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: txt, sub: link.note })}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: "물리 전용 · 실제 조류", sub: link.note })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: "물리 전용 · 실제 조류", sub: link.note })}
             onMouseLeave={() => setTip(null)} />; })}
 
         {/* 발전소 점 (②·① 관련만) — 연료색 사각 + 글리프. DC(원)와 형태로 구분 */}
@@ -1185,6 +1197,14 @@ export default function World() {
               style={{ paintOrder: "stroke", stroke: "hsl(var(--background))", strokeWidth: 2.5, strokeLinejoin: "round", pointerEvents: "none" }}>{s.name}</text>}
           </g>);
         })}
+        {/* ② 계약 연결선(하이페리온 등)만 DC 마커 '위'로 — 원에 가려지지 않게(짧아서 잘 안 보임). 빨강 점선. */}
+        {dcMode && dcSiteZoom && dcLinksR.filter(({ link }) => link.tier !== "physical").map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
+          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#dc2626" strokeOpacity={0.9} strokeWidth={1.8}
+            strokeDasharray="7 5" strokeLinecap="round" style={{ cursor: "pointer" }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: "계약 관계 · 물리 조류 아님", sub: link.note })}
+            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: "계약 관계 · 물리 조류 아님", sub: link.note })}
+            onMouseLeave={() => setTip(null)} />; })}
       </svg>
 
       {/* hover 툴팁 */}
