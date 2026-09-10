@@ -8,6 +8,7 @@ import { zoom as d3zoom, zoomIdentity } from "d3-zoom";
 import "d3-transition";
 import { feature, neighbors, merge } from "topojson-client";
 import { Plus, Minus, X, Locate, Search, Anchor, Diamond, Route, ExternalLink, ChevronDown, Server, Flame, Atom, BatteryCharging, Zap, Info, Globe, Swords, Hexagon, Clapperboard } from "lucide-react";
+import { TIP_CLASS } from "@/components/GlobalTooltip";
 import topoData from "@/data/world-110m.json";
 import capitalsData from "@/data/world-capitals.json";
 import infraData from "@/data/world-infra.json";
@@ -1149,8 +1150,8 @@ export default function World() {
 
       {/* hover 툴팁 */}
       {tip && (
-        <div className="pointer-events-none fixed z-50 rounded-md border border-border bg-popover px-2 py-1 text-[12px] text-popover-foreground shadow-md" style={{ left: tip.x + 12, top: tip.y + 12 }}>
-          <div>{tip.text}</div>{tip.sub && <div className="text-[10.5px] text-muted-foreground">{tip.sub}</div>}
+        <div className={`pointer-events-none fixed z-[9999] max-w-[260px] ${TIP_CLASS}`} style={{ left: tip.x + 12, top: tip.y + 12, wordBreak: "keep-all" }}>
+          <div>{tip.text}</div>{tip.sub && <div className="mt-0.5 text-[10.5px] font-normal text-muted-foreground">{tip.sub}</div>}
         </div>
       )}
 

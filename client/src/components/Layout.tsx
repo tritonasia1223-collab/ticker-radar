@@ -3,6 +3,7 @@ import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, B
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { useEditMode } from "@/components/EditModeProvider";
+import GlobalTooltip from "@/components/GlobalTooltip";
 
 // 네비 = 클릭 안 되는 단순 구분 라벨(그룹)로만 묶음. 계층 라우팅 아님 — 라벨은 표시 전용.
 const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar }[] }[] = [
@@ -58,6 +59,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         >
           <Pencil className="h-3.5 w-3.5" /> 편집 모드
         </button>
+        <GlobalTooltip />
       </div>
     );
   }
@@ -104,6 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="flex-1 overflow-auto">{children}</main>
+      <GlobalTooltip />
     </div>
   );
 }
