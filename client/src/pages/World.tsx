@@ -722,6 +722,13 @@ export default function World() {
 
   const toScreen = (lng: number, lat: number): [number, number] | null => { const p = projection([lng, lat]); if (!p) return null; return [p[0] * t.k + t.x, p[1] * t.k + t.y]; };
   const inView = (x: number, y: number) => x >= -30 && x <= dim.w + 30 && y >= -30 && y <= dim.h + 30;
+  // 배지-DC 겹침 회피(dodge): DC 마커와 겹치는 원전/AI/팹 배지를 DC 원 가장자리 밖으로 밀어 둘 다 보이게(위치는 근사).
+  const dcScreensForDodge = dcMode ? dcSites.filter((s) => dcGroups[s.group]).map((s) => { const sc = toScreen(s.location.lng!, s.location.lat!); return sc ? { x: sc[0], y: sc[1], r: dcMarkerR(s) } : null; }).filter(Boolean) as { x: number; y: number; r: number }[] : [];
+  const dodgeBadge = (x: number, y: number, br: number): [number, number] => {
+    for (const d of dcScreensForDodge) { const dx = x - d.x, dy = y - d.y; const dist = Math.hypot(dx, dy); const need = d.r + br + 2;
+      if (dist < need) { const ang = dist < 0.5 ? -Math.PI / 4 : Math.atan2(dy, dx); return [d.x + Math.cos(ang) * need, d.y + Math.sin(ang) * need]; } }
+    return [x, y];
+  };
   // 배 흐름 rAF — 최신 투영/줌은 ref 로 읽어 스핀·줌 자연 대응. 배는 스크린 공간이라 크기 고정.
   const projRef = useRef(projection); projRef.current = projection;
   const tRef = useRef(t); tRef.current = t;
@@ -1069,7 +1076,7 @@ export default function World() {
         {/* ①②  연결선 — ①물리(흐름 애니메이션 = 실제 조류), ②계약(긴 대시). 사이트 줌에서만(§A) */}
         {dcMode && dcSiteZoom && dcLinksR.map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
           // 연료색(대시로만 구분)은 잘 안 보여 → 물리/계약을 색으로 구분: 초록=실제 조류, 회색=종이 계약. 연료는 발전소 마커가 표시.
-          const phys = link.tier === "physical"; const col = phys ? "#16a34a" : "#94a3b8";
+          const phys = link.tier === "physical"; const col = phys ? "#16a34a" : "#dc2626";
           const txt = phys ? "물리 전용 · 실제 조류" : "계약 관계 · 물리 조류 아님";
           return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={col} strokeOpacity={phys ? 0.95 : 0.85} strokeWidth={phys ? 2.4 : 1.8}
             strokeDasharray={phys ? "5 4" : "7 5"} strokeLinecap="round" className={phys ? "wf-flow" : undefined} style={{ cursor: "pointer" }}
@@ -1125,7 +1132,8 @@ export default function World() {
           const col = ai ? AI_SMR : (NUKE_STATUS_COLOR[p.status] || "#94a3b8");
           const solid = ai || p.status === "operating" || p.status === "restarting";
           const r = (ai ? 8 : 6) * (on ? 1.22 : 1);
-          const dpts = `${sc[0]},${sc[1] - r} ${sc[0] + r},${sc[1]} ${sc[0]},${sc[1] + r} ${sc[0] - r},${sc[1]}`;
+          const [mx, my] = dodgeBadge(sc[0], sc[1], r);
+          const dpts = `${mx},${my - r} ${mx + r},${my} ${mx},${my + r} ${mx - r},${my}`;
           return (<g key={`nk${p.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setNukeSel(p.id); setDcSel(null); setFabSel(null); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${p.name}`, sub: `${NUKE_STATUS_KO[p.status]}${p.capacity_mw ? ` · ${p.capacity_mw.toLocaleString()}MW` : ""}${p.ai_linked ? " · AI 연계" : ""}` })}
@@ -1133,30 +1141,31 @@ export default function World() {
             onMouseLeave={() => setTip(null)}>
             {ai
               ? <polygon points={dpts} fill={col} fillOpacity={0.9} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeLinejoin="round" />
-              : <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={solid ? 0.9 : 0.28} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeDasharray={p.status === "canceled" ? "2.5 1.8" : undefined} />}
-            <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+              : <circle cx={mx} cy={my} r={r} fill={col} fillOpacity={solid ? 0.9 : 0.28} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeDasharray={p.status === "canceled" ? "2.5 1.8" : undefined} />}
+            <text x={mx} y={my + 2.9} textAnchor="middle" fontSize={7.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
         {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) = 청록 점선 마름모(연계=보라 마름모와 색으로 구분) */}
         {dcMode && dcNuke && newSmrDeals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
-          const dr = 8; const dpts = `${sc[0]},${sc[1] - dr} ${sc[0] + dr},${sc[1]} ${sc[0]},${sc[1] + dr} ${sc[0] - dr},${sc[1]}`;
+          const dr = 8; const [mx, my] = dodgeBadge(sc[0], sc[1], dr); const dpts = `${mx},${my - dr} ${mx + dr},${my} ${mx},${my + dr} ${mx - dr},${my}`;
           return (<g key={`smr${n.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `AI 신규 계획 · ${n.buyer} · ${n.reactor_type}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.reactor_type}` })}
             onMouseLeave={() => setTip(null)}>
-            <polygon points={dpts} fill={AI_NEW} fillOpacity={0.18} stroke={AI_NEW} strokeWidth={1.8} strokeDasharray="2.5 1.8" strokeLinejoin="round" />
-            <text x={sc[0]} y={sc[1] + 2.9} textAnchor="middle" fontSize={7.5} fill={AI_NEW} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            <polygon points={dpts} fill={AI_NEW} fillOpacity={0.9} stroke={AI_NEW} strokeWidth={1.8} strokeLinejoin="round" />
+            <text x={mx} y={my + 2.9} textAnchor="middle" fontSize={7.5} fill="#fff" fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
 
         {/* DC 모드: 반도체 팹 — 육각(원=DC·사각=발전소와 형태 구분). 회사색·상태 채움 */}
         {dcMode && dcFabs && fabs.map((f) => { const sc = toScreen(f.location.lng, f.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
           const on = f.id === fabSel; const col = FAB_COLOR[f.company] || FAB_COLOR.other; const r = fabMarkerR(f) * (on ? 1.15 : 1);
+          const [mx, my] = dodgeBadge(sc[0], sc[1], r);
           return (<g key={`fab${f.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setFabSel(f.id); setDcSel(null); }}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FAB_COMPANY_KO[f.company]} ${f.site_name.replace(/^[^ ]+ /, "")}`, sub: `${FAB_STATUS_KO[f.status]} · ${FAB_CAT_KO[f.category]}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FAB_COMPANY_KO[f.company]} · ${FAB_STATUS_KO[f.status]}`, sub: f.node_note })}
             onMouseLeave={() => setTip(null)}>
-            <path d={hexPath(sc[0], sc[1], r)} fill={col} fillOpacity={fabFillOpacity(f.status)} stroke={col} strokeWidth={on ? 2 : 1.4} strokeDasharray={f.status === "announced" ? "2.5 2" : undefined} />
-            {f.status === "paused" && <circle cx={sc[0] + r * 0.7} cy={sc[1] - r * 0.7} r={2.2} fill="#f59e0b" stroke="hsl(var(--background))" strokeWidth={0.8} />}
+            <path d={hexPath(mx, my, r)} fill={col} fillOpacity={fabFillOpacity(f.status)} stroke={col} strokeWidth={on ? 2 : 1.4} strokeDasharray={f.status === "announced" ? "2.5 2" : undefined} />
+            {f.status === "paused" && <circle cx={mx + r * 0.7} cy={my - r * 0.7} r={2.2} fill="#f59e0b" stroke="hsl(var(--background))" strokeWidth={0.8} />}
           </g>); })}
 
         {/* DC 모드: 데이터센터 마커 */}
@@ -1524,7 +1533,7 @@ export default function World() {
               <LegRow sw={<SwCircle c="#94a3b8" filled={false} />} label="퇴역" />
               <div className="my-1 border-t border-border/60" />
               <LegRow sw={<SwDiamond c={AI_SMR} solid />} label="AI 데이터센터 연계" />
-              <LegRow sw={<SwDiamond c={AI_NEW} />} label="AI 신규 원전·SMR 계획" />
+              <LegRow sw={<SwDiamond c={AI_NEW} solid />} label="AI 신규 원전·SMR 계획" />
             </LegendCard>
           </div>
           <div className="group relative">
@@ -1537,7 +1546,7 @@ export default function World() {
               <div className="my-1 border-t border-border/60" />
               <div className="text-[9px] text-muted-foreground/70">사이트 확대 시 DC↔발전소 연결선</div>
               <LegRow sw={<SwLine w={2.4} c="#16a34a" />} label="초록 = 발전소 직결(실제 조류)" />
-              <LegRow sw={<SwLine w={1.8} dash="2 1.5" c="#94a3b8" />} label="회색 = 계약 급전(전력망 경유)" />
+              <LegRow sw={<SwLine w={1.8} dash="2 1.5" c="#dc2626" />} label="빨강 = 계약 급전(전력망 경유)" />
             </LegendCard>
           </div>
           <div className="group relative">
