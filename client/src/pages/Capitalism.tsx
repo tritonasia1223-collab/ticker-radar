@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Undo2, X, CornerUpLeft } from "lucide-react";
 import { FlowColumn, type MutateNodes, type MutateMeta, type LinkNodes } from "@/components/CapFlow";
+import { frameMeasurement } from "@/lib/capitalism-layout";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
@@ -389,9 +390,16 @@ export default function Capitalism() {
     if (insightMode) return; // 인사이트 모드 중엔 직전 폭 유지(측정 금지)
     const el = asideRef.current;
     if (!el) return;
-    const w = el.offsetWidth;
-    if (w && w !== graphWidth) setGraphWidth(w);
-  });
+    const pending = frameMeasurement(() => {
+      const w = el.offsetWidth;
+      if (w) setGraphWidth(prev => prev === w ? prev : w);
+    });
+    pending.schedule();
+    const observer = new ResizeObserver(pending.schedule);
+    observer.observe(el);
+    window.addEventListener("resize", pending.schedule);
+    return () => { pending.dispose(); observer.disconnect(); window.removeEventListener("resize", pending.schedule); };
+  }, [insightMode, viewMode]);
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
   // 동작 최소화 선호 시 스프링을 끄고 즉시 전환.

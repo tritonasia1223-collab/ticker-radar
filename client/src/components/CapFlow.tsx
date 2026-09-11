@@ -11,6 +11,7 @@ import { TableCard, makeDefaultTable } from "@/components/CapTable";
 import { newNodeKey } from "@/lib/capitalism-flowops";
 import { applyInlineTextCommand } from "@/lib/capitalism-richtext";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
+import { frameMeasurement, relativeLayoutTop } from "@/lib/capitalism-layout";
 import type { FlowDTO, FlowNodeDTO, CapTableData, NodeContentPatch } from "@/lib/capitalism-types";
 
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
@@ -397,7 +398,6 @@ function SideColumn({
   measure.current = () => {
     const col = colRef.current;
     if (!col || !bodyEl) return;
-    const bodyRect = bodyEl.getBoundingClientRect();
     const GAP = 6;
     const next: Record<string, number> = {};
     let cursor = 0;
@@ -406,11 +406,9 @@ function SideColumn({
       const cardEl = col.querySelector<HTMLElement>(`[data-side-anchor="${n.id}"]`);
       if (!cardEl) continue;
       const nodeEl = bodyEl.querySelector<HTMLElement>(`[data-node-id="${slug}::${n.id}"]`);
-      // ⚠ getBoundingClientRect 는 서브픽셀 float 를 반환한다. 이 값을 그대로 tops/stackH 로 setState 하면,
-      // 이 measure 가 매 렌더(useLayoutEffect, deps 없음)마다 돌면서 값이 PC 의 DPI/폰트 렌더링에 따라
-      // 미세 진동(199.99↔200.01)해 === 가드를 못 맞추고 → 무한 setState → React #185(일부 PC 흰화면 크래시).
-      // 정수로 반올림해 진동을 제거하면 고정점에 수렴한다.
-      const nodeTop = nodeEl ? Math.round(nodeEl.getBoundingClientRect().top - bodyRect.top) : cursor;
+      // Rounding screen coordinates still oscillates across a half-pixel boundary.
+      // Position and height must both use layout CSS pixels.
+      const nodeTop = nodeEl ? relativeLayoutTop(nodeEl, bodyEl) : cursor;
       const top = Math.max(nodeTop, cursor);
       next[n.id] = top;
       const h = cardEl.offsetHeight;
@@ -425,16 +423,19 @@ function SideColumn({
     setStackH((prev) => (prev === maxBottom ? prev : maxBottom));
   };
 
-  useLayoutEffect(() => { measure.current(); });
   useLayoutEffect(() => {
     const col = colRef.current;
-    if (!col || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => measure.current());
-    ro.observe(col);
-    col.querySelectorAll("[data-side-anchor]").forEach((el) => ro.observe(el));
-    if (bodyEl) ro.observe(bodyEl);
-    return () => ro.disconnect();
-  }, [bodyEl, sideNodes.length]);
+    if (!col || !bodyEl) return;
+    const pending = frameMeasurement(() => measure.current());
+    pending.schedule();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(pending.schedule);
+    // Observe layout inputs, not the column height this measurement sets.
+    col.querySelectorAll("[data-side-anchor]").forEach(el => ro?.observe(el));
+    ro?.observe(bodyEl);
+    bodyEl.querySelectorAll("[data-node-id]").forEach(el => ro?.observe(el));
+    window.addEventListener("resize", pending.schedule);
+    return () => { pending.dispose(); ro?.disconnect(); window.removeEventListener("resize", pending.schedule); };
+  }, [bodyEl, sideNodes, slug]);
 
   return (
     <div ref={colRef} style={{ width: MEMO_COL_W, height: stackH || undefined }} className="relative shrink-0">
