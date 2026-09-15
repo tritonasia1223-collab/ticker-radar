@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "EXAMPLE-001",
+  "title": "Replace this with the real task title",
+  "baseRef": "master",
+  "requirement": "Describe the user-visible behavior to implement.",
+  "acceptanceCriteria": [
+    "State an observable pass condition.",
+    "State the persistence or concurrency condition when relevant."
+  ],
+  "requiredChecks": [
+    "npm.cmd run check",
+    "npm.cmd test",
+    "npm.cmd run build"
+  ],
+  "requiresEvaluationDatabase": false,
+  "notes": "Copy this file and replace every placeholder before running a real experiment."
+}

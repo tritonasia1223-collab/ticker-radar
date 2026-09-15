@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "runtimeRoot": "%LOCALAPPDATA%/FiscusAgentEval",
+  "providers": {
+    "claude": {
+      "model": "claude-opus-4-8",
+      "effort": "high",
+      "maxTurns": 60,
+      "maxBudgetUsd": 5
+    },
+    "codex": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "high",
+      "authMode": "subscription",
+      "apiPricingPerMillion": {
+        "input": 10,
+        "cachedInput": 1,
+        "cacheWrite": 12.5,
+        "output": 50
+      }
+    }
+  },
+  "limits": {
+    "runTimeoutMinutes": 60,
+    "pipelineBudgetUsd": 20
+  },
+  "workspace": {
+    "bootstrapCommands": [
+      "npm.cmd ci"
+    ],
+    "keepAfterRun": true
+  }
+}
