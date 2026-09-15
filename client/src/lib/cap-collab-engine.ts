@@ -83,7 +83,7 @@ export class CollaborationEngine {
     if (!draft.request) {
       const changes = diff(draft.base.doc, draft.desired);
       if (!changes.length) { this.clear(key); return; }
-      draft.request = { id: crypto.randomUUID(), resource: key, session: this.session, editor: this.editor, changes };
+      draft.request = { id: crypto.randomUUID(), resource: key, session: this.session, editor: this.editor, changes, schemaVersion: 2 };
       draft.sent = copy(draft.desired);
       this.journal(draft);
     }

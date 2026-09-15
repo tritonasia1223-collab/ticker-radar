@@ -14,7 +14,7 @@ const isolated = { transaction: (work: any) => raw.transaction(async (tx) => {
   await tx.execute(sql.raw(`SET LOCAL search_path TO "${schema}"`)); return work(tx);
 }) } as typeof raw;
 const initial = flowDocument({ title: "Synthetic collaboration test", date: "1971-01-01", category: "경제", layout: "stack", sortOrder: 0, nodes: ["a", "b"].map((id) => ({ id, kind: "effect", text: id })) });
-const op = (key: string, before: Document, after: Document): EditRequest => ({ id: crypto.randomUUID(), resource: key, session: crypto.randomUUID(), editor: "Synthetic test", changes: diff(before, after) });
+const op = (key: string, before: Document, after: Document): EditRequest => ({ id: crypto.randomUUID(), resource: key, session: crypto.randomUUID(), editor: "Synthetic test", changes: diff(before, after), schemaVersion: 2 });
 let created = false;
 try {
   await client.unsafe(`CREATE SCHEMA "${schema}"`); created = true;
@@ -22,7 +22,7 @@ try {
     await tx.execute(sql.raw(`SET LOCAL search_path TO "${schema}"`));
     const definitions = [
       `CREATE TABLE cap_flows (id SERIAL PRIMARY KEY, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, date TEXT NOT NULL, end_date TEXT, year INTEGER NOT NULL, category TEXT NOT NULL, layout TEXT NOT NULL, insight TEXT, sort_order INTEGER NOT NULL, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL)`,
-      `CREATE TABLE cap_nodes (id SERIAL PRIMARY KEY, flow_id INTEGER NOT NULL REFERENCES cap_flows(id) ON DELETE CASCADE, node_key TEXT NOT NULL, kind TEXT NOT NULL, in_label TEXT, text TEXT NOT NULL, ref TEXT, col TEXT, table_data TEXT, pos INTEGER NOT NULL, UNIQUE(flow_id,node_key))`,
+      `CREATE TABLE cap_nodes (id SERIAL PRIMARY KEY, flow_id INTEGER NOT NULL REFERENCES cap_flows(id) ON DELETE CASCADE, node_key TEXT NOT NULL, kind TEXT NOT NULL, in_label TEXT, text TEXT NOT NULL, ref TEXT, ref_blue TEXT, col TEXT, table_data TEXT, pos INTEGER NOT NULL, UNIQUE(flow_id,node_key))`,
       `CREATE TABLE cap_edges (id SERIAL PRIMARY KEY, flow_id INTEGER NOT NULL REFERENCES cap_flows(id) ON DELETE CASCADE, from_key TEXT NOT NULL, to_key TEXT NOT NULL)`,
       `CREATE TABLE cap_links (id SERIAL PRIMARY KEY, from_slug TEXT NOT NULL, from_key TEXT NOT NULL, to_slug TEXT NOT NULL, to_key TEXT NOT NULL, created_at BIGINT NOT NULL)`,
       `CREATE TABLE cap_settings (key TEXT PRIMARY KEY, value TEXT, updated_at BIGINT NOT NULL)`,
@@ -32,6 +32,20 @@ try {
   });
   const key = "flow:synthetic";
   await applyCollaborativeEdit(op(key, null, initial), isolated);
+  const blueBase = (await getResource(key, isolated)).doc!;
+  const blue = copy(blueBase)!, yellow = copy(blueBase)!;
+  (blue.nodes as any).a.refBlue = "Blue correction"; (yellow.nodes as any).a.ref = "Yellow note";
+  await Promise.all([applyCollaborativeEdit(op(key, blueBase, blue), isolated), applyCollaborativeEdit(op(key, blueBase, yellow), isolated)]);
+  const blueSaved = (await getResource(key, isolated)).doc!;
+  assert.equal((blueSaved.nodes as any).a.refBlue, "Blue correction");
+  assert.equal((blueSaved.nodes as any).a.ref, "Yellow note");
+  const rival = copy(blueBase)!; (rival.nodes as any).a.refBlue = "Rival blue";
+  await assert.rejects(() => applyCollaborativeEdit(op(key, blueBase, rival), isolated), CollaborationConflict);
+  const cleared = copy(blueSaved)!; (cleared.nodes as any).a.refBlue = null;
+  await applyCollaborativeEdit(op(key, blueSaved, cleared), isolated);
+  const afterBlueDelete = (await getResource(key, isolated)).doc!;
+  assert.equal((afterBlueDelete.nodes as any).a.refBlue, null);
+  assert.equal((afterBlueDelete.nodes as any).a.ref, "Yellow note");
   const a = copy(initial)!, b = copy(initial)!; (a.nodes as any).a.text = "editor A"; (b.nodes as any).b.text = "editor B";
   await Promise.all([applyCollaborativeEdit(op(key, initial, a), isolated), applyCollaborativeEdit(op(key, initial, b), isolated)]);
   let saved = await getResource(key, isolated);

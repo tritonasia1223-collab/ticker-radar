@@ -148,14 +148,14 @@ function Node({
         </div>
       )}
 
-      {/* 우측 하단 버튼 — 표(좌) + 메모(우). 있으면 색상, 없으면 흐린 회색. 클릭 시 우측 해당 열에서 편집. */}
+      {/* 본문 아래 독립 행: 긴 글/확대에서도 표·메모 버튼이 텍스트와 겹치지 않는다. */}
       {!editing ? (
-        <>
+        <div className="mt-1.5 flex min-h-4 items-center justify-end gap-0.5" data-testid={`node-tools-${node.id}`}>
           <button
             type="button"
             title={hasTable ? "표 편집" : "표 추가"}
             onClick={(e) => { e.stopPropagation(); onTableClick?.(node.id); }}
-            className={`absolute right-[36px] bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-colors ${
               hasTable
                 ? "bg-sky-400/90 text-sky-950 shadow-sm hover:bg-sky-400"
                 : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
@@ -168,7 +168,7 @@ function Node({
             type="button"
             title={hasMemo ? "노랑 메모 보기/편집" : "노랑 메모 추가(원본)"}
             onClick={(e) => { e.stopPropagation(); onMemoClick?.(node.id); }}
-            className={`absolute right-[18px] bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-colors ${
               hasMemo
                 ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
                 : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
@@ -181,7 +181,7 @@ function Node({
             type="button"
             title={hasMemoBlue ? "파랑 메모 보기/편집(보충·첨삭)" : "파랑 메모 추가(보충·첨삭)"}
             onClick={(e) => { e.stopPropagation(); onMemoBlueClick?.(node.id); }}
-            className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-colors ${
               hasMemoBlue
                 ? "bg-blue-500/90 text-white shadow-sm hover:bg-blue-500"
                 : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
@@ -190,7 +190,7 @@ function Node({
           >
             <MessageSquarePlus className="h-2.5 w-2.5" strokeWidth={2.5} />
           </button>
-        </>
+        </div>
       ) : null}
 
       {/* 편집 모드일 때만 노출되는 컨트롤들 */}
@@ -311,6 +311,12 @@ function MemoCard({
   const memoDirty = useRef(false);
   const memoCommit = useRef(onMemo); memoCommit.current = onMemo;
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  // The side card starts at top=0 until its measured position is applied.
+  // Native autoFocus scrolls that temporary position into view. Focus explicitly
+  // without scrolling, for both newly-created and existing yellow/blue notes.
+  useLayoutEffect(() => {
+    if (editing) taRef.current?.focus({ preventScroll: true });
+  }, [editing]);
   useLayoutEffect(() => {
     const el = taRef.current;
     return () => {
@@ -356,7 +362,6 @@ function MemoCard({
         <textarea
           ref={(el) => { taRef.current = el; if (el) { grow(el); requestAnimationFrame(() => grow(el)); } }}
           value={draft}
-          autoFocus
           rows={3}
           onChange={(e) => { memoDirty.current = true; setDraft(e.target.value); grow(e.target); }}
           onBlur={finish}

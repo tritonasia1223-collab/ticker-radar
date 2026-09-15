@@ -1,10 +1,33 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { copy, diff, equal, flowDocument, merge, mergeOrder, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration";
+import { copy, diff, equal, flowDocument, documentFlow, merge, mergeOrder, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration";
 import { CollaborationEngine, RemoteConflict, SaveRejected, type Draft, type DraftStore, type Transport } from "../client/src/lib/cap-collab-engine";
 import { validateEdit } from "../server/cap-collaboration";
 const doc = () => flowDocument({ title: "원본", date: "1971-01-01", category: "경제", layout: "stack", sortOrder: 0, nodes: ["a", "b"].map((id) => ({ id, kind: "effect", text: id })) });
 const change = (path: string[], before: any, after: any) => ({ path, before, after });
 describe("collaboration merge", () => {
+  it("keeps blue notes in the actual cache-to-collaboration serialization path", () => {
+    const flow = documentFlow("flow:f", doc(), 1);
+    const before = flowDocument(flow);
+    flow.nodes[0].refBlue = "Blue correction";
+    const after = flowDocument(flow);
+    expect(diff(before, after)).toEqual([change(["nodes", "a", "refBlue"], null, "Blue correction")]);
+    expect(documentFlow("flow:f", after, 2).nodes[0].refBlue).toBe("Blue correction");
+  });
+  it("accepts blue-note edits from the updated client", () => {
+    const op = { id: crypto.randomUUID(), session: crypto.randomUUID(), resource: "flow:f", editor: "A", schemaVersion: 2, changes: [change(["nodes", "a", "refBlue"], null, "Blue correction")] };
+    expect(validateEdit(op)).toEqual(op);
+    expect(() => validateEdit({ ...op, schemaVersion: undefined, changes: [change(["nodes", "a", "refBlue"], "Saved by another window", null)] })).toThrow(/최신 화면/);
+  });
+  it("merges independent yellow/blue notes and conflicts on the same blue note", () => {
+    const base = doc();
+    const blue = change(["nodes", "a", "refBlue"], null, "Blue correction");
+    const yellow = change(["nodes", "a", "ref"], null, "Yellow note");
+    const remote = merge(base, [yellow]).doc;
+    const saved = merge(remote, [blue]);
+    expect(saved.conflicts).toEqual([]);
+    expect((saved.doc!.nodes as any).a).toMatchObject({ref: "Yellow note", refBlue: "Blue correction"});
+    expect(merge(saved.doc, [{ ...blue, after: "Other correction" }]).conflicts).toHaveLength(1);
+  });
   it("merges different nodes and different fields on one node", () => {
     const base = doc(), remote = merge(base, [change(["nodes", "a", "text"], "a", "서버")]).doc;
     const result = merge(remote, [change(["nodes", "a", "ref"], null, "메모"), change(["nodes", "b", "text"], "b", "내 글")]);
@@ -57,6 +80,22 @@ function harness(initial: Document = doc()) {
 }
 afterEach(() => vi.useRealTimers());
 describe("durable collaboration queue", () => {
+  it("journals, saves, and reloads a blue-only edit after an unrelated remote edit", async () => {
+    const h = harness(), flow = documentFlow("flow:f", h.engine.get("flow:f"), 1);
+    flow.nodes[0].refBlue = "Blue correction";
+    h.engine.edit("flow:f", flowDocument(flow));
+    await h.engine.durable();
+    expect((h.stored.values().next().value!.desired!.nodes as any).a.refBlue).toBe("Blue correction");
+    h.remote([change(["nodes", "a", "ref"], null, "Other window's yellow note")]);
+    await h.engine.flushAll();
+    expect(h.engine.drafts.size).toBe(0);
+    const saved = documentFlow("flow:f", h.current().doc, h.current().version);
+    expect(saved.nodes[0]).toMatchObject({ refBlue: "Blue correction", ref: "Other window's yellow note" });
+    const request = [...h.ledger.values()][0];
+    expect(request.schemaVersion).toBe(2); expect(validateEdit(request)).toEqual(request);
+    const reloaded = harness(flowDocument(saved));
+    expect((reloaded.engine.get("flow:f")!.nodes as any).a.refBlue).toBe("Blue correction");
+  });
   it("keeps typing local until blur, then detects a concurrent edit of the same field", async () => {
     const h = harness(), end = h.engine.beginLocalEdit("flow:f");
     h.remote([change(["nodes", "a", "text"], "a", "상대방")]);

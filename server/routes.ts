@@ -254,6 +254,7 @@ export function registerRoutes(app: Express) {
     inLabel: z.string().nullable().optional(),
     text: z.string(), // 빈 텍스트 허용 — 표/메모만 있는 노드 보존(클라이언트가 진짜 빈 노드는 이미 제외)
     ref: z.string().nullable().optional(),
+    refBlue: z.string().nullable().optional(),
     col: z.enum(["center", "left", "right"]).nullable().optional(),
     table: capTableSchema.nullable().optional(),
   });
@@ -294,6 +295,7 @@ export function registerRoutes(app: Express) {
     inLabel: z.string().nullable().optional(),
     text: z.string().optional(),
     ref: z.string().nullable().optional(),
+    refBlue: z.string().nullable().optional(),
     col: z.enum(["center", "left", "right"]).nullable().optional(),
     table: capTableSchema.nullable().optional(),
   });

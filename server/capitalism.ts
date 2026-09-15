@@ -223,6 +223,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
     const existing = (await tx.select().from(capFlows).where(eq(capFlows.slug, input.slug))).at(0);
 
     let flowId: number;
+    const previousBlue = new Map<string, string | null>();
     if (existing) {
       // 낙관적 동시성 가드 + TOCTOU 봉쇄: baseVersion 이 있으면 'updated_at 이 그대로일 때만' 조건부 UPDATE.
       //   SELECT 로 검사만 하면 두 저장이 수십 ms 내 겹칠 때 둘 다 통과해 나중 것이 앞 것을 덮는다(레이스).
@@ -242,6 +243,10 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
         await tx.update(capFlows).set(setData).where(eq(capFlows.id, existing.id));
       }
       flowId = existing.id;
+      // Legacy clients/import tools may omit the new field. Omission preserves it;
+      // an explicit null still clears it. Read after acquiring the row update lock.
+      const previousNodes = await tx.select({ key: capNodes.nodeKey, refBlue: capNodes.refBlue }).from(capNodes).where(eq(capNodes.flowId, flowId));
+      previousNodes.forEach(n => previousBlue.set(n.key, n.refBlue));
       await tx.delete(capNodes).where(eq(capNodes.flowId, flowId));
       await tx.delete(capEdges).where(eq(capEdges.flowId, flowId));
     } else {
@@ -262,7 +267,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
     if (input.nodes.length) {
       await tx.insert(capNodes).values(input.nodes.map((n, i) => ({
         flowId, nodeKey: n.nodeKey, kind: n.kind,
-        inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null, refBlue: n.refBlue ?? null,
+        inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null, refBlue: n.refBlue === undefined ? previousBlue.get(n.nodeKey) ?? null : n.refBlue,
         col: n.col ?? null, tableData: n.table ? JSON.stringify(n.table) : null, pos: i,
       })));
     }

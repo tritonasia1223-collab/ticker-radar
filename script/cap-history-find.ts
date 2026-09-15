@@ -27,7 +27,7 @@ function main() {
     let fileHit = false;
     for (const n of d.nodes ?? []) {
       const slug = d.flows?.find((x: any) => x.id === n.flowId)?.slug ?? `#${n.flowId}`;
-      for (const [field, val] of [["text", n.text], ["ref", n.ref]] as const) {
+      for (const [field, val] of [["text", n.text], ["ref", n.ref], ["refBlue", n.refBlue]] as const) {
         if (val && String(val).includes(term)) {
           fileHit = true;
           const cur = best.get(`${n.nodeKey}:${field}`);

@@ -5,7 +5,7 @@ export type Document = { [key: string]: Json } | null;
 export interface Change { path: string[]; before: Json; after: Json }
 export interface Conflict extends Change { remote: Json }
 export interface Resource { key: string; version: number; doc: Document }
-export interface EditRequest { id: string; resource: string; editor: string; session: string; changes: Change[] }
+export interface EditRequest { id: string; resource: string; editor: string; session: string; changes: Change[]; schemaVersion?: 2 }
 export interface EditResult extends Resource { operation: string }
 export interface Peer { session: string; editor: string; resource: string | null; seenAt: number }
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -93,7 +93,7 @@ export function merge(current: Document, changes: Change[]): { doc: Document; co
 
 export function flowDocument(flow: any): Document {
   if (!flow) return null;
-  const nodes = Object.fromEntries(flow.nodes.map((n: any) => [n.id, { kind: n.kind, inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null, col: n.col ?? null, table: n.table ?? null }]));
+  const nodes = Object.fromEntries(flow.nodes.map((n: any) => [n.id, { kind: n.kind, inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null, refBlue: n.refBlue ?? null, col: n.col ?? null, table: n.table ?? null }]));
   return copy({ title: flow.title, date: flow.date, endDate: flow.endDate ?? null, category: flow.category, layout: flow.layout, sortOrder: flow.sortOrder, insight: flow.insight ?? null, nodes, order: flow.nodes.map((n: any) => n.id) });
 }
 export function documentFlow(key: string, doc: Document, version: number, id = 0): any {
@@ -105,4 +105,4 @@ export function documentFlow(key: string, doc: Document, version: number, id = 0
 export function metaDocument(card: any): Document {
   return card ? copy({ id: card.id, title: card.title ?? "", text: card.text ?? "", tables: card.tables ?? [], images: card.images ?? [], blocks: card.blocks ?? null }) : null;
 }
-export const pathLabel = (path: string[]) => path.length ? path.map((s) => ({ nodes: "칸", text: "본문", ref: "메모", table: "표", title: "제목", insight: "인사이트", blocks: "본문 블록", order: "칸 순서", date: "날짜", endDate: "종료일", layout: "배치" }[s] ?? s)).join(" · ") : "카드 전체(생성/삭제)";
+export const pathLabel = (path: string[]) => path.length ? path.map((s) => ({ nodes: "칸", text: "본문", ref: "메모", refBlue: "파란 첨삭 메모", table: "표", title: "제목", insight: "인사이트", blocks: "본문 블록", order: "칸 순서", date: "날짜", endDate: "종료일", layout: "배치" }[s] ?? s)).join(" · ") : "카드 전체(생성/삭제)";

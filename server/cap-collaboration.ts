@@ -9,7 +9,7 @@ import { diff, equal, flowDocument, merge, type Document, type EditRequest, type
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 const resourceKey = z.string().refine(key => /^(flow|meta):[^\s]{1,200}$/.test(key) || isPlotKey(key));
-const requestSchema = z.object({ id: z.string().uuid(), resource: resourceKey, editor: z.string().trim().min(1).max(50), session: z.string().uuid(),
+const requestSchema = z.object({ id: z.string().uuid(), resource: resourceKey, editor: z.string().trim().min(1).max(50), session: z.string().uuid(), schemaVersion: z.literal(2).optional(),
   changes: z.array(z.object({ path: z.array(z.string().min(1).max(200)).max(3), before: z.any().refine((v) => v !== undefined), after: z.any().refine((v) => v !== undefined) })).min(1).max(5000) });
 const table = z.object({ title: z.string().optional(), widths: z.array(z.number().finite().nonnegative()), cells: z.array(z.array(z.string())) }).nullable();
 const chart = z.object({ series: z.string(), from: z.number().finite(), to: z.number().finite() });
@@ -23,7 +23,7 @@ const block = z.discriminatedUnion("type", [
   z.object({ type: z.literal("divider") }),
 ]);
 const insight = z.object({ text: z.string(), charts: z.array(chart), tables: z.array(table.unwrap()).optional(), blocks: z.array(block).optional() }).nullable();
-const node = z.object({ text: z.string(), kind: z.string(), inLabel: z.string().nullable(), ref: z.string().nullable(), col: z.string().nullable(), table });
+const node = z.object({ text: z.string(), kind: z.string(), inLabel: z.string().nullable(), ref: z.string().nullable(), refBlue: z.string().nullable().default(null), col: z.string().nullable(), table });
 const flowSchema = z.object({ title: z.string().min(1), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), endDate: z.string().nullable(), category: z.string(), layout: z.enum(["stack", "branch"]), sortOrder: z.number().int(), insight, nodes: z.record(node), order: z.array(z.string()) });
 const metaSchema = z.object({ id: z.string(), title: z.string(), text: z.string(), tables: z.array(table.unwrap()), images: z.array(image), blocks: z.array(block).nullable() });
 export function validateEdit(body: unknown): EditRequest {
@@ -34,7 +34,10 @@ export function validateEdit(body: unknown): EditRequest {
     const path = change.path, key = JSON.stringify(path);
     if (path.some((p) => ["__proto__", "constructor", "prototype"].includes(p)) || paths.has(key)) throw new Error("잘못된 변경 경로");
     if (path.length && (!allowed.includes(path[0]) || (path.length > 1 && path[0] !== "nodes") || (path[0] === "nodes" && path.length < 2))) throw new Error("지원하지 않는 변경 경로");
-    if (path.length === 3 && !["text", "kind", "inLabel", "ref", "col", "table"].includes(path[2])) throw new Error("지원하지 않는 노드 필드");
+    if (path.length === 3 && !["text", "kind", "inLabel", "ref", "refBlue", "col", "table"].includes(path[2])) throw new Error("지원하지 않는 노드 필드");
+    // Older windows omit refBlue when reserializing a newly received document.
+    // Such an implicit null must never erase a note saved by an updated window.
+    if (path[2] === "refBlue" && op.schemaVersion !== 2) throw new Error("파란 메모 필드를 지원하는 최신 화면이 필요합니다. 작성 내용을 별도 복사한 뒤 새로고침해 주세요.");
     if (op.changes.some((c) => c !== change && c.path.length < path.length && c.path.every((p, i) => p === path[i]))) throw new Error("중첩 변경 경로");
     paths.add(key);
   }
@@ -110,7 +113,7 @@ async function writeResource(tx: Tx, current: Resource, doc: Document): Promise<
     for (const [pos, nodeKey] of order.entries()) {
       const n = nodes[nodeKey];
       if (equal(n, oldNodes[nodeKey]) && (current.doc?.order as string[] | undefined)?.indexOf(nodeKey) === pos) continue;
-      const data = { kind: n.kind, text: n.text, ref: n.ref, inLabel: n.inLabel, col: n.col, tableData: n.table ? JSON.stringify(n.table) : null, pos };
+      const data = { kind: n.kind, text: n.text, ref: n.ref, refBlue: n.refBlue, inLabel: n.inLabel, col: n.col, tableData: n.table ? JSON.stringify(n.table) : null, pos };
       await tx.insert(capNodes).values({ flowId: row.id, nodeKey, ...data }).onConflictDoUpdate({ target: [capNodes.flowId, capNodes.nodeKey], set: data });
     }
     if (!equal(current.doc?.order, order) || !equal(current.doc?.layout, d.layout) || diff(current.doc, doc).some((c) => c.path[2] === "col")) {

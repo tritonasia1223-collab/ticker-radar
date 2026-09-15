@@ -33,7 +33,7 @@ async function find(term: string) {
   for (const r of rows) {
     let snap: any; try { snap = JSON.parse(r.snapshot); } catch { continue; }
     for (const n of snap.nodes ?? []) {
-      for (const [field, val] of [["text", n.text], ["ref", n.ref]] as const) {
+      for (const [field, val] of [["text", n.text], ["ref", n.ref], ["refBlue", n.refBlue]] as const) {
         if (val && String(val).includes(term)) {
           const k = `${n.nodeKey}:${field}`;
           const cur = best.get(k);
@@ -74,7 +74,7 @@ async function restore(id: number) {
     category: f.category, layout: f.layout,
     insight: f.insight ? JSON.parse(f.insight) : null,
     sortOrder: f.sortOrder,
-    nodes: nodes.map((n: any) => ({ nodeKey: n.nodeKey, kind: n.kind, inLabel: n.inLabel, text: n.text, ref: n.ref, col: n.col, table: n.tableData ? JSON.parse(n.tableData) : null })),
+    nodes: nodes.map((n: any) => ({ nodeKey: n.nodeKey, kind: n.kind, inLabel: n.inLabel, text: n.text, ref: n.ref, refBlue: n.refBlue ?? null, col: n.col, table: n.tableData ? JSON.parse(n.tableData) : null })),
     edges: (s.edges ?? []).map((e: any) => ({ from: e.fromKey, to: e.toKey })),
   };
   const restored = await upsertFlow(input); // 현재 상태는 upsert 가 히스토리에 남김 → 복구도 되돌릴 수 있음
