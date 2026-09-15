@@ -9,6 +9,7 @@ import GlobalTooltip from "@/components/GlobalTooltip";
 const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar }[] }[] = [
   { group: "매크로", items: [
     { href: "/capitalism", label: "자본주의 경제사", icon: History },
+    { href: "/graph-compare", label: "그래프 비교(베타)", icon: Layers },
     { href: "/fed", label: "미국 유동성", icon: Building2 },
     { href: "/world", label: "세계 현황판", icon: Globe },
   ] },

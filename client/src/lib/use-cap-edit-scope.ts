@@ -23,6 +23,9 @@ export function useCapEditScope(key: string) {
     ref,
     onFocusCapture: (event: FocusEvent<HTMLElement>) => {
       if (!(event.target instanceof HTMLElement) || !event.target.matches("input, textarea, [contenteditable=true]")) return;
+      // Native date fields can focus multiple internal segments without a matching
+      // blur. Do not overwrite an unreleased scope and leave saves waiting forever.
+      if (active.current) return;
       focusResource(key);
       const release = collaboration.beginLocalEdit(key);
       releases.current.add(release); active.current = release;

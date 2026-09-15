@@ -21,6 +21,7 @@ const Congress = lazy(() => import("@/pages/Congress"));
 const Insider = lazy(() => import("@/pages/Insider"));
 const Interest = lazy(() => import("@/pages/Interest"));
 const Capitalism = lazy(() => import("@/pages/Capitalism"));
+const GraphCompare = lazy(() => import("@/pages/GraphCompare"));
 const Fed = lazy(() => import("@/pages/Fed"));
 const World = lazy(() => import("@/pages/World"));
 // 블록체인 구조 — 작업 일시 중단(paused). 재개 시 아래 줄과 라우트 주석 해제.
@@ -61,6 +62,7 @@ function AppRouter() {
         <Route path="/insider" component={Insider} />
         <Route path="/interest" component={Interest} />
         <Route path="/capitalism" component={Capitalism} />
+        <Route path="/graph-compare" component={GraphCompare} />
         <Route path="/fed" component={Fed} />
         <Route path="/world" component={World} />
         {/* <Route path="/learn/blockchain" component={BlockchainLearn} /> */}

@@ -21,6 +21,8 @@ function publish(resource: Resource) {
       const rest = prev.filter((f) => f.slug !== resource.key.slice(5));
       return (next ? [...rest, next] : rest).sort((a, b) => a.date.localeCompare(b.date) || a.sortOrder - b.sortOrder);
     });
+  } else if (resource.key.startsWith("plot:")) {
+    queryClient.setQueryData<Resource[]>(["comparison-board"], (prev = []) => [...prev.filter(r => r.key !== resource.key), resource]);
   } else {
     queryClient.setQueryData<{ value: string }>(metaKey, (prev) => {
       const cards: CapMetaCard[] = prev?.value ? JSON.parse(prev.value).cards : [];
@@ -64,6 +66,8 @@ export async function poll() {
     peers = state.peers.filter((p: Peer) => p.session !== session); syncError = "";
     const versions = new Map<string, number>(state.flows.map((f: any) => [`flow:${f.key}`, Number(f.version)]));
     const changed = new Set<string>();
+    for (const plot of state.plots ?? []) if (collaboration.confirmed.has(plot.key) && collaboration.confirmed.get(plot.key)?.version !== Number(plot.version)) changed.add(plot.key);
+    if (queryClient.getQueryData(["comparison-board"])) for (const plot of state.plots ?? []) if (!collaboration.confirmed.has(plot.key)) changed.add(plot.key);
     for (const [key, version] of versions) if (collaboration.confirmed.get(key)?.version !== version) changed.add(key);
     for (const key of collaboration.confirmed.keys()) if (key.startsWith("flow:") && !versions.has(key)) changed.add(key);
     // Fetch in small batches to avoid exhausting the serverless pool on a large initial sync.

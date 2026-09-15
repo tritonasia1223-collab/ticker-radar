@@ -282,6 +282,19 @@ export default function Capitalism() {
   }, [viewMode, pendingJump, jumpToSlug]);
 
   // active 사건이 기간 이벤트면 [시작, 종료] 소수연도 밴드를 산출(그래프 음영·중앙값용). 단일 이벤트면 null.
+  // The comparison page links back after flow data and the board have mounted.
+  const compareJumped = useRef(false);
+  useEffect(() => {
+    if (compareJumped.current || !flows?.length || !boardRef.current) return;
+    const slug = new URLSearchParams(window.location.search).get("flow");
+    if (!slug) return;
+    const id = requestAnimationFrame(() => {
+      compareJumped.current = true; jumpToSlug(slug);
+      const url = new URL(window.location.href); url.searchParams.delete("flow");
+      window.history.replaceState(window.history.state, "", url);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [flows, jumpToSlug]);
   const activeBand = useMemo(() => {
     if (!flows || !activeSlug) return null;
     const f = flows.find((x) => x.slug === activeSlug);

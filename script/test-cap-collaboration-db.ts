@@ -54,11 +54,25 @@ try {
   await Promise.all([applyCollaborativeEdit(op("meta:m1", null, meta("m1", "one")), isolated), applyCollaborativeEdit(op("meta:m2", null, meta("m2", "two")), isolated)]);
   await Promise.all([applyCollaborativeEdit(op("meta:m1", meta("m1", "one"), meta("m1", "ONE")), isolated), applyCollaborativeEdit(op("meta:m2", meta("m2", "two"), meta("m2", "TWO")), isolated)]);
   assert.equal((await getResource("meta:m1", isolated)).doc!.title, "ONE"); assert.equal((await getResource("meta:m2", isolated)).doc!.title, "TWO");
+  // Comparison placements have independent records, preserve source cards, and retain tombstones.
+  const plot = { flowSlug: "synthetic", nodeKey: "a", title: "Policy", date: null, endDate: null, sortOrder: 1 };
+  await Promise.all([applyCollaborativeEdit(op("plot:one", null, plot), isolated), applyCollaborativeEdit(op("plot:two", null, { ...plot, nodeKey: "b" }), isolated)]);
+  await Promise.all([applyCollaborativeEdit(op("plot:one", plot, { ...plot, title: "Policy revised" }), isolated), applyCollaborativeEdit(op("plot:one", plot, { ...plot, date: "2008-09-15" }), isolated)]);
+  const plotted = await getResource("plot:one", isolated);
+  assert.equal(plotted.doc!.title, "Policy revised"); assert.equal(plotted.doc!.date, "2008-09-15");
+  await assert.rejects(() => applyCollaborativeEdit(op("plot:one", plotted.doc, { ...plotted.doc, endDate: "2007-01-01" }), isolated));
+  assert.deepEqual((await getResource("plot:one", isolated)).doc, plotted.doc);
+  await applyCollaborativeEdit(op("plot:one", plotted.doc, null), isolated);
+  const tombstone = await getResource("plot:one", isolated);
+  assert.equal(tombstone.doc, null); assert.ok(tombstone.version > plotted.version);
+  assert.equal((await getResource("plot:two", isolated)).doc!.nodeKey, "b");
+  assert.ok((await getResource(key, isolated)).doc!.nodes);
+  assert.equal((await getResource("meta:m1", isolated)).doc!.title, "ONE");
   const deleted = await getResource(key, isolated);
   await applyCollaborativeEdit(op(key, deleted.doc, null), isolated);
   await assert.rejects(() => applyCollaborativeEdit(op(key, deleted.doc, { ...deleted.doc, title: "late edit" }), isolated), CollaborationConflict);
   assert.equal((await getResource(key, isolated)).doc, null);
-  console.log("PASS: concurrent field merge, same-field conflict, duplicate/lost-response retry, rollback, shared-meta isolation, deletion/edit conflict.");
+  console.log("PASS: concurrent field merge, same-field conflict, duplicate/lost-response retry, rollback, shared-meta isolation, comparison placement merge/validation/tombstones/source preservation, deletion/edit conflict.");
 } finally {
   // Only this invocation's verified, freshly-created synthetic schema is removed.
   if (created) await client.unsafe(`DROP SCHEMA "${schema}" CASCADE`);

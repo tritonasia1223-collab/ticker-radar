@@ -1,5 +1,6 @@
 import { readFileSync, appendFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { findMacroAsset } from "../shared/deployment-assets.js";
 
 const base = "https://ticker-radar-five.vercel.app";
 const expected = JSON.parse(readFileSync("client/public/data-refresh.json", "utf8"));
@@ -28,9 +29,7 @@ async function main() {
         const entry = await (await get(new URL(main, base).href)).text();
         const cap = entry.match(/Capitalism-[\w-]+\.js/)?.[0];
         if (!cap) throw new Error("Missing economic history route asset");
-        const capText = await (await get(`${base}/assets/${cap}`)).text();
-        const name = capText.match(/capitalism-series-[\w-]+\.json/)?.[0];
-        if (!name) throw new Error("Missing macro series asset");
+        const name = await findMacroAsset(cap, async name => (await get(`${base}/assets/${name}`)).text());
         const data = await (await get(`${base}/assets/${name}`)).json();
         if (hash(data) !== expected.macroSha256) throw new Error("Production macro data hash mismatch");
         const message = `Vercel 배포 및 운영 거시지표 일치 확인: ${sha}\n`;

@@ -34,6 +34,8 @@ interface SeriesDef {
 }
 
 const SERIES: SeriesDef[] = [
+  { key: "fx_krw", fredId: "EXKOUS", freq: "asis", decimals: 4 },
+  { key: "fx_jpy", fredId: "EXJPUS", freq: "asis", decimals: 4 },
   // ── 금리 ──
   { key: "tb3ms", fredId: "TB3MS", freq: "asis", decimals: 2 },
   { key: "gs10", fredId: "GS10", freq: "asis", decimals: 2 },
@@ -96,6 +98,7 @@ async function buildFetched(s: SeriesDef): Promise<Point[]> {
   let pts = s.freq === "monthly" ? closedMonthEnds(raw) : raw;
   if (s.transform === "yoy") pts = annualChange(pts, s.decimals);
   if (s.fromDate) pts = pts.filter(([d]) => d >= s.fromDate!);
+  if (s.key.startsWith("fx_")) pts = pts.filter(([d]) => d.slice(0, 7) < new Date().toISOString().slice(0, 7));
   const scale = s.scale ?? 1;
   if (scale !== 1 || s.transform !== "yoy") pts = pts.map(([d, v]) => [d, Number((v * scale).toFixed(s.decimals))] as Point);
   return pts.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
