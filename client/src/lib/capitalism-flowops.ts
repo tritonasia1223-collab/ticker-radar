@@ -46,7 +46,8 @@ export function toInput(flow: FlowDTO, nodes: FlowNodeDTO[]): FlowInputDTO {
       kind: n.kind,
       inLabel: n.inLabel ?? null,
       text: n.text,
-      ref: n.ref ?? null,   // 노드 보충 메모(있으면 유지, 없으면 null)
+      ref: n.ref ?? null,   // 노랑 메모(원본, 있으면 유지, 없으면 null)
+      refBlue: n.refBlue ?? null, // 파랑 보충/첨삭 메모(노랑과 독립)
       col: flow.layout === "branch" ? (n.col || "center") : null,
       table: n.table ?? null, // 노드별 표(메모와 같은 층위, 있으면 유지)
     })),
@@ -142,7 +143,7 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
 // 노드가 '내용 있음'(보존 대상)인지 — 텍스트뿐 아니라 표(table)·메모(ref)가 있어도 유지한다.
 // (텍스트만 비었다고 버리면 그 노드의 표/메모까지 영구 삭제되는 데이터 손실이 발생했다.)
 export function nodeHasContent(n: FlowNodeDTO): boolean {
-  return !!(n.text.trim() || n.table || (n.ref && n.ref.trim()));
+  return !!(n.text.trim() || n.table || (n.ref && n.ref.trim()) || (n.refBlue && n.refBlue.trim()));
 }
 
 export function hasInsightContent(flow: FlowDTO): boolean {

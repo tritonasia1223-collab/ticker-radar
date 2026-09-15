@@ -45,6 +45,7 @@ export interface FlowNodeDTO {
   inLabel: string | null;
   text: string;
   ref: string | null;
+  refBlue?: string | null;
   col?: string | null;
   table: CapTableData | null; // 노드별 표(없으면 null)
 }
@@ -110,7 +111,7 @@ export interface FlowInput {
   layout: string;
   insight?: CapInsight | null;
   sortOrder?: number;
-  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null; table?: CapTableData | null }[];
+  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; refBlue?: string | null; col?: string | null; table?: CapTableData | null }[];
   edges: { from: string; to: string }[];
 }
 
@@ -189,7 +190,7 @@ export function assemble(flow: CapFlow, nodes: CapNode[], edges: CapEdge[]): Flo
     sortOrder: flow.sortOrder,
     nodes: nodes
       .sort((a, b) => a.pos - b.pos)
-      .map((n) => ({ id: n.nodeKey, kind: n.kind, inLabel: n.inLabel, text: n.text, ref: n.ref, col: n.col, table: parseTableData(n.tableData) })),
+      .map((n) => ({ id: n.nodeKey, kind: n.kind, inLabel: n.inLabel, text: n.text, ref: n.ref, refBlue: n.refBlue, col: n.col, table: parseTableData(n.tableData) })),
     edges: edges.map((e) => ({ from: e.fromKey, to: e.toKey })),
   };
 }
@@ -261,7 +262,7 @@ export async function upsertFlow(input: FlowInput): Promise<FlowDTO> {
     if (input.nodes.length) {
       await tx.insert(capNodes).values(input.nodes.map((n, i) => ({
         flowId, nodeKey: n.nodeKey, kind: n.kind,
-        inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null,
+        inLabel: n.inLabel ?? null, text: n.text, ref: n.ref ?? null, refBlue: n.refBlue ?? null,
         col: n.col ?? null, tableData: n.table ? JSON.stringify(n.table) : null, pos: i,
       })));
     }
@@ -300,6 +301,7 @@ export interface NodeContentPatch {
   inLabel?: string | null;
   text?: string;
   ref?: string | null;
+  refBlue?: string | null;
   col?: string | null;
   table?: CapTableData | null;
 }
@@ -312,6 +314,7 @@ export async function patchNode(slug: string, nodeKey: string, patch: NodeConten
     const set: Partial<typeof capNodes.$inferInsert> = {};
     if (patch.text !== undefined) set.text = patch.text;
     if (patch.ref !== undefined) set.ref = patch.ref ?? null;
+    if (patch.refBlue !== undefined) set.refBlue = patch.refBlue ?? null;
     if (patch.inLabel !== undefined) set.inLabel = patch.inLabel ?? null;
     if (patch.kind !== undefined) set.kind = patch.kind;
     if (patch.col !== undefined) set.col = patch.col ?? null;

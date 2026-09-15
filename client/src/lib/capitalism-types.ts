@@ -61,6 +61,7 @@ export interface FlowNodeDTO {
   inLabel: string | null;
   text: string;
   ref: string | null;
+  refBlue?: string | null; // 파란 보충/첨삭 메모(노랑 ref 와 독립. 없으면 null)
   col?: string | null;
   table?: CapTableData | null; // 노드별 표(없으면 null)
 }
@@ -96,6 +97,7 @@ export interface NodeContentPatch {
   inLabel?: string | null;
   text?: string;
   ref?: string | null;
+  refBlue?: string | null;
   col?: string | null;
   table?: CapTableData | null;
 }
@@ -112,6 +114,6 @@ export interface FlowInputDTO {
   layout: string;
   insight?: CapInsight | null;
   sortOrder?: number;
-  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; col?: string | null; table?: CapTableData | null }[];
+  nodes: { nodeKey: string; kind: string; inLabel?: string | null; text: string; ref?: string | null; refBlue?: string | null; col?: string | null; table?: CapTableData | null }[];
   edges: { from: string; to: string }[];
 }

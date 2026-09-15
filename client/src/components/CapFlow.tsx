@@ -4,7 +4,7 @@
 //  - 칸 호버: 하단 +버튼 = 아래 스택 추가, 우측 +버튼 = 가로 분기 추가 (즉시 생성/저장).
 //  - 칸 우측 상단 X = 명시 삭제. 본문을 비워도 메모·표와 칸은 보존.
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
-import { X, MessageSquare, Table2, Star } from "lucide-react";
+import { X, MessageSquare, MessageSquarePlus, Table2, Star } from "lucide-react";
 import { CapRichText } from "@/components/CapRichText";
 import { CapRichEditor, type LinkTarget } from "@/components/CapRichEditor";
 import { TableCard, makeDefaultTable } from "@/components/CapTable";
@@ -27,11 +27,11 @@ export type LinkNodes = (from: { slug: string; key: string }, to: { slug: string
 let DRAG_SRC: { slug: string; key: string } | null = null;
 
 function blankNode(col = "center"): FlowNodeDTO {
-  return { id: newNodeKey(), kind: "effect", inLabel: null, text: "", ref: null, col };
+  return { id: newNodeKey(), kind: "effect", inLabel: null, text: "", ref: null, refBlue: null, col };
 }
 
 function Node({
-  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemoClick, onTableClick, onLink, linkTargets, onJump, onFocusNode, focusedId,
+  flow, node, editable, editing, onStartEdit, onCommit, onDelete, onAdd, onMemoClick, onMemoBlueClick, onTableClick, onLink, linkTargets, onJump, onFocusNode, focusedId,
 }: {
   flow: FlowDTO;
   node: FlowNodeDTO;
@@ -43,6 +43,8 @@ function Node({
   onAdd: (afterId: string, dir: "down" | "branch-left" | "branch-right") => void;
   // 메모 버튼 클릭 — 우측 메모 컬럼에서 이 노드의 메모를 추가/편집 시작.
   onMemoClick?: (id: string) => void;
+  // 파랑(보충·첨삭) 메모 버튼 클릭.
+  onMemoBlueClick?: (id: string) => void;
   // 표 버튼 클릭 — 우측 표열에서 이 노드의 표를 생성/편집 시작.
   onTableClick?: (id: string) => void;
   onLink?: LinkNodes;
@@ -58,6 +60,7 @@ function Node({
   const [draft, setDraft] = useState(node.text);
   useEffect(() => { if (!editing) setDraft(node.text); }, [node.text, editing]);
   const hasMemo = !!(node.ref && node.ref.trim());
+  const hasMemoBlue = !!(node.refBlue && node.refBlue.trim());
   const hasTable = !!node.table;
   // 이 노드(또는 그 메모)에 마우스가 올라가 있어 강조 대상인지.
   const focused = focusedId === node.id;
@@ -152,7 +155,7 @@ function Node({
             type="button"
             title={hasTable ? "표 편집" : "표 추가"}
             onClick={(e) => { e.stopPropagation(); onTableClick?.(node.id); }}
-            className={`absolute right-[18px] bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+            className={`absolute right-[36px] bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
               hasTable
                 ? "bg-sky-400/90 text-sky-950 shadow-sm hover:bg-sky-400"
                 : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
@@ -163,9 +166,9 @@ function Node({
           </button>
           <button
             type="button"
-            title={hasMemo ? "메모 보기/편집" : "메모 추가"}
+            title={hasMemo ? "노랑 메모 보기/편집" : "노랑 메모 추가(원본)"}
             onClick={(e) => { e.stopPropagation(); onMemoClick?.(node.id); }}
-            className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+            className={`absolute right-[18px] bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
               hasMemo
                 ? "bg-amber-400/90 text-amber-950 shadow-sm hover:bg-amber-400"
                 : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
@@ -173,6 +176,19 @@ function Node({
             data-testid={`memo-btn-${node.id}`}
           >
             <MessageSquare className="h-2.5 w-2.5" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            title={hasMemoBlue ? "파랑 메모 보기/편집(보충·첨삭)" : "파랑 메모 추가(보충·첨삭)"}
+            onClick={(e) => { e.stopPropagation(); onMemoBlueClick?.(node.id); }}
+            className={`absolute right-0.5 bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+              hasMemoBlue
+                ? "bg-blue-500/90 text-white shadow-sm hover:bg-blue-500"
+                : "bg-muted/50 text-muted-foreground/50 opacity-50 hover:opacity-100 hover:bg-muted"
+            }`}
+            data-testid={`memo-blue-btn-${node.id}`}
+          >
+            <MessageSquarePlus className="h-2.5 w-2.5" strokeWidth={2.5} />
           </button>
         </>
       ) : null}
@@ -250,11 +266,32 @@ function VArrow() {
 // 메모 컬럼 너비(px). 카드 우측 여백을 채워 노션식 코멘트를 상시 표시한다.
 const MEMO_COL_W = 240;
 
+// 메모 종류 — 노랑(원본 ref) / 파랑(보충·첨삭 refBlue). 색만 다르고 동작은 동일.
+type MemoVariant = "yellow" | "blue";
+const MEMO_STYLE: Record<MemoVariant, { focused: string; base: string; hover: string; ta: string; ph: string }> = {
+  yellow: {
+    focused: "border-amber-400/80 bg-amber-100/80 ring-2 ring-amber-400/70 dark:border-amber-400/60 dark:bg-amber-400/20 dark:ring-amber-400/50",
+    base: "border-amber-300/50 bg-amber-50/70 dark:border-amber-400/25 dark:bg-amber-400/10",
+    hover: "hover:bg-amber-100/50 dark:hover:bg-amber-400/10",
+    ta: "border-amber-300/60 focus:ring-amber-400",
+    ph: "메모 입력 (자동 저장 · Esc 닫기 · ⌘/Ctrl+Enter 완료 · 비워서 저장하면 삭제)",
+  },
+  blue: {
+    focused: "border-blue-400/80 bg-blue-100/80 ring-2 ring-blue-400/70 dark:border-blue-400/60 dark:bg-blue-400/20 dark:ring-blue-400/50",
+    base: "border-blue-300/50 bg-blue-50/70 dark:border-blue-400/25 dark:bg-blue-400/10",
+    hover: "hover:bg-blue-100/50 dark:hover:bg-blue-400/10",
+    ta: "border-blue-300/60 focus:ring-blue-400",
+    ph: "보충·첨삭 메모 입력 (자동 저장 · Esc 닫기 · ⌘/Ctrl+Enter 완료 · 비워서 저장하면 삭제)",
+  },
+};
+
 // 노션식 메모 카드 1개. 작성된 메모만 표시하며, 노드 버튼으로 추가한 경우(autoEdit) 자동으로 편집 상태.
 function MemoCard({
-  node, editable, autoEdit, onMemo, onFocusNode, onEditDone, focusedId,
+  node, variant = "yellow", editable, autoEdit, onMemo, onFocusNode, onEditDone, focusedId,
 }: {
   node: FlowNodeDTO;
+  // 노랑(원본 ref) / 파랑(보충·첨삭 refBlue). 색·읽는 필드만 다르고 동작은 동일.
+  variant?: MemoVariant;
   editable: boolean;
   // 노드 메모 버튼으로 막 추가된 메모 — 자동으로 편집 모드로 시작.
   autoEdit?: boolean;
@@ -265,11 +302,12 @@ function MemoCard({
   // 노션식 양방향 하이라이트 — 대응 노드가 호버 중이면 메모 카드도 강조.
   focusedId?: string | null;
 }) {
-  const hasMemo = !!(node.ref && node.ref.trim());
+  const st = MEMO_STYLE[variant];
+  const value = variant === "blue" ? (node.refBlue ?? "") : (node.ref ?? "");
   const focused = focusedId === node.id;
   const [editing, setEditing] = useState(!!autoEdit);
-  const [draft, setDraft] = useState(node.ref ?? "");
-  useEffect(() => { if (!editing) setDraft(node.ref ?? ""); }, [node.ref, editing]);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
   const memoDirty = useRef(false);
   const memoCommit = useRef(onMemo); memoCommit.current = onMemo;
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -287,7 +325,7 @@ function MemoCard({
   };
   const startEdit = () => {
     if (!editable) return;
-    setDraft(node.ref ?? "");
+    setDraft(value);
     setEditing(true);
     onFocusNode?.(node.id);
   };
@@ -300,7 +338,7 @@ function MemoCard({
     onEditDone?.(node.id);
   };
   const cancel = () => {
-    setDraft(node.ref ?? "");
+    setDraft(value);
     setEditing(false);
     onFocusNode?.(null);
     onEditDone?.(node.id);
@@ -308,15 +346,11 @@ function MemoCard({
 
   return (
     <div
-      className={`rounded-md border px-2 py-1.5 shadow-sm transition-all ${
-        focused
-          ? "border-amber-400/80 bg-amber-100/80 ring-2 ring-amber-400/70 dark:border-amber-400/60 dark:bg-amber-400/20 dark:ring-amber-400/50"
-          : "border-amber-300/50 bg-amber-50/70 dark:border-amber-400/25 dark:bg-amber-400/10"
-      }`}
+      className={`rounded-md border px-2 py-1.5 shadow-sm transition-all ${focused ? st.focused : st.base}`}
       onClick={(e) => e.stopPropagation()}
       onMouseEnter={() => onFocusNode?.(node.id)}
       onMouseLeave={() => { if (!editing) onFocusNode?.(null); }}
-      data-testid={`memo-card-${node.id}`}
+      data-testid={`memo-card-${variant}-${node.id}`}
     >
       {editing ? (
         <textarea
@@ -345,18 +379,18 @@ function MemoCard({
             if (e.key === "Escape") { finish(); }
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
           }}
-          placeholder="메모 입력 (자동 저장 · Esc 닫기 · ⌘/Ctrl+Enter 완료 · -> 화살표 · (1) 원문자 · 비워서 저장하면 삭제)"
-          className="block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border border-amber-300/60 bg-background px-1.5 py-1 text-[12.5px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-amber-400"
-          data-testid={`memo-input-${node.id}`}
+          placeholder={st.ph}
+          className={`block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border bg-background px-1.5 py-1 text-[12.5px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${st.ta}`}
+          data-testid={`memo-input-${variant}-${node.id}`}
         />
       ) : (
         <p
-          className={`whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground/90 ${editable ? "cursor-text rounded hover:bg-amber-100/50 dark:hover:bg-amber-400/10" : ""}`}
+          className={`whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground/90 ${editable ? `cursor-text rounded ${st.hover}` : ""}`}
           onClick={startEdit}
           title={editable ? "클릭해 메모 수정" : undefined}
-          data-testid={`memo-text-${node.id}`}
+          data-testid={`memo-text-${variant}-${node.id}`}
         >
-          {node.ref}
+          {value}
         </p>
       )}
     </div>
@@ -370,17 +404,20 @@ function MemoCard({
 // 노드별 주석 컬럼 — 메모와 표를 '한 열'에 함께 표시. 각 노드의 (메모 + 표)를 그 노드의
 // 세로 위치에 앵커링하고, 블록끼리 겹치면 아래로 밀어 내린다(본문 노드 간격에는 영향 없음).
 function SideColumn({
-  sideNodes, slug, bodyEl, editable, autoEditMemoId, autoEditTableId,
-  onMemo, onMemoEditDone, onCommitTable, onTableEditDone, onFocusNode, focusedId,
+  sideNodes, slug, bodyEl, editable, autoEditMemoId, autoEditMemoBlueId, autoEditTableId,
+  onMemo, onMemoEditDone, onMemoBlue, onMemoBlueEditDone, onCommitTable, onTableEditDone, onFocusNode, focusedId,
 }: {
   sideNodes: FlowNodeDTO[];
   slug: string;
   bodyEl: HTMLElement | null;
   editable: boolean;
   autoEditMemoId: string | null;
+  autoEditMemoBlueId: string | null;
   autoEditTableId: string | null;
   onMemo?: (id: string, memo: string) => void;
   onMemoEditDone?: (id: string) => void;
+  onMemoBlue?: (id: string, memo: string) => void;
+  onMemoBlueEditDone?: (id: string) => void;
   onCommitTable: (id: string, table: CapTableData | null) => void;
   onTableEditDone?: (id: string) => void;
   onFocusNode?: (id: string | null) => void;
@@ -441,6 +478,7 @@ function SideColumn({
     <div ref={colRef} style={{ width: MEMO_COL_W, height: stackH || undefined }} className="relative shrink-0">
       {sideNodes.map((n) => {
         const showMemo = !!(n.ref && n.ref.trim()) || n.id === autoEditMemoId;
+        const showMemoBlue = !!(n.refBlue && n.refBlue.trim()) || n.id === autoEditMemoBlueId;
         const showTable = !!n.table || n.id === autoEditTableId;
         return (
           <div
@@ -452,11 +490,24 @@ function SideColumn({
             {showMemo ? (
               <MemoCard
                 node={n}
+                variant="yellow"
                 editable={editable}
                 autoEdit={n.id === autoEditMemoId}
                 onMemo={onMemo}
                 onFocusNode={onFocusNode}
                 onEditDone={onMemoEditDone}
+                focusedId={focusedId}
+              />
+            ) : null}
+            {showMemoBlue ? (
+              <MemoCard
+                node={n}
+                variant="blue"
+                editable={editable}
+                autoEdit={n.id === autoEditMemoBlueId}
+                onMemo={onMemoBlue}
+                onFocusNode={onFocusNode}
+                onEditDone={onMemoBlueEditDone}
                 focusedId={focusedId}
               />
             ) : null}
@@ -502,6 +553,8 @@ export function FlowColumn({
   const [metaEdit, setMetaEdit] = useState<"date" | "title" | null>(null);
   // 노드 메모 버튼으로 막 추가/편집을 시작한 노드 id. 해당 메모 카드를 강제 표시 + 자동 편집.
   const [autoEditMemoId, setAutoEditMemoId] = useState<string | null>(null);
+  // 파랑(보충·첨삭) 메모 버튼으로 막 추가/편집을 시작한 노드 id.
+  const [autoEditMemoBlueId, setAutoEditMemoBlueId] = useState<string | null>(null);
   // 노드 표 버튼으로 막 추가/편집을 시작한 노드 id. 첫 셀 자동 포커스용.
   const [autoEditTableId, setAutoEditTableId] = useState<string | null>(null);
   // 노션식 양방향 호버 하이라이트 — 현재 호버 중인 노드 id. 노드↔메모 양쪽을 동시에 강조한다.
@@ -638,6 +691,22 @@ export function FlowColumn({
     setAutoEditMemoId((cur) => (cur === id ? null : cur));
   }
 
+  // 파랑(보충·첨삭) 메모 커밋. refBlue 컬럼에 저장. 노랑(ref)과 완전 독립 — 서로 안 건드림.
+  function commitMemoBlue(id: string, memo: string) {
+    if (!onMutateNodes) return;
+    const next: string | null = memo || null;
+    const cur = flow.nodes.find((n) => n.id === id);
+    if (!cur || (cur.refBlue ?? null) === next) return; // 변경 없음
+    if (onEditContent) onEditContent(flow, id, { refBlue: next }); // 파랑 메모만 세분화 저장
+    else onMutateNodes(flow, flow.nodes.map((n) => (n.id === id ? { ...n, refBlue: next } : n)));
+  }
+  function onMemoBlueClick(id: string) {
+    setAutoEditMemoBlueId(id);
+  }
+  function onMemoBlueEditDone(id: string) {
+    setAutoEditMemoBlueId((cur) => (cur === id ? null : cur));
+  }
+
   // 노드 표 저장(메모와 같은 층위). table=null 이면 표 삭제. ref 컬럼처럼 node.table 에 보관.
   function commitTable(id: string, table: CapTableData | null) {
     if (!onMutateNodes) return;
@@ -670,6 +739,7 @@ export function FlowColumn({
     onDelete: deleteNode,
     onAdd: addNode,
     onMemoClick,
+    onMemoBlueClick,
     onTableClick,
     onLink,
     linkTargets,
@@ -769,7 +839,7 @@ export function FlowColumn({
   // 메모+표를 한 열(SideColumn)에 함께 표시. 메모/표가 하나라도 있거나 막 추가/편집 중인 노드.
   // (flow.nodes 순서 = 위→아래. 컬럼이 이 순서대로 노드 위치에 앵커링한다.)
   const orderedSideNodes = flow.nodes.filter(
-    (n) => (n.ref && n.ref.trim()) || n.table || n.id === autoEditMemoId || n.id === autoEditTableId,
+    (n) => (n.ref && n.ref.trim()) || (n.refBlue && n.refBlue.trim()) || n.table || n.id === autoEditMemoId || n.id === autoEditMemoBlueId || n.id === autoEditTableId,
   );
   const showSideCol = orderedSideNodes.length > 0;
 
@@ -905,9 +975,12 @@ export function FlowColumn({
               bodyEl={bodyEl}
               editable={editable}
               autoEditMemoId={autoEditMemoId}
+              autoEditMemoBlueId={autoEditMemoBlueId}
               autoEditTableId={autoEditTableId}
               onMemo={commitMemo}
               onMemoEditDone={onMemoEditDone}
+              onMemoBlue={commitMemoBlue}
+              onMemoBlueEditDone={onMemoBlueEditDone}
               onCommitTable={commitTable}
               onTableEditDone={onTableEditDone}
               onFocusNode={setFocusedNodeId}

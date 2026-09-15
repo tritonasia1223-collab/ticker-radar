@@ -344,7 +344,8 @@ export const capNodes = pgTable(
     kind: text("kind").notNull().default("effect"), // cause | event | effect | result
     inLabel: text("in_label"),             // 블록 위 라벨(배경/사건/영향/결과 등). 빈 문자열 허용
     text: text("text").notNull(),
-    ref: text("ref"),                      // 참고 메모/출처 (없으면 null)
+    ref: text("ref"),                      // 노랑 메모(원본 참고/출처, 없으면 null)
+    refBlue: text("ref_blue"),             // 파랑 보충/첨삭 메모(노랑 ref 와 독립, 없으면 null)
     col: text("col"),                      // branch 레이아웃: center | left | right
     tableData: text("table_data"),         // nullable JSON: 노드별 표(열 너비 + 셀 텍스트). 메모(ref)와 같은 층위.
     pos: integer("pos").notNull().default(0), // 표시 순서
