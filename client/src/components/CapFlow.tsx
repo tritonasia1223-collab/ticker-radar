@@ -148,9 +148,9 @@ function Node({
         </div>
       )}
 
-      {/* 본문 아래 독립 행: 긴 글/확대에서도 표·메모 버튼이 텍스트와 겹치지 않는다. */}
+      {/* 칸 높이는 본문만으로 결정하고, 버튼은 아래 화살표와 같은 20px 여백을 쓴다. */}
       {!editing ? (
-        <div className="mt-1.5 flex min-h-4 items-center justify-end gap-0.5" data-testid={`node-tools-${node.id}`}>
+        <div className="absolute right-2 top-full z-10 flex h-5 items-center justify-end gap-0.5" data-testid={`node-tools-${node.id}`}>
           <button
             type="button"
             title={hasTable ? "표 편집" : "표 추가"}
@@ -789,13 +789,13 @@ export function FlowColumn({
       // 분기열(left/right)에는 노드 간 화살표를 그리지 않는다(기준 흐름만 화살표로 표시).
       const hasArrow = (col: string) =>
         col === "center" && !!row[col] && ri > 0 && !!rows[ri - 1][col];
-      const anyArrow = usedCols.some(hasArrow);
       bodyRows.push({
         nodes: rowNodes,
         content: (
           <div>
-            {anyArrow ? (
-              <div className="flex items-start justify-center gap-3">
+            {ri > 0 ? (
+              // 화살표 없는 분기 행도 위 칸의 버튼이 놓일 여백은 유지한다.
+              <div className="flex min-h-5 items-start justify-center gap-3">
                 {usedCols.map((col) => (
                   <div key={col} className="w-[240px] shrink-0">
                     {hasArrow(col) ? <VArrow /> : null}
@@ -964,7 +964,7 @@ export function FlowColumn({
       {/* 본문 스택(좌) + 메모 컬럼(우)을 완전히 분리. 메모는 absolute 앵커링이므로 본문 노드 간격에 영향을 주지 않는다. */}
       <div className="flex items-start">
         {/* 본문: 독립적 세로 스택. 노드 간격은 메모 높이와 무관하게 자신의 내용만으로 결정. */}
-        <div ref={setBodyEl} style={{ width: bodyWidth }} className="flex shrink-0 flex-col">
+        <div ref={setBodyEl} style={{ width: bodyWidth }} className={`flex shrink-0 flex-col ${bodyRows.length ? "pb-5" : ""}`}>
           {editable && bodyRows.length === 0 && <button type="button" className="p-3 text-sm text-primary" onClick={() => addNode("", "down")}>+ 칸 추가</button>}
           {bodyRows.map((row, ri) => (
             // 행 key는 행에 속한 노드 id 조합으로 안정화(인덱스 key는 행 삽입/제거 시
