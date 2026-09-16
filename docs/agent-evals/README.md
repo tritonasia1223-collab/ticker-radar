@@ -7,6 +7,8 @@
 
 실행 도구는 `tools/agent-eval`, 장기 보존 결과는 `docs/agent-evals/results`에 둡니다. `runtime`은 대용량 worktree와 원시 로그가 들어가는 로컬 임시 영역이므로 Git에 커밋하지 않습니다.
 
+Claude Code에 처음 전달할 복사형 지시문은 `CLAUDE-CODE-HANDOFF.md`에 있습니다.
+
 ## 1. 프론티어 모델 벤치마크
 
 비교 가능성을 유지하려면 다음 항목을 고정합니다.
