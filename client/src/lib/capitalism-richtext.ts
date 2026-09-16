@@ -2,8 +2,8 @@
 // DB 스키마 변경 없이 text 필드 안에 마커를 직렬화한다.
 //   형식: [[키|텍스트]]   예) [[hl-y|중요]] , [[c-r|폭락]]
 // 키 종류:
-//   hl-*       : 형광펜(배경 하이라이트)   hl-y(노랑) hl-g(초록) hl-b(파랑) hl-p(분홍)
-//   c-*        : 글자색                    c-r(빨강) c-b(파랑) c-g(초록) c-o(주황)
+//   hl-*       : 형광펜(배경 하이라이트)   hl-y(노랑) hl-g(초록) hl-b(파랑) hl-p(분홍) hl-v(청보라)
+//   c-*        : 글자색                    c-r(빨강) c-b(파랑) c-g(초록) c-o(주황) c-v(청보라)
 //   link:<slug>: 내부 링크 — 클릭 시 해당 카드(slug)의 시점으로 점프. 위키 스타일 파란 밑줄.
 //                예) [[link:1975-eurodollar|유로달러 폭발 시기]]
 // 알 수 없는 키는 무시(원문 텍스트만 표시)하여 안전하게 폴백.
@@ -17,17 +17,25 @@ export interface MarkStyle {
   style: React.CSSProperties;
 }
 
-// 다크/라이트 모두에서 읽히도록 형광펜은 반투명, 글자색은 채도 높은 색.
+// 이 화면은 라이트 모드(흰 배경)로만 렌더된다 — tailwind darkMode:["class"] 이지만 앱 어디에서도
+// dark 클래스를 붙이지 않는다. 따라서 대비 기준 배경은 흰색 #ffffff 이다.
+// 형광펜은 반투명 파스텔(본문 #171717 이 위에 얹혀도 12:1 이상 유지),
+// 글자색은 어둡고 진한 색(모두 흰 배경 대비 4.5:1 이상 = WCAG AA 본문 기준).
+//   이전에는 글자색을 "어두운 배경에서 튀도록" 밝게 잡아, 흰 배경에서 초록 #12c75a 가 2.25:1 로 거의 안 보였다.
+//   ⚠ 다크 모드를 켜게 되면 이 글자색들은 대비가 2.6~3.7 로 떨어지므로 dark: 변형을 별도로 잡아야 한다.
 export const MARK_STYLES: MarkStyle[] = [
-  { key: "hl-y", label: "노랑 형광", kind: "hl", swatch: "#facc15", style: { background: "rgba(250,204,21,0.32)", borderRadius: 3, padding: "0 2px" } },
-  { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "#4ade80", style: { background: "rgba(74,222,128,0.30)", borderRadius: 3, padding: "0 2px" } },
-  { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },
-  { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },
-  // 글자색: 하이라이트(파스텔)와 달리 채도 높고 쨍하게 — 어두운 배경에서 또렷하게 튀도록.
-  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#ff2e2e", style: { color: "#ff2e2e", fontWeight: 600 } },
-  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#1f7bff", style: { color: "#1f7bff", fontWeight: 600 } },
-  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#12c75a", style: { color: "#12c75a", fontWeight: 600 } },
-  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#ff7a00", style: { color: "#ff7a00", fontWeight: 600 } },
+  // 형광펜 — 색상각 48°/142°/213°/329°/258° 로 서로 분리. 주석의 비율은 본문 텍스트가 위에 얹혔을 때 대비.
+  { key: "hl-y", label: "노랑 형광", kind: "hl", swatch: "#facc15", style: { background: "rgba(250,204,21,0.32)", borderRadius: 3, padding: "0 2px" } },   // 15.5:1
+  { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "#4ade80", style: { background: "rgba(74,222,128,0.30)", borderRadius: 3, padding: "0 2px" } },   // 15.0:1
+  { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },   // 13.8:1
+  { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },  // 13.2:1
+  { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "#8b5cf6", style: { background: "rgba(139,92,246,0.28)", borderRadius: 3, padding: "0 2px" } }, // 12.5:1 · 분홍과 71°, 파랑과 45° 분리
+  // 글자색 — 주석의 비율은 흰 배경 대비(WCAG AA 본문 4.5:1 기준). 키 순서는 기존 버튼 위치 유지를 위해 그대로 두고 신규만 뒤에 추가.
+  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#c81e1e", style: { color: "#c81e1e", fontWeight: 600 } },   // 5.74:1
+  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#1d4ed8", style: { color: "#1d4ed8", fontWeight: 600 } },   // 6.70:1
+  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#127a3a", style: { color: "#127a3a", fontWeight: 600 } },   // 5.43:1
+  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#b45309", style: { color: "#b45309", fontWeight: 600 } },   // 5.02:1
+  { key: "c-v", label: "청보라 글자", kind: "c", swatch: "#6d28d9", style: { color: "#6d28d9", fontWeight: 600 } }, // 7.10:1 · 파랑과 39° 분리
 ];
 
 export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(
