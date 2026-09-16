@@ -6,6 +6,8 @@ import { MARK_STYLES, MARK_BY_KEY, parseRich, serializeRich } from "../client/sr
 const WHITE = [255, 255, 255] as const;
 const FOREGROUND = [23, 23, 23] as const; // --foreground 0 0% 9%
 const AA_BODY = 4.5;
+// 대비 기준을 강제할 색. 빨강·주황은 사용자가 실제 가독성을 확인해 원래 값으로 되돌렸으므로 제외한다.
+const AA_REQUIRED = ["c-g", "c-b", "c-v"] as const;
 
 const toRgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.slice(1), 16);
@@ -59,11 +61,19 @@ describe("자본주의 리치텍스트 팔레트", () => {
     }
   });
 
-  it("글자색 5개 모두 흰 배경에서 WCAG AA 본문 대비를 만족한다", () => {
-    for (const m of textColors) {
+  it("대비 기준 적용 대상 글자색이 WCAG AA 본문을 만족한다", () => {
+    for (const key of AA_REQUIRED) {
+      const m = MARK_BY_KEY[key];
       const color = m.style.color as string;
       expect(contrast(toRgb(color), WHITE), `${m.label} ${color}`).toBeGreaterThanOrEqual(AA_BODY);
     }
+  });
+
+  // 빨강·주황은 수치상 4.5:1 미만이지만 사용자가 "원래도 잘 보였다"고 확인해 되돌린 값이다.
+  // 값을 고정해 두어야 "대비가 낮으니 고치자"는 회귀가 다시 들어오지 않는다.
+  it("사용자가 확인한 빨강·주황 원래 값이 유지된다", () => {
+    expect(MARK_BY_KEY["c-r"].style.color).toBe("#ff2e2e");
+    expect(MARK_BY_KEY["c-o"].style.color).toBe("#ff7a00");
   });
 
   // 회귀 방지: 이전 초록 #12c75a 는 2.25:1 로 흰 배경에서 거의 안 보였다.
