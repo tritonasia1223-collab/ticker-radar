@@ -17,30 +17,22 @@ export interface MarkStyle {
   style: React.CSSProperties;
 }
 
-// 이 화면은 라이트 모드(흰 배경)로만 렌더된다 — tailwind darkMode:["class"] 이지만 앱 어디에서도
-// dark 클래스를 붙이지 않는다. 따라서 대비 기준 배경은 흰색 #ffffff 이다.
-// 형광펜은 반투명 파스텔(본문 #171717 이 위에 얹혀도 12:1 이상 유지),
-// 글자색은 채도 100% 의 맑은 색(모두 흰 배경 대비 4.5:1 이상 = WCAG AA 본문 기준).
-//   이전에는 글자색을 "어두운 배경에서 튀도록" 밝게 잡아, 흰 배경에서 초록 #12c75a 가 2.25:1 로 거의 안 보였다.
-//   ⚠ 다크 모드를 켜게 되면 이 글자색들의 대비는 4.0~7.2 로 흩어지므로 dark: 변형을 별도로 잡아야 한다.
+// 이 화면은 라이트 모드(흰 배경)로만 렌더된다 — tailwind darkMode:["class"] 인데 dark 클래스를
+// 붙이는 곳이 없다. 색을 고를 때 배경은 항상 흰색으로 보면 된다.
+// 아래 값은 실제 화면에서 눈으로 맞춘 결과다. 수치 기준으로 임의로 다시 조정하지 말 것.
 export const MARK_STYLES: MarkStyle[] = [
-  // 형광펜 — 색상각 48°/142°/213°/329°/258° 로 서로 분리. 주석의 비율은 본문 텍스트가 위에 얹혔을 때 대비.
-  { key: "hl-y", label: "노랑 형광", kind: "hl", swatch: "#facc15", style: { background: "rgba(250,204,21,0.32)", borderRadius: 3, padding: "0 2px" } },   // 15.5:1
-  { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "#4ade80", style: { background: "rgba(74,222,128,0.30)", borderRadius: 3, padding: "0 2px" } },   // 15.0:1
-  { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },   // 13.8:1
-  { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },  // 13.2:1
-  { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "#8b5cf6", style: { background: "rgba(139,92,246,0.28)", borderRadius: 3, padding: "0 2px" } }, // 12.5:1 · 분홍과 71°, 파랑과 45° 분리
-  // 글자색 — 채도 100% 로 맑게 잡되, 명도는 색상각별로 다르게 간다.
-  //   초록·파랑·청보라: 흰 배경 대비 4.5:1(WCAG AA 본문) 이상을 지킨다. 초록은 이 기준을 어겨 안 읽혔던 색이다.
-  //   빨강·주황: 기준 미달이지만 의도된 예외다. 사용자가 원래 값(#ff2e2e / #ff7a00)이 실제로 잘 읽힌다고
-  //     확인해 되돌린 것 — 순색 계열이라 수치보다 체감 가독성이 높고, 굵기 600 이 이를 보완한다.
-  //     이 두 색을 '고쳐서' 대비를 올리지 말 것. 이미 한 번 되돌린 결정이다.
-  // 키 순서는 기존 버튼 위치 유지를 위해 그대로 두고 신규만 뒤에 추가.
-  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#ff2e2e", style: { color: "#ff2e2e", fontWeight: 600 } },   // 3.70:1 · 대비 예외(아래 주석)
-  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#146aff", style: { color: "#146aff", fontWeight: 600 } },   // 4.63:1
-  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#008738", style: { color: "#008738", fontWeight: 600 } },   // 4.64:1
-  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#ff7a00", style: { color: "#ff7a00", fontWeight: 600 } },   // 2.61:1 · 대비 예외(아래 주석)
-  { key: "c-v", label: "청보라 글자", kind: "c", swatch: "#8c4aff", style: { color: "#8c4aff", fontWeight: 600 } },   // 4.63:1 · 파랑과 44도 분리
+  // 형광펜 — 반투명 파스텔.
+  { key: "hl-y", label: "노랑 형광", kind: "hl", swatch: "#facc15", style: { background: "rgba(250,204,21,0.32)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "#4ade80", style: { background: "rgba(74,222,128,0.30)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "#8b5cf6", style: { background: "rgba(139,92,246,0.28)", borderRadius: 3, padding: "0 2px" } },
+  // 글자색 — 채도 높은 색. 키 순서는 기존 버튼 위치 유지를 위해 그대로 두고 신규만 뒤에 추가.
+  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#ff2e2e", style: { color: "#ff2e2e", fontWeight: 600 } },
+  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#146aff", style: { color: "#146aff", fontWeight: 600 } },
+  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#008738", style: { color: "#008738", fontWeight: 600 } },
+  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#ff7a00", style: { color: "#ff7a00", fontWeight: 600 } },
+  { key: "c-v", label: "청보라 글자", kind: "c", swatch: "#8c4aff", style: { color: "#8c4aff", fontWeight: 600 } },
 ];
 
 export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(
