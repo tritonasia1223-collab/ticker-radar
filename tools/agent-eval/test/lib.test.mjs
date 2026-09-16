@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateApiEquivalent, normalizeTask, parseArgs } from "../src/lib.mjs";
+import { calculateApiEquivalent, extractVerdict, normalizeTask, parseArgs } from "../src/lib.mjs";
 import { buildImplementerPrompt, buildReviewerPrompt } from "../src/prompts.mjs";
 
 const task = {
@@ -41,9 +41,17 @@ test("both prompts carry the single-agent and secret rules", () => {
 });
 
 test("argument parser keeps command and named arguments", () => {
-  assert.deepEqual(parseArgs(["pipeline", "--task", "task.json", "--implementer", "claude"]), {
+  assert.deepEqual(parseArgs(["pipeline", "--task", "task.json", "--implementer", "claude", "--config", "profile.json"]), {
     _: ["pipeline"],
     task: "task.json",
     implementer: "claude",
+    config: "profile.json",
   });
+});
+
+test("review verdict is extracted from the reviewer protocol", () => {
+  assert.equal(extractVerdict("VERDICT: PASS\nFINDINGS:\n- none"), "PASS");
+  assert.equal(extractVerdict("검증 완료\n\nVERDICT: FAIL\n"), "FAIL");
+  assert.equal(extractVerdict("VERDICT: INCONCLUSIVE"), "INCONCLUSIVE");
+  assert.equal(extractVerdict("검증 결과를 작성했습니다."), "UNKNOWN");
 });

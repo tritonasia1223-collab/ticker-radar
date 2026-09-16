@@ -10,6 +10,7 @@
 | [데이터 갱신 목록](DATA-UPDATES.md) | 자동 일정·수동 갱신·최근 실행·자료 기준일 |
 | [월간 갱신 운영](MONTHLY-DATA-REFRESH.md) | 매월 3일 09:00, 수집·근거 조사·검증·배포 절차 |
 | [협업 편집](COLLABORATION.md) | 2인 편집·충돌·초안 복구·저장 이력 |
+| [에이전트 평가·교차 검증](agent-evals/README.md) | 프론티어 모델 재평가 포맷, Claude 구현→Codex 검증 절차, 누적 결과 |
 | [FED](FED.md) | 미국 유동성 구현과 수집 |
 | [WORLD](WORLD.md) | 지도 코드·데이터·개발 범위 |
 | [DATACENTERS](DATACENTERS.md) | 데이터센터 지도 표현·계산 |

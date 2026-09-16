@@ -1,0 +1,5 @@
+date,protocol_id,task_id,implementer,implementer_model,reviewer,reviewer_model,api_equivalent_usd_if_standalone,sequential_seconds,review_verdict,correct_release_decision,material_defects_found,material_defects_present
+2026-09-15,frontier-cross-v1,CAP-EVAL-001,claude,claude-fable-5-1,claude,claude-fable-5-1,13.44134175,1608.417,PASS,false,0,2
+2026-09-15,frontier-cross-v1,CAP-EVAL-001,claude,claude-fable-5-1,codex,gpt-6-astra,10.6370965,1483.46,FAIL,true,2,2
+2026-09-15,frontier-cross-v1,CAP-EVAL-001,codex,gpt-6-astra,claude,claude-fable-5-1,9.42660775,1908.477,INCONCLUSIVE,true,0,1
+2026-09-15,frontier-cross-v1,CAP-EVAL-001,codex,gpt-6-astra,codex,gpt-6-astra,7.145998,1661.15,FAIL,true,1,1

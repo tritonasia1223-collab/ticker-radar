@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "frontier-cross-v1",
+  "runId": "2026-09-15-CAP-EVAL-001",
+  "date": "2026-09-15",
+  "taskId": "CAP-EVAL-001",
+  "baseSha": "f1c8dd9cef9697d72665047cf463ae4b17b9dfae",
+  "harnessProtocol": "frontier-cross-v1",
+  "pricingAsOfDate": "2026-09-15",
+  "models": {
+    "claude": {
+      "model": "claude-fable-5-1",
+      "effort": "max",
+      "billing": "anthropic_api"
+    },
+    "codex": {
+      "model": "gpt-6-astra",
+      "effort": "ultra",
+      "billing": "chatgpt_subscription"
+    }
+  },
+  "candidates": {
+    "claude": {
+      "sha": "f1f5ac6594e3e8849599f071240a7d8c8e7479fd",
+      "objectiveChecks": "pass",
+      "testCount": 107,
+      "adjudicatedDefects": ["P1 old-draft recovery data loss", "P2 existing purple-note tool button does not open editor"]
+    },
+    "codex": {
+      "sha": "b13345c3fa244788b8ab06fb48c99cff6207bb93",
+      "objectiveChecks": "pass",
+      "testCount": 110,
+      "adjudicatedDefects": ["P1 old-draft recovery data loss", "LOW cold-start UI harness flake"]
+    }
+  },
+  "pairings": [
+    {
+      "implementer": "claude",
+      "reviewer": "claude",
+      "apiEquivalentUsdIfStandalone": 13.44134175,
+      "sequentialSeconds": 1608.417,
+      "reviewVerdict": "PASS",
+      "correctReleaseDecision": false,
+      "materialDefectInstancesFound": 0,
+      "materialDefectInstancesPresent": 2
+    },
+    {
+      "implementer": "claude",
+      "reviewer": "codex",
+      "apiEquivalentUsdIfStandalone": 10.6370965,
+      "sequentialSeconds": 1483.46,
+      "reviewVerdict": "FAIL",
+      "correctReleaseDecision": true,
+      "materialDefectInstancesFound": 2,
+      "materialDefectInstancesPresent": 2
+    },
+    {
+      "implementer": "codex",
+      "reviewer": "claude",
+      "apiEquivalentUsdIfStandalone": 9.42660775,
+      "sequentialSeconds": 1908.477,
+      "reviewVerdict": "INCONCLUSIVE",
+      "correctReleaseDecision": true,
+      "materialDefectInstancesFound": 0,
+      "materialDefectInstancesPresent": 1
+    },
+    {
+      "implementer": "codex",
+      "reviewer": "codex",
+      "apiEquivalentUsdIfStandalone": 7.145998,
+      "sequentialSeconds": 1661.15,
+      "reviewVerdict": "FAIL",
+      "correctReleaseDecision": true,
+      "materialDefectInstancesFound": 1,
+      "materialDefectInstancesPresent": 1
+    }
+  ],
+  "observedTotals": {
+    "anthropicIncrementalCashUsd": 18.1649015,
+    "codexIncrementalCashUsd": 0,
+    "codexApiEquivalentUsd": 10.740316,
+    "combinedApiEquivalentUsd": 28.9052175,
+    "agentStageSeconds": 4590.552,
+    "endToEndSecondsApprox": 4708
+  },
+  "adjudication": {
+    "preferredImplementerForThisTask": "codex",
+    "preferredReviewerForThisTask": "codex",
+    "shipEitherCandidate": false,
+    "sampleSizeWarning": "One synthetic task; do not generalize to an overall model ranking."
+  },
+  "limitations": [
+    "No isolated PostgreSQL URL, so real persistence, reload, concurrent transactions, DDL idempotence, and backup/restore were inconclusive.",
+    "Claude Code emitted three tiny internal Haiku housekeeping calls totaling 74 output tokens and USD 0.007657; substantive work used Fable 5.1.",
+    "One aborted Codex call did not produce a usage record."
+  ],
+  "artifacts": {
+    "reportMarkdown": "docs/agent-evals/results/2026-09-15-CAP-EVAL-001.md",
+    "reportPdf": "docs/agent-evals/results/2026-09-15-CAP-EVAL-001.pdf",
+    "comparisonCsv": "docs/agent-evals/results/summary.csv",
+    "taskDefinition": "tools/agent-eval/tasks/CAP-EVAL-001.json",
+    "modelProfile": "tools/agent-eval/profiles/frontier-2026-09.json"
+  }
+}

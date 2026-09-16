@@ -1,7 +1,16 @@
 # FISCUS — 작업 가이드
 
 개인용 매크로 리서치 도구. 현재 메인: **자본주의 경제사 / 미국 유동성 / 세계 현황판**. 종목 발견·정치인·내부자 거래는 개발 보류 상태이며 코드와 수집 설정은 보존한다. 현재 안내는 README.md 및 docs/INDEX.md를 따른다.
-작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 피처 브랜치 푸시는 비공개 Preview만 만들어지니 평소엔 master 에서 바로 작업. 커밋·푸시는 사용자의 요청 범위에 따라 진행하며, 푸시의 자동 배포 영향을 확인한다.
+작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 단순 수정은 master에서 처리할 수 있지만, 저장·협업·DB·복구처럼 교차 검증이 필요한 변경은 `agent/<작업-ID>` 브랜치에서 구현하고 검증 통과 뒤 master에 반영한다. 커밋·푸시는 사용자의 요청 범위에 따라 진행하며, 푸시의 자동 배포 영향을 확인한다.
+
+## Claude 구현 → Codex 교차 검증
+
+- 유의미한 변경은 `tools/agent-eval/tasks/change-template.json`을 복사해 요구사항·완료 조건·검사 명령을 먼저 고정한다.
+- Claude Code는 별도 브랜치에서 구현과 필수 검사를 마친 뒤 커밋하고, push·배포·자체 승인 없이 멈춘다.
+- 독립 검증은 구현 대화와 분리된 Codex 세션이 커밋을 대상으로 수행한다.
+- 실행: `Set-Location tools\agent-eval` 후 `.\powershell\agent-eval.ps1 review --task tasks\<작업>.json --candidate HEAD --reviewer codex --config profiles\frontier-2026-09.json`
+- `FAIL`은 finding을 수정한 새 커밋으로 재검증한다. `INCONCLUSIVE`는 필요한 DB·브라우저 환경을 준비한 뒤 재검증한다. 저장·협업·복구 기능은 실제 통합 검증 없이 PASS로 취급하지 않는다.
+- 전체 절차와 모델 벤치마크 보존 규칙은 `docs/agent-evals/README.md`를 따른다.
 
 ## 스택
 React 18 + Vite + TS, wouter(#hash 라우트), @tanstack/react-query, shadcn/ui(@radix-ui),

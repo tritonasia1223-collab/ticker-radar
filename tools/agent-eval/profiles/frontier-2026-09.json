@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "profileId": "frontier-2026-09",
   "runtimeRoot": "./runtime",
   "providers": {
     "claude": {

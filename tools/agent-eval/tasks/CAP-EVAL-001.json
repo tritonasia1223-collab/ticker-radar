@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "CAP-EVAL-001",
+  "benchmarkProtocol": "frontier-cross-v1",
+  "taskRevision": 1,
+  "title": "Add a third independently persisted timeline note type",
+  "baseRef": "f1c8dd9cef9697d72665047cf463ae4b17b9dfae",
+  "requirement": "자본주의 경제사 타임라인 노드에 기존 노란 메모(ref)와 파란 첨삭 메모(refBlue)와 독립적인 세 번째 '보라색 해석 메모'를 추가한다. 사용자는 노드 도구에서 보라색 메모를 만들고 편집하고 삭제할 수 있어야 하며, 저장·새로고침·두 창 동시 편집 뒤에도 내용이 유지되어야 한다. 이번 변경은 실험 worktree 안에서만 구현하며 운영 DB나 배포 환경에는 접근하지 않는다.",
+  "acceptanceCriteria": [
+    "보라색 해석 메모가 기존 두 메모와 구분되는 도구·편집 UI·표시 스타일을 가지며, 메모 생성 시 페이지나 카드 스크롤 위치가 움직이지 않는다.",
+    "새 필드가 클라이언트 타입과 직렬화, REST 요청 검증, 서버 조회·생성·수정, Drizzle 스키마를 포함한 전체 저장 경로에 연결된다.",
+    "협업 diff·문서화·서버 검증·DB 반영 경로가 새 필드를 보존하며, 다른 창이 노란색이나 파란색 메모를 동시에 수정해도 보라색 메모를 덮어쓰지 않는다.",
+    "새 필드를 모르는 구버전 창이 전체 문서를 다시 저장해도 이미 저장된 보라색 메모가 암묵적인 null 또는 누락값으로 삭제되지 않는다.",
+    "메모 생성, 개별 필드 diff, 동시 편집 병합, 저장 후 재조회에 해당하는 자동화 테스트가 추가되고 통과한다.",
+    "기존 노란 메모와 파란 첨삭 메모의 동작 및 기존 테스트가 유지된다."
+  ],
+  "requiredChecks": [
+    "npm.cmd run check",
+    "npm.cmd test",
+    "npm.cmd run build"
+  ],
+  "requiresEvaluationDatabase": false,
+  "notes": "실제 운영 반영 목적이 아닌 교차 에이전트 평가용 합성 과제다. 기존 refBlue 구현을 참고할 수 있지만 UI만 추가하는 것으로 끝내지 말고 영속화와 협업 병합 경로를 끝까지 검증해야 한다. 공급자 내부 서브에이전트는 사용하지 않는다."
+}

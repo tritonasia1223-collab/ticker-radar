@@ -32,6 +32,9 @@ export async function runClaude({ prompt, role, workspace, outputDir, config, ti
   const tools = role === "reviewer"
     ? ["Read", "Glob", "Grep", "Bash"]
     : ["Read", "Write", "Edit", "Glob", "Grep", "Bash"];
+  const model = role === "reviewer" ? (config.reviewerModel ?? config.model) : config.model;
+  const effort = role === "reviewer" ? (config.reviewerEffort ?? config.effort) : config.effort;
+  const maxBudgetUsd = role === "reviewer" ? (config.reviewerMaxBudgetUsd ?? config.maxBudgetUsd) : config.maxBudgetUsd;
 
   try {
     const stream = query({
@@ -39,10 +42,10 @@ export async function runClaude({ prompt, role, workspace, outputDir, config, ti
       options: {
         abortController,
         cwd: workspace,
-        model: config.model,
-        effort: config.effort,
+        model,
+        effort,
         maxTurns: config.maxTurns,
-        maxBudgetUsd: config.maxBudgetUsd,
+        maxBudgetUsd,
         permissionMode: "dontAsk",
         tools,
         allowedTools: tools,
@@ -85,9 +88,9 @@ export async function runClaude({ prompt, role, workspace, outputDir, config, ti
     provider: "Anthropic",
     role,
     billing_mode: "api",
-    model_requested: config.model,
+    model_requested: model,
     models_used: Object.keys(result.modelUsage ?? {}),
-    effort_requested: config.effort,
+    effort_requested: effort,
     status: result.subtype,
     input_tokens: usage.input_tokens,
     cached_input_tokens: usage.cache_read_tokens,

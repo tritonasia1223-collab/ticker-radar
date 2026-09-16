@@ -10,6 +10,10 @@ export async function runCodex({ prompt, role, workspace, outputDir, config, tim
   const timeout = setTimeout(() => abortController.abort(), timeoutMs);
   const apiKey = process.env.OPENAI_API_KEY || undefined;
   const requestedMode = config.authMode ?? (apiKey ? "api" : "subscription");
+  const model = role === "reviewer" ? (config.reviewerModel ?? config.model) : config.model;
+  const reasoningEffort = role === "reviewer"
+    ? (config.reviewerReasoningEffort ?? config.reasoningEffort)
+    : config.reasoningEffort;
   if (requestedMode === "api" && !apiKey) throw new Error("Codex authMode is api but OPENAI_API_KEY is missing");
 
   const codex = new Codex({
@@ -19,6 +23,7 @@ export async function runCodex({ prompt, role, workspace, outputDir, config, tim
       DATABASE_URL: process.env.FISCUS_EVAL_DATABASE_URL ?? "",
     }, ["ANTHROPIC_API_KEY", "FISCUS_EVAL_DATABASE_URL", "OPENAI_API_KEY"]),
     config: {
+      approvals_reviewer: "auto_review",
       features: {
         multi_agent: false,
         multi_agent_v2: false,
@@ -26,11 +31,11 @@ export async function runCodex({ prompt, role, workspace, outputDir, config, tim
     },
   });
   const thread = codex.startThread({
-    model: config.model,
-    modelReasoningEffort: config.reasoningEffort,
+    model,
+    modelReasoningEffort: reasoningEffort,
     workingDirectory: workspace,
     sandboxMode: "workspace-write",
-    approvalPolicy: "never",
+    approvalPolicy: "on-request",
     networkAccessEnabled: false,
     webSearchMode: "disabled",
   });
@@ -49,9 +54,9 @@ export async function runCodex({ prompt, role, workspace, outputDir, config, tim
     provider: "OpenAI",
     role,
     billing_mode: requestedMode,
-    model_requested: config.model,
-    models_used: [config.model],
-    effort_requested: config.reasoningEffort,
+    model_requested: model,
+    models_used: [model],
+    effort_requested: reasoningEffort,
     status: "success",
     input_tokens: usage?.input_tokens ?? null,
     cached_input_tokens: usage?.cached_input_tokens ?? null,

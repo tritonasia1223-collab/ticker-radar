@@ -7,7 +7,7 @@ Claude와 Codex를 실제 코딩 에이전트 런타임으로 실행해 구현·
 - Antigravity의 Claude 확장 로그인과 기본 Codex 데스크톱 로그인을 변경하지 않습니다.
 - 비밀키는 `%LOCALAPPDATA%\FiscusAgentEval\credentials.clixml`에 Windows DPAPI로 암호화해 저장합니다.
 - Codex 구독 로그인은 `%LOCALAPPDATA%\FiscusAgentEval\codex-home`에 따로 저장합니다.
-- 각 구현·검증은 별도 Git worktree와 새 세션에서 실행됩니다.
+- 각 구현·검증은 프로젝트 내부의 무시된 `runtime/` 아래 별도 Git worktree와 새 세션에서 실행됩니다. Codex Desktop의 부모 작업 권한 경계 안에 두어 중첩 Codex가 실제로 파일을 수정할 수 있게 합니다.
 - 구현 결과를 커밋으로 고정한 다음 Claude와 Codex가 같은 커밋을 각각 검증합니다.
 - 공급자 내부 서브에이전트는 프롬프트와 런타임 설정에서 비활성화합니다.
 - push, Vercel 배포, 운영 DB 연결은 실험 범위에서 제외합니다.
@@ -46,19 +46,33 @@ OpenAI API 키를 나중에 추가할 때는 `setup-secrets.ps1`을 다시 실�
 
 ## 파이프라인 실행
 
+현재 최고 등급 비교에서는 구현자와 검증자 모두 Claude Fable 5.1/max 또는 GPT-6 Astra/ultra를 사용합니다. 역할별 모델 설정은 분리되어 있어 후속 비용 실험에서는 구현자만 낮추는 식으로 바꿀 수 있습니다. 실제 사용 모델과 effort는 각 `record.json`에 기록됩니다.
+
+재현 가능한 모델 비교에는 추적된 프로필을 명시합니다. 새 프론티어 모델이 나오면 `profiles/frontier-2026-09.json`을 복사하고 모델 ID·추론 강도·가격표만 바꿉니다.
+
 Claude 구현 후 두 모델 검증:
 
 ```powershell
-.\powershell\agent-eval.ps1 pipeline --task tasks\CAP-001.json --implementer claude
+.\powershell\agent-eval.ps1 pipeline --config profiles\frontier-2026-09.json --task tasks\CAP-EVAL-001.json --implementer claude
 ```
 
 Codex 구현 후 두 모델 검증:
 
 ```powershell
-.\powershell\agent-eval.ps1 pipeline --task tasks\CAP-002.json --implementer codex
+.\powershell\agent-eval.ps1 pipeline --config profiles\frontier-2026-09.json --task tasks\CAP-EVAL-001.json --implementer codex
 ```
 
-결과는 `%LOCALAPPDATA%\FiscusAgentEval\runs` 아래에 저장됩니다. 구현자의 결과는 검증 worktree에 복사되지 않으며, 검증 결과도 상대 검증자의 작업공간에 노출되지 않습니다.
+결과는 `tools\agent-eval\runtime\runs` 아래에 저장됩니다. 구현자의 결과는 검증 worktree에 복사되지 않으며, 검증 결과도 상대 검증자의 작업공간에 노출되지 않습니다. 구현자가 파일 변경을 하나도 만들지 못하면 검증 호출 전에 실패 처리해 비용 낭비를 막습니다.
+
+## 기존 Claude Code 변경을 Codex로 검증
+
+실제 작업은 Claude Code에서 별도 브랜치로 구현하고 커밋한 뒤, 같은 하네스가 그 커밋만 Codex에 전달하도록 합니다.
+
+```powershell
+.\powershell\agent-eval.ps1 review --task tasks\CHANGE-YYYYMMDD-001.json --candidate HEAD --reviewer codex --config profiles\frontier-2026-09.json
+```
+
+객관 검사가 먼저 실행되며 하나라도 실패하면 Codex 호출을 생략합니다. 통과하면 `runtime/reviews` 아래 격리 worktree에서 새 Codex 세션이 검증합니다. 결과는 `PASS`, `FAIL`, `INCONCLUSIVE` 중 하나이며 검증자가 추적 소스를 수정하면 `protocol_violation`으로 기록합니다. 자세한 운영 절차는 `docs/agent-evals/README.md`를 따릅니다.
 
 ## 측정값 해석
 

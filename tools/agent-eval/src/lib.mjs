@@ -146,3 +146,8 @@ export function normalizeTask(task) {
   if (!Array.isArray(task.requiredChecks)) throw new Error("Task requiredChecks must be an array");
   return task;
 }
+
+export function extractVerdict(text) {
+  const match = String(text ?? "").match(/^\s*VERDICT\s*:\s*(PASS|FAIL|INCONCLUSIVE)\b/im);
+  return match ? match[1].toUpperCase() : "UNKNOWN";
+}

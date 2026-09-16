@@ -4,16 +4,20 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { readdir, readFile } from "node:fs/promises";
 import { loadJson, normalizeTask, parseArgs, pathExists, runFile, writeJson, expandEnvironment } from "./lib.mjs";
-import { runPipeline, runSingle } from "./pipeline.mjs";
+import { reviewExistingCandidate, runPipeline, runSingle } from "./pipeline.mjs";
 
 const toolRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(toolRoot, "../..");
 
-async function loadConfig() {
+async function loadConfig(configArgument) {
   const localPath = path.join(toolRoot, "config.local.json");
   const examplePath = path.join(toolRoot, "config.example.json");
-  const config = await loadJson((await pathExists(localPath)) ? localPath : examplePath);
-  config.runtimeRoot = path.resolve(expandEnvironment(config.runtimeRoot));
+  const selectedPath = configArgument
+    ? path.resolve(configArgument)
+    : ((await pathExists(localPath)) ? localPath : examplePath);
+  const config = await loadJson(selectedPath);
+  config.runtimeRoot = path.resolve(toolRoot, expandEnvironment(config.runtimeRoot));
+  config.configFile = selectedPath;
   return config;
 }
 
@@ -68,7 +72,7 @@ async function summarize(config) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const command = args._[0] ?? "help";
-  const config = await loadConfig();
+  const config = await loadConfig(args.config);
   if (command === "doctor") return doctor(config);
   if (command === "summarize") return summarize(config);
   if (command === "pipeline") {
@@ -77,6 +81,24 @@ async function main() {
     const task = normalizeTask(await loadJson(taskFile));
     const result = await runPipeline({ repoRoot, task, implementer: args.implementer, config, taskFile });
     console.log(JSON.stringify({ runRoot: result.runRoot, manifest: result.manifest }, null, 2));
+    return;
+  }
+  if (command === "review") {
+    if (!args.task || !args.candidate) {
+      throw new Error("Usage: review --task <task.json> --candidate <commit|branch> [--reviewer codex|claude]");
+    }
+    const taskFile = path.resolve(args.task);
+    const task = normalizeTask(await loadJson(taskFile));
+    const result = await reviewExistingCandidate({
+      repoRoot,
+      task,
+      candidateRef: args.candidate,
+      reviewer: args.reviewer ?? "codex",
+      config,
+      taskFile,
+    });
+    console.log(JSON.stringify({ runRoot: result.runRoot, manifest: result.manifest }, null, 2));
+    if (result.manifest.status !== "passed") process.exitCode = 2;
     return;
   }
   if (command === "run") {
@@ -94,7 +116,7 @@ async function main() {
     });
     return;
   }
-  console.log(`FISCUS agent evaluation runner\n\nCommands:\n  doctor\n  pipeline --task <task.json> --implementer claude|codex\n  run --provider <name> --role <role> --prompt <file> --workspace <dir> --output <dir>\n  summarize`);
+  console.log(`FISCUS agent evaluation runner\n\nCommands:\n  doctor [--config <config.json>]\n  pipeline --task <task.json> --implementer claude|codex [--config <config.json>]\n  review --task <task.json> --candidate <commit|branch> [--reviewer codex|claude] [--config <config.json>]\n  run --provider <name> --role <role> --prompt <file> --workspace <dir> --output <dir> [--config <config.json>]\n  summarize [--config <config.json>]`);
 }
 
 main().catch((error) => {
