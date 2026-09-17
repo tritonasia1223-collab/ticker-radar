@@ -148,6 +148,7 @@ export function normalizeTask(task) {
 }
 
 export function extractVerdict(text) {
-  const match = String(text ?? "").match(/^\s*VERDICT\s*:\s*(PASS|FAIL|INCONCLUSIVE)\b/im);
+  // 줄 앞의 마크다운(**, ##, -, >)과 값 앞의 강조 기호를 허용한다 — 검증자가 **VERDICT: FAIL** 로 쓰는 경우가 있다.
+  const match = String(text ?? "").match(/^[\s*_#>\-]*VERDICT\s*:\s*[*_]*\s*(PASS|FAIL|INCONCLUSIVE)\b/im);
   return match ? match[1].toUpperCase() : "UNKNOWN";
 }

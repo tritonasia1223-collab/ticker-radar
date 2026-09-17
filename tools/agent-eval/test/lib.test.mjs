@@ -54,4 +54,7 @@ test("review verdict is extracted from the reviewer protocol", () => {
   assert.equal(extractVerdict("검증 완료\n\nVERDICT: FAIL\n"), "FAIL");
   assert.equal(extractVerdict("VERDICT: INCONCLUSIVE"), "INCONCLUSIVE");
   assert.equal(extractVerdict("검증 결과를 작성했습니다."), "UNKNOWN");
+  assert.equal(extractVerdict("**VERDICT: FAIL**\n\n필수 명령은 모두 통과했지만"), "FAIL");
+  assert.equal(extractVerdict("## VERDICT: PASS"), "PASS");
+  assert.equal(extractVerdict("- VERDICT: **INCONCLUSIVE**"), "INCONCLUSIVE");
 });

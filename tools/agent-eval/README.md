@@ -74,6 +74,14 @@ Codex 구현 후 두 모델 검증:
 
 객관 검사가 먼저 실행되며 하나라도 실패하면 Codex 호출을 생략합니다. 통과하면 `runtime/reviews` 아래 격리 worktree에서 새 Codex 세션이 검증합니다. 결과는 `PASS`, `FAIL`, `INCONCLUSIVE` 중 하나이며 검증자가 추적 소스를 수정하면 `protocol_violation`으로 기록합니다. 자세한 운영 절차는 `docs/agent-evals/README.md`를 따릅니다.
 
+## 모델 용량 초과 시 폴백
+
+`review` 명령은 Codex 기본 모델이 용량 초과·과부하·속도 제한 오류("Selected model is at capacity" 등)를 내면 프로필의 `providers.codex.fallbackModels` 순서대로 하위 모델을 시도합니다. 항목은 모델 ID 문자열이거나 `{ "model", "reasoningEffort"?, "apiPricingPerMillion"? }` 이며 생략한 값은 기본 모델의 것을 물려받습니다. 시도 사이에는 `fallbackRetryDelayMs`(기본 15초) 만큼 쉽니다. 검증자 전용 목록은 `reviewerFallbackModels` 로 따로 둘 수 있습니다. 용량 오류가 아닌 실패(인증·네트워크·시간 초과)는 폴백하지 않고 그대로 실패합니다.
+
+실제 수행 모델은 `record.json` 의 `model_used`·`effort_used`·`model_fallback`(실패한 시도 목록)과 `manifest.json` 의 `model_used`·`model_fallback` 에 남고, 폴백 중에는 결과 폴더에 `fallback.json` 이 먼저 기록됩니다. 폴백 항목에 가격표가 없으면 API 환산 비용은 기본 모델 가격표로 계산되며 `measurement_notes` 에 그 사실을 적습니다.
+
+벤치마크(`pipeline`, `run`)는 모델 고정이 목적이므로 폴백하지 않습니다. 용량 초과면 실패로 남기고 나중에 같은 프로필로 다시 실행합니다.
+
 ## 측정값 해석
 
 - Claude `modelUsage`: 전체 에이전트 호출 트리의 토큰 측정값입니다.

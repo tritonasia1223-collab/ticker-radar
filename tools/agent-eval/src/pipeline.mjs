@@ -31,7 +31,9 @@ async function buildExecutionMetadata(repoRoot, config) {
   };
 }
 
-async function executeProvider({ provider, role, prompt, workspace, outputDir, config, timeoutMs }) {
+// allowFallback: 용량 초과 시 프로필의 fallbackModels 로 넘어갈지. 벤치마크(pipeline·run)는 모델 고정이 목적이라 false,
+// 변경 검증(review)만 true.
+async function executeProvider({ provider, role, prompt, workspace, outputDir, config, timeoutMs, allowFallback = false }) {
   const runner = providers[provider];
   if (!runner) throw new Error(`Unknown provider: ${provider}`);
   const before = await captureGitState(workspace);
@@ -45,6 +47,7 @@ async function executeProvider({ provider, role, prompt, workspace, outputDir, c
       outputDir,
       config: config.providers[provider],
       timeoutMs,
+      allowFallback,
     });
   } catch (error) {
     await writeJson(path.join(outputDir, "error.json"), {
@@ -258,6 +261,7 @@ export async function reviewExistingCandidate({ repoRoot, task, candidateRef, re
     outputDir: reviewOutput,
     config,
     timeoutMs,
+    allowFallback: true,
   });
   const verdict = extractVerdict(reviewResult.finalText);
   const protocolViolation = reviewResult.record.protocol_source_changed === true;
@@ -268,6 +272,8 @@ export async function reviewExistingCandidate({ repoRoot, task, candidateRef, re
     UNKNOWN: "review_complete_unknown_verdict",
   };
   manifest.verdict = verdict;
+  manifest.model_used = reviewResult.record.model_used ?? reviewResult.record.models_used?.[0] ?? null;
+  manifest.model_fallback = reviewResult.record.model_fallback ?? null;
   manifest.status = protocolViolation ? "protocol_violation" : statusByVerdict[verdict];
   manifest.protocol_source_changed = protocolViolation;
   manifest.api_equivalent_cost_usd_total = reviewResult.record.api_equivalent_cost_usd;

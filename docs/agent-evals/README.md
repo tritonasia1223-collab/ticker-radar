@@ -64,6 +64,8 @@ Set-Location tools\agent-eval
 
 러너는 먼저 타입 검사·테스트·빌드를 실행합니다. 하나라도 실패하거나 검사가 저장소 상태를 바꾸면 Codex를 호출하지 않아 비용과 오염을 막습니다. 모두 통과하면 후보 커밋을 별도 worktree에 체크아웃하고 새 Codex 세션으로 검증합니다.
 
+Codex 기본 모델이 용량 초과("Selected model is at capacity")면 프로필의 `fallbackModels` 순서(현재 GPT-5.6-Sol → GPT-5.6-Terra, ultra)로 하위 모델이 이어서 검증합니다. 폴백으로 나온 판정은 `manifest.json` 의 `model_used`·`model_fallback` 에 표시되므로 보고서에 그 모델을 적습니다. 벤치마크(`pipeline`)는 모델 고정이 목적이라 폴백하지 않습니다.
+
 ### 판정 규칙
 
 - `PASS`: 객관 검사와 완료 조건이 증거로 확인됨. 사람이 결과를 읽은 뒤 master 반영 가능

@@ -17,6 +17,11 @@
       "reasoningEffort": "ultra",
       "reviewerModel": "gpt-6-astra",
       "reviewerReasoningEffort": "ultra",
+      "fallbackModels": [
+        { "model": "gpt-5.6-sol", "reasoningEffort": "ultra" },
+        { "model": "gpt-5.6-terra", "reasoningEffort": "ultra" }
+      ],
+      "fallbackRetryDelayMs": 15000,
       "authMode": "subscription",
       "apiPricingPerMillion": {
         "input": 10,
