@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   atOrBefore, nearest, changeFrom, yoyMonthly, yoyWeekly, taxDatesWithin, stockChangeBetween, latestCommon, roundAdditive,
   liquidityBand, netLiquidity, maturityOf, auctionAmount, aggregateAuctions, sankeyData,
-  spreadBand, loansBand, nfciBand, MATURITIES, BIDDERS, type AuctionRow, type BandWeek, type Obs,
+  spreadBand, spreadBp, loansBand, nfciBand, MATURITIES, BIDDERS, type AuctionRow, type BandWeek, type Obs,
 } from "../shared/liquidity-beta";
 import { auctionWindow } from "../server/liquidity-beta";
 
@@ -202,6 +202,14 @@ describe("유동성 베타 — 맥락 판정", () => {
     expect(spreadBand(3)).toBe("평상시"); expect(spreadBand(12)).toBe("경계"); expect(spreadBand(30)).toBe("위기");
     expect(spreadBand(NaN)).toBe("자료 부족");
   });
+  it("bp 는 출처 정밀도(0.01%p)로 정규화해 표시와 판정이 같은 값을 쓴다", () => {
+    expect((4.35 - 4.25) * 100).not.toBe(10); // 부동소수: 9.999…
+    expect(spreadBp(4.35, 4.25)).toBe(10); expect(spreadBand(spreadBp(4.35, 4.25))).toBe("경계");
+    expect(spreadBp(4.10, 3.85)).toBe(25); expect(spreadBand(spreadBp(4.10, 3.85))).toBe("위기");
+    expect(spreadBp(3.64, 3.65)).toBe(-1);
+    expect(Number.isNaN(spreadBp(NaN, 3.9))).toBe(true);
+  });
+
   it("긴급대출은 기존 /fed 위기감지기 임계($500억/$2,000억)와 같다", () => {
     expect(loansBand(4_000)).toBe("평상시"); expect(loansBand(50_000)).toBe("경계"); expect(loansBand(200_000)).toBe("위기");
   });

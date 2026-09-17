@@ -208,6 +208,9 @@ const band = (v: number, caution: number, alert: number): Band =>
 // SOFR − IORB (bp). 준비금이 '충분'에서 '빠듯'으로 넘어가면 제일 먼저 벌어진다. 임계는 반증 테스트 전 초기 상수.
 export const SPREAD_CAUTION_BP = 10, SPREAD_ALERT_BP = 25;
 export const spreadBand = (bp: number) => band(bp, SPREAD_CAUTION_BP, SPREAD_ALERT_BP);
+// %p 차이 → bp. 출처 정밀도가 0.01%p 라 정수 bp 로 정규화한다 — (4.35−4.25)×100 은 9.999… 라서
+// 표시("+10bp")와 판정(<10 → 평상시)이 갈린다(Codex 2차 F1). 표시와 판정 모두 이 값을 쓴다.
+export const spreadBp = (sofr: number, iorb: number) => Math.round((sofr - iorb) * 100);
 // 연준 긴급대출(할인창구+BTFP+레포+스왑, musd). 기존 /fed 위기감지기와 같은 임계.
 export const LOANS_CAUTION = 50_000, LOANS_ALERT = 200_000;
 export const loansBand = (musd: number) => band(musd, LOANS_CAUTION, LOANS_ALERT);

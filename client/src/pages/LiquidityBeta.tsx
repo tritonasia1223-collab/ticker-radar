@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { restoreMissingNumbers, weeksBefore } from "@shared/time-series";
 import {
   liquidityBand, netLiquidity, yoyMonthly, yoyWeekly, changeFrom, stockChangeBetween, latestCommon, roundAdditive,
-  spreadBand, loansBand, nfciBand,
+  spreadBand, spreadBp, loansBand, nfciBand,
   type LiquidityContext, type LiquidityAuctions, type Obs, type Band, type Maturity, type Bidder, type LiquidityBand,
 } from "@shared/liquidity-beta";
 import { Card } from "@/components/ui/card";
@@ -155,6 +155,7 @@ export default function LiquidityBeta() {
   const band = sel && prev ? liquidityBand(prev, sel) : null;
   const ctx = context.data?.series ?? {};
   const ctxErr = context.data?.errors ?? {};
+  const ctxFailed = context.isError; // 요청 자체 실패(HTTP 5xx 등) — 부분 실패(errors)와 별개로 안내·재시도(Codex 2차 F2)
 
   // 얼마나: M2 전년비(월간, 선택 주 이하 최신 달)
   const m2Yoy = sel ? yoyMonthly(ctx.m2 ?? [], sel.date) : null;
@@ -191,7 +192,7 @@ export default function LiquidityBeta() {
   // SOFR 는 익일 발표, IORB 는 당일 — 최신 '공통' 관측일에서만 차감한다(Codex F2: 9/15 SOFR − 9/17 IORB 가 −26bp 로 보였음).
   const pair = latestCommon(ctx.sofr ?? [], ctx.iorb ?? []);
   const sofr = pair?.a ?? null;
-  const spreadBp = pair ? (pair.a.value - pair.b.value) * 100 : NaN;
+  const spreadValue = pair ? spreadBp(pair.a.value, pair.b.value) : NaN;
   const loansLatest = weeks.length ? weeks[weeks.length - 1] : null;
   const hy = latest(ctx.hy), nfci = latest(ctx.nfci), dfii = latest(ctx.dfii10), unrate = latest(ctx.unrate);
   const dxy3m = ctx.dtwexbgs ? changeFrom(ctx.dtwexbgs, latest(ctx.dtwexbgs)!.date, 91, 5) : null;
@@ -257,7 +258,7 @@ export default function LiquidityBeta() {
               <div className="border-t border-border pt-2 flex items-baseline gap-2">
                 <Note>M2 전년비</Note>
                 <span className="text-[14px] font-semibold tabular-nums">{m2Yoy ? fmtPct(m2Yoy.pct) : "—"}</span>
-                <Note>{m2Yoy ? `월간 · ${m2Yoy.to.date.slice(0, 7)}` : ctxErr.m2 ? "자료 부족" : "…"}</Note>
+                <Note>{m2Yoy ? `월간 · ${m2Yoy.to.date.slice(0, 7)}` : ctxErr.m2 || ctxFailed ? "자료 부족" : "…"}</Note>
               </div>
             </div>
             <div className="hidden xl:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
@@ -272,7 +273,7 @@ export default function LiquidityBeta() {
               <div><div className="text-[13px] font-bold">어디로</div><Note>같은 기간, 돈이 앉은 곳 — 잔액 변화</Note></div>
               <ReservoirBars rows={[
                 { label: "지급준비금", value: reservesDisp, sub: `${fmtDate(band.from)}→${fmtDate(band.to)} · 항등식`, strong: true },
-                { label: "은행 예금", value: depChg ? depChg.delta : NaN, sub: depChg ? `${fmtDate(depChg.from.date)}→${fmtDate(depChg.to.date)} · H.8 주간` : ctxErr.deposits ? "자료 부족" : "H.8 주간 · 구간 관측 없음" },
+                { label: "은행 예금", value: depChg ? depChg.delta : NaN, sub: depChg ? `${fmtDate(depChg.from.date)}→${fmtDate(depChg.to.date)} · H.8 주간` : ctxErr.deposits || ctxFailed ? "자료 부족" : "H.8 주간 · 구간 관측 없음" },
                 { label: "단기채 잔액", value: billsChg ? billsChg.delta : NaN, sub: billsChg ? `${billsChg.from.date.slice(0, 7)}→${billsChg.to.date.slice(0, 7)} · MSPD 월간` : "MSPD 월간 · 구간 내 관측 없음" },
                 { label: "MMF 잔고", value: NaN, sub: "", placeholder: true },
               ]} />
@@ -306,7 +307,7 @@ export default function LiquidityBeta() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        {ctxErr.m2 && <Note>M2 자료를 불러오지 못했습니다({ctxErr.m2}). <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Note>}
+        {(ctxErr.m2 || ctxFailed) && <Note>M2 자료를 불러오지 못했습니다{ctxErr.m2 ? `(${ctxErr.m2})` : ""}. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Note>}
       </Card>
 
       {/* ── 깊이: 연준 T계정 | 재무부 생키 ── */}
@@ -395,7 +396,7 @@ export default function LiquidityBeta() {
           <span className="w-px h-3.5 bg-border" />
           <span className="font-semibold text-muted-foreground">경고</span>
           {([
-            ["SOFR−IORB", Number.isFinite(spreadBp) ? `${spreadBp >= 0 ? "+" : "−"}${Math.abs(spreadBp).toFixed(0)}bp` : "자료 부족", sofr?.date, spreadBand(spreadBp)],
+            ["SOFR−IORB", Number.isFinite(spreadValue) ? `${spreadValue >= 0 ? "+" : "−"}${Math.abs(spreadValue)}bp` : "자료 부족", sofr?.date, spreadBand(spreadValue)],
             ["긴급대출", loansLatest && Number.isFinite(loansLatest.loans) ? asMoney(loansLatest.loans) : "자료 부족", loansLatest?.date, loansBand(loansLatest?.loans ?? NaN)],
             ["HY 스프레드", hy ? `${hy.value.toFixed(2)}%p` : "자료 부족", hy?.date, null],
             ["NFCI", nfci ? fmtNum(nfci.value, 2) : "자료 부족", nfci?.date, nfciBand(nfci?.value ?? NaN)],
@@ -414,7 +415,7 @@ export default function LiquidityBeta() {
           <span className="flex items-center gap-1.5"><span className="text-muted-foreground">산업생산 전년비</span><b className="tabular-nums">{indproYoy ? fmtPct(indproYoy.pct) : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(indproYoy?.to.date)}</span></span>
           <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실업률</span><b className="tabular-nums">{unrate ? `${unrate.value.toFixed(1)}%` : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(unrate?.date)}</span></span>
           <span className="flex items-center gap-1.5"><span className="text-muted-foreground">근원 PCE 전년비</span><b className="tabular-nums">{pceYoy ? fmtPct(pceYoy.pct) : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(pceYoy?.to.date)}</span></span>
-          {Object.keys(ctxErr).length > 0 && <span className="ml-auto text-amber-700">일부 지표 조회 실패({Object.keys(ctxErr).join(", ")}) <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></span>}
+          {(ctxFailed || Object.keys(ctxErr).length > 0) && <span className="ml-auto text-amber-700" role="alert">{ctxFailed ? "맥락 지표 요청 실패" : `일부 지표 조회 실패(${Object.keys(ctxErr).join(", ")})`} <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></span>}
         </div>
       </Card>
     </div>
