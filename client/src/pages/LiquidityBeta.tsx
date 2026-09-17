@@ -1,4 +1,4 @@
-// 미국 유동성(베타) — 얼마나 → 어디서 → 어디로를 한 흐름으로.
+// 미국 유동성 A안(베타) — 얼마나 → 어디서 → 어디로를 한 흐름으로.
 //   띠: 순유동성(얼마나) → H.4.1 항등식 워터폴(어디서) → 같은 기간 저수지 변화(어디로). 세 열이 한 숫자로 이어진다.
 //   깊이: 5년 전년비 차트 · 연준 T계정(기존 컴포넌트 순수 재사용) · 재무부 만기별 발행→인수자 생키 + 생애주기 표.
 //   맥락: 맨 아래 얇은 띠 — 숫자와 점만, 판정·차트 없음.
@@ -232,7 +232,7 @@ export default function LiquidityBeta() {
     <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
       {/* 헤더 — 주 선택 + 비교 기간 */}
       <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap">
-        <h1 className="text-base font-bold shrink-0">미국 유동성 <span className="text-[11px] font-semibold text-amber-700 align-middle">베타</span></h1>
+        <h1 className="text-base font-bold shrink-0">미국 유동성 <span className="text-[11px] font-semibold text-amber-700 align-middle">A안</span></h1>
         <span className="text-[11px] text-muted-foreground">얼마나 → 어디서 → 어디로 · H.4.1 주간 · 기존 페이지는 그대로</span>
         <span className="ml-auto flex items-center gap-1.5">
           <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" className="px-1 text-[13px] text-foreground/70 hover:text-foreground disabled:opacity-25">◀</button>

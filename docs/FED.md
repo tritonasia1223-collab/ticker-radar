@@ -48,9 +48,9 @@ DTS 상환에 포함된 바이백은 한 번만 분리합니다. 발행·상환�
 
 `shared/treasury-transactions.ts`에 부호별 분해와 워터폴 계산이 있으며, `tests/treasury-transactions.test.ts`에서 음수·0·결측, 바이백 중복 차감, 결제월, 만기도래 주간 경계, 실패 후 재조회 등을 검증합니다.
 
-## 미국 유동성(베타) — /#/liquidity
+## 미국 유동성 A안 — /#/liquidity (내비 이름 "미국 유동성 A안", 코드·문서에서는 "베타"로도 부름)
 
-기존 /#/fed 는 그대로 두고, 내비 "미국 유동성" 아래 "미국 유동성(베타)"로 추가한 새 페이지입니다. 연준 대차대조표 중심에서 "미국 전반의 유동성"으로 무게중심을 옮기되, 얼마나 → 어디서 → 어디로 세 질문을 한 흐름으로 잇습니다.
+기존 /#/fed 는 그대로 두고, 내비 "미국 유동성" 아래 "미국 유동성 A안"으로 추가한 새 페이지입니다. 연준 대차대조표 중심에서 "미국 전반의 유동성"으로 무게중심을 옮기되, 얼마나 → 어디서 → 어디로 세 질문을 한 흐름으로 잇습니다.
 
 | 파일 | 책임 |
 |---|---|
@@ -68,9 +68,9 @@ API 는 GET /api/liquidity/context (M2SL·DPSACBW027SBOG·SOFR·IORB·NFCI·BAML
 
 알려진 한계: MMF 저수지는 출처 미정이라 자리만 있음 · 맥락 띠의 SOFR−IORB 임계(+10/+25bp)는 반증 테스트 전 초기 상수 · 라이브 조회 캐시는 인스턴스 메모리라 서버리스 콜드스타트마다 재조회. 정식 승격 시 새 시리즈는 server/fed.ts 레지스트리와 fed-backfill 로 이관합니다.
 
-## 미국 유동성(읽기) — /#/liquidity-read
+## 미국 유동성 B안 — /#/liquidity-read (내비 이름 "미국 유동성 B안", 코드에서는 "읽기 페이지")
 
-베타(/#/liquidity)와 나란히 두는 문장 중심 페이지. 명세는 [liquidity-read-spec.md](liquidity-read-spec.md), 목표 화면은 [mockup-reference.html](mockup-reference.html). 문장이 먼저, 그림은 증거 — 요약 다섯 문장 → 01 얼마나 / 02 어디서 / 03 어디로 / 04 누가 샀나 / 05 탈은 없나 → 배경 띠.
+A안(/#/liquidity)과 나란히 두는 문장 중심 페이지. 명세는 [liquidity-read-spec.md](liquidity-read-spec.md), 목표 화면은 [mockup-reference.html](mockup-reference.html). 문장이 먼저, 그림은 증거 — 요약 다섯 문장 → 01 얼마나 / 02 어디서 / 03 어디로 / 04 누가 샀나 / 05 탈은 없나 → 배경 띠.
 
 | 파일 | 책임 |
 |---|---|

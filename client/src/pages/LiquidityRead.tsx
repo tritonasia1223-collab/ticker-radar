@@ -1,4 +1,4 @@
-// 미국 유동성(읽기) — 천천히 읽는 페이지. 명세: docs/liquidity-read-spec.md · 목업: docs/mockup-reference.html
+// 미국 유동성 B안(읽기) — 천천히 읽는 페이지. 명세: docs/liquidity-read-spec.md · 목업: docs/mockup-reference.html
 //   문장이 먼저, 그림은 증거. 모든 문장은 shared/liquidity-sentences 의 순수 함수가 만들고 이 파일은 그 출력만 그린다.
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
@@ -282,7 +282,7 @@ export default function LiquidityRead() {
         {/* 머리 */}
         <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-5" style={{ paddingBottom: 28 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.08em", color: C.cap }}>미국 유동성 · 주간</div>
+            <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.08em", color: C.cap }}>미국 유동성 B안 · 주간</div>
             <h1 style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 700, lineHeight: 1.3, margin: 0 }}>{fmt.weekTitle(selW.date)}</h1>
             <Cap>{fmt.dateKo(selW.date)} 기준 · 연준 H.4.1 · 매주 목요일 갱신</Cap>
           </div>
