@@ -11,6 +11,7 @@ export const fmt = {
   amount: (musd: number) => (Math.abs(musd) >= 1e6 ? `${fmt.jo(musd)}조` : `${fmt.eok(musd)}억`),     // 7.6조 · 5,264억
   signedEok: (musd: number) => { const e = fmt.eok(musd); return e === "0" ? "0억" : `${musd < 0 ? "−" : "+"}${e}억`; }, // +1,157억 · 0 은 부호 없음
   signedAmount: (musd: number) => `${musd < 0 ? "−" : "+"}${fmt.amount(musd)}`,
+  isZeroEok: (musd: number) => Math.round(Math.abs(musd) / 100) === 0,                              // 표시(eok)와 같은 절댓값 반올림으로 '0억' 판정
   pct: (v: number, digits = 1) => `${v < 0 ? "−" : "+"}${Math.abs(v).toFixed(digits)}%`,             // +1.9%
   pctPlain: (v: number, digits = 1) => `${Math.abs(v).toFixed(digits)}%`,
   dateKo: (iso: string) => `${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일`,             // 9월 9일
@@ -41,7 +42,7 @@ export type Tone = "release" | "absorb";
 export interface Part { text: string; tone?: Tone; strong?: boolean }
 export const plain = (parts: Part[]) => parts.map((p) => p.text).join("");
 const toneOf = (v: number): Tone | undefined => (v > 0 ? "release" : v < 0 ? "absorb" : undefined); // 0 은 방출도 흡수도 아니다
-const isZero = (musd: number) => Math.round(musd / 100) === 0; // 억 단위로 0
+const isZero = fmt.isZeroEok; // 억 단위로 0 — 표시와 분기가 같은 반올림을 쓴다(Codex 3차 F3)
 
 // ── 01 얼마나 ──
 export function s1(h: HowMuch): { headline: Part[]; summary: Part[]; band: string; m2note: string } {
@@ -129,10 +130,22 @@ export function s2(f: WhereFrom, N: CmpWeeks, flat = false): { headline: Part[];
       summary = b ? `${josa(a.subject, "과와")} ${josa(b.subject, "이가")} 함께 움직여 한 요인으로 설명되지 않습니다.` : `${josa(a.subject, "이가")} 움직였지만 뚜렷한 주도 요인은 없습니다.`;
     }
   }
-  if (flat) {
+  // 0 과 평탄은 따로 판정한다(Codex 3차 F2): '서로 상쇄'는 실제 반대 방향 기여가 있을 때만.
+  const bLive = !!b && !isZero(b.effect);
+  if (isZero(a.effect)) {
+    verdictTitle = "변화 없음";
+    verdictBody = `${N}주간 재무부·역레포·연준 모두 억 단위로 뚜렷한 변화가 없습니다.`;
+    summary = "이번 기간엔 뚜렷한 변화가 없습니다.";
+  } else if (flat && bLive && Math.sign(b!.effect) !== Math.sign(a.effect)) {
     verdictTitle = "서로 상쇄";
-    verdictBody = `${a.subject} ${fmt.signedEok(a.effect)}${b ? `, ${b.subject} ${fmt.signedEok(b.effect)}` : ""}이 서로 상쇄돼 ${N}주간 순변화가 거의 없습니다.`;
+    verdictBody = `${a.subject} ${fmt.signedEok(a.effect)}, ${b!.subject} ${fmt.signedEok(b!.effect)}이 서로 상쇄돼 ${N}주간 순변화가 거의 없습니다.`;
     summary = "요인들이 서로 상쇄돼 큰 변화가 없습니다.";
+  } else if (flat) {
+    verdictTitle = "변화가 작음";
+    verdictBody = bLive
+      ? `${a.subject} ${fmt.signedEok(a.effect)}, ${b!.subject} ${fmt.signedEok(b!.effect)}이 같은 방향으로 움직였지만 ${N}주간 순변화는 ${fmt.eok(f.dNl)}억 달러로 작습니다.`
+      : `${a.subject} ${fmt.signedEok(a.effect)}만 움직였고 ${N}주간 순변화는 ${fmt.eok(f.dNl)}억 달러로 작습니다.`;
+    summary = `${josa(a.subject, "이가")} 조금 움직였을 뿐 큰 변화는 없습니다.`;
   }
   return { headline, summary: [{ text: summary }], verdictTitle, verdictBody };
 }
@@ -141,13 +154,13 @@ export function s2(f: WhereFrom, N: CmpWeeks, flat = false): { headline: Part[];
 export function s3(t: WhereTo): { headline: Part[]; summary: Part[] } {
   const up = t.dNl >= 0, resUp = t.dReserves >= 0;
   // 'X 중 Y' 꼴은 Y ≤ X 일 때만 자연스럽다 — 지급준비금 몫이 순변화를 넘으면(현금통화·기타가 반대로 움직인 경우) 두 항목을 나눠 쓴다.
-  if (Number.isFinite(t.resShare) && t.resShare >= 0.7 && t.resShare <= 1) {
+  if (!isZero(t.dNl) && Number.isFinite(t.resShare) && t.resShare >= 0.7 && t.resShare <= 1) {
     return {
       headline: [{ text: `${up ? "늘어난" : "줄어든"} ${fmt.eok(t.dNl)}억 달러 중 ` }, { text: `${fmt.eok(t.dReserves)}억`, tone: toneOf(t.dReserves) }, { text: `이 은행 지급준비금${resUp ? "으로 들어갔습니다" : "에서 빠졌습니다"}.` }],
       summary: [{ text: `${up ? "늘어난" : "줄어든"} 돈은 대부분 은행 지급준비금${resUp ? "으로 들어갔습니다" : "에서 빠졌습니다"}.` }],
     };
   }
-  const text = `지급준비금은 ${fmt.eok(t.dReserves)}억 ${resUp ? "늘고" : "줄고"}, 현금통화·기타는 ${fmt.eok(t.dOther)}억 ${t.dOther >= 0 ? "늘었습니다" : "줄었습니다"}.`;
+  const text = `지급준비금은 ${isZero(t.dReserves) ? "변화가 없고" : `${fmt.eok(t.dReserves)}억 ${resUp ? "늘고" : "줄고"}`}, 현금통화·기타는 ${isZero(t.dOther) ? "변화가 없습니다" : `${fmt.eok(t.dOther)}억 ${t.dOther >= 0 ? "늘었습니다" : "줄었습니다"}`}.`;
   return { headline: [{ text }], summary: [{ text }] };
 }
 

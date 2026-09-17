@@ -171,6 +171,32 @@ describe("읽기 페이지 — 다른 국면", () => {
     expect(fmt.signedEok(0)).toBe("0억"); expect(fmt.signedEok(30)).toBe("0억"); expect(fmt.signedEok(-30)).toBe("0억");
     expect(plain(s2(from, 4, true).headline)).toBe("이번 기간엔 재무부·역레포·연준 모두 뚜렷한 변화가 없습니다.");
     expect(s2(from, 4, true).headline.every((p) => !p.tone)).toBe(true);
+    expect(s2(from, 4, true).verdictTitle).toBe("변화 없음"); expect(plain(s2(from, 4, true).summary)).toBe("이번 기간엔 뚜렷한 변화가 없습니다.");
+    expect(plain(s3(pair({}, {}).to).headline)).toBe("지급준비금은 변화가 없고, 현금통화·기타는 변화가 없습니다.");
+  });
+
+  it("평탄하지만 한 방향뿐이면 '서로 상쇄'가 아니라 '변화가 작음'", () => {
+    const { from, how } = pair({}, { tga: 810_000 }); // TGA 만 +100억(흡수), 순변화 −0.18%
+    expect(how.flat).toBe(true); expect(from.verdict).toBe("oneoff");
+    const r = s2(from, 4, how.flat);
+    expect(plain(r.headline)).toBe("재무부가 TGA에서 100억 달러를 흡수했습니다.");
+    expect(r.verdictTitle).toBe("변화가 작음");
+    expect(r.verdictBody).toBe("재무부 −100억만 움직였고 4주간 순변화는 100억 달러로 작습니다.");
+    expect(plain(r.summary)).toBe("재무부가 조금 움직였을 뿐 큰 변화는 없습니다.");
+    const same = pair({}, { tga: 810_000, rrp: 355_000 }); // 재무부 −100억, MMF −50억 같은 방향
+    expect(s2(same.from, 4, same.how.flat).verdictTitle).toBe("변화가 작음");
+    expect(s2(same.from, 4, same.how.flat).verdictBody).toBe("재무부 −100억, MMF −50억이 같은 방향으로 움직였지만 4주간 순변화는 150억 달러로 작습니다.");
+  });
+
+  it("반올림 경계(±50 million)에서 막대·행 설명·결론이 같은 0 기준을 쓴다", () => {
+    expect(fmt.isZeroEok(49)).toBe(true); expect(fmt.isZeroEok(-49)).toBe(true); expect(fmt.isZeroEok(50)).toBe(false); expect(fmt.isZeroEok(-50)).toBe(false);
+    const { from, how } = pair({}, { tga: 800_050 }); // TGA +50 million → 표시 −1억
+    expect(fmt.signedEok(from.contributions[0].effect)).toBe("−1억");
+    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA 잔고 증가 = 흡수. 쓴 돈보다 거둔 돈(세금·국채)이 많았음");
+    expect(plain(s2(from, 4, how.flat).headline)).toBe("재무부가 TGA에서 1억 달러를 흡수했습니다.");
+    const tiny = pair({}, { tga: 800_040 }); // +40 million → 0억
+    expect(fmt.signedEok(tiny.from.contributions[0].effect)).toBe("0억");
+    expect(plain(s2(tiny.from, 4, tiny.how.flat).headline)).toBe("이번 기간엔 재무부·역레포·연준 모두 뚜렷한 변화가 없습니다.");
   });
 
   it("혼합 국면에서 첫 요인이 연준이면 '연준과 재무부가'", () => {

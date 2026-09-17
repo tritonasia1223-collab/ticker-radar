@@ -27,6 +27,7 @@ const SANS = "'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-s
 const FONT_HREF = "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@500;700&display=swap";
 const tone = (t?: Part["tone"]) => (t === "release" ? C.release : t === "absorb" ? C.absorb : undefined);
 const dollars = (musd: number) => `$${fmt.amount(musd)}`;
+const signedDollars = (musd: number) => `${musd < 0 && !fmt.isZeroEok(musd) ? "−" : ""}${dollars(musd)}`; // 부호 보존(추정치가 음수일 수 있는 칸)
 
 // ── 공통 조각 ──
 function Parts({ parts, strongTone = false }: { parts: Part[]; strongTone?: boolean }) {
@@ -70,7 +71,7 @@ function ContribBars({ rows, N }: { rows: { name: string; desc: string; value: n
     <div style={{ display: "flex", flexDirection: "column" }}>
       <Cap style={{ paddingBottom: 10 }}>유동성에 준 영향 · {N}주 · <span style={{ color: C.release }}>초록 = 방출(시중에 풀림)</span> · <span style={{ color: C.absorb }}>빨강 = 흡수(시중에서 빠짐)</span></Cap>
       {rows.map((r) => {
-        const w = (Math.abs(r.value) / span) * 100, color = r.total ? C.ink : r.value > 0 ? C.release : r.value < 0 ? C.absorb : C.n3; // 0 은 중립
+        const w = (Math.abs(r.value) / span) * 100, color = r.total ? C.ink : fmt.isZeroEok(r.value) ? C.n3 : r.value > 0 ? C.release : C.absorb; // '0억'으로 표시되는 값은 중립
         return (
           <div key={r.name} className="grid grid-cols-[1fr_auto] md:grid-cols-[220px_minmax(0,1fr)_96px] gap-x-4 gap-y-2 items-center" style={{ padding: "16px 0", borderTop: r.total ? `2px solid ${C.ink}` : `1px solid ${C.line}` }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}><span style={{ fontSize: 17, fontWeight: 600 }}>{r.name}</span>{r.desc && <Cap style={{ lineHeight: 1.5 }}>{r.desc}</Cap>}</div>
@@ -539,7 +540,7 @@ export default function LiquidityRead() {
             <Expander label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>
               {!life ? <Cap>준비 중 — 입찰 창 안에 보유 관측이 두 개 이상 없어 표를 만들 수 없습니다</Cap> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <Cap>발행·연준 인수·보유 변화 모두 H.4.1 보유 관측 구간 {fmt.dateKo(life.from)} → {fmt.dateKo(life.to)} 기준. 발행은 보고 총액, 만기상환은 인수 − 보유 변화의 추정치.</Cap>
+                  <Cap>발행·연준 인수·보유 변화 모두 H.4.1 보유 관측 구간 {fmt.dateKo(life.from)} → {fmt.dateKo(life.to)} 기준. 발행은 보고 총액, 만기상환은 인수 − 보유 변화의 추정치(음수면 입찰 인수보다 보유가 더 늘어난 것).</Cap>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", minWidth: 560, fontSize: 14, borderCollapse: "collapse" }}>
                       <thead><tr style={{ color: C.cap }}>{["만기", "발행", "연준 인수", "연준 보유", "보유 변화", "만기상환(추정)"].map((h, i) => <th key={h} style={{ textAlign: i ? "right" : "left", fontWeight: 500, padding: "6px 0", borderBottom: `1px solid ${C.line}` }}>{h}</th>)}</tr></thead>
@@ -550,7 +551,7 @@ export default function LiquidityRead() {
                           <td style={{ textAlign: "right" }}>{Number.isFinite(r.soma) ? dollars(r.soma) : <span style={{ color: C.cap }}>준비 중</span>}</td>
                           <td style={{ textAlign: "right" }}>{Number.isFinite(r.held) ? dollars(r.held) : "—"}</td>
                           <td style={{ textAlign: "right" }}>{Number.isFinite(r.dHeld) ? fmt.signedEok(r.dHeld) : "—"}</td>
-                          <td style={{ textAlign: "right", color: C.body }}>{Number.isFinite(r.soma) && Number.isFinite(r.dHeld) ? dollars(r.soma - r.dHeld) : "—"}</td>
+                          <td style={{ textAlign: "right", color: C.body }}>{Number.isFinite(r.soma) && Number.isFinite(r.dHeld) ? signedDollars(r.soma - r.dHeld) : "—"}</td>
                         </tr>
                       ))}</tbody>
                     </table>
