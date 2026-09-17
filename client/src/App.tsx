@@ -24,6 +24,7 @@ const Capitalism = lazy(() => import("@/pages/Capitalism"));
 const GraphCompare = lazy(() => import("@/pages/GraphCompare"));
 const Fed = lazy(() => import("@/pages/Fed"));
 const LiquidityBeta = lazy(() => import("@/pages/LiquidityBeta")); // 미국 유동성(베타) — Recharts Sankey 포함, 코드 스플릿
+const LiquidityRead = lazy(() => import("@/pages/LiquidityRead")); // 미국 유동성(읽기) — 문장 중심 재설계, 베타와 나란히
 const World = lazy(() => import("@/pages/World"));
 // 블록체인 구조 — 작업 일시 중단(paused). 재개 시 아래 줄과 라우트 주석 해제.
 // const BlockchainLearn = lazy(() => import("@/pages/BlockchainLearn"));
@@ -66,6 +67,7 @@ function AppRouter() {
         <Route path="/graph-compare" component={GraphCompare} />
         <Route path="/fed" component={Fed} />
         <Route path="/liquidity" component={LiquidityBeta} />
+        <Route path="/liquidity-read" component={LiquidityRead} />
         <Route path="/world" component={World} />
         {/* <Route path="/learn/blockchain" component={BlockchainLearn} /> */}
         {/* <Route path="/clo" component={Clo} /> */}

@@ -72,13 +72,17 @@ export async function liquidityContext(): Promise<LiquidityContext> {
 
 // ── 입찰: 만기 → 인수 주체 ──
 const AUCTION_FIELDS = "security_type,security_term,issue_date,total_accepted,primary_dealer_accepted,direct_bidder_accepted,indirect_bidder_accepted,noncomp_accepted,soma_accepted,inflation_index_security,floating_rate";
-const auctionCache = new Map<number, { expires: number; data: LiquidityAuctions }>();
-const auctionPending = new Map<number, Promise<LiquidityAuctions>>();
+const auctionCache = new Map<string, { expires: number; data: LiquidityAuctions }>();
+const auctionPending = new Map<string, Promise<LiquidityAuctions>>();
 
 // 결제월 기준 창: months=3 이면 (이번 달 − 2)의 1일 ~ 오늘. issue_date 가 오늘 이후(미결제)인 입찰은 결과가 null 이라 자연히 제외된다.
-export function auctionWindow(months: number, today = new Date()): { start: string; end: string } {
+//   offset=1 이면 같은 길이의 직전 창(달력 월 블록, 끝은 그 블록의 말일) — 04 '직전 창 대비 딜러 점유율' 비교용.
+export function auctionWindow(months: number, today = new Date(), offset = 0): { start: string; end: string } {
   const y = today.getUTCFullYear(), m = today.getUTCMonth();
-  return { start: iso(new Date(Date.UTC(y, m - (months - 1), 1))), end: iso(today) };
+  const startMonth = m - (months - 1) - months * offset;
+  const start = iso(new Date(Date.UTC(y, startMonth, 1)));
+  const end = offset === 0 ? iso(today) : iso(new Date(Date.UTC(y, startMonth + months, 0)));
+  return { start, end };
 }
 
 async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[]> {
@@ -95,9 +99,9 @@ async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[
   return rows;
 }
 
-async function collectAuctions(months: number): Promise<LiquidityAuctions> {
-  const { start, end } = auctionWindow(months);
-  const base = { months, start, end, fetchedAt: new Date().toISOString() };
+async function collectAuctions(months: number, offset: number): Promise<LiquidityAuctions> {
+  const { start, end } = auctionWindow(months, new Date(), offset);
+  const base = { months, offset, start, end, fetchedAt: new Date().toISOString() };
   try {
     const rows = await fetchAuctionRows(start, end);
     if (!rows.length) throw new Error("해당 기간 입찰 자료 없음");
@@ -108,16 +112,18 @@ async function collectAuctions(months: number): Promise<LiquidityAuctions> {
   }
 }
 
-export async function liquidityAuctions(months: number): Promise<LiquidityAuctions> {
+export async function liquidityAuctions(months: number, offset = 0): Promise<LiquidityAuctions> {
   if (months !== 1 && months !== 3) throw new Error("months 는 1 또는 3");
-  const found = auctionCache.get(months);
+  if (offset !== 0 && offset !== 1) throw new Error("offset 은 0 또는 1");
+  const key = `${months}:${offset}`;
+  const found = auctionCache.get(key);
   if (found && found.expires > Date.now()) return found.data;
-  const ongoing = auctionPending.get(months);
+  const ongoing = auctionPending.get(key);
   if (ongoing) return ongoing;
-  const work = collectAuctions(months).then((data) => {
-    if (!data.errors.auctions) auctionCache.set(months, { data, expires: Date.now() + TTL });
+  const work = collectAuctions(months, offset).then((data) => {
+    if (!data.errors.auctions) auctionCache.set(key, { data, expires: Date.now() + TTL });
     return data;
-  }).finally(() => auctionPending.delete(months));
-  auctionPending.set(months, work);
+  }).finally(() => auctionPending.delete(key));
+  auctionPending.set(key, work);
   return work;
 }

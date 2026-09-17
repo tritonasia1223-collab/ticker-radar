@@ -67,3 +67,19 @@ API 는 GET /api/liquidity/context (M2SL·DPSACBW027SBOG·SOFR·IORB·NFCI·BAML
 입찰 집계 규칙: FiscalData 는 TIPS 를 Note/Bond 에 inflation_index_security=Yes, FRN 을 floating_rate=Yes 로 표시하므로 플래그로 가릅니다. 낙찰액이 null(결과 미공표)이거나 귀속 항목 하나라도 결측이면 그 입찰은 통째로 제외하고 건수로 보고합니다. 다섯 주체 귀속 합과 total_accepted 는 FIMA 등 미분류분만큼 차이(실측 최대 약 3%)가 나며, 0 으로 메우지 않고 비율로 표시합니다. 생애주기 표의 만기상환은 인수 − 보유 변화의 추정치입니다.
 
 알려진 한계: MMF 저수지는 출처 미정이라 자리만 있음 · 맥락 띠의 SOFR−IORB 임계(+10/+25bp)는 반증 테스트 전 초기 상수 · 라이브 조회 캐시는 인스턴스 메모리라 서버리스 콜드스타트마다 재조회. 정식 승격 시 새 시리즈는 server/fed.ts 레지스트리와 fed-backfill 로 이관합니다.
+
+## 미국 유동성(읽기) — /#/liquidity-read
+
+베타(/#/liquidity)와 나란히 두는 문장 중심 페이지. 명세는 [liquidity-read-spec.md](liquidity-read-spec.md), 목표 화면은 [mockup-reference.html](mockup-reference.html). 문장이 먼저, 그림은 증거 — 요약 다섯 문장 → 01 얼마나 / 02 어디서 / 03 어디로 / 04 누가 샀나 / 05 탈은 없나 → 배경 띠.
+
+| 파일 | 책임 |
+|---|---|
+| client/src/pages/LiquidityRead.tsx | 화면. 문장 모듈 출력만 그린다. 글꼴·색 토큰은 이 페이지 스코프 |
+| shared/liquidity-read.ts | 계산 계층: 얼마나(백분위·전년비)·어디서(기여 부호·주도 요인 판정)·어디로(항등식·구간)·누가 샀나(3묶음×5 교차 집계·직전 창 비교)·탈은 없나(경계 판정)·배경. 기존 liquidity-beta 의 검산된 함수 재사용 |
+| shared/liquidity-sentences.ts | 문장 생성 — 조건 분기 + 템플릿 + 받침 조사. LLM 없음 |
+| shared/liquidity-read-config.ts | 8장 설정값(TGA_TARGET·RESERVES_ZONES·HY_THRESHOLD·EMERGENCY_LOAN_THRESHOLD). null 이면 해당 요소만 숨김 |
+| tests/liquidity-read.test.ts | 스냅샷 (a) 2026-09-09 실제값 = 목업 문장, (b)~(g) 다른 국면, 13주, 계산·표기·조사 |
+
+부호 규칙 하나: 초록 = 방출(순유동성 증가 기여), 빨강 = 흡수. 본문 Δ는 전부 순유동성에 준 영향 부호이고, 잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 색을 쓰지 않는다. 금액은 억 정수·조 소수 1자리로 독립 반올림한다(명세 3.3 — 02 기여 세 값의 합이 합계와 ±1억 다를 수 있음). 항등식 검증은 반올림 전 값으로 하고 어긋나면 console.warn.
+
+긴급대출은 종료된 BTFP(H41RESPPALDKNWW, 2026-05-06 마지막 관측 0)를 제외한 할인창구+레포+스왑 합이며 각주를 단다. 입찰 API 는 offset=1 로 같은 길이의 직전 창(달력 월 블록)을 돌려주며 04 의 딜러 점유율 비교에 쓴다.

@@ -12,6 +12,7 @@ const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: t
     { href: "/graph-compare", label: "그래프 비교(베타)", icon: Layers },
     { href: "/fed", label: "미국 유동성", icon: Building2 },
     { href: "/liquidity", label: "미국 유동성(베타)", icon: Building2 },
+    { href: "/liquidity-read", label: "미국 유동성(읽기)", icon: Building2 },
     { href: "/world", label: "세계 현황판", icon: Globe },
   ] },
   { group: "종목 트래킹", items: [

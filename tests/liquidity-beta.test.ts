@@ -205,6 +205,8 @@ describe("유동성 베타 — 입찰 집계", () => {
     expect(auctionWindow(3, new Date("2026-09-17T12:00:00Z"))).toEqual({ start: "2026-07-01", end: "2026-09-17" });
     expect(auctionWindow(1, new Date("2026-09-17T12:00:00Z"))).toEqual({ start: "2026-09-01", end: "2026-09-17" });
     expect(auctionWindow(3, new Date("2026-01-10T12:00:00Z"))).toEqual({ start: "2025-11-01", end: "2026-01-10" }); // 연도 경계
+    expect(auctionWindow(3, new Date("2026-09-17T12:00:00Z"), 1)).toEqual({ start: "2026-04-01", end: "2026-06-30" }); // 직전 창 = 달력 블록
+    expect(auctionWindow(1, new Date("2026-09-17T12:00:00Z"), 1)).toEqual({ start: "2026-08-01", end: "2026-08-31" });
   });
 });
 

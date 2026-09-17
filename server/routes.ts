@@ -425,9 +425,11 @@ export function registerRoutes(app: Express) {
   });
   app.get("/api/liquidity/auctions", async (req, res) => {
     const months = Number(req.query.months ?? 3);
+    const offset = Number(req.query.offset ?? 0);
     if (months !== 1 && months !== 3) return res.status(400).json({ error: "months 는 1 또는 3 이어야 합니다." });
+    if (offset !== 0 && offset !== 1) return res.status(400).json({ error: "offset 은 0 또는 1 이어야 합니다." });
     try {
-      const data = await liquidityAuctions(months);
+      const data = await liquidityAuctions(months, offset);
       res.setHeader("Cache-Control", data.errors.auctions ? "no-store" : "public, max-age=300, s-maxage=21600");
       res.json(data);
     } catch {
