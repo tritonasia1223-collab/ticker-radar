@@ -68,21 +68,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      <aside className="w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
+    <div className="flex flex-col md:flex-row h-screen bg-background text-foreground">
+      {/* 사이드바 — md 이상은 기존 그대로. 그 아래(폰)는 상단 가로 내비로 접어 본문 폭을 확보한다(390px 에서 본문이 135px 만 남던 문제). */}
+      <aside className="w-full md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-sidebar-border bg-sidebar flex flex-col">
         <div className="h-16 flex items-center border-b border-sidebar-border">
           <Logo />
         </div>
-        <nav className="flex-1 overflow-auto p-3 space-y-0.5">
+        <nav className="flex md:block overflow-x-auto md:overflow-auto md:flex-1 px-2 py-1.5 md:p-3 gap-1 md:space-y-0.5">
           {NAV_GROUPS.map((g) => (
-            <div key={g.group} className="pt-3 first:pt-0">
-              <div className="select-none px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
+            <div key={g.group} className="flex md:block shrink-0 gap-1 md:pt-3 md:first:pt-0">
+              <div className="hidden md:block select-none px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
               {g.items.map((n) => {
                 const active = location === n.href;
                 const Icon = n.icon;
                 return (
                   <Link key={n.href} href={n.href} data-testid={`link-${n.href.replace("/", "") || "discover"}`}>
-                    <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm cursor-pointer hover-elevate ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/80"}`}>
+                    <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm cursor-pointer hover-elevate whitespace-nowrap ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/80"}`}>
                       <Icon className="h-4 w-4" />
                       {n.label}
                     </div>
@@ -92,7 +93,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="p-3 border-t border-sidebar-border space-y-2">
+        <div className="hidden md:block p-3 border-t border-sidebar-border space-y-2">
           <Button
             variant="outline"
             onClick={toggleMode}
@@ -108,7 +109,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 min-h-0 overflow-auto">{children}</main>
       <GlobalTooltip />
     </div>
   );

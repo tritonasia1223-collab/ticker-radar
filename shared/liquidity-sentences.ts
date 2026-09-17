@@ -144,7 +144,7 @@ export function s3(t: WhereTo): { headline: Part[]; summary: Part[] } {
 export function s4(w: WhoBought): { headline: string[]; summary: string } {
   if (!w.top) return { headline: ["이 기간에 집계된 입찰이 없습니다."], summary: "이 기간에 집계된 입찰이 없습니다." };
   const subj = BIDDER_SUBJECT[w.top.bidder];
-  const first = `${fmt.monthKo(w.start)} 이후 찍은 국채 ${fmt.amount(w.totalReported)} 달러 중 ${w.majority ? "절반 이상인" : "가장 많은"} ${fmt.amount(w.top.value)}를 ${josa(subj, "이가")} 가져갔습니다.`;
+  const first = `${fmt.monthKo(w.start)} 이후 찍은 국채 ${fmt.amount(w.totalReported)} 달러 중 ${w.majority ? "절반 이상인" : "가장 많은"} ${josa(fmt.amount(w.top.value), "을를")} ${josa(subj, "이가")} 가져갔습니다.`;
   const headline = [first];
   if (w.dealerJump && w.dealerSharePrev != null) headline.push(`딜러가 떠안은 몫이 ${Math.round(w.dealerSharePrev * 100)}%에서 ${Math.round(w.dealerShare * 100)}%로 늘었습니다.`);
   return { headline, summary: `새로 찍은 국채는 ${w.majority ? "절반 이상을" : "가장 많은 몫을"} ${josa(subj, "이가")} 받아갔습니다.` };

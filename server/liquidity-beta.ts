@@ -78,11 +78,14 @@ const auctionPending = new Map<string, Promise<LiquidityAuctions>>();
 // 결제월 기준 창: months=3 이면 (이번 달 − 2)의 1일 ~ 오늘. issue_date 가 오늘 이후(미결제)인 입찰은 결과가 null 이라 자연히 제외된다.
 //   offset=1 이면 같은 길이의 직전 창(달력 월 블록, 끝은 그 블록의 말일) — 04 '직전 창 대비 딜러 점유율' 비교용.
 export function auctionWindow(months: number, today = new Date(), offset = 0): { start: string; end: string } {
-  const y = today.getUTCFullYear(), m = today.getUTCMonth();
-  const startMonth = m - (months - 1) - months * offset;
-  const start = iso(new Date(Date.UTC(y, startMonth, 1)));
-  const end = offset === 0 ? iso(today) : iso(new Date(Date.UTC(y, startMonth + months, 0)));
-  return { start, end };
+  const y = today.getUTCFullYear(), m = today.getUTCMonth(), d = today.getUTCDate();
+  const start = Date.UTC(y, m - (months - 1), 1), end = Date.UTC(y, m, d);
+  if (offset === 0) return { start: iso(new Date(start)), end: iso(new Date(end)) };
+  // 직전 창은 현재 창과 '같은 일수'로, 현재 창 시작 전날에 끝난다. 현재 창이 오늘까지라 달력 블록보다 짧으므로
+  //   달력 블록을 쓰면 길이가 어긋난다(Codex F4: 1개월 17일 vs 31일).
+  const len = Math.round((end - start) / 86_400_000);
+  const prevEnd = start - 86_400_000, prevStart = prevEnd - len * 86_400_000;
+  return { start: iso(new Date(prevStart)), end: iso(new Date(prevEnd)) };
 }
 
 async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[]> {
@@ -101,7 +104,8 @@ async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[
 
 async function collectAuctions(months: number, offset: number): Promise<LiquidityAuctions> {
   const { start, end } = auctionWindow(months, new Date(), offset);
-  const base = { months, offset, start, end, fetchedAt: new Date().toISOString() };
+  // offset 을 넘기지 않은 기본 호출은 기존 응답 형태를 그대로 유지한다(Codex F6) — 필드는 offset>0 일 때만.
+  const base = { months, ...(offset ? { offset } : {}), start, end, fetchedAt: new Date().toISOString() };
   try {
     const rows = await fetchAuctionRows(start, end);
     if (!rows.length) throw new Error("해당 기간 입찰 자료 없음");

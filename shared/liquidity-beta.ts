@@ -242,7 +242,7 @@ export interface LiquidityContext {
   errors: Partial<Record<ContextKey, string>>;
 }
 export interface LiquidityAuctions {
-  months: number; offset: number; start: string; end: string; fetchedAt: string;   // offset=1 이면 같은 길이의 직전 창
+  months: number; offset?: number; start: string; end: string; fetchedAt: string;  // offset 은 직전 창(offset=1) 요청에서만 실림
   agg: AuctionAgg | null;
   sankey: { nodes: SankeyNode[]; links: SankeyLink[] } | null;
   errors: { auctions?: string };   // context 와 같은 계약 — 실패 항목을 errors 에 명시

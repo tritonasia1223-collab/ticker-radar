@@ -8,11 +8,11 @@ import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, ReferenceDot, Sankey, Layer } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
 import { restoreMissingNumbers } from "@shared/time-series";
-import { yoyMonthly, yoyWeekly, changeFrom, netLiquidity, sumAuctionsBetween, type LiquidityContext, type LiquidityAuctions, type Obs } from "@shared/liquidity-beta";
+import { yoyMonthly, yoyWeekly, changeFrom, nearest, netLiquidity, sumAuctionsBetween, type LiquidityContext, type LiquidityAuctions, type Obs } from "@shared/liquidity-beta";
 import { howMuch, whereFrom, whereTo, whoBought, whoSankey, stress, emergencyLoans, background, pickWeeks, BUCKET_LABEL, type ReadWeek, type CmpWeeks, type Contribution, type StressRow, type Bucket } from "@shared/liquidity-read";
 import { s1, s2, s3, s4, s5, rowDescription, fmt, josa, type Part } from "@shared/liquidity-sentences";
 import { READ_CONFIG } from "@shared/liquidity-read-config";
-import { TAccount, type WeekPoint } from "@/components/fed-taccount";
+import type { WeekPoint } from "@/components/fed-taccount";
 
 // ── 서버 응답 형태 ──
 interface TreasuryMonth { date: string; bills: number; total: number }
@@ -82,6 +82,40 @@ function ContribBars({ rows, N }: { rows: { name: string; desc: string; value: n
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// 02 펼쳐보기 — 중립 T계정. 잔고 기준, 색은 중립 5단만. 얇은 띠는 안에 글자를 못 넣으므로 옆 표의 스와치가 라벨을 맡는다(Codex F2).
+const NEUTRAL = ["#7A766C", "#9C978A", "#BDB8AA", "#CFCABD", "#E3DFD4"];
+interface TRow { label: string; side: "asset" | "liab"; color: string; v: number; p: number }
+const liveLoans = (w: WeekPoint) => w.discount + w.repo + w.swap + (Number.isFinite(w.btfp) ? w.btfp : 0);
+function taccountRows(sel: WeekPoint, prev: WeekPoint): TRow[] {
+  const a = (label: string, i: number, v: number, p: number): TRow => ({ label, side: "asset", color: NEUTRAL[i], v, p });
+  const l = (label: string, i: number, v: number, p: number): TRow => ({ label, side: "liab", color: NEUTRAL[i], v, p });
+  const otherA = (w: WeekPoint) => Math.max(0, w.total - w.treast - w.mbs - w.agency - liveLoans(w));
+  return [
+    a("국채(SOMA)", 0, sel.treast, prev.treast), a("MBS", 1, sel.mbs, prev.mbs), a("기관채", 2, sel.agency, prev.agency), a("대출·스왑", 3, liveLoans(sel), liveLoans(prev)), a("기타 자산", 4, otherA(sel), otherA(prev)),
+    l("지급준비금", 0, sel.reserves, prev.reserves), l("역레포", 1, sel.rrp, prev.rrp), l("TGA", 2, sel.tga, prev.tga), l("현금통화", 3, sel.currency, prev.currency), l("기타 부채·자본", 4, Math.max(0, sel.liabResidual), Math.max(0, prev.liabResidual)),
+  ];
+}
+function NeutralStack({ rows, total, align }: { rows: TRow[]; total: number; align: "left" | "right" }) {
+  const H = 280;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: H, borderRadius: 8, overflow: "hidden", minWidth: 0 }}>
+      {rows.map((r) => {
+        const h = Number.isFinite(r.v) && total > 0 ? Math.max(0, (r.v / total) * H) : 0;
+        const dark = r.color === NEUTRAL[0] || r.color === NEUTRAL[1];
+        return <div key={r.label} title={`${r.label} ${dollars(r.v)}`} style={{ height: h, background: r.color, color: dark ? "#FFFFFF" : C.ink, display: "flex", alignItems: "center", justifyContent: align === "left" ? "flex-start" : "flex-end", padding: "0 10px", overflow: "hidden", fontSize: 12, whiteSpace: "nowrap", borderTop: "1px solid rgba(0,0,0,0.08)" }}>{h >= 26 ? `${r.label} ${dollars(r.v)}` : ""}</div>;
+      })}
+    </div>
+  );
+}
+function NeutralTAccount({ rows, total }: { rows: TRow[]; total: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-3" style={{ minWidth: 0 }}>
+      <div><Cap style={{ paddingBottom: 6 }}>자산 <b style={{ color: C.ink }}>{dollars(total)}</b></Cap><NeutralStack rows={rows.filter((r) => r.side === "asset")} total={total} align="left" /></div>
+      <div><Cap style={{ paddingBottom: 6, textAlign: "right" }}>부채·자본 <b style={{ color: C.ink }}>{dollars(total)}</b></Cap><NeutralStack rows={rows.filter((r) => r.side === "liab")} total={total} align="right" /></div>
     </div>
   );
 }
@@ -189,7 +223,9 @@ export default function LiquidityRead() {
     const nlObs: Obs[] = weeks.map((w) => ({ date: w.date, value: netLiquidity(w) })).filter((o) => Number.isFinite(o.value));
     const spObs: Obs[] = (overview.data?.daily ?? []).filter((d) => d.sp500 != null && Number.isFinite(d.sp500)).map((d) => ({ date: d.date, value: d.sp500 as number }));
     const start = new Date(Date.parse(sel.date) - 5 * 365 * 86_400_000).toISOString().slice(0, 10);
-    const rows = weeks.filter((w) => w.date >= start && w.date <= sel.date).map((w) => ({ date: w.date, nl: yoyWeekly(nlObs, w.date)?.pct ?? NaN, m2: yoyMonthly(ctx.m2 ?? [], w.date)?.pct ?? NaN, sp: changeFrom(spObs, w.date, 364, 4)?.pct ?? NaN }));
+    // S&P 는 그 주에 관측(±4일)이 있을 때만 — 마지막 관측(8/31) 이후 주차에 마지막 값을 끌고 가면 수평선이 생긴다(Codex F5).
+    const spAt = (date: string) => { const to = nearest(spObs, date, 4); return to ? changeFrom(spObs, to.date, 364, 4)?.pct ?? NaN : NaN; };
+    const rows = weeks.filter((w) => w.date >= start && w.date <= sel.date).map((w) => ({ date: w.date, nl: yoyWeekly(nlObs, w.date)?.pct ?? NaN, m2: yoyMonthly(ctx.m2 ?? [], w.date)?.pct ?? NaN, sp: spAt(w.date) }));
     const seen = new Set<string>(); const ticks = rows.filter((r) => { const y = r.date.slice(0, 4); if (seen.has(y)) return false; seen.add(y); return true; }).map((r) => r.date);
     // 기저효과: 전년비가 한 주 사이 5%p 이상 급변했고, 1년 전 같은 주에 수준이 한 주 사이 2% 이상 급변한 경우
     const byDate = new Map(nlObs.map((o) => [o.date, o.value]));
@@ -258,7 +294,7 @@ export default function LiquidityRead() {
         {/* 요약 */}
         <nav aria-label="이번 주 요약" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "12px 24px", marginBottom: 24 }}>
           {summaryRows.map((r, i) => (
-            <a key={r.id} href={`#${r.id}`} className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-7" style={{ padding: "20px 0", textDecoration: "none", color: C.ink, borderBottom: i < summaryRows.length - 1 ? `1px solid ${C.line2}` : undefined }}>
+            <a key={r.id} href={`#${r.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(r.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-7" style={{ padding: "20px 0", textDecoration: "none", color: C.ink, borderBottom: i < summaryRows.length - 1 ? `1px solid ${C.line2}` : undefined }}>
               <span style={{ width: 72, flexShrink: 0, fontSize: 14, fontWeight: 600, color: C.cap }}>{r.label}</span>
               <span className="text-[19px] md:text-[22px]" style={{ flexGrow: 1, fontFamily: SERIF, fontWeight: 500, lineHeight: 1.5 }}>
                 {r.parts ? <Parts parts={r.parts} strongTone /> : <span style={{ color: C.cap }}>{cmp}주 전 관측이 없어 이번 주는 비교할 수 없습니다.</span>}
@@ -387,14 +423,17 @@ export default function LiquidityRead() {
             <Expander label="연준 대차대조표(T계정) 전체 펼치기" open={openT} onToggle={() => setOpenT((v) => !v)}>
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <Cap>잔고 증감 기준 · 부채 항목 감소 = 방출. 아래 표의 부호는 위 본문과 달리 잔고 기준이며 색을 쓰지 않습니다.</Cap>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div><TAccount w={sel as WeekPoint} /></div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 16px", color: C.cap, borderBottom: `1px solid ${C.line}`, paddingBottom: 6 }}><span>항목</span><span>{fmt.dateKo(sel.date)} 잔고</span><span>{cmp}주 Δ</span></div>
-                    {([["국채(SOMA)", sel.treast, prev.treast], ["MBS", sel.mbs, prev.mbs], ["대출·스왑", sel.discount + sel.repo + sel.swap + (Number.isFinite(sel.btfp) ? sel.btfp : 0), prev.discount + prev.repo + prev.swap + (Number.isFinite(prev.btfp) ? prev.btfp : 0)], ["총자산", sel.total, prev.total],
-                      ["지급준비금", sel.reserves, prev.reserves], ["역레포", sel.rrp, prev.rrp], ["TGA", sel.tga, prev.tga], ["현금통화", sel.currency, prev.currency], ["기타 부채·자본", sel.liabResidual, prev.liabResidual]] as [string, number, number][]).map(([k, v, p]) => (
-                      <div key={k} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 16px", padding: "6px 0", borderBottom: `1px solid ${C.line2}` }}><span>{k}</span><span>{Number.isFinite(v) ? dollars(v) : "—"}</span><span style={{ color: C.body }}>{Number.isFinite(v - p) ? fmt.signedEok(v - p) : "—"}</span></div>
-                    ))}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ minWidth: 0 }}>
+                  <NeutralTAccount rows={taccountRows(sel as WeekPoint, prev as WeekPoint)} total={sel.total} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, minWidth: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", color: C.cap, borderBottom: `1px solid ${C.line}`, paddingBottom: 6 }}><span>항목</span><span>{fmt.dateKo(sel.date)} 잔고</span><span>{cmp}주 Δ</span></div>
+                    {taccountRows(sel as WeekPoint, prev as WeekPoint).map((r, i, arr) => (<>
+                      {i === 5 && <div key="total" style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", padding: "6px 0", borderBottom: `2px solid ${C.ink}`, fontWeight: 600 }}><span>총자산</span><span>{dollars(sel.total)}</span><span style={{ color: C.body, fontWeight: 400 }}>{fmt.signedEok(sel.total - prev.total)}</span></div>}
+                      <div key={r.label} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", padding: "6px 0", borderBottom: i === arr.length - 1 ? undefined : `1px solid ${C.line2}` }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ width: 12, height: 12, flexShrink: 0, background: r.color, borderRadius: 2, border: "1px solid rgba(0,0,0,0.12)", boxSizing: "border-box" }} />{r.label}</span>
+                        <span>{Number.isFinite(r.v) ? dollars(r.v) : "—"}</span><span style={{ color: C.body }}>{Number.isFinite(r.v - r.p) ? fmt.signedEok(r.v - r.p) : "—"}</span>
+                      </div>
+                    </>))}
                     {somaSel && (
                       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
                         <Cap>국채(SOMA) 만기별 · {fmt.dateKo(somaSel.date)}{somaPrev ? ` · Δ는 ${cmp}주` : prev ? ` · ${cmp}주 전 보유 관측이 없어 Δ 생략` : ""}</Cap>

@@ -217,6 +217,7 @@ describe("읽기 페이지 — 계산 계층", () => {
     expect(all.totalReported).toBe(7_570_000); expect(nb.totalReported).toBe(970_000);
     expect(nb.byBucket.bills).toBe(0); expect(nb.top?.bidder).toBe("indirect");
     expect(nb.top!.share).toBeCloseTo(500_000 / 970_000, 6);
+    expect(s4(nb).headline[0]).toBe("7월 이후 찍은 국채 9,700억 달러 중 절반 이상인 5,000억을 간접 입찰자가 가져갔습니다."); // 억 뒤는 '을'(Codex F7)
     const sk = whoSankey(nb);
     expect(sk.nodes.filter((n) => n.side === "bucket").map((n) => n.key)).toEqual(["nb", "tips"]);
     expect(sk.links.every((l) => l.value > 0)).toBe(true);
