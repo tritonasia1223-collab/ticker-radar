@@ -124,7 +124,7 @@ describe("읽기 페이지 — 다른 국면", () => {
     expect(from.verdict).toBe("persistent");
     expect(plain(s2(from, 4).headline)).toBe("연준이 자산을 늘려 1,000억 달러를 시중에 풀었습니다. 재무부는 역시 100억 달러를 시중에 풀었습니다.");
     expect(plain(s2(from, 4).summary)).toBe("연준이 자산을 늘린 결과라 정책이 바뀌기 전까지 이어질 가능성이 큽니다.");
-    expect(rowDescription(from.contributions[2], from.fedDetail)).toBe("자산 증가 = 방출. 국채 매입 +1,000억이 대부분, MBS 매입 +0억");
+    expect(rowDescription(from.contributions[2], from.fedDetail)).toBe("자산 증가 = 방출. 국채 매입 +1,000억이 대부분"); // 0 인 MBS 는 적지 않는다
   });
 
   it("(d) 역레포 주도", () => {
@@ -154,6 +154,35 @@ describe("읽기 페이지 — 다른 국면", () => {
     const { to } = pair({}, { tga: 843_000, total: 6_690_000, reserves: 2_925_000, currency: 2_415_000 }); // ΔNL −530억, 준비금 −750억, 기타 +220억 (준비금 몫 141%)
     expect(to.resShare).toBeGreaterThan(1);
     expect(plain(s3(to).headline)).toBe("지급준비금은 750억 줄고, 현금통화·기타는 220억 늘었습니다.");
+  });
+
+  it("(h) 비교 주 관측이 없으면 수준만 말하고 변화는 비교하지 않는다", () => {
+    const how = howMuch([NOW], NOW, null, 4, M2, 0.3);
+    expect(Number.isNaN(how.dNl)).toBe(true); expect(how.pctl).toBeNull(); expect(how.nl).toBe(5_547_251);
+    expect(plain(s1(how).headline)).toBe("시장에 도는 돈은 5.5조 달러입니다.");
+    expect(plain(s1(how).summary)).toBe("유동성은 5.5조 달러입니다. 4주 전 관측이 없어 변화는 비교하지 않았습니다.");
+  });
+
+  it("변화가 0 이면 방출·흡수로 판정하지 않고 부호도 없다", () => {
+    const { from } = pair({}, {});
+    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA 잔고 변화 없음");
+    expect(rowDescription(from.contributions[1], from.fedDetail)).toBe("역레포 잔고 변화 없음");
+    expect(rowDescription(from.contributions[2], from.fedDetail)).toBe("자산 변화 없음");
+    expect(fmt.signedEok(0)).toBe("0억"); expect(fmt.signedEok(30)).toBe("0억"); expect(fmt.signedEok(-30)).toBe("0억");
+    expect(plain(s2(from, 4, true).headline)).toBe("이번 기간엔 재무부·역레포·연준 모두 뚜렷한 변화가 없습니다.");
+    expect(s2(from, 4, true).headline.every((p) => !p.tone)).toBe(true);
+  });
+
+  it("혼합 국면에서 첫 요인이 연준이면 '연준과 재무부가'", () => {
+    const { from } = pair({}, { total: 6_738_000, tga: 763_000, rrp: 355_000 }); // 연준 +380억, 재무부 +370억, 역레포 −50억
+    expect(from.verdict).toBe("mixed"); expect(from.ranked[0].key).toBe("fed");
+    expect(plain(s2(from, 4).summary)).toBe("연준과 재무부가 함께 움직여 한 요인으로 설명되지 않습니다.");
+  });
+
+  it("맥락 자료가 비면 '판정하지 않았다'고 말한다 — 경계는 있으므로 '설정 없음'이 아니다", () => {
+    const st = stress([], [], [], [], null, READ_CONFIG);
+    expect(st.evaluated).toHaveLength(0);
+    expect(s5(st).summary).toBe("자금시장 지표를 불러오지 못해 이번 주는 판정하지 않았습니다.");
   });
 
   it("(g) 스트레스 지표 1개 초과", () => {
@@ -259,6 +288,7 @@ describe("읽기 페이지 — 표기·조사", () => {
     expect(josa("간접 입찰자", "이가")).toBe("간접 입찰자가"); expect(josa("프라이머리 딜러", "이가")).toBe("프라이머리 딜러가");
     expect(josa("초단기 금리 압력", "이가")).toBe("초단기 금리 압력이"); expect(josa("MMF", "이가")).toBe("MMF가");
     expect(josa("서울", "으로로")).toBe("서울로"); expect(josa("지급준비금", "으로로")).toBe("지급준비금으로"); expect(josa("역레포", "을를")).toBe("역레포를");
+    expect(josa("연준", "과와")).toBe("연준과"); expect(josa("재무부", "과와")).toBe("재무부와"); expect(josa("5,000억", "을를")).toBe("5,000억을");
     expect(hasBatchim("압력")).toBe(true); expect(hasBatchim("딜러")).toBe(false);
   });
 });

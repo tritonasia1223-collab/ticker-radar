@@ -9,7 +9,7 @@ export const fmt = {
   eok: (musd: number) => Math.round(Math.abs(musd) / 100).toLocaleString("en-US"),                 // 1,048
   jo: (musd: number) => (Math.abs(musd) / 1e6).toFixed(1),                                            // 5.5
   amount: (musd: number) => (Math.abs(musd) >= 1e6 ? `${fmt.jo(musd)}조` : `${fmt.eok(musd)}억`),     // 7.6조 · 5,264억
-  signedEok: (musd: number) => `${musd < 0 ? "−" : "+"}${fmt.eok(musd)}억`,                          // +1,157억
+  signedEok: (musd: number) => { const e = fmt.eok(musd); return e === "0" ? "0억" : `${musd < 0 ? "−" : "+"}${e}억`; }, // +1,157억 · 0 은 부호 없음
   signedAmount: (musd: number) => `${musd < 0 ? "−" : "+"}${fmt.amount(musd)}`,
   pct: (v: number, digits = 1) => `${v < 0 ? "−" : "+"}${Math.abs(v).toFixed(digits)}%`,             // +1.9%
   pctPlain: (v: number, digits = 1) => `${Math.abs(v).toFixed(digits)}%`,
@@ -25,9 +25,10 @@ const code = (word: string) => word.charCodeAt(word.length - 1);
 const isHangul = (c: number) => c >= 0xac00 && c <= 0xd7a3;
 export const hasBatchim = (word: string) => { const c = code(word); return isHangul(c) ? (c - 0xac00) % 28 !== 0 : /[0136780]$/.test(word) ? true : false; };
 const endsWithRieul = (word: string) => { const c = code(word); return isHangul(c) && (c - 0xac00) % 28 === 8; };
-export function josa(word: string, kind: "이가" | "을를" | "은는" | "으로로"): string {
+export function josa(word: string, kind: "이가" | "을를" | "은는" | "으로로" | "과와"): string {
   const b = hasBatchim(word);
   switch (kind) {
+    case "과와": return word + (b ? "과" : "와");
     case "이가": return word + (b ? "이" : "가");
     case "을를": return word + (b ? "을" : "를");
     case "은는": return word + (b ? "은" : "는");
@@ -39,18 +40,12 @@ export function josa(word: string, kind: "이가" | "을를" | "은는" | "으�
 export type Tone = "release" | "absorb";
 export interface Part { text: string; tone?: Tone; strong?: boolean }
 export const plain = (parts: Part[]) => parts.map((p) => p.text).join("");
-const toneOf = (v: number): Tone => (v >= 0 ? "release" : "absorb");
+const toneOf = (v: number): Tone | undefined => (v > 0 ? "release" : v < 0 ? "absorb" : undefined); // 0 은 방출도 흡수도 아니다
+const isZero = (musd: number) => Math.round(musd / 100) === 0; // 억 단위로 0
 
 // ── 01 얼마나 ──
 export function s1(h: HowMuch): { headline: Part[]; summary: Part[]; band: string; m2note: string } {
   const N = h.cmpWeeks, up = h.dNl >= 0;
-  const headline: Part[] = h.flat
-    ? [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러, ${N}주 전과 거의 그대로입니다.` }]
-    : [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러, ${N}주 전보다 ` }, { text: `${fmt.eok(h.dNl)}억 달러(${fmt.pct(h.dNlPct)})`, tone: toneOf(h.dNl) }, { text: ` ${up ? "늘었습니다" : "줄었습니다"}.` }];
-  const summary: Part[] = h.flat
-    ? [{ text: `유동성은 ${N}주간 거의 그대로입니다.` }]
-    : [{ text: `유동성은 ${N}주간 ` }, { text: `${fmt.eok(h.dNl)}억 달러 ${up ? "늘었습니다" : "줄었습니다"}.`, tone: toneOf(h.dNl), strong: true }];
-  const band = h.pctl ? `지난 5년의 ${N}주 변화 가운데 ${h.pctl.side} ${h.pctl.p}%에 해당합니다.` : "";
   let m2note = "";
   if (h.nlYoy && h.m2Yoy) {
     const a = h.nlYoy.pct, b = h.m2Yoy.pct;
@@ -58,6 +53,21 @@ export function s1(h: HowMuch): { headline: Part[]; summary: Part[]; band: strin
     else if (Math.sign(a) === Math.sign(b) && Math.abs(a) >= 2 && Math.abs(b) >= 2) m2note = `밑돈과 M2가 함께 ${a >= 0 ? "늘고" : "줄고"} 있습니다.`;
     else m2note = `밑돈은 ${fmt.pct(a)}, M2는 ${fmt.pct(b)} 변했습니다.`;
   }
+  // 비교 주 관측이 없으면 변화를 말하지 않고 수준만 말한다(관측 부재 ≠ 변화 없음).
+  if (!Number.isFinite(h.dNl)) {
+    return {
+      headline: [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러입니다.` }],
+      summary: [{ text: `유동성은 ${fmt.jo(h.nl)}조 달러입니다. ${N}주 전 관측이 없어 변화는 비교하지 않았습니다.` }],
+      band: "", m2note,
+    };
+  }
+  const headline: Part[] = h.flat
+    ? [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러, ${N}주 전과 거의 그대로입니다.` }]
+    : [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러, ${N}주 전보다 ` }, { text: `${fmt.eok(h.dNl)}억 달러(${fmt.pct(h.dNlPct)})`, tone: toneOf(h.dNl) }, { text: ` ${up ? "늘었습니다" : "줄었습니다"}.` }];
+  const summary: Part[] = h.flat
+    ? [{ text: `유동성은 ${N}주간 거의 그대로입니다.` }]
+    : [{ text: `유동성은 ${N}주간 ` }, { text: `${fmt.eok(h.dNl)}억 달러 ${up ? "늘었습니다" : "줄었습니다"}.`, tone: toneOf(h.dNl), strong: true }];
+  const band = h.pctl ? `지난 5년의 ${N}주 변화 가운데 ${h.pctl.side} ${h.pctl.p}%에 해당합니다.` : "";
   return { headline, summary, band, m2note };
 }
 
@@ -67,6 +77,7 @@ const SOURCE: Record<Contribution["key"], (c: Contribution) => string> = {
 };
 const verb = (v: number) => (v >= 0 ? "시중에 풀었습니다" : "흡수했습니다");
 export function rowDescription(c: Contribution, fedDetail: WhereFrom["fedDetail"]): string {
+  if (isZero(c.own)) return c.key === "tga" ? "TGA 잔고 변화 없음" : c.key === "rrp" ? "역레포 잔고 변화 없음" : "자산 변화 없음"; // 0 은 방출·흡수 판정 없음(Codex 2차 F3)
   if (c.key === "tga") return c.own < 0 ? "TGA 잔고 감소 = 방출. 거둔 돈보다 쓴 돈이 많았음" : "TGA 잔고 증가 = 흡수. 쓴 돈보다 거둔 돈(세금·국채)이 많았음";
   if (c.key === "rrp") return c.own < 0 ? "역레포 잔고 감소 = 방출. MMF가 연준에 넣어둔 돈을 시중으로 인출" : "역레포 잔고 증가 = 흡수. MMF가 남는 돈을 연준에 예치";
   const head = c.own >= 0 ? "자산 증가 = 방출. " : "자산 감소 = 흡수. ";
@@ -74,15 +85,15 @@ export function rowDescription(c: Contribution, fedDetail: WhereFrom["fedDetail"
   if (!a) return head.trim();
   const gross = fedDetail.reduce((s, d) => s + Math.abs(d.value), 0);
   const most = gross > 0 && Math.abs(a.value) / gross >= 0.5;
-  const second = b ? `, ${b.label} ${fmt.signedEok(b.value)}` : "";
+  const second = b && !isZero(b.value) ? `, ${b.label} ${fmt.signedEok(b.value)}` : ""; // 0 인 세부 항목은 적지 않는다
   return `${head}${a.label} ${fmt.signedEok(a.value)}${most ? "이 대부분" : ""}${second}`;
 }
 export function s2(f: WhereFrom, N: CmpWeeks, flat = false): { headline: Part[]; summary: Part[]; verdictTitle: string; verdictBody: string } {
   const [a, b] = f.ranked;
-  const headline: Part[] = [
-    { text: `${josa(a.subject, "이가")} ${SOURCE[a.key](a)} ` }, { text: `${fmt.eok(a.effect)}억 달러`, tone: toneOf(a.effect) }, { text: `를 ${verb(a.effect)}.` },
-  ];
-  if (b && Math.abs(b.effect) > 0) {
+  const headline: Part[] = isZero(a.effect)
+    ? [{ text: "이번 기간엔 재무부·역레포·연준 모두 뚜렷한 변화가 없습니다." }]
+    : [{ text: `${josa(a.subject, "이가")} ${SOURCE[a.key](a)} ` }, { text: `${fmt.eok(a.effect)}억 달러`, tone: toneOf(a.effect) }, { text: `를 ${verb(a.effect)}.` }];
+  if (b && !isZero(a.effect) && !isZero(b.effect)) {
     const same = Math.sign(b.effect) === Math.sign(a.effect);
     headline.push({ text: ` ${josa(b.subject, "은는")} ${same ? "역시" : "반대로"} ` }, { text: `${fmt.eok(b.effect)}억 달러`, tone: toneOf(b.effect) }, { text: `를 ${verb(b.effect)}.` });
   }
@@ -115,7 +126,7 @@ export function s2(f: WhereFrom, N: CmpWeeks, flat = false): { headline: Part[];
     default: {
       verdictTitle = "여러 요인이 섞임";
       verdictBody = `${a.subject} ${fmt.signedEok(a.effect)}${b ? `, ${b.subject} ${fmt.signedEok(b.effect)}` : ""}이 함께 작용했습니다.`;
-      summary = b ? `${a.subject}와 ${josa(b.subject, "이가")} 함께 움직여 한 요인으로 설명되지 않습니다.` : `${josa(a.subject, "이가")} 움직였지만 뚜렷한 주도 요인은 없습니다.`;
+      summary = b ? `${josa(a.subject, "과와")} ${josa(b.subject, "이가")} 함께 움직여 한 요인으로 설명되지 않습니다.` : `${josa(a.subject, "이가")} 움직였지만 뚜렷한 주도 요인은 없습니다.`;
     }
   }
   if (flat) {
@@ -153,7 +164,11 @@ export function s4(w: WhoBought): { headline: string[]; summary: string } {
 // ── 05 탈은 없나 ──
 export function s5(s: Stress): { headline: string[]; summary: string } {
   const n = s.evaluated.length;
-  if (n === 0) return { headline: ["경계선이 설정된 지표가 아직 없습니다."], summary: "경계선이 설정된 지표가 아직 없습니다." };
+  if (n === 0) {
+    // 경계는 있는데 값이 없으면 '조회 실패', 경계 자체가 없으면 '설정 없음' — 사유를 구분한다(Codex 2차 F4).
+    const msg = s.rows.some((r) => r.threshold != null) ? "자금시장 지표를 불러오지 못해 이번 주는 판정하지 않았습니다." : "경계선이 설정된 지표가 아직 없습니다.";
+    return { headline: [msg], summary: msg };
+  }
   if (s.breached.length === 0) {
     const first = "자금시장에 긴장 신호는 없습니다.";
     return { headline: [first, `${fmt.count(n)} 지표 모두 경계선 아래입니다.`], summary: first };

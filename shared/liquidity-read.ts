@@ -50,16 +50,17 @@ export function percentileOfChange(weeks: ReadWeek[], sel: ReadWeek, cmpWeeks: C
   return { p: Math.max(1, Math.round(((below + 1) / n) * 100)), side: "하위", pos, min, max, n };
 }
 
-export function howMuch(weeks: ReadWeek[], sel: ReadWeek, prev: ReadWeek, cmpWeeks: CmpWeeks, m2: Obs[], flatPct: number): HowMuch {
-  const nl = netLiquidity(sel), nlPrev = netLiquidity(prev), dNl = nl - nlPrev;
-  const dNlPct = nlPrev ? (dNl / nlPrev) * 100 : NaN;
+// prev 가 없으면(비교 주 관측 부재) 변화·백분위만 NaN/null 이고 수준·전년비·시계열은 그대로 낸다(Codex 2차 F1).
+export function howMuch(weeks: ReadWeek[], sel: ReadWeek, prev: ReadWeek | null, cmpWeeks: CmpWeeks, m2: Obs[], flatPct: number): HowMuch {
+  const nl = netLiquidity(sel), nlPrev = prev ? netLiquidity(prev) : NaN, dNl = nl - nlPrev;
+  const dNlPct = prev && nlPrev ? (dNl / nlPrev) * 100 : NaN;
   const nlObs: Obs[] = weeks.map((w) => ({ date: w.date, value: netLiquidity(w) })).filter((o) => Number.isFinite(o.value));
   const yearAgo = isoShift(sel.date, -365);
   return {
-    date: sel.date, prevDate: prev.date, cmpWeeks, nl, nlPrev, dNl, dNlPct,
+    date: sel.date, prevDate: prev?.date ?? "", cmpWeeks, nl, nlPrev, dNl, dNlPct,
     flat: Number.isFinite(dNlPct) && Math.abs(dNlPct) < flatPct,
     total: sel.total, tga: sel.tga, rrp: sel.rrp,
-    pctl: percentileOfChange(weeks, sel, cmpWeeks, dNl),
+    pctl: prev ? percentileOfChange(weeks, sel, cmpWeeks, dNl) : null,
     nlYoy: yoyWeekly(nlObs, sel.date), m2Yoy: yoyMonthly(m2, sel.date),
     history: nlObs.filter((o) => o.date >= yearAgo && o.date <= sel.date).map((o) => ({ date: o.date, nl: o.value })),
   };

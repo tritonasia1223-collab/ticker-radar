@@ -3,7 +3,7 @@
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, ReferenceDot, Sankey, Layer } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
@@ -70,7 +70,7 @@ function ContribBars({ rows, N }: { rows: { name: string; desc: string; value: n
     <div style={{ display: "flex", flexDirection: "column" }}>
       <Cap style={{ paddingBottom: 10 }}>유동성에 준 영향 · {N}주 · <span style={{ color: C.release }}>초록 = 방출(시중에 풀림)</span> · <span style={{ color: C.absorb }}>빨강 = 흡수(시중에서 빠짐)</span></Cap>
       {rows.map((r) => {
-        const w = (Math.abs(r.value) / span) * 100, color = r.total ? C.ink : r.value >= 0 ? C.release : C.absorb;
+        const w = (Math.abs(r.value) / span) * 100, color = r.total ? C.ink : r.value > 0 ? C.release : r.value < 0 ? C.absorb : C.n3; // 0 은 중립
         return (
           <div key={r.name} className="grid grid-cols-[1fr_auto] md:grid-cols-[220px_minmax(0,1fr)_96px] gap-x-4 gap-y-2 items-center" style={{ padding: "16px 0", borderTop: r.total ? `2px solid ${C.ink}` : `1px solid ${C.line}` }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}><span style={{ fontSize: 17, fontWeight: 600 }}>{r.name}</span>{r.desc && <Cap style={{ lineHeight: 1.5 }}>{r.desc}</Cap>}</div>
@@ -205,7 +205,10 @@ export default function LiquidityRead() {
   const monthlyBills: Obs[] = useMemo(() => monthly.filter((m) => Number.isFinite(m.bills)).map((m) => ({ date: m.date, value: m.bills })), [monthly]);
   const fedWeekly = overview.data?.treasury?.fedWeekly ?? [];
 
-  const how = sel && prev ? howMuch(weeks, sel, prev, cmp, ctx.m2 ?? [], cfg.FLAT_PCT) : null;
+  const how = sel ? howMuch(weeks, sel, prev, cmp, ctx.m2 ?? [], cfg.FLAT_PCT) : null; // 비교 주가 없어도 수준은 낸다
+  const expectedPrev = sel ? new Date(Date.parse(sel.date) - cmp * 7 * 86_400_000).toISOString().slice(0, 10) : "";
+  const noPrev = `${cmp}주 전(${expectedPrev ? fmt.dateKo(expectedPrev) : ""}) 관측이 없어 이번 주는 비교하지 않았습니다.`;
+  const noPrevBlock = `${cmp}주 전(${expectedPrev ? fmt.dateKo(expectedPrev) : ""}) 관측이 없어 이 칸의 변화는 계산하지 않았습니다. 다른 주를 고르면 다시 계산합니다.`;
   const from = sel && prev ? whereFrom(prev, sel, cfg.DOMINANT_SHARE) : null;
   const to = sel && prev ? whereTo(prev, sel, ctx.deposits ?? [], monthlyBills, cfg.RESERVES_ZONES) : null;
   const agg = auctions.data?.agg ?? null, prevAgg = auctionsPrev.data?.agg ?? null;
@@ -219,7 +222,7 @@ export default function LiquidityRead() {
 
   // 그림 C 데이터: 전년비(5년), 연도 눈금은 연 1회, 기저효과 주석
   const yoyData = useMemo(() => {
-    if (!weeks.length || !sel) return { rows: [] as { date: string; nl: number; m2: number; sp: number }[], ticks: [] as string[], notes: [] as { date: string; text: string }[] };
+    if (!weeks.length || !sel) return { rows: [] as { date: string; nl: number; m2: number; sp: number }[], ticks: [] as string[], notes: [] as { date: string; text: string }[], spLast: null as string | null };
     const nlObs: Obs[] = weeks.map((w) => ({ date: w.date, value: netLiquidity(w) })).filter((o) => Number.isFinite(o.value));
     const spObs: Obs[] = (overview.data?.daily ?? []).filter((d) => d.sp500 != null && Number.isFinite(d.sp500)).map((d) => ({ date: d.date, value: d.sp500 as number }));
     const start = new Date(Date.parse(sel.date) - 5 * 365 * 86_400_000).toISOString().slice(0, 10);
@@ -237,7 +240,7 @@ export default function LiquidityRead() {
       if (a && b && Math.abs(b - a) / a >= 0.02) notes.push({ date: rows[i].date, text: rows[i].date.startsWith("2024-03") ? "1년 전 SVB 사태 때 급증한 수치와 비교돼 생긴 낙차" : "1년 전 급변과 비교돼 생긴 기저효과" });
     }
     if (!notes.some((n) => n.date.startsWith("2024-03"))) { const r = rows.find((x) => x.date >= "2024-03-06" && x.date <= "2024-03-20"); if (r) notes.push({ date: r.date, text: "1년 전 SVB 사태 때 급증한 수치와 비교돼 생긴 낙차" }); }
-    return { rows, ticks, notes };
+    return { rows, ticks, notes, spLast: spObs.length ? spObs[spObs.length - 1].date : null }; // 기준일은 값이 있는 마지막 관측(Codex 2차 F2)
   }, [weeks, sel, ctx.m2, overview.data?.daily]);
   const chartRows = range === "2y" && sel ? yoyData.rows.filter((r) => r.date >= new Date(Date.parse(sel.date) - 2 * 365 * 86_400_000).toISOString().slice(0, 10)) : yoyData.rows;
   const chartTicks = yoyData.ticks.filter((t) => chartRows.some((r) => r.date === t));
@@ -261,11 +264,12 @@ export default function LiquidityRead() {
   if (overview.isError || !latestWeek) return <div style={{ background: C.bg, minHeight: "100vh", padding: 40, fontFamily: SANS }} role="alert">유동성 데이터를 불러오지 못했습니다. <button className="underline" onClick={() => void overview.refetch()}>다시 불러오기</button></div>;
   const selW = weeks[curIdx];
 
-  const summaryRows: { id: string; label: string; parts: Part[] | null }[] = [
-    { id: "s1", label: "얼마나", parts: S1?.summary ?? null },
-    { id: "s2", label: "어디서", parts: S2?.summary ?? null },
-    { id: "s3", label: "어디로", parts: S3?.summary ?? null },
-    { id: "s4", label: "누가 샀나", parts: S4 ? [{ text: S4.summary }] : null },
+  // 결측 사유를 구분한다(Codex 2차 F4): 비교 주 관측 부재 / 입찰 조회 실패 / (05 는 문장 모듈이 자료·설정 부재를 구분)
+  const summaryRows: { id: string; label: string; parts: Part[] }[] = [
+    { id: "s1", label: "얼마나", parts: S1?.summary ?? [{ text: "이번 주 관측이 없습니다." }] },
+    { id: "s2", label: "어디서", parts: S2?.summary ?? [{ text: noPrev }] },
+    { id: "s3", label: "어디로", parts: S3?.summary ?? [{ text: noPrev }] },
+    { id: "s4", label: "누가 샀나", parts: S4 ? [{ text: S4.summary }] : [{ text: auctions.isLoading ? "입찰 자료를 불러오는 중입니다." : "입찰 자료를 불러오지 못해 이번 주는 표시하지 않았습니다." }] },
     { id: "s5", label: "탈은 없나", parts: [{ text: S5.summary }] },
   ];
   const m2Latest = ctx.m2 && ctx.m2.length ? ctx.m2[ctx.m2.length - 1] : null;
@@ -297,7 +301,7 @@ export default function LiquidityRead() {
             <a key={r.id} href={`#${r.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(r.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-7" style={{ padding: "20px 0", textDecoration: "none", color: C.ink, borderBottom: i < summaryRows.length - 1 ? `1px solid ${C.line2}` : undefined }}>
               <span style={{ width: 72, flexShrink: 0, fontSize: 14, fontWeight: 600, color: C.cap }}>{r.label}</span>
               <span className="text-[19px] md:text-[22px]" style={{ flexGrow: 1, fontFamily: SERIF, fontWeight: 500, lineHeight: 1.5 }}>
-                {r.parts ? <Parts parts={r.parts} strongTone /> : <span style={{ color: C.cap }}>{cmp}주 전 관측이 없어 이번 주는 비교할 수 없습니다.</span>}
+                <Parts parts={r.parts} strongTone />
               </span>
             </a>
           ))}
@@ -306,7 +310,7 @@ export default function LiquidityRead() {
 
         {/* 01 얼마나 */}
         <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나">
-          {!how || !S1 ? <Cap>{cmp}주 전({prev ? fmt.dateKo(prev.date) : "관측 없음"}) 비교 시점의 관측이 없어 이 칸을 계산할 수 없습니다. 다른 주를 선택하세요.</Cap> : (<>
+          {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2><Parts parts={S1.headline} /></H2>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -334,14 +338,14 @@ export default function LiquidityRead() {
                     <XAxis dataKey="date" tickFormatter={(d) => fmt.monthKo(String(d))} minTickGap={40} tick={{ fontSize: 13, fill: C.cap }} axisLine={false} tickLine={false} />
                     <YAxis tickFormatter={(v) => `$${(v / 1e6).toFixed(1)}조`} domain={["auto", "auto"]} tick={{ fontSize: 13, fill: C.cap }} axisLine={false} tickLine={false} width={64} />
                     <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8, fontFamily: SANS }} formatter={(v: any) => [dollars(v), "순유동성"]} labelFormatter={(l) => fmt.dateKo(String(l))} />
-                    <ReferenceArea x1={how.prevDate} x2={how.date} fill={how.dNl >= 0 ? C.release : C.absorb} fillOpacity={0.12} />
+                    {prev && <ReferenceArea x1={how.prevDate} x2={how.date} fill={how.dNl >= 0 ? C.release : C.absorb} fillOpacity={0.12} />}
                     <Line dataKey="nl" stroke={C.ink} strokeWidth={2} dot={false} isAnimationActive={false} />
-                    <ReferenceDot x={how.prevDate} y={how.nlPrev} r={5} fill={C.ink} stroke={C.bg} strokeWidth={2} />
-                    <ReferenceDot x={how.date} y={how.nl} r={6} fill={how.dNl >= 0 ? C.release : C.absorb} stroke={C.bg} strokeWidth={2} />
+                    {prev && <ReferenceDot x={how.prevDate} y={how.nlPrev} r={5} fill={C.ink} stroke={C.bg} strokeWidth={2} />}
+                    <ReferenceDot x={how.date} y={how.nl} r={6} fill={prev ? (how.dNl >= 0 ? C.release : C.absorb) : C.ink} stroke={C.bg} strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              {how.pctl ? (
+              {!prev ? <Cap>{noPrevBlock}</Cap> : how.pctl ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ position: "relative", height: 12, background: C.n2, borderRadius: 6 }}>
                     <div style={{ position: "absolute", left: "50%", top: -4, width: 1, height: 20, background: C.cap }} />
@@ -391,7 +395,7 @@ export default function LiquidityRead() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              {sp && <Cap>S&amp;P 500 은 일간 자료가 {overview.data?.daily?.length ? fmt.dateKo(overview.data.daily[overview.data.daily.length - 1].date) : ""}까지 있어 그 뒤는 비어 있습니다.</Cap>}
+              {sp && yoyData.spLast && <Cap>S&amp;P 500 은 일간 자료가 {fmt.dateKo(yoyData.spLast)}까지 있어 그 뒤는 비어 있습니다.</Cap>}
               {S1.m2note && <Body>{S1.m2note}</Body>}
             </div>
           </>)}
@@ -399,7 +403,7 @@ export default function LiquidityRead() {
 
         {/* 02 어디서 */}
         <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나">
-          {!from || !S2 || !sel || !prev ? <Cap>비교 시점의 관측이 없어 이 칸을 계산할 수 없습니다.</Cap> : (<>
+          {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2><Parts parts={S2.headline} /></H2>
             <ContribBars N={cmp} rows={[
               ...from.contributions.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: rowDescription(c, from.fedDetail), value: c.effect })),
@@ -427,13 +431,13 @@ export default function LiquidityRead() {
                   <NeutralTAccount rows={taccountRows(sel as WeekPoint, prev as WeekPoint)} total={sel.total} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, minWidth: 0 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", color: C.cap, borderBottom: `1px solid ${C.line}`, paddingBottom: 6 }}><span>항목</span><span>{fmt.dateKo(sel.date)} 잔고</span><span>{cmp}주 Δ</span></div>
-                    {taccountRows(sel as WeekPoint, prev as WeekPoint).map((r, i, arr) => (<>
+                    {taccountRows(sel as WeekPoint, prev as WeekPoint).map((r, i, arr) => (<Fragment key={r.label}>
                       {i === 5 && <div key="total" style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", padding: "6px 0", borderBottom: `2px solid ${C.ink}`, fontWeight: 600 }}><span>총자산</span><span>{dollars(sel.total)}</span><span style={{ color: C.body, fontWeight: 400 }}>{fmt.signedEok(sel.total - prev.total)}</span></div>}
                       <div key={r.label} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", padding: "6px 0", borderBottom: i === arr.length - 1 ? undefined : `1px solid ${C.line2}` }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ width: 12, height: 12, flexShrink: 0, background: r.color, borderRadius: 2, border: "1px solid rgba(0,0,0,0.12)", boxSizing: "border-box" }} />{r.label}</span>
                         <span>{Number.isFinite(r.v) ? dollars(r.v) : "—"}</span><span style={{ color: C.body }}>{Number.isFinite(r.v - r.p) ? fmt.signedEok(r.v - r.p) : "—"}</span>
                       </div>
-                    </>))}
+                    </Fragment>))}
                     {somaSel && (
                       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
                         <Cap>국채(SOMA) 만기별 · {fmt.dateKo(somaSel.date)}{somaPrev ? ` · Δ는 ${cmp}주` : prev ? ` · ${cmp}주 전 보유 관측이 없어 Δ 생략` : ""}</Cap>
@@ -452,7 +456,7 @@ export default function LiquidityRead() {
 
         {/* 03 어디로 */}
         <Section id="s3" num="03" title="어디로" question="늘어난 돈이 어디에 쌓였나">
-          {!to || !S3 ? <Cap>비교 시점의 관측이 없어 이 칸을 계산할 수 없습니다.</Cap> : (<>
+          {!to || !S3 ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2><Parts parts={S3.headline} /></H2>
             {to.sameSign ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
