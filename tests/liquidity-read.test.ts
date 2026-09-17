@@ -250,6 +250,10 @@ describe("읽기 페이지 — 계산 계층", () => {
     const broken = { ...NOW, liabResidual: NOW.liabResidual + 5_000 }; // 잔차를 손대 항등식을 깬다
     const t = whereTo(PREV, broken, [], [], null);
     expect(t.identityError).toBe(5_000); expect(warn).toHaveBeenCalledTimes(1);
+    // 경계: 1 million USD 불일치도 반올림 전 값이므로 경고한다(Codex 4차 F3). 정상 입력은 부동소수점 오차 이내라 경고 없음.
+    whereTo(PREV, { ...NOW, liabResidual: NOW.liabResidual + 1 }, [], [], null); expect(warn).toHaveBeenCalledTimes(2);
+    whereFrom(PREV, { ...NOW, total: NOW.total + 1 }, 0.5); expect(warn).toHaveBeenCalledTimes(2); // 총자산만 바꾸면 항등식은 유지된다
+    whereTo(PREV, NOW, [], [], null); whereFrom(PREV, NOW, 0.5); expect(warn).toHaveBeenCalledTimes(2);
   });
 
   it("어디로: 예금·단기채는 띠와 같은 두 시점, 구간 밖이면 결측", () => {
@@ -273,6 +277,8 @@ describe("읽기 페이지 — 계산 계층", () => {
     expect(nb.byBucket.bills).toBe(0); expect(nb.top?.bidder).toBe("indirect");
     expect(nb.top!.share).toBeCloseTo(500_000 / 970_000, 6);
     expect(s4(nb).headline[0]).toBe("7월 이후 찍은 국채 9,700억 달러 중 절반 이상인 5,000억을 간접 입찰자가 가져갔습니다."); // 억 뒤는 '을'(Codex F7)
+    expect(nb.counted).toBe(all.counted - AGG_A.countedByMaturity.bills); expect(nb.counted).toBeLessThan(all.counted); // 제외 후 건수(Codex 4차 F2)
+    expect(s4(nb).caution).toBe("9,700억은 새 빚이 아닙니다"); expect(s4(all).caution).toBe("7.6조는 새 빚이 아닙니다"); // 억은/조는(Codex 4차 F4)
     const sk = whoSankey(nb);
     expect(sk.nodes.filter((n) => n.side === "bucket").map((n) => n.key)).toEqual(["nb", "tips"]);
     expect(sk.links.every((l) => l.value > 0)).toBe(true);

@@ -273,7 +273,7 @@ export default function LiquidityRead() {
     { id: "s4", label: "누가 샀나", parts: S4 ? [{ text: S4.summary }] : [{ text: auctions.isLoading ? "입찰 자료를 불러오는 중입니다." : "입찰 자료를 불러오지 못해 이번 주는 표시하지 않았습니다." }] },
     { id: "s5", label: "탈은 없나", parts: [{ text: S5.summary }] },
   ];
-  const m2Latest = ctx.m2 && ctx.m2.length ? ctx.m2[ctx.m2.length - 1] : null;
+  const m2Now = how?.m2Yoy?.to ?? (sel && ctx.m2 ? [...ctx.m2].reverse().find((o) => o.date <= sel.date) ?? null : null); // 선택 주 이하 최신 M2 — 전년비가 없어도 잔액은 보인다(Codex 4차 F1)
 
   return (
     <div style={{ background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" }}>
@@ -368,8 +368,8 @@ export default function LiquidityRead() {
                 </div>
                 <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "22px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ width: 22, height: 0, borderTop: `3px dashed ${C.m2}` }} /><span style={{ fontSize: 15, fontWeight: 600 }}>M2</span></div>
-                  {how.m2Yoy ? <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}><span style={{ fontSize: 28, fontWeight: 600 }}>{dollars(how.m2Yoy.to.value)}</span><span style={{ fontSize: 15, color: C.body }}>전년비 {fmt.pct(how.m2Yoy.pct)}</span></div> : <Cap>준비 중 — M2 자료 연결 후 표시됩니다{context.isError ? " " : ""}{context.isError && <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button>}</Cap>}
-                  <Cap>가계와 기업이 쥔 돈. 현금, 예금, 개인 MMF를 합친 것. {how.m2Yoy ? fmt.monthKo(how.m2Yoy.to.date) : m2Latest ? fmt.monthKo(m2Latest.date) : ""} · 월간</Cap>
+                  {m2Now ? <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}><span style={{ fontSize: 28, fontWeight: 600 }}>{dollars(m2Now.value)}</span><span style={{ fontSize: 15, color: C.body }}>전년비 {how.m2Yoy ? fmt.pct(how.m2Yoy.pct) : "—"}</span></div> : <Cap>준비 중 — M2 자료 연결 후 표시됩니다{context.isError ? " " : ""}{context.isError && <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button>}</Cap>}
+                  <Cap>가계와 기업이 쥔 돈. 현금, 예금, 개인 MMF를 합친 것. {m2Now ? `${fmt.monthKo(m2Now.date)} · ` : ""}월간</Cap>
                 </div>
               </div>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -534,7 +534,7 @@ export default function LiquidityRead() {
               <div style={{ borderTop: `1px solid ${C.line}` }} />
             </div>
             <div className="flex flex-col md:flex-row gap-4 md:gap-7" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 32px" }}>
-              <div style={{ width: 150, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontSize: 14, fontWeight: 600, color: C.cap }}>읽을 때 주의</span><span style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.4 }}>{fmt.amount(who.totalReported)}는 새 빚이 아닙니다</span></div>
+              <div style={{ width: 150, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontSize: 14, fontWeight: 600, color: C.cap }}>읽을 때 주의</span><span style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.4 }}>{S4?.caution}</span></div>
               <Body max={9999}>단기채는 몇 주마다 만기가 돌아와 다시 찍습니다. 그래서 발행액 대부분은 기존 빚을 갈아 끼운 것입니다. {who.netIssuance ? <>같은 시기 실제로 늘어난 국채는 <strong>{fmt.signedAmount(who.netIssuance.delta)} 달러</strong>({fmt.monthKo(who.netIssuance.from.date)}→{fmt.monthKo(who.netIssuance.to.date)} 월간 잔액 기준)이고{who.billsNet ? <>, 그중 단기채가 {fmt.signedAmount(who.billsNet.delta)} 달러입니다.</> : "."}</> : "같은 시기의 월간 잔액 자료가 아직 없어 순증액은 다음 갱신 때 표시됩니다."}</Body>
             </div>
             <Expander label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>

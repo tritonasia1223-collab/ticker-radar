@@ -86,7 +86,7 @@ export function whereFrom(prev: ReadWeek, now: ReadWeek, dominantShare: number):
     { key: "fed", subject: SUBJECT.fed, own: dTotal, effect: dTotal },
   ];
   const identityError = Math.abs(contributions.reduce((s, c) => s + c.effect, 0) - dNl);
-  if (identityError > 1) console.warn(`[liquidity-read] 02 항등식 불일치: Σ기여 − ΔNL = ${identityError.toFixed(3)} musd`);
+  if (identityError > 1e-6) console.warn(`[liquidity-read] 02 항등식 불일치: Σ기여 − ΔNL = ${identityError.toFixed(3)} musd`);
   const dTreast = now.treast - prev.treast, dMbs = now.mbs - prev.mbs, dOtherAsset = dTotal - dTreast - dMbs;
   const fedRaw: FedDetail[] = [
     { key: "treast", label: dTreast < 0 ? "국채 만기상환" : "국채 매입", value: dTreast },
@@ -127,7 +127,7 @@ export function whereTo(prev: ReadWeek, now: ReadWeek, deposits: Obs[], billsMon
   const dReserves = now.reserves - prev.reserves;
   const dOther = (now.currency - prev.currency) + (now.liabResidual - prev.liabResidual);
   const identityError = Math.abs(dReserves + dOther - dNl);
-  if (identityError > 1) console.warn(`[liquidity-read] 03 항등식 불일치: Δ준비금 + Δ기타 − ΔNL = ${identityError.toFixed(3)} musd`);
+  if (identityError > 1e-6) console.warn(`[liquidity-read] 03 항등식 불일치: Δ준비금 + Δ기타 − ΔNL = ${identityError.toFixed(3)} musd`);
   return {
     dNl, dReserves, dOther, resShare: dNl !== 0 ? dReserves / dNl : NaN,
     sameSign: dReserves === 0 || dOther === 0 || Math.sign(dReserves) === Math.sign(dOther), identityError,
@@ -158,14 +158,15 @@ const emptyBidders = () => Object.fromEntries(BIDDERS.map((b) => [b, 0])) as Rec
 function fold(agg: AuctionAgg, excludeBills: boolean) {
   const matrix = Object.fromEntries(BUCKETS.map((k) => [k, emptyBidders()])) as Record<Bucket, Record<Bidder, number>>;
   const byBidder = emptyBidders(); const byBucket = { bills: 0, nb: 0, tips: 0 } as Record<Bucket, number>;
-  let totalReported = 0, totalAttributed = 0;
+  let totalReported = 0, totalAttributed = 0, counted = 0;
   for (const m of Object.keys(agg.matrix) as Maturity[]) {
     const k = BUCKET_OF[m];
     if (excludeBills && k === "bills") continue;
+    counted += agg.countedByMaturity[m]; // 표시 건수도 제외 범위와 같게(Codex 4차 F2)
     for (const b of BIDDERS) { const v = agg.matrix[m][b]; matrix[k][b] += v; byBidder[b] += v; byBucket[k] += v; totalAttributed += v; }
     totalReported += agg.reported[m];
   }
-  return { matrix, byBidder, byBucket, totalReported, totalAttributed };
+  return { matrix, byBidder, byBucket, totalReported, totalAttributed, counted };
 }
 export function whoBought(agg: AuctionAgg, prevAgg: AuctionAgg | null, monthlyTotal: Obs[], monthlyBills: Obs[], excludeBills = false): WhoBought {
   const cur = fold(agg, excludeBills);
@@ -175,7 +176,7 @@ export function whoBought(agg: AuctionAgg, prevAgg: AuctionAgg | null, monthlyTo
   const prev = prevAgg ? fold(prevAgg, excludeBills) : null;
   const dealerSharePrev = prev && prev.totalReported > 0 ? prev.byBidder.dealer / prev.totalReported : null;
   return {
-    start: agg.start, end: agg.end, counted: agg.counted, excludeBills,
+    start: agg.start, end: agg.end, excludeBills,
     ...cur, top, majority: !!top && top.share >= 0.5,
     dealerShare, dealerSharePrev, dealerJump: dealerSharePrev != null && Number.isFinite(dealerShare) && dealerShare - dealerSharePrev >= 0.05,
     netIssuance: stockChangeBetween(monthlyTotal, agg.start, agg.end, 35),
