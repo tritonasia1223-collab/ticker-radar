@@ -137,8 +137,11 @@ export interface AuctionRow {
   indirect_bidder_accepted: unknown; noncomp_accepted: unknown; soma_accepted: unknown;
   inflation_index_security?: unknown; floating_rate?: unknown;   // "Yes" | "No"
 }
+// 집계된 입찰 한 건(musd). 클라이언트가 보유 관측 구간에 맞춰 다시 합산할 때 쓴다.
+export interface AuctionLite { issueDate: string; maturity: Maturity; total: number; soma: number }
 export interface AuctionAgg {
   start: string; end: string;
+  rows: AuctionLite[];                                 // 집계된 입찰(제외분 없음), 결제일 오름차순
   matrix: Record<Maturity, Record<Bidder, number>>;   // musd, 귀속된 낙찰액
   attributed: Record<Maturity, number>;                // = Σ matrix[m][*]
   reported: Record<Maturity, number>;                  // = Σ total_accepted (귀속 합과 대조용)
@@ -160,6 +163,7 @@ const zeroTotals = () => Object.fromEntries(MATURITIES.map((m) => [m, 0])) as Re
 
 export function aggregateAuctions(rows: AuctionRow[], start: string, end: string): AuctionAgg {
   const matrix = zeroMatrix(), attributed = zeroTotals(), reported = zeroTotals(), countedByMaturity = zeroTotals();
+  const lite: AuctionLite[] = [];
   let counted = 0, skipped = 0;
   const unknown = new Set<string>();
   for (const r of rows) {
@@ -179,8 +183,21 @@ export function aggregateAuctions(rows: AuctionRow[], start: string, end: string
     reported[m] += total / 1e6;
     countedByMaturity[m]++;
     counted++;
+    lite.push({ issueDate: issue, maturity: m, total: total / 1e6, soma: parts.soma / 1e6 });
   }
-  return { start, end, matrix, attributed, reported, countedByMaturity, counted, skipped, unknownTypes: [...unknown].sort() };
+  lite.sort((x, y) => (x.issueDate < y.issueDate ? -1 : x.issueDate > y.issueDate ? 1 : 0));
+  return { start, end, rows: lite, matrix, attributed, reported, countedByMaturity, counted, skipped, unknownTypes: [...unknown].sort() };
+}
+
+// 보유 관측 구간 (after, through] 에 결제된 입찰만 합산. H.4.1 은 수요일 스냅샷이라, 두 스냅샷 사이에 들어온 물량은
+// 결제일이 after 초과 through 이하인 입찰이다. 인수액과 보유 변화의 기간을 이렇게 맞춘다(Codex 3차 F1).
+export function sumAuctionsBetween(rows: AuctionLite[], maturities: Maturity[], after: string, through: string): { n: number; issued: number; soma: number } {
+  let n = 0, issued = 0, soma = 0;
+  for (const r of rows) {
+    if (!maturities.includes(r.maturity) || r.issueDate <= after || r.issueDate > through) continue;
+    n++; issued += r.total; soma += r.soma;
+  }
+  return { n, issued: n ? issued : NaN, soma: n ? soma : NaN };
 }
 
 // Recharts <Sankey> 입력. 값 0 인 노드·링크는 그리지 않는다. 좌: 만기, 우: 인수 주체.

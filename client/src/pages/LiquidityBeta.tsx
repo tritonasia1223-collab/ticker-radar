@@ -9,7 +9,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { apiRequest } from "@/lib/queryClient";
 import { restoreMissingNumbers, weeksBefore } from "@shared/time-series";
 import {
-  liquidityBand, netLiquidity, yoyMonthly, yoyWeekly, changeFrom, stockChangeBetween, latestCommon, roundAdditive,
+  liquidityBand, netLiquidity, yoyMonthly, yoyWeekly, changeFrom, stockChangeBetween, latestCommon, roundAdditive, sumAuctionsBetween,
   spreadBand, spreadBp, loansBand, nfciBand,
   type LiquidityContext, type LiquidityAuctions, type Obs, type Band, type Maturity, type Bidder, type LiquidityBand,
 } from "@shared/liquidity-beta";
@@ -169,10 +169,13 @@ export default function LiquidityBeta() {
   const bandDisp = band ? roundAdditive(band.steps.map((s) => s.effect), band.dNetLiq, 10) : null;
   const reservesDisp = band ? Math.round(band.dReserves / 10) * 10 : NaN;
   const bridgeDisp = bandDisp ? bandDisp.total - reservesDisp : NaN;
-  // 연준 SOMA 만기별(주간) — 선택 주 이하 최신 · 비교 주 이하 최신
+  // 연준 SOMA 만기별(주간) — 선택 주·비교 주의 '정확한' 관측만 쓴다. 없으면 결측(이전 주로 대체하면 라벨이 거짓이 된다, Codex 3차 F2).
   const fedWeekly = overview.data?.treasury?.fedWeekly ?? [];
-  const somaAt = (date?: string) => (date ? [...fedWeekly].reverse().find((w) => w.date <= date) ?? null : null);
-  const somaSel = somaAt(sel?.date), somaPrev = somaAt(prev?.date);
+  const somaExact = (date?: string) => (date ? fedWeekly.find((w) => w.date === date) ?? null : null);
+  const somaSel = somaExact(sel?.date), somaPrev = somaExact(prev?.date);
+  // 생애주기용 보유 관측 구간: 입찰 창 안의 첫 수요일 이상 ~ 마지막 수요일 이하. 인수도 이 구간 (첫, 마지막] 로 다시 합산한다.
+  const somaFirstOnOrAfter = (date: string) => fedWeekly.find((w) => w.date >= date) ?? null;
+  const somaLastOnOrBefore = (date: string) => [...fedWeekly].reverse().find((w) => w.date <= date) ?? null;
 
   // 5년 차트: 주간 순유동성 전년비 · M2 전년비(월간→주 매핑) · S&P 전년비(일간→주 매핑, 토글)
   const chart = useMemo(() => {
@@ -203,18 +206,18 @@ export default function LiquidityBeta() {
   const agg = auctions.data?.agg ?? null;
   const life = useMemo(() => {
     if (!agg) return null;
-    const winStart = somaAt(agg.start), winEnd = somaAt(agg.end);
-    // 발행 = 보고 총액(미분류 포함, Codex F5). 그 버킷에 집계된 입찰이 0 건이면 금액은 0 이 아니라 결측(Codex F3).
-    const bucket = (ms: Maturity[]) => {
-      const n = ms.reduce((s, m) => s + agg.countedByMaturity[m], 0);
-      return { n, issued: n ? ms.reduce((s, m) => s + agg.reported[m], 0) : NaN, soma: n ? ms.reduce((s, m) => s + agg.matrix[m].soma, 0) : NaN };
-    };
+    // 기간 정렬(Codex 3차 F1): 보유 변화는 H.4.1 수요일 스냅샷 (winStart → winEnd), 발행·인수는 그 사이 (winStart, winEnd] 에
+    //   결제된 입찰만. 입찰 창 끝(오늘)과 마지막 스냅샷 사이의 인수분은 아직 보유에 안 잡혔으므로 넣지 않는다.
+    const winStart = somaFirstOnOrAfter(agg.start), winEnd = somaLastOnOrBefore(agg.end);
+    if (!winStart || !winEnd || winStart.date >= winEnd.date) return { rows: [], from: winStart?.date, to: winEnd?.date, unavailable: true as const };
+    // 발행 = 보고 총액(미분류 포함, Codex F5). 구간 안에 집계된 입찰이 0 건이면 0 이 아니라 결측(Codex F3).
+    const bucket = (ms: Maturity[]) => sumAuctionsBetween(agg.rows, ms, winStart.date, winEnd.date);
     const rows: { label: string; color: string; n: number; issued: number; soma: number; held: number; dHeld: number }[] = [
-      { label: "단기 Bills", color: TB.bill, ...bucket(["bills"]), held: winEnd?.bills ?? NaN, dHeld: winEnd && winStart ? winEnd.bills - winStart.bills : NaN },
-      { label: "중장기 Notes·Bonds·FRN", color: TB.note, ...bucket(["notes", "bonds", "frn"]), held: winEnd?.notesBonds ?? NaN, dHeld: winEnd && winStart ? winEnd.notesBonds - winStart.notesBonds : NaN },
-      { label: "TIPS", color: TB.tips, ...bucket(["tips"]), held: winEnd?.tips ?? NaN, dHeld: winEnd && winStart ? winEnd.tips - winStart.tips : NaN },
+      { label: "단기 Bills", color: TB.bill, ...bucket(["bills"]), held: winEnd.bills, dHeld: winEnd.bills - winStart.bills },
+      { label: "중장기 Notes·Bonds·FRN", color: TB.note, ...bucket(["notes", "bonds", "frn"]), held: winEnd.notesBonds, dHeld: winEnd.notesBonds - winStart.notesBonds },
+      { label: "TIPS", color: TB.tips, ...bucket(["tips"]), held: winEnd.tips, dHeld: winEnd.tips - winStart.tips },
     ];
-    return { rows, from: winStart?.date, to: winEnd?.date };
+    return { rows, from: winStart.date, to: winEnd.date, unavailable: false as const };
   }, [agg, fedWeekly]);
   const reportedTotal = agg ? Object.values(agg.reported).reduce((s, v) => s + v, 0) : 0;
   const attributedTotal = agg ? Object.values(agg.attributed).reduce((s, v) => s + v, 0) : 0;
@@ -322,9 +325,10 @@ export default function LiquidityBeta() {
               .map(([k, v]) => <div key={k} className="flex justify-between border-b border-border/40 py-0.5"><span className="text-muted-foreground">{k} {cmp}주 Δ</span><b style={{ color: Number.isFinite(v) ? (v >= 0 ? POS : NEG) : undefined }}>{Number.isFinite(v) ? signed(v) : "자료 부족"}</b></div>)
               : <Note>비교 시점 관측이 없어 Δ를 계산할 수 없습니다.</Note>}
           </div>
+          {sel && !somaSel && <Note>국채(SOMA) 만기별 · {sel.date} 보유 관측 없음 — 자료 부족</Note>}
           {somaSel && (
             <div className="mt-2 text-[11px] tabular-nums">
-              <Note>국채(SOMA) 만기별 · {somaSel.date}{somaPrev ? ` · Δ는 ${cmp}주` : ""}</Note>
+              <Note>국채(SOMA) 만기별 · {somaSel.date}{somaPrev ? ` · Δ는 ${cmp}주(${fmtDate(somaPrev.date)}→${fmtDate(somaSel.date)})` : prev ? ` · ${cmp}주 전(${fmtDate(prev.date)}) 보유 관측 없음 — Δ 자료 부족` : ""}</Note>
               <div className="grid grid-cols-3 gap-2 mt-0.5">
                 {([["단기 Bills", somaSel.bills, somaPrev?.bills, TB.bill], ["중장기 N·B·FRN", somaSel.notesBonds, somaPrev?.notesBonds, TB.note], ["TIPS", somaSel.tips, somaPrev?.tips, TB.tips]] as [string, number, number | undefined, string][]).map(([k, v, p, c]) => (
                   <div key={k} className="rounded border border-border/60 px-2 py-1">
@@ -364,9 +368,12 @@ export default function LiquidityBeta() {
             </>
           )}
           {/* 생애주기 표 — SOMA 3버킷 */}
-          {life && (
+          {life && life.unavailable && (
+            <div className="mt-3"><Note>만기별 생애주기 · 입찰 창({auctions.data?.start}~{auctions.data?.end}) 안에 H.4.1 보유 관측이 두 개 이상 없어 기간을 맞출 수 없습니다 — 표를 계산하지 않습니다.</Note></div>
+          )}
+          {life && !life.unavailable && (
             <div className="mt-3">
-              <Note>만기별 생애주기 · 발행·인수는 위 창({auctions.data?.start}~{auctions.data?.end}), 보유는 H.4.1 {life.from ?? "—"}→{life.to ?? "—"}</Note>
+              <Note>만기별 생애주기 · 발행·인수·보유 변화 모두 H.4.1 보유 관측 구간 <b className="text-foreground">{life.from} → {life.to}</b> 기준 (입찰은 그 사이 결제분만 — 위 생키의 창 {auctions.data?.start}~{auctions.data?.end} 와 다를 수 있음)</Note>
               <table className="mt-1 w-full text-[11px] tabular-nums">
                 <thead><tr className="text-muted-foreground"><th className="text-left font-medium py-0.5">만기</th><th className="text-right font-medium">발행</th><th className="text-right font-medium">연준 인수</th><th className="text-right font-medium">연준 보유</th><th className="text-right font-medium">보유 변화</th><th className="text-right font-medium">만기상환(추정)</th></tr></thead>
                 <tbody>

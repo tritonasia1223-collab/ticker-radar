@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   atOrBefore, nearest, changeFrom, yoyMonthly, yoyWeekly, taxDatesWithin, stockChangeBetween, latestCommon, roundAdditive,
-  liquidityBand, netLiquidity, maturityOf, auctionAmount, aggregateAuctions, sankeyData,
+  liquidityBand, netLiquidity, maturityOf, auctionAmount, aggregateAuctions, sankeyData, sumAuctionsBetween,
   spreadBand, spreadBp, loansBand, nfciBand, MATURITIES, BIDDERS, type AuctionRow, type BandWeek, type Obs,
 } from "../shared/liquidity-beta";
 import { auctionWindow } from "../server/liquidity-beta";
@@ -188,6 +188,17 @@ describe("유동성 베타 — 입찰 집계", () => {
     expect(links.every((l) => l.value > 0)).toBe(true);
     expect(links).toHaveLength(4);
     expect(BIDDERS.length).toBe(5);
+  });
+
+  it("집계 결과에 결제일 순 입찰 목록이 실리고, 보유 관측 구간 (after, through] 로 다시 합산할 수 있다", () => {
+    const rows = [row({ issue_date: "2026-09-16" }), row({ issue_date: "2026-09-09" }), row({ issue_date: "2026-08-12", security_type: "Note" })];
+    const agg = aggregateAuctions(rows, "2026-07-01", "2026-09-17");
+    expect(agg.rows.map((r) => r.issueDate)).toEqual(["2026-08-12", "2026-09-09", "2026-09-16"]);
+    // 보유 스냅샷 8/12 → 9/09 사이: 8/12 결제분은 제외(after 초과), 9/09 결제분은 포함(through 이하), 9/16 은 다음 스냅샷 몫
+    const b = sumAuctionsBetween(agg.rows, ["bills"], "2026-08-12", "2026-09-09");
+    expect(b.n).toBe(1); expect(b.issued).toBe(1000); expect(b.soma).toBe(50);
+    const n = sumAuctionsBetween(agg.rows, ["notes", "bonds", "frn"], "2026-08-12", "2026-09-09");
+    expect(n.n).toBe(0); expect(Number.isNaN(n.issued)).toBe(true); expect(Number.isNaN(n.soma)).toBe(true); // 0 이 아니라 결측
   });
 
   it("결제월 창: months=3 은 두 달 전 1일부터 오늘까지", () => {
