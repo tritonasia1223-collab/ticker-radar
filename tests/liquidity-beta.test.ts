@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  atOrBefore, nearest, changeFrom, yoyMonthly, yoyWeekly, taxDatesWithin,
+  atOrBefore, nearest, changeFrom, yoyMonthly, yoyWeekly, taxDatesWithin, stockChangeBetween, latestCommon, roundAdditive,
   liquidityBand, netLiquidity, maturityOf, auctionAmount, aggregateAuctions, sankeyData,
   spreadBand, loansBand, nfciBand, MATURITIES, BIDDERS, type AuctionRow, type BandWeek, type Obs,
 } from "../shared/liquidity-beta";
@@ -43,6 +43,36 @@ describe("유동성 베타 — 시점·변화", () => {
     expect(c?.to.date).toBe("2026-09-09");
     expect(c?.from.date).toBe("2026-06-11");
     expect(c?.delta).toBeCloseTo(0.28, 10);
+  });
+
+  it("두 시점 잔액 변화는 띠의 구간에 맞추고, 허용 범위 밖·같은 관측이면 결측", () => {
+    const weekly = obs([["2026-08-05", 100], ["2026-08-12", 102], ["2026-09-02", 110], ["2026-09-09", 111]]);
+    const c = stockChangeBetween(weekly, "2026-08-12", "2026-09-09", 7);
+    expect(c?.from.date).toBe("2026-08-12"); expect(c?.to.date).toBe("2026-09-09"); expect(c?.delta).toBe(9);
+    // 최신 관측이 9/02 뿐이고 목표가 9/16 이면 14일 차 → 허용 7일 초과 → 결측(최신 관측에서 기간을 다시 재지 않는다)
+    expect(stockChangeBetween(weekly.slice(0, 3), "2026-08-19", "2026-09-16", 7)).toBeNull();
+    // 월간: 4주 구간이 한 달 안에 들면 같은 관측 → 결측
+    const monthly = obs([["2026-07-31", 6000], ["2026-08-31", 6100]]);
+    expect(stockChangeBetween(monthly, "2026-09-02", "2026-09-23", 35)).toBeNull();
+    expect(stockChangeBetween(monthly, "2026-08-12", "2026-09-09", 35)?.delta).toBe(100);
+  });
+
+  it("발표 시차가 있는 두 시리즈는 최신 공통 관측일에서만 짝짓는다", () => {
+    const sofr = obs([["2026-09-12", 3.63], ["2026-09-15", 3.64]]);
+    const iorb = obs([["2026-09-12", 3.65], ["2026-09-15", 3.65], ["2026-09-17", 3.90]]);
+    const p = latestCommon(sofr, iorb);
+    expect(p?.date).toBe("2026-09-15"); expect(p?.b.value).toBe(3.65);
+    expect(Math.round((p!.a.value - p!.b.value) * 100)).toBe(-1); // −26bp 가 아니라 −1bp
+    expect(latestCommon(sofr, obs([["2026-09-17", 3.9]]))).toBeNull();
+  });
+
+  it("표시 반올림은 합이 총액과 같아지도록 드리프트를 최대 항목에 흡수한다", () => {
+    expect(roundAdditive([149, 149, 149], 447, 10)).toEqual({ parts: [150, 150, 150], total: 450 });
+    const r = roundAdditive([145, 145, 145], 435, 10);
+    expect(r.total).toBe(440); expect(r.parts.reduce((s, v) => s + v, 0)).toBe(440);
+    const skew = roundAdditive([1004, 3, 3], 1010, 10); // 최대 항목이 흡수
+    expect(skew.parts).toEqual([1000, 0, 0].map((v, i) => (i === 0 ? 1010 : v)));
+    expect(roundAdditive([NaN, 5], 5, 10).parts[0]).toBeNaN(); // 결측이면 흡수 안 함
   });
 
   it("세금일이 구간에 있으면 날짜를 돌려주고 없으면 빈 배열", () => {
@@ -117,6 +147,14 @@ describe("유동성 베타 — 입찰 집계", () => {
     const agg = aggregateAuctions([row({}), row({ total_accepted: "null", issue_date: "2026-09-22" })], "2026-07-01", "2026-09-30");
     expect(agg.counted).toBe(1); expect(agg.skipped).toBe(1);
     expect(agg.attributed.bills).toBe(1000);
+    expect(agg.countedByMaturity.bills).toBe(1); expect(agg.countedByMaturity.notes).toBe(0);
+  });
+
+  it("전부 미공표면 집계 0건·제외 건수만 남고 금액은 0 으로 만들어지지 않는다", () => {
+    const agg = aggregateAuctions([row({ total_accepted: "null" }), row({ total_accepted: null, security_type: "Note" })], "2026-07-01", "2026-09-30");
+    expect(agg.counted).toBe(0); expect(agg.skipped).toBe(2);
+    expect(MATURITIES.every((m) => agg.countedByMaturity[m] === 0)).toBe(true);
+    expect(sankeyData(agg).links).toHaveLength(0);
   });
 
   it("귀속 항목 하나만 결측이어도 행 전체 제외 — 부분합 금지", () => {

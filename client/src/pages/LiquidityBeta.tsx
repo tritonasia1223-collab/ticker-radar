@@ -9,7 +9,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { apiRequest } from "@/lib/queryClient";
 import { restoreMissingNumbers, weeksBefore } from "@shared/time-series";
 import {
-  liquidityBand, netLiquidity, yoyMonthly, yoyWeekly, changeFrom,
+  liquidityBand, netLiquidity, yoyMonthly, yoyWeekly, changeFrom, stockChangeBetween, latestCommon, roundAdditive,
   spreadBand, loansBand, nfciBand,
   type LiquidityContext, type LiquidityAuctions, type Obs, type Band, type Maturity, type Bidder, type LiquidityBand,
 } from "@shared/liquidity-beta";
@@ -29,6 +29,8 @@ const fmtDate = (d?: string) => (d ? d.slice(2).replace(/-/g, ".") : "—");
 const fmtPct = (v: number, digits = 1) => (Number.isFinite(v) ? `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}%` : "—");
 const fmtNum = (v: number, digits = 2, unit = "") => (Number.isFinite(v) ? `${v.toFixed(digits)}${unit}` : "—");
 const latest = (obs?: Obs[]) => (obs && obs.length ? obs[obs.length - 1] : null);
+// 띠 전용 0.1억 표기. asMoney(억 정수)로는 149M×3 이 "$1억+$1억+$1억=$4억"으로 읽혀 항등식이 깨져 보인다(Codex F4).
+const fmtEok = (v: number) => (Number.isFinite(v) ? `${v < 0 ? "−" : "+"}$${(Math.abs(v) / 100).toFixed(1)}억` : "—");
 const MAT_COLOR: Record<Maturity, string> = { bills: TB.bill, notes: TB.note, bonds: TB.bond, tips: TB.tips, frn: TB.frn };
 const BIDDER_COLOR: Record<Bidder, string> = { soma: A_SOMA, dealer: "#475569", direct: "#64748b", indirect: "#94a3b8", noncomp: "#cbd5e1" };
 
@@ -42,14 +44,14 @@ function Pill({ options, value, onChange }: { options: { k: string; label: strin
 }
 
 // ── 어디서: 항등식 워터폴 (세 항목 → 순유동성 변화) ──
-function BandWaterfall({ band }: { band: LiquidityBand }) {
+function BandWaterfall({ band, disp }: { band: LiquidityBand; disp: { parts: number[]; total: number } }) {
   const cum: number[] = [0];
   for (const s of band.steps) cum.push(cum[cum.length - 1] + s.effect);
   const lo = Math.min(0, ...cum), hi = Math.max(0, ...cum), span = Math.max(hi - lo, 1);
   const top = 12, bottom = 96, y = (v: number) => top + ((hi - v) / span) * (bottom - top);
   const colW = 100, barW = 56, x0 = 12;
-  const cols = [...band.steps.map((s, i) => ({ label: s.label, own: s.own, a: cum[i], b: cum[i + 1], color: s.effect >= 0 ? POS : NEG, total: false })),
-    { label: "= 순유동성 변화", own: band.dNetLiq, a: 0, b: band.dNetLiq, color: "hsl(var(--foreground))", total: true }];
+  const cols = [...band.steps.map((s, i) => ({ label: s.label, own: s.own, a: cum[i], b: cum[i + 1], color: s.effect >= 0 ? POS : NEG, total: false, shown: disp.parts[i] })),
+    { label: "= 순유동성 변화", own: band.dNetLiq, a: 0, b: band.dNetLiq, color: "hsl(var(--foreground))", total: true, shown: disp.total }];
   const W = x0 + colW * cols.length;
   const sub = (k: string, own: number) => k === "연준 자산" ? (own >= 0 ? `매입 ${asMoney(own)}` : `QT 만기상환 ${asMoney(own)}`)
     : k === "TGA" ? (own >= 0 ? `발행>지출 ${asMoney(own)} 흡수` : `지출>발행 ${asMoney(-own)} 방출`)
@@ -64,7 +66,7 @@ function BandWaterfall({ band }: { band: LiquidityBand }) {
           <g key={c.label}>
             {i < cols.length - 1 && !c.total && <line x1={cx + barW / 2} y1={y(c.b)} x2={cx + colW - barW / 2} y2={y(c.b)} stroke="hsl(var(--muted-foreground))" strokeWidth={0.6} strokeDasharray="3 3" opacity={0.6} />}
             <rect x={cx - barW / 2} y={yA} width={barW} height={h} rx={2} fill={c.color} opacity={c.total ? 0.92 : 0.85} />
-            <text x={cx} y={c.b - c.a >= 0 ? yA - 3 : yB + 10} textAnchor="middle" fontSize={10} fontWeight={700} fill={c.total ? "hsl(var(--foreground))" : c.color}>{signed(c.total ? c.own : c.b - c.a)}</text>
+            <text x={cx} y={c.b - c.a >= 0 ? yA - 3 : yB + 10} textAnchor="middle" fontSize={10} fontWeight={700} fill={c.total ? "hsl(var(--foreground))" : c.color}>{fmtEok(c.shown)}</text>
             <text x={cx} y={112} textAnchor="middle" fontSize={9.5} fontWeight={600} fill="hsl(var(--foreground))">{c.label}</text>
             <text x={cx} y={124} textAnchor="middle" fontSize={8.5} fill="hsl(var(--muted-foreground))">{c.total ? `${weekLabel(band.from)} → ${weekLabel(band.to)}` : sub(c.label, c.own)}</text>
           </g>
@@ -94,7 +96,7 @@ function ReservoirBars({ rows }: { rows: { label: string; value: number; sub: st
             </div>
           )}
           <div className="text-right">
-            <div className={`text-[12px] font-semibold tabular-nums ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.placeholder ? "출처 확정 후" : Number.isFinite(r.value) ? signed(r.value) : "자료 부족"}</div>
+            <div className={`text-[12px] font-semibold tabular-nums ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.placeholder ? "출처 확정 후" : Number.isFinite(r.value) ? fmtEok(r.value) : "자료 부족"}</div>
             <div className="text-[9.5px] text-muted-foreground leading-none">{r.sub}</div>
           </div>
         </div>
@@ -156,10 +158,16 @@ export default function LiquidityBeta() {
 
   // 얼마나: M2 전년비(월간, 선택 주 이하 최신 달)
   const m2Yoy = sel ? yoyMonthly(ctx.m2 ?? [], sel.date) : null;
-  // 어디로: 예금(주간 H.8) 같은 기간 변화 · 단기채 잔액(MSPD 월간, 선택 주 이하 최신 달의 순발행=잔액 변화)
-  const depChg = sel ? changeFrom(ctx.deposits ?? [], sel.date, cmp * 7, 4) : null;
+  // 어디로: 띠와 같은 두 시점(prev.date → sel.date)의 잔액 변화. 목표일에서 허용 범위(예금 7일·월간 35일)를 넘거나
+  //   구간 안에 관측이 없으면 결측 — 최신 관측에서 기간을 다시 재지 않는다(Codex F1).
+  const depChg = sel && prev ? stockChangeBetween(ctx.deposits ?? [], prev.date, sel.date, 7) : null;
   const monthly = overview.data?.treasury?.monthly ?? [];
-  const billsMonth = sel ? [...monthly].reverse().find((m) => m.date <= sel.date) ?? null : null;
+  const billsObs: Obs[] = monthly.filter((m) => Number.isFinite(m.bills)).map((m) => ({ date: m.date, value: m.bills }));
+  const billsChg = sel && prev ? stockChangeBetween(billsObs, prev.date, sel.date, 35) : null;
+  // F4: 띠의 표시값 — 0.1억 단위, 드리프트는 최대 항목에 흡수. 얼마나·어디서·어디로가 같은 표시값을 공유한다.
+  const bandDisp = band ? roundAdditive(band.steps.map((s) => s.effect), band.dNetLiq, 10) : null;
+  const reservesDisp = band ? Math.round(band.dReserves / 10) * 10 : NaN;
+  const bridgeDisp = bandDisp ? bandDisp.total - reservesDisp : NaN;
   // 연준 SOMA 만기별(주간) — 선택 주 이하 최신 · 비교 주 이하 최신
   const fedWeekly = overview.data?.treasury?.fedWeekly ?? [];
   const somaAt = (date?: string) => (date ? [...fedWeekly].reverse().find((w) => w.date <= date) ?? null : null);
@@ -180,8 +188,10 @@ export default function LiquidityBeta() {
   }, [weeks, overview.data?.daily, ctx.m2]);
 
   // 맥락(최신 관측 기준)
-  const sofr = latest(ctx.sofr), iorb = latest(ctx.iorb);
-  const spreadBp = sofr && iorb ? (sofr.value - iorb.value) * 100 : NaN;
+  // SOFR 는 익일 발표, IORB 는 당일 — 최신 '공통' 관측일에서만 차감한다(Codex F2: 9/15 SOFR − 9/17 IORB 가 −26bp 로 보였음).
+  const pair = latestCommon(ctx.sofr ?? [], ctx.iorb ?? []);
+  const sofr = pair?.a ?? null;
+  const spreadBp = pair ? (pair.a.value - pair.b.value) * 100 : NaN;
   const loansLatest = weeks.length ? weeks[weeks.length - 1] : null;
   const hy = latest(ctx.hy), nfci = latest(ctx.nfci), dfii = latest(ctx.dfii10), unrate = latest(ctx.unrate);
   const dxy3m = ctx.dtwexbgs ? changeFrom(ctx.dtwexbgs, latest(ctx.dtwexbgs)!.date, 91, 5) : null;
@@ -193,10 +203,15 @@ export default function LiquidityBeta() {
   const life = useMemo(() => {
     if (!agg) return null;
     const winStart = somaAt(agg.start), winEnd = somaAt(agg.end);
-    const rows: { label: string; color: string; issued: number; soma: number; held: number; dHeld: number }[] = [
-      { label: "단기 Bills", color: TB.bill, issued: agg.attributed.bills, soma: agg.matrix.bills.soma, held: winEnd?.bills ?? NaN, dHeld: winEnd && winStart ? winEnd.bills - winStart.bills : NaN },
-      { label: "중장기 Notes·Bonds·FRN", color: TB.note, issued: agg.attributed.notes + agg.attributed.bonds + agg.attributed.frn, soma: agg.matrix.notes.soma + agg.matrix.bonds.soma + agg.matrix.frn.soma, held: winEnd?.notesBonds ?? NaN, dHeld: winEnd && winStart ? winEnd.notesBonds - winStart.notesBonds : NaN },
-      { label: "TIPS", color: TB.tips, issued: agg.attributed.tips, soma: agg.matrix.tips.soma, held: winEnd?.tips ?? NaN, dHeld: winEnd && winStart ? winEnd.tips - winStart.tips : NaN },
+    // 발행 = 보고 총액(미분류 포함, Codex F5). 그 버킷에 집계된 입찰이 0 건이면 금액은 0 이 아니라 결측(Codex F3).
+    const bucket = (ms: Maturity[]) => {
+      const n = ms.reduce((s, m) => s + agg.countedByMaturity[m], 0);
+      return { n, issued: n ? ms.reduce((s, m) => s + agg.reported[m], 0) : NaN, soma: n ? ms.reduce((s, m) => s + agg.matrix[m].soma, 0) : NaN };
+    };
+    const rows: { label: string; color: string; n: number; issued: number; soma: number; held: number; dHeld: number }[] = [
+      { label: "단기 Bills", color: TB.bill, ...bucket(["bills"]), held: winEnd?.bills ?? NaN, dHeld: winEnd && winStart ? winEnd.bills - winStart.bills : NaN },
+      { label: "중장기 Notes·Bonds·FRN", color: TB.note, ...bucket(["notes", "bonds", "frn"]), held: winEnd?.notesBonds ?? NaN, dHeld: winEnd && winStart ? winEnd.notesBonds - winStart.notesBonds : NaN },
+      { label: "TIPS", color: TB.tips, ...bucket(["tips"]), held: winEnd?.tips ?? NaN, dHeld: winEnd && winStart ? winEnd.tips - winStart.tips : NaN },
     ];
     return { rows, from: winStart?.date, to: winEnd?.date };
   }, [agg, fedWeekly]);
@@ -227,15 +242,15 @@ export default function LiquidityBeta() {
         {!band ? (
           <div className="text-[12px] text-muted-foreground">{cmp}주 전({prev ? prev.date : "관측 없음"}) 비교 시점의 관측이 없어 띠를 그릴 수 없습니다. 다른 주를 선택하세요.</div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[250px_24px_minmax(0,1fr)_24px_330px] gap-y-4 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[220px_24px_minmax(0,1fr)_24px_300px] gap-x-4 gap-y-4 xl:gap-x-0 items-stretch">
             {/* 얼마나 */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 md:order-1 xl:order-none">
               <div><div className="text-[13px] font-bold">얼마나</div><Note>지금 얼마나 풀려 있나</Note></div>
               <div>
                 <Note>순유동성 · 연준 자산 − TGA − 역레포</Note>
                 <div className="text-[30px] font-bold leading-none tabular-nums mt-0.5">{asMoney(band.netLiqNow)}</div>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-[15px] font-semibold tabular-nums" style={{ color: band.dNetLiq >= 0 ? POS : NEG }}>{signed(band.dNetLiq)}</span>
+                  <span className="text-[15px] font-semibold tabular-nums" style={{ color: band.dNetLiq >= 0 ? POS : NEG }}>{fmtEok(bandDisp!.total)}</span>
                   <Note>{cmp}주 변화{band.taxDates.length ? <span className="text-amber-700"> · 세금일 포함({band.taxDates.map((d) => d.slice(5).replace("-", "/")).join(", ")})</span> : null}</Note>
                 </div>
               </div>
@@ -245,23 +260,23 @@ export default function LiquidityBeta() {
                 <Note>{m2Yoy ? `월간 · ${m2Yoy.to.date.slice(0, 7)}` : ctxErr.m2 ? "자료 부족" : "…"}</Note>
               </div>
             </div>
-            <div className="hidden lg:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
+            <div className="hidden xl:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
             {/* 어디서 */}
-            <div className="flex flex-col gap-1.5 lg:px-3">
-              <div><div className="text-[13px] font-bold">어디서</div><Note>무엇이 {signed(band.dNetLiq)}를 만들었나 — H.4.1 항등식, 오차 없음</Note></div>
-              <BandWaterfall band={band} />
+            <div className="flex flex-col gap-1.5 md:order-3 md:col-span-2 xl:order-none xl:col-span-1 xl:px-3">
+              <div><div className="text-[13px] font-bold">어디서</div><Note>무엇이 {fmtEok(bandDisp!.total)}를 만들었나 — H.4.1 항등식 · 표시는 0.1억, 반올림 차이는 최대 항목에 흡수</Note></div>
+              <BandWaterfall band={band} disp={bandDisp!} />
             </div>
-            <div className="hidden lg:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
+            <div className="hidden xl:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
             {/* 어디로 */}
-            <div className="flex flex-col gap-2 lg:pl-3">
+            <div className="flex flex-col gap-2 md:order-2 xl:order-none xl:pl-3">
               <div><div className="text-[13px] font-bold">어디로</div><Note>같은 기간, 돈이 앉은 곳 — 잔액 변화</Note></div>
               <ReservoirBars rows={[
-                { label: "지급준비금", value: band.dReserves, sub: `${cmp}주 · 항등식`, strong: true },
-                { label: "은행 예금", value: depChg ? depChg.delta : NaN, sub: depChg ? `${cmp}주 · H.8 ${fmtDate(depChg.to.date)}` : ctxErr.deposits ? "자료 부족" : "주간 H.8" },
-                { label: "단기채 잔액", value: billsMonth ? billsMonth.netBills : NaN, sub: billsMonth ? `월간 · MSPD ${billsMonth.date.slice(0, 7)}` : "월간 MSPD" },
+                { label: "지급준비금", value: reservesDisp, sub: `${fmtDate(band.from)}→${fmtDate(band.to)} · 항등식`, strong: true },
+                { label: "은행 예금", value: depChg ? depChg.delta : NaN, sub: depChg ? `${fmtDate(depChg.from.date)}→${fmtDate(depChg.to.date)} · H.8 주간` : ctxErr.deposits ? "자료 부족" : "H.8 주간 · 구간 관측 없음" },
+                { label: "단기채 잔액", value: billsChg ? billsChg.delta : NaN, sub: billsChg ? `${billsChg.from.date.slice(0, 7)}→${billsChg.to.date.slice(0, 7)} · MSPD 월간` : "MSPD 월간 · 구간 내 관측 없음" },
                 { label: "MMF 잔고", value: NaN, sub: "", placeholder: true },
               ]} />
-              <Note>지급준비금 = 순유동성 변화 − 현금통화·기타({signed(band.bridge)}) — 항등식으로 이어짐. 예금·단기채는 같은 기간 잔액 변화를 나란히 둔 것, 합산하지 않음.</Note>
+              <Note>지급준비금 = 순유동성 변화 − 현금통화·기타({fmtEok(bridgeDisp)}) — 항등식으로 이어짐. 예금·단기채는 같은 두 시점의 잔액 변화를 나란히 둔 것, 합산하지 않음.</Note>
             </div>
           </div>
         )}
@@ -326,10 +341,10 @@ export default function LiquidityBeta() {
             <div className="text-sm font-semibold">어디서 · 재무부 — 누가 국채를 받았나 <span className="text-[11px] font-normal text-muted-foreground">입찰 낙찰 · 결제일 기준</span></div>
             <Pill options={[{ k: "3", label: "3개월" }, { k: "1", label: "1개월" }]} value={String(months)} onChange={(k) => setMonths(Number(k) as 3 | 1)} />
           </div>
-          {auctions.isLoading ? <Skeleton className="h-[260px] w-full" /> : !auctions.data || auctions.data.error || !auctions.data.sankey ? (
-            <div className="text-[12px] text-muted-foreground py-6">입찰 자료를 불러오지 못했습니다{auctions.data?.error ? ` (${auctions.data.error})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></div>
+          {auctions.isLoading ? <Skeleton className="h-[260px] w-full" /> : !auctions.data || auctions.data.errors.auctions || !auctions.data.sankey ? (
+            <div className="text-[12px] text-muted-foreground py-6">입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></div>
           ) : auctions.data.sankey.links.length === 0 ? (
-            <div className="text-[12px] text-muted-foreground py-6">{auctions.data.start} ~ {auctions.data.end} 결제 완료된 입찰이 없습니다.</div>
+            <div className="text-[12px] text-muted-foreground py-6">{auctions.data.start} ~ {auctions.data.end} 집계 가능한 입찰이 없습니다{agg && agg.skipped ? <> — <b className="text-amber-700">{agg.skipped}건 제외</b>(결과 미공표 · 0 으로 치지 않음)</> : null}{agg && agg.unknownTypes.length ? <> · 미매핑 종류: {agg.unknownTypes.join(", ")}</> : null}.</div>
           ) : (
             <>
               <div className="h-[260px]">
@@ -357,16 +372,16 @@ export default function LiquidityBeta() {
                   {life.rows.map((r) => (
                     <tr key={r.label} className="border-t border-border/40">
                       <td className="py-1 flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: r.color }} />{r.label}</td>
-                      <td className="text-right">{asMoney(r.issued)}</td>
-                      <td className="text-right" style={{ color: A_SOMA }}>{asMoney(r.soma)}</td>
+                      <td className="text-right">{Number.isFinite(r.issued) ? asMoney(r.issued) : <span className="text-muted-foreground">자료 부족</span>}</td>
+                      <td className="text-right" style={{ color: A_SOMA }}>{Number.isFinite(r.soma) ? asMoney(r.soma) : <span className="text-muted-foreground">자료 부족</span>}</td>
                       <td className="text-right">{Number.isFinite(r.held) ? asMoney(r.held) : "자료 부족"}</td>
                       <td className="text-right">{Number.isFinite(r.dHeld) ? signed(r.dHeld) : "자료 부족"}</td>
-                      <td className="text-right text-muted-foreground">{Number.isFinite(r.dHeld) ? asMoney(r.soma - r.dHeld) : "—"}</td>
+                      <td className="text-right text-muted-foreground">{Number.isFinite(r.soma) && Number.isFinite(r.dHeld) ? asMoney(r.soma - r.dHeld) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <Note>만기상환(추정) = 연준 인수 − 보유 변화. CUSIP 만기 집계가 아닌 근사치. 연준은 경매 직접매입 불가 → 인수 = SOMA 재투자분.</Note>
+              <Note>발행 = 보고 총액(total_accepted, 미분류 포함) · 연준 인수 = SOMA 낙찰 · 만기상환(추정) = 연준 인수 − 보유 변화(CUSIP 만기 집계가 아닌 근사치). 집계 입찰이 0 건인 만기는 자료 부족.</Note>
             </div>
           )}
         </Card>

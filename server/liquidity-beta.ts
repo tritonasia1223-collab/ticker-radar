@@ -102,9 +102,9 @@ async function collectAuctions(months: number): Promise<LiquidityAuctions> {
     const rows = await fetchAuctionRows(start, end);
     if (!rows.length) throw new Error("해당 기간 입찰 자료 없음");
     const agg = aggregateAuctions(rows, start, end);
-    return { ...base, agg, sankey: sankeyData(agg) };
+    return { ...base, agg, sankey: sankeyData(agg), errors: {} };
   } catch (e: any) {
-    return { ...base, agg: null, sankey: null, error: String(e?.message || e) };
+    return { ...base, agg: null, sankey: null, errors: { auctions: String(e?.message || e) } };
   }
 }
 
@@ -115,7 +115,7 @@ export async function liquidityAuctions(months: number): Promise<LiquidityAuctio
   const ongoing = auctionPending.get(months);
   if (ongoing) return ongoing;
   const work = collectAuctions(months).then((data) => {
-    if (!data.error) auctionCache.set(months, { data, expires: Date.now() + TTL });
+    if (!data.errors.auctions) auctionCache.set(months, { data, expires: Date.now() + TTL });
     return data;
   }).finally(() => auctionPending.delete(months));
   auctionPending.set(months, work);

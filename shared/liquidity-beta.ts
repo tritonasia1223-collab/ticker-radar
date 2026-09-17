@@ -39,6 +39,35 @@ export const yoyMonthly = (obs: Obs[], date: string) => changeFrom(obs, date, 36
 export const yoyWeekly = (obs: Obs[], date: string) => changeFrom(obs, date, 364, 4);
 export const yoyDaily = (obs: Obs[], date: string) => changeFrom(obs, date, 365, 4);
 
+// 두 시점의 잔액 변화 — 띠와 같은 구간(fromDate → toDate)에 맞춘다. 각 시점 이하 최신 관측을 쓰되,
+// 목표일에서 toleranceDays 넘게 떨어졌거나 두 관측이 같은 것이면 null(구간 안에 관측이 없다는 뜻 — 0 이 아니다).
+export interface StockChange { from: Obs; to: Obs; delta: number }
+export function stockChangeBetween(obs: Obs[], fromDate: string, toDate: string, toleranceDays: number): StockChange | null {
+  const to = atOrBefore(obs, toDate), from = atOrBefore(obs, fromDate);
+  if (!to || !from) return null;
+  if (daysBetween(to.date, toDate) > toleranceDays || daysBetween(from.date, fromDate) > toleranceDays) return null;
+  if (from.date === to.date) return null;
+  return { from, to, delta: to.value - from.value };
+}
+
+// 두 시리즈의 최신 '공통' 관측일. SOFR(익일 발표)·IORB(당일)처럼 발표 시차가 있는 쌍은 같은 날짜끼리만 뺀다.
+export function latestCommon(a: Obs[], b: Obs[]): { date: string; a: Obs; b: Obs } | null {
+  const byDate = new Map(b.map((o) => [o.date, o]));
+  for (let i = a.length - 1; i >= 0; i--) { const o = byDate.get(a[i].date); if (o) return { date: a[i].date, a: a[i], b: o }; }
+  return null;
+}
+
+// 표시용 반올림 — 항목을 unit 단위로 반올림하고, 합이 총액의 반올림과 같아지도록 드리프트를 |최대| 항목에 흡수.
+// /fed FlowSummary 와 같은 규칙. 원값은 건드리지 않고 표시값만 만든다. 결측이 섞이면 흡수하지 않는다.
+export function roundAdditive(parts: number[], total: number, unit: number): { parts: number[]; total: number } {
+  const r = (v: number) => Math.round(v / unit) * unit;
+  const rp = parts.map(r), rt = r(total);
+  if (!parts.every(Number.isFinite) || !Number.isFinite(total) || !rp.length) return { parts: rp, total: rt };
+  const drift = rt - rp.reduce((s, v) => s + v, 0);
+  if (drift !== 0) { let bi = 0; parts.forEach((v, i) => { if (Math.abs(v) > Math.abs(parts[bi])) bi = i; }); rp[bi] += drift; }
+  return { parts: rp, total: rt };
+}
+
 // 분기 법인세 납부일(4·6·9·12월 15일)이 [from, to] 안에 있으면 그 날짜들. TGA 급증의 계절 요인 표기용.
 // 항등식을 깨뜨리는 제외·보정에는 쓰지 않는다 — 표기만.
 export function taxDatesWithin(from: string, to: string): string[] {
@@ -113,6 +142,7 @@ export interface AuctionAgg {
   matrix: Record<Maturity, Record<Bidder, number>>;   // musd, 귀속된 낙찰액
   attributed: Record<Maturity, number>;                // = Σ matrix[m][*]
   reported: Record<Maturity, number>;                  // = Σ total_accepted (귀속 합과 대조용)
+  countedByMaturity: Record<Maturity, number>;         // 만기별 집계 건수 — 0 이면 그 만기의 금액은 '없음'이 아니라 '자료 부족'
   counted: number;                                     // 집계된 입찰 수
   skipped: number;                                     // 결과 미공표(null)·형식 오류로 제외된 입찰 수
   unknownTypes: string[];                              // 매핑 안 된 security_type
@@ -129,7 +159,7 @@ const zeroMatrix = () => Object.fromEntries(MATURITIES.map((m) => [m, Object.fro
 const zeroTotals = () => Object.fromEntries(MATURITIES.map((m) => [m, 0])) as Record<Maturity, number>;
 
 export function aggregateAuctions(rows: AuctionRow[], start: string, end: string): AuctionAgg {
-  const matrix = zeroMatrix(), attributed = zeroTotals(), reported = zeroTotals();
+  const matrix = zeroMatrix(), attributed = zeroTotals(), reported = zeroTotals(), countedByMaturity = zeroTotals();
   let counted = 0, skipped = 0;
   const unknown = new Set<string>();
   for (const r of rows) {
@@ -147,9 +177,10 @@ export function aggregateAuctions(rows: AuctionRow[], start: string, end: string
     if (!Number.isFinite(total) || !BIDDERS.every((b) => Number.isFinite(parts[b]))) { skipped++; continue; }
     for (const b of BIDDERS) { const v = parts[b] / 1e6; matrix[m][b] += v; attributed[m] += v; }
     reported[m] += total / 1e6;
+    countedByMaturity[m]++;
     counted++;
   }
-  return { start, end, matrix, attributed, reported, counted, skipped, unknownTypes: [...unknown].sort() };
+  return { start, end, matrix, attributed, reported, countedByMaturity, counted, skipped, unknownTypes: [...unknown].sort() };
 }
 
 // Recharts <Sankey> 입력. 값 0 인 노드·링크는 그리지 않는다. 좌: 만기, 우: 인수 주체.
@@ -194,5 +225,5 @@ export interface LiquidityAuctions {
   months: number; start: string; end: string; fetchedAt: string;
   agg: AuctionAgg | null;
   sankey: { nodes: SankeyNode[]; links: SankeyLink[] } | null;
-  error?: string;
+  errors: { auctions?: string };   // context 와 같은 계약 — 실패 항목을 errors 에 명시
 }

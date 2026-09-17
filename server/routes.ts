@@ -428,7 +428,7 @@ export function registerRoutes(app: Express) {
     if (months !== 1 && months !== 3) return res.status(400).json({ error: "months 는 1 또는 3 이어야 합니다." });
     try {
       const data = await liquidityAuctions(months);
-      res.setHeader("Cache-Control", data.error ? "no-store" : "public, max-age=300, s-maxage=21600");
+      res.setHeader("Cache-Control", data.errors.auctions ? "no-store" : "public, max-age=300, s-maxage=21600");
       res.json(data);
     } catch {
       res.status(502).json({ error: "입찰 자료를 불러오지 못했습니다." });
