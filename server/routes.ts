@@ -8,6 +8,7 @@ import { cloOverview } from "./clo.js";
 import { cloMacro } from "./clo-macro.js";
 import { fedOverview } from "./fed.js";
 import { monthBounds, treasuryTransactions } from "./treasury-transactions.js";
+import { liquidityContext, liquidityAuctions } from "./liquidity-beta.js";
 import { z } from "zod";
 import { registerCollaborationRoutes } from "./cap-collaboration.js";
 
@@ -412,6 +413,27 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // ---- 미국 유동성(베타) — 라이브 조회 + 6시간 캐시. DB 미사용. server/liquidity-beta.ts ----
+  app.get("/api/liquidity/context", async (_req, res) => {
+    try {
+      const data = await liquidityContext();
+      res.setHeader("Cache-Control", Object.keys(data.errors).length ? "no-store" : "public, max-age=300, s-maxage=21600");
+      res.json(data);
+    } catch {
+      res.status(502).json({ error: "맥락 지표를 불러오지 못했습니다." });
+    }
+  });
+  app.get("/api/liquidity/auctions", async (req, res) => {
+    const months = Number(req.query.months ?? 3);
+    if (months !== 1 && months !== 3) return res.status(400).json({ error: "months 는 1 또는 3 이어야 합니다." });
+    try {
+      const data = await liquidityAuctions(months);
+      res.setHeader("Cache-Control", data.error ? "no-store" : "public, max-age=300, s-maxage=21600");
+      res.json(data);
+    } catch {
+      res.status(502).json({ error: "입찰 자료를 불러오지 못했습니다." });
+    }
+  });
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {
     if (COLLECTION_DISABLED) {
