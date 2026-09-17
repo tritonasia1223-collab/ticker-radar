@@ -48,7 +48,9 @@ function BandWaterfall({ band, disp }: { band: LiquidityBand; disp: { parts: num
   const cum: number[] = [0];
   for (const s of band.steps) cum.push(cum[cum.length - 1] + s.effect);
   const lo = Math.min(0, ...cum), hi = Math.max(0, ...cum), span = Math.max(hi - lo, 1);
-  const top = 12, bottom = 96, y = (v: number) => top + ((hi - v) / span) * (bottom - top);
+  // 세로 배치: 막대 16~96 · 양수 금액은 막대 위(yA−3, 최소 13) · 음수 금액은 막대 아래(yB+10, 최대 106) · 항목명 120 · 부연 132.
+  //   음수 금액과 항목명 사이 14px 를 확보한다(Codex 4차: 항목명이 112 일 때 8px 겹침).
+  const top = 16, bottom = 96, y = (v: number) => top + ((hi - v) / span) * (bottom - top);
   const colW = 100, barW = 56, x0 = 12;
   const cols = [...band.steps.map((s, i) => ({ label: s.label, own: s.own, a: cum[i], b: cum[i + 1], color: s.effect >= 0 ? POS : NEG, total: false, shown: disp.parts[i] })),
     { label: "= 순유동성 변화", own: band.dNetLiq, a: 0, b: band.dNetLiq, color: "hsl(var(--foreground))", total: true, shown: disp.total }];
@@ -57,7 +59,7 @@ function BandWaterfall({ band, disp }: { band: LiquidityBand; disp: { parts: num
     : k === "TGA" ? (own >= 0 ? `발행>지출 ${asMoney(own)} 흡수` : `지출>발행 ${asMoney(-own)} 방출`)
     : k === "역레포" ? (own >= 0 ? `MMF 예치 ${asMoney(own)} 흡수` : `MMF 인출 ${asMoney(-own)} 방출`) : "";
   return (
-    <svg viewBox={`0 0 ${W} 132`} className="w-full" style={{ maxHeight: 150 }}>
+    <svg viewBox={`0 0 ${W} 140`} className="w-full" style={{ maxHeight: 158 }}>
       <line x1={0} y1={y(0)} x2={W} y2={y(0)} stroke="hsl(var(--border))" strokeDasharray="4 4" />
       {cols.map((c, i) => {
         const cx = x0 + colW * i + colW / 2, yA = y(Math.max(c.a, c.b)), yB = y(Math.min(c.a, c.b));
@@ -67,8 +69,8 @@ function BandWaterfall({ band, disp }: { band: LiquidityBand; disp: { parts: num
             {i < cols.length - 1 && !c.total && <line x1={cx + barW / 2} y1={y(c.b)} x2={cx + colW - barW / 2} y2={y(c.b)} stroke="hsl(var(--muted-foreground))" strokeWidth={0.6} strokeDasharray="3 3" opacity={0.6} />}
             <rect x={cx - barW / 2} y={yA} width={barW} height={h} rx={2} fill={c.color} opacity={c.total ? 0.92 : 0.85} />
             <text x={cx} y={c.b - c.a >= 0 ? yA - 3 : yB + 10} textAnchor="middle" fontSize={10} fontWeight={700} fill={c.total ? "hsl(var(--foreground))" : c.color}>{fmtEok(c.shown)}</text>
-            <text x={cx} y={112} textAnchor="middle" fontSize={9.5} fontWeight={600} fill="hsl(var(--foreground))">{c.label}</text>
-            <text x={cx} y={124} textAnchor="middle" fontSize={8.5} fill="hsl(var(--muted-foreground))">{c.total ? `${weekLabel(band.from)} → ${weekLabel(band.to)}` : sub(c.label, c.own)}</text>
+            <text x={cx} y={120} textAnchor="middle" fontSize={9.5} fontWeight={600} fill="hsl(var(--foreground))">{c.label}</text>
+            <text x={cx} y={132} textAnchor="middle" fontSize={8.5} fill="hsl(var(--muted-foreground))">{c.total ? `${weekLabel(band.from)} → ${weekLabel(band.to)}` : sub(c.label, c.own)}</text>
           </g>
         );
       })}
