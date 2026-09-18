@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const PLOT_PREFIX = "comparison_node:";
+export const NOTE_PREFIX = "comparison_insight:";
+export const isNoteKey = (key: string) => /^note:[a-zA-Z0-9-]{1,100}$/.test(key);
 export const isPlotKey = (key: string) => /^plot:[a-zA-Z0-9-]{1,100}$/.test(key);
 export const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
 const date = z.string().refine(validDate, "유효한 날짜를 입력하세요.");
@@ -11,6 +13,23 @@ export const placementSchema = z.object({
 }).strict().refine(p => !p.endDate || (!!p.date && p.endDate >= p.date), "종료일은 시작일 이후여야 합니다.");
 export type Placement = z.infer<typeof placementSchema>;
 export type PlacedNode = Placement & { id: string };
+
+// Insights belong to time, never to a selected series or a value-axis coordinate.
+export const comparisonInsightSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  date, endDate: date.nullable(),
+  text: z.string().max(100000), caption: z.string().max(180),
+  sortOrder: z.number().finite(),
+}).strict().refine(p => !p.endDate || p.endDate >= p.date, "종료일은 시작일 이후여야 합니다.");
+export type ComparisonInsight = z.infer<typeof comparisonInsightSchema>;
+export type SavedInsight = ComparisonInsight & { id: string };
+
+export function zoomRange(range: [number, number], anchor: number, factor: number, extent: [number, number]): [number, number] {
+  const duration = Math.min(extent[1] - extent[0], Math.max(31 * 86400000, (range[1] - range[0]) * factor));
+  const ratio = Math.max(0, Math.min(1, (anchor - range[0]) / (range[1] - range[0])));
+  const start = Math.max(extent[0], Math.min(extent[1] - duration, anchor - duration * ratio));
+  return [start, start + duration];
+}
 
 export type Observation = [string, number];
 export interface ComparePoint { date: string; month: string; time: number; raw: number; value: number; average?: number }

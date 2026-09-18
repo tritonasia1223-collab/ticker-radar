@@ -21,6 +21,8 @@ function publish(resource: Resource) {
       const rest = prev.filter((f) => f.slug !== resource.key.slice(5));
       return (next ? [...rest, next] : rest).sort((a, b) => a.date.localeCompare(b.date) || a.sortOrder - b.sortOrder);
     });
+  } else if (resource.key.startsWith("note:")) {
+    queryClient.setQueryData<Resource[]>(["comparison-insights"], (prev = []) => [...prev.filter(r => r.key !== resource.key), resource]);
   } else if (resource.key.startsWith("plot:")) {
     queryClient.setQueryData<Resource[]>(["comparison-board"], (prev = []) => [...prev.filter(r => r.key !== resource.key), resource]);
   } else {
@@ -66,6 +68,7 @@ export async function poll() {
     peers = state.peers.filter((p: Peer) => p.session !== session); syncError = "";
     const versions = new Map<string, number>(state.flows.map((f: any) => [`flow:${f.key}`, Number(f.version)]));
     const changed = new Set<string>();
+    for (const note of state.notes ?? []) if ((collaboration.confirmed.has(note.key) || queryClient.getQueryData(["comparison-insights"])) && collaboration.confirmed.get(note.key)?.version !== Number(note.version)) changed.add(note.key);
     for (const plot of state.plots ?? []) if (collaboration.confirmed.has(plot.key) && collaboration.confirmed.get(plot.key)?.version !== Number(plot.version)) changed.add(plot.key);
     if (queryClient.getQueryData(["comparison-board"])) for (const plot of state.plots ?? []) if (!collaboration.confirmed.has(plot.key)) changed.add(plot.key);
     for (const [key, version] of versions) if (collaboration.confirmed.get(key)?.version !== version) changed.add(key);

@@ -1,9 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { commonBase, isPlotKey, lineSegments, monthlyPoints, movingAverage, simplifyExtrema, trendSections, moveRange, placementSchema, rebase } from "../shared/cap-comparison";
+import { commonBase, isPlotKey, isNoteKey, comparisonInsightSchema, zoomRange, lineSegments, monthlyPoints, movingAverage, simplifyExtrema, trendSections, moveRange, placementSchema, rebase } from "../shared/cap-comparison";
 import { diff, merge } from "../shared/cap-collaboration";
 import { validateEdit } from "../server/cap-collaboration";
 
 const placement = { flowSlug: "crisis", nodeKey: "policy", title: "정책 발표", date: "2008-09-15", endDate: null, sortOrder: 1 };
+describe("time-based comparison insights", () => {
+  const note = { title: "환율 비교", date: "1997-01-01", endDate: "1998-12-31", text: "나의 해석", caption: "회복 구간", sortOrder: 1 };
+  it("accepts date and period notes without a series binding and rejects invalid dates or ranges", () => {
+    expect(comparisonInsightSchema.parse(note)).toEqual(note);
+    expect(comparisonInsightSchema.safeParse({ ...note, endDate: null }).success).toBe(true);
+    for (const patch of [{ date: "1997-02-30" }, { endDate: "1996-01-01" }, { title: " " }, { series: ["dollar"] }, { caption: "x".repeat(181) }]) {
+      expect(comparisonInsightSchema.safeParse({ ...note, ...patch }).success).toBe(false);
+    }
+  });
+  it("allows insight prose edits, isolates placement fields, and validates resource keys", () => {
+    const op = { id: crypto.randomUUID(), session: crypto.randomUUID(), resource: "note:abc-123", editor: "창", changes: diff(note, { ...note, text: "새 분석" }) };
+    expect(validateEdit(op).changes[0].path).toEqual(["text"]);
+    expect(isNoteKey("note:../../meta")).toBe(false);
+    expect(() => validateEdit({ ...op, resource: "note:bad key" })).toThrow();
+    expect(() => validateEdit({ ...op, changes: [{ path: ["flowSlug"], before: null, after: "crisis" }] })).toThrow();
+    expect(() => validateEdit({ ...op, resource: "plot:abc-123" })).toThrow();
+  });
+  it("merges prose and dates independently, but protects concurrent prose and deleted notes", () => {
+    const remote = { ...note, text: "다른 창의 분석" };
+    expect(merge(remote, diff(note, { ...note, date: "1997-06-01" })).doc).toEqual({ ...remote, date: "1997-06-01" });
+    expect(merge(remote, diff(note, { ...note, text: "내 분석" })).conflicts).toHaveLength(1);
+    expect(merge(null, diff(note, { ...note, caption: "구간 메모" })).conflicts).toHaveLength(1);
+  });
+  it("zooms around the cursor, clamps to extent and enforces the minimum duration", () => {
+    const day = 86400000;
+    expect(zoomRange([100 * day, 300 * day], 150 * day, .5, [0, 500 * day])).toEqual([125 * day, 225 * day]);
+    expect(zoomRange([0, 100 * day], 0, 20, [0, 500 * day])).toEqual([0, 500 * day]);
+    const tiny = zoomRange([100 * day, 200 * day], 150 * day, .001, [0, 500 * day]);
+    expect(tiny[1] - tiny[0]).toBe(31 * day);
+    const edge = zoomRange([400 * day, 500 * day], 499 * day, 2, [0, 500 * day]);
+    expect(edge).toEqual([300 * day, 500 * day]);
+  });
+});
 describe("comparison dates and observations", () => {
   it("rejects impossible dates and reversed periods; keeps undated selections", () => {
     expect(placementSchema.safeParse({ ...placement, date: "2008-02-30" }).success).toBe(false);

@@ -82,6 +82,23 @@ try {
   assert.equal((await getResource("plot:two", isolated)).doc!.nodeKey, "b");
   assert.ok((await getResource(key, isolated)).doc!.nodes);
   assert.equal((await getResource("meta:m1", isolated)).doc!.title, "ONE");
+  // Time-only insights are isolated from legacy placements and source cards.
+  const note = { title: "Currency comparison", date: "1997-01-01", endDate: "1998-12-31", text: "", caption: "", sortOrder: 1 };
+  await applyCollaborativeEdit(op("note:one", null, note), isolated);
+  await Promise.all([
+    applyCollaborativeEdit(op("note:one", note, { ...note, text: "Independent prose" }), isolated),
+    applyCollaborativeEdit(op("note:one", note, { ...note, date: "1997-06-01" }), isolated),
+  ]);
+  const written = await getResource("note:one", isolated);
+  assert.equal(written.doc!.text, "Independent prose"); assert.equal(written.doc!.date, "1997-06-01");
+  await assert.rejects(() => applyCollaborativeEdit(op("note:one", note, { ...note, text: "Conflicting prose" }), isolated), CollaborationConflict);
+  await assert.rejects(() => applyCollaborativeEdit(op("note:one", written.doc, { ...written.doc, endDate: "1996-01-01" }), isolated));
+  assert.deepEqual((await getResource("note:one", isolated)).doc, written.doc);
+  await applyCollaborativeEdit(op("note:one", written.doc, null), isolated);
+  const removedNote = await getResource("note:one", isolated);
+  assert.equal(removedNote.doc, null); assert.ok(removedNote.version > written.version);
+  assert.equal((await getResource("plot:two", isolated)).doc!.nodeKey, "b");
+  assert.equal((await getResource("meta:m1", isolated)).doc!.title, "ONE");
   const deleted = await getResource(key, isolated);
   await applyCollaborativeEdit(op(key, deleted.doc, null), isolated);
   await assert.rejects(() => applyCollaborativeEdit(op(key, deleted.doc, { ...deleted.doc, title: "late edit" }), isolated), CollaborationConflict);
