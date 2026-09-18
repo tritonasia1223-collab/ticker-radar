@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { commonBase, isPlotKey, isNoteKey, comparisonInsightSchema, zoomRange, lineSegments, monthlyPoints, movingAverage, simplifyExtrema, trendSections, moveRange, placementSchema, rebase, centerRange, presetRange, calendarTicks, spreadPoints, spreadSchema, periodSummary } from "../shared/cap-comparison";
 import { diff, merge } from "../shared/cap-collaboration";
 import { validateEdit } from "../server/cap-collaboration";
+import { nearestDatedReference } from "../shared/cap-comparison";
+
+describe("references near the insight date", () => {
+  const early = { date: "1970-01-01" }, late = { date: "2020-01-01" };
+  it("finds the closest card in either direction and skips undated or invalid references", () => {
+    expect(nearestDatedReference([early, late, { date: null }, { date: "2008-02-30" }], { date: "2008-09-15" })).toBe(late);
+    expect(nearestDatedReference([late, early], { date: "1950-01-01" })).toBe(early);
+    expect(nearestDatedReference([{ date: null }], { date: "2000-01-01" })).toBeNull();
+  });
+  it("prefers a card covering the insight date over a closer start date outside it", () => {
+    const spanning = { date: "2000-01-01", endDate: "2010-01-01" };
+    expect(nearestDatedReference([{ date: "2008-09-16" }, spanning], { date: "2008-09-15" })).toBe(spanning);
+  });
+  it("starts near the beginning of a period, regardless of source ordering", () => {
+    const first = { date: "2007-06-01" }, last = { date: "2009-09-01" };
+    expect(nearestDatedReference([last, early, first], { date: "2007-01-01", endDate: "2009-12-31" })).toBe(first);
+  });
+});
 
 const placement = { flowSlug: "crisis", nodeKey: "policy", title: "정책 발표", date: "2008-09-15", endDate: null, sortOrder: 1 };
 describe("time-based comparison insights", () => {

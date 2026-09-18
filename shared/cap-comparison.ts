@@ -34,6 +34,20 @@ export const comparisonInsightSchema = z.object({
 export type ComparisonInsight = z.infer<typeof comparisonInsightSchema>;
 export type SavedInsight = ComparisonInsight & { id: string };
 
+// Prefer an overlapping reference; otherwise use the closest interval boundary.
+// Ties favor a start date near the insight's start, preserving input order last.
+export function nearestDatedReference<T extends { date: string | null; endDate?: string | null }>(items: T[], period: { date: string; endDate?: string | null }): T | null {
+  const start = Date.parse(period.date), end = Date.parse(period.endDate ?? period.date);
+  let best: T | null = null, distance = Infinity, startDistance = Infinity;
+  for (const item of items) {
+    if (!item.date || !validDate(item.date)) continue;
+    const a = Date.parse(item.date), b = item.endDate && validDate(item.endDate) ? Math.max(a, Date.parse(item.endDate)) : a;
+    const gap = Math.max(0, a - end, start - b), offset = Math.abs(a - start);
+    if (gap < distance || (gap === distance && offset < startDistance)) { best = item; distance = gap; startDistance = offset; }
+  }
+  return best;
+}
+
 export function zoomRange(range: [number, number], anchor: number, factor: number, extent: [number, number]): [number, number] {
   const duration = Math.min(extent[1] - extent[0], Math.max(31 * 86400000, (range[1] - range[0]) * factor));
   const ratio = Math.max(0, Math.min(1, (anchor - range[0]) / (range[1] - range[0])));
