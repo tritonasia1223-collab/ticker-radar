@@ -14,12 +14,22 @@ export const placementSchema = z.object({
 export type Placement = z.infer<typeof placementSchema>;
 export type PlacedNode = Placement & { id: string };
 
-// Insights belong to time, never to a selected series or a value-axis coordinate.
+// Rate spreads use original percentage values, not rebased chart values.
+export const RATE_SPREAD_IDS = ["fedfunds", "tb3ms", "gs10"] as const;
+export const spreadSchema = z.object({ a: z.enum(RATE_SPREAD_IDS), b: z.enum(RATE_SPREAD_IDS) }).strict().refine(s => s.a !== s.b, "서로 다른 금리를 선택하세요.");
+export type SpreadSpec = z.infer<typeof spreadSchema>;
+export const insightContextSchema = z.object({
+  ids: z.array(z.string().regex(/^[a-z0-9_]{1,60}$/)).max(4).refine(ids => new Set(ids).size === ids.length, "중복 지표"),
+  spread: spreadSchema.nullable(),
+}).strict();
+export type InsightContext = z.infer<typeof insightContextSchema>;
+// Time anchors remain independent; context remembers which graphs the prose references.
 export const comparisonInsightSchema = z.object({
   title: z.string().trim().min(1).max(160),
   date, endDate: date.nullable(),
   text: z.string().max(100000), caption: z.string().max(180),
   sortOrder: z.number().finite(),
+  context: insightContextSchema.nullable().optional(),
 }).strict().refine(p => !p.endDate || p.endDate >= p.date, "종료일은 시작일 이후여야 합니다.");
 export type ComparisonInsight = z.infer<typeof comparisonInsightSchema>;
 export type SavedInsight = ComparisonInsight & { id: string };
@@ -31,8 +41,53 @@ export function zoomRange(range: [number, number], anchor: number, factor: numbe
   return [start, start + duration];
 }
 
+export function centerRange(center: number, duration: number, extent: [number, number]): [number, number] {
+  const span = Math.min(extent[1] - extent[0], Math.max(31 * 86400000, duration));
+  const start = Math.max(extent[0], Math.min(extent[1] - span, center - span / 2));
+  return [start, start + span];
+}
+export function presetRange(range: [number, number], mode: "month" | "year", extent: [number, number]): [number, number] {
+  const center = (range[0] + range[1]) / 2;
+  const a = new Date(center), b = new Date(center), months = mode === "month" ? 12 : 120;
+  a.setUTCMonth(a.getUTCMonth() - months); b.setUTCMonth(b.getUTCMonth() + months);
+  return centerRange(center, b.getTime() - a.getTime(), extent);
+}
+export function calendarTicks(range: [number, number], width: number) {
+  const months = (range[1] - range[0]) / (30.4375 * 86400000), count = Math.max(2, Math.floor(width / 80));
+  const step = [1, 2, 3, 6, 12, 24, 60, 120, 240, 600].find(n => n >= months / count) ?? 1200;
+  const start = new Date(range[0]);
+  let index = start.getUTCFullYear() * 12 + start.getUTCMonth();
+  index = Math.ceil(index / step) * step;
+  const ticks: { time: number; label: string }[] = [];
+  for (let i = 0; i < 100; i++, index += step) {
+    const time = Date.UTC(Math.floor(index / 12), index % 12, 1);
+    if (time > range[1]) break;
+    if (time >= range[0]) ticks.push({ time, label: new Date(time).toISOString().slice(0, step >= 12 ? 4 : 7) });
+  }
+  return ticks;
+}
+
 export type Observation = [string, number];
 export interface ComparePoint { date: string; month: string; time: number; raw: number; value: number; average?: number }
+export interface SpreadPoint extends ComparePoint { a: number; b: number; aDate: string; bDate: string }
+export function spreadPoints(a: ComparePoint[], b: ComparePoint[]): SpreadPoint[] {
+  const byMonth = new Map(b.map(p => [p.month, p]));
+  return a.flatMap(p => {
+    const q = byMonth.get(p.month);
+    if (!q) return [];
+    const value = p.raw - q.raw;
+    return [{ ...p, date: p.date > q.date ? p.date : q.date, raw: value, value, a: p.raw, b: q.raw, aDate: p.date, bDate: q.date }];
+  });
+}
+// Use only actual observations inside the requested interval. Expose effective
+// dates rather than silently presenting nearby values as exact boundary values.
+export function periodSummary(points: (ComparePoint | SpreadPoint)[], from: string, to: string) {
+  const visible = points.filter(p => p.date >= from && p.date <= to && (!("aDate" in p) || (p.aDate >= from && p.aDate <= to && p.bDate >= from && p.bDate <= to)));
+  if (visible.length < 2) return null;
+  const first = visible[0], last = visible.at(-1)!;
+  return { first, last, change: last.raw - first.raw, percent: first.raw > 0 ? (last.raw / first.raw - 1) * 100 : null,
+    low: visible.reduce((a, b) => a.raw <= b.raw ? a : b), high: visible.reduce((a, b) => a.raw >= b.raw ? a : b) };
+}
 export const monthTime = (month: string) => Date.parse(`${month.slice(0, 7)}-01T00:00:00Z`);
 // Monthly sources retain their published monthly values; higher-frequency sources
 // use the final observation in each month. No forward-filling/interpolation.

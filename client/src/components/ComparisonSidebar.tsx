@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, StickyNote, Trash2, Focus } from "lucide-react";
 import { CapRichText } from "./CapRichText";
+import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
-import { comparisonInsightSchema, type ComparisonInsight, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
+import { comparisonInsightSchema, type ComparisonInsight, type SavedInsight, type PlacedNode, type InsightContext, type Observation } from "../../../shared/cap-comparison";
 
 const field = "w-full min-w-0 rounded-md border bg-background px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500/30";
 const button = "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted disabled:opacity-40";
@@ -17,6 +18,7 @@ type Props = {
   flows: FlowDTO[]; nodes: PlacedNode[]; contextIds: string[]; onClearContext: () => void;
   showHistory: boolean; onHistory: (show: boolean) => void; onJump: (slug: string) => void;
   layoutKey: string;
+  currentContext: InsightContext; seriesData: Record<string, Observation[]> | undefined; onRestore: (context: InsightContext, note: SavedInsight) => void;
 };
 
 export function ComparisonSidebar(p: Props) {
@@ -29,6 +31,7 @@ export function ComparisonSidebar(p: Props) {
   }, [p.layoutKey]);
   useEffect(() => { setConfirmDelete(false); }, [p.selected?.id]);
   const filtered = p.notes.filter(n => (n.title + " " + n.text + " " + n.date).toLowerCase().includes(search.toLowerCase()));
+  const details = (children: ReactNode) => p.selected && <ComparisonInsightContext note={p.selected} currentContext={p.currentContext} seriesData={p.seriesData} canEdit={p.canEdit} onRestore={p.onRestore}>{children}</ComparisonInsightContext>;
   return <aside className="w-full shrink-0 border-t bg-card lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[380px] 2xl:w-[410px]" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
     <div className="flex border-b text-xs">
       <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "insights" ? "border-sky-500 text-sky-600 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("insights")}><StickyNote size={15} />인사이트 <span className="tabular-nums">{p.notes.length}</span></button>
@@ -37,7 +40,7 @@ export function ComparisonSidebar(p: Props) {
     <div ref={content} style={{ maxHeight: panelHeight }} className="min-h-80 overflow-y-auto overscroll-contain">
       {p.panel === "reference" ? <ReferencePanel {...p} /> : p.selected ? <div className="p-4">
         <div className="mb-4 flex items-center justify-between"><button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={p.onCloseNote}><ArrowLeft size={14} />인사이트 목록</button><button className={button} onClick={() => p.onView(p.selected!)}><Focus size={13} />이 기간 보기</button></div>
-        {p.canEdit ? <InsightEditor key={p.selected.id} note={p.selected} /> : <article data-testid="insight-reader"><h2 className="break-words text-lg font-semibold">{p.selected.title}</h2><p className="mt-2 text-xs text-muted-foreground">{p.selected.date}{p.selected.endDate && " ~ " + p.selected.endDate}</p><div className="mt-6 whitespace-pre-wrap break-words text-sm leading-7">{p.selected.text || "아직 작성된 내용이 없습니다."}</div>{p.selected.caption && <div className="mt-5 rounded-lg bg-sky-500/10 p-3 text-xs">{p.selected.caption}</div>}</article>}
+        {p.canEdit ? <InsightEditor key={p.selected.id} note={p.selected} details={details} /> : <article data-testid="insight-reader"><h2 className="break-words text-lg font-semibold">{p.selected.title}</h2><p className="mt-2 text-xs text-muted-foreground">{p.selected.date}{p.selected.endDate && " ~ " + p.selected.endDate}</p><div className="mt-4">{details(<><div className="whitespace-pre-wrap break-words text-sm leading-7">{p.selected.text || "아직 작성된 내용이 없습니다."}</div>{p.selected.caption && <div className="rounded-lg bg-sky-500/10 p-3 text-xs">{p.selected.caption}</div>}</>)}</div></article>}
         {p.canEdit && <div className="mt-6 border-t pt-4">{confirmDelete ? <div className="space-y-2 text-xs"><p>이 인사이트를 삭제할까요? 변경 이력에서 복원할 수 있습니다.</p><div className="flex gap-2"><button className={button + " text-red-500"} onClick={() => p.onRemove(p.selected!.id)}>삭제하기</button><button className={button} onClick={() => setConfirmDelete(false)}>취소</button></div></div> : <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}><Trash2 size={12} />인사이트 삭제</button>}</div>}
       </div> : <div className="p-4">
         <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="인사이트 검색" placeholder="제목, 내용, 날짜 검색" className={field + " pl-9 text-xs"} value={search} onChange={e => setSearch(e.target.value)} /></div>
@@ -50,7 +53,7 @@ export function ComparisonSidebar(p: Props) {
   </aside>;
 }
 
-function InsightEditor({ note }: { note: SavedInsight }) {
+function InsightEditor({ note, details }: { note: SavedInsight; details: (children: ReactNode) => ReactNode }) {
   const key = "note:" + note.id, scope = useCapEditScope(key);
   const [error, setError] = useState("");
   const save = (patch: Partial<ComparisonInsight>) => {
@@ -62,13 +65,16 @@ function InsightEditor({ note }: { note: SavedInsight }) {
   };
   return <div {...scope} className="space-y-4" data-testid="insight-editor">
     <BufferedInput label="제목" value={note.title} maxLength={160} save={value => save({ title: value })} />
+    <div className="flex gap-1 rounded-lg bg-muted/50 p-1" role="group" aria-label="인사이트 기록 범위">{([{ label: "시점", period: false }, { label: "구간", period: true }] as const).map(mode => <button key={mode.label} className={"flex-1 rounded-md py-1.5 text-xs " + ((note.endDate !== null) === mode.period ? "bg-background font-semibold text-sky-600 shadow-sm" : "text-muted-foreground")} aria-pressed={(note.endDate !== null) === mode.period} onClick={() => save({ endDate: mode.period ? note.endDate ?? note.date : null })}>{mode.label}</button>)}</div>
     <div className="grid grid-cols-2 gap-2">
       <BufferedInput label="시작일" type="date" value={note.date} save={value => save({ date: value })} />
-      <BufferedInput label="종료일 (선택)" type="date" min={note.date} value={note.endDate ?? ""} save={value => save({ endDate: value || null })} />
+      {note.endDate !== null && <BufferedInput label="종료일" type="date" min={note.date} value={note.endDate} save={value => save({ endDate: value || null })} />}
     </div>
     {error && <p role="alert" className="text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
+    {details(<>
     <label className="block text-xs font-medium">내 인사이트<textarea aria-label="인사이트 본문" className={field + " mt-2 min-h-[310px] resize-y border-transparent bg-muted/20 text-sm leading-7 focus:border-sky-500/30"} placeholder="이 시기에 무엇을 발견했나요? 비교한 지표와 생각을 자유롭게 적어보세요." maxLength={100000} value={note.text} onChange={e => save({ text: e.target.value })} /></label>
     <label className="block text-xs font-medium">차트에 표시할 짧은 설명 <span className="font-normal text-muted-foreground">(선택)</span><textarea aria-label="차트 짧은 설명" className={field + " mt-2 min-h-20 resize-y text-xs leading-5"} placeholder="예: 원화와 엔화의 움직임이 갈라지는 구간" maxLength={180} value={note.caption} onChange={e => save({ caption: e.target.value })} /></label>
+    </>)}
     <p className="text-[11px] leading-5 text-muted-foreground">글은 자동 저장됩니다. 배지를 선택하면 날짜·기간과 짧은 설명이 차트에 나타납니다.</p>
   </div>;
 }

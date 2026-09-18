@@ -1,32 +1,33 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookOpen, PanelRightClose, PanelRightOpen, Settings2, StickyNote, RotateCcw } from "lucide-react";
+import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookOpen, PanelRightClose, PanelRightOpen, Settings2, StickyNote, RotateCcw, ArrowLeftRight } from "lucide-react";
 import { CompareChart, iso, type ChartTool } from "@/components/CompareChart";
 import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { COMPARE_SERIES, COMPARE_CATEGORIES } from "@/lib/comparison-series";
+import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread } from "@/lib/comparison-series";
+import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import type { Resource } from "../../../shared/cap-collaboration";
-import { monthlyPoints, trendSections, commonBase, rebase, placementSchema, comparisonInsightSchema, validDate, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
+import { monthlyPoints, trendSections, commonBase, rebase, placementSchema, comparisonInsightSchema, validDate, spreadSchema, type SpreadSpec, type InsightContext, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
 
 const EMPTY_FLOWS: FlowDTO[] = [];
 const DAY = 86400000;
 const inputClass = "rounded-md border border-border bg-background px-2 py-1.5 text-xs min-w-0";
 const buttonClass = "inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed";
 const plain = (text: string) => parseRich(text).map(s => s.text).join("").trim();
-type Preferences = { ids: string[]; indexed: boolean; base: string; from: number; to: number; smooth: boolean; months: number; phases: boolean; reference: string; history: boolean; badges: boolean };
-const defaults: Preferences = { ids: ["dollar", "fx_krw", "fx_jpy"], indexed: true, base: "2000-01", from: Date.UTC(1990, 0, 1), to: Date.now(), smooth: false, months: 12, phases: false, reference: "dollar", history: false, badges: true };
+type Preferences = { ids: string[]; indexed: boolean; base: string; from: number; to: number; smooth: boolean; months: number; phases: boolean; reference: string; history: boolean; badges: boolean; spread: SpreadSpec | null };
+const defaults: Preferences = { ids: ["dollar", "fx_krw", "fx_jpy"], indexed: true, base: "2000-01", from: Date.UTC(1990, 0, 1), to: Date.now(), smooth: false, months: 12, phases: false, reference: "dollar", history: false, badges: true, spread: null };
 function readPreferences(): Preferences {
   try {
     const current = localStorage.getItem("comparison-view-v2");
     const v = JSON.parse(current ?? localStorage.getItem("comparison-view-v1") ?? "null");
     if (v && Array.isArray(v.ids) && typeof v.indexed === "boolean" && validDate(v.base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
-      return { ...defaults, ids: [...new Set<string>(v.ids.filter((id: string) => COMPARE_SERIES.some(s => s.id === id)))].slice(0, v.indexed ? 4 : 2), indexed: v.indexed, base: v.base, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar" };
+      return { ...defaults, ids: [...new Set<string>(v.ids.filter((id: string) => COMPARE_SERIES.some(s => s.id === id)))].slice(0, v.indexed ? 4 : 2), indexed: v.indexed, base: v.base, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -47,6 +48,7 @@ export default function GraphCompare() {
   const [panel, setPanel] = useState<"insights" | "reference">("insights");
   const [sidebar, setSidebar] = useState(true), [options, setOptions] = useState(false);
   const [indicators, setIndicators] = useState(true);
+  const [spreadOptions, setSpreadOptions] = useState(false);
   const [tool, setTool] = useState<ChartTool>("move"), [resetAxes, setResetAxes] = useState(0);
   const [contextIds, setContextIds] = useState<string[]>([]);
   useEffect(() => { const previous = document.title; document.title = "그래프 비교 · 인사이트 — 피스쿠스"; return () => { document.title = previous; }; }, []);
@@ -79,6 +81,7 @@ export default function GraphCompare() {
   }), [prefs.ids, seriesQuery.data]);
   const base = useMemo(() => commonBase(rawSeries.map(s => s.points), prefs.base), [rawSeries, prefs.base]);
   const series = useMemo(() => rawSeries.map(s => ({ ...s, points: prefs.indexed ? (base ? rebase(s.points, base) : []) : s.points })), [rawSeries, prefs.indexed, base]);
+  const chartSpread = useMemo(() => makeSpread(prefs.spread, seriesQuery.data), [prefs.spread, seriesQuery.data]);
   const reference = rawSeries.find(s => s.def.id === prefs.reference) ?? rawSeries[0];
   const phases = useMemo(() => prefs.phases && reference ? trendSections(reference.points, reference.def.cadence) : [], [prefs.phases, reference]);
   const history = useMemo(() => prefs.history ? [
@@ -87,10 +90,11 @@ export default function GraphCompare() {
   ] : [], [prefs.history, flows, nodes]);
   const extent = useMemo<[number, number]>(() => {
     const times = rawSeries.flatMap(s => s.points.length ? [s.points[0].time, s.points.at(-1)!.time] : []);
+    if (chartSpread?.points.length) times.push(chartSpread.points[0].time, chartSpread.points.at(-1)!.time);
     for (const n of [...notes, ...nodes]) if (n.date) { times.push(Date.parse(n.date)); if (n.endDate) times.push(Date.parse(n.endDate)); }
     const lo = times.length ? Math.min(...times) : Date.UTC(1970, 0, 1), hi = times.length ? Math.max(...times) : Date.now();
     return [lo, Math.max(lo + 31 * DAY, hi)];
-  }, [rawSeries, notes, nodes]);
+  }, [rawSeries, chartSpread, notes, nodes]);
   const range = useMemo<[number, number]>(() => {
     const a = Math.max(extent[0], Math.min(extent[1] - 31 * DAY, prefs.from));
     return [a, Math.min(extent[1], Math.max(a + 31 * DAY, prefs.to))];
@@ -102,8 +106,14 @@ export default function GraphCompare() {
   const addNote = (date: string, endDate: string | null) => {
     if (!canEdit) return;
     const id = crypto.randomUUID();
-    collaboration.edit("note:" + id, { title: "새 인사이트", date, endDate, text: "", caption: "", sortOrder: Date.now() });
+    collaboration.edit("note:" + id, { title: "새 인사이트", date, endDate, text: "", caption: "", sortOrder: Date.now(), context: { ids: [...prefs.ids], spread: prefs.spread } });
     setPrefs(p => ({ ...p, badges: true })); openNote(id); setTool("move");
+  };
+  const restoreContext = (context: InsightContext, note: SavedInsight) => {
+    const ids = context.ids.filter(id => COMPARE_SERIES.some(s => s.id === id));
+    const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25);
+    setPrefs(p => ({ ...p, ids, indexed: ids.length > 2 || p.indexed, spread: context.spread, from: start - pad, to: end + pad, badges: true }));
+    setResetAxes(v => v + 1);
   };
   const showReferences = (ids: string[] = []) => { setContextIds(ids); setPanel("reference"); setSidebar(true); };
   const errors = [flowQuery, boardQuery, noteQuery, seriesQuery].filter(q => q.isError);
@@ -145,13 +155,15 @@ export default function GraphCompare() {
           {([{ id: "move", label: "선택·이동", icon: MousePointer2 }, { id: "date", label: "날짜에 인사이트 기록", icon: CalendarPlus }, { id: "period", label: "기간을 드래그해 기록", icon: ScanLine }] as const).map(t => <button key={t.id} title={t.label} aria-label={t.label} aria-pressed={tool === t.id} disabled={t.id !== "move" && !canEdit} className={"rounded-lg p-2 disabled:opacity-30 " + (tool === t.id ? "bg-sky-500/15 text-sky-600" : "hover:bg-muted")} onClick={() => setTool(t.id)}><t.icon size={18} /></button>)}
           <div className="my-1 w-6 border-t" /><button title="인사이트 목록" aria-label="인사이트 목록" className="rounded-lg p-2 hover:bg-muted" onClick={() => { setSelected(null); setPanel("insights"); setSidebar(true); }}><StickyNote size={18} /></button>
           <button title="경제사 참고" aria-label="경제사 참고" className="rounded-lg p-2 hover:bg-muted" onClick={() => showReferences()}><BookOpen size={18} /></button>
+          <button title="스프레드 계산" aria-label="스프레드 계산" aria-expanded={spreadOptions} className={"rounded-lg p-2 hover:bg-muted " + (prefs.spread ? "text-violet-500" : "")} onClick={() => setSpreadOptions(v => !v)}><ArrowLeftRight size={18} /></button>
           <button title="전체 기간·세로축 자동 맞춤" aria-label="전체 기간·세로축 자동 맞춤" className="rounded-lg p-2 hover:bg-muted" onClick={() => { setRange(extent); setResetAxes(v => v + 1); }}><RotateCcw size={17} /></button>
         </nav>
         <div className="min-w-0 flex-1 overflow-x-auto">
-          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart series={series} range={range} extent={extent} indexed={prefs.indexed} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={prefs.badges ? notes : []} selectedNote={panel === "insights" && prefs.badges ? selected : null} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.indexed].join(":")} />}
+          {spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
+          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} indexed={prefs.indexed} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={prefs.badges ? notes : []} selectedNote={panel === "insights" && prefs.badges ? selected : null} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.indexed, spreadOptions, !!prefs.spread].join(":")} />}
         </div>
       </div>
-      {sidebar && <ComparisonSidebar layoutKey={[indicators, options, prefs.indexed].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={setPanel} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => { const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25); setRange([Math.max(extent[0], start - pad), Math.min(extent[1], end + pad)]); }} flows={flows} nodes={nodes} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
+      {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={{ ids: prefs.ids, spread: prefs.spread }} onRestore={restoreContext} layoutKey={[indicators, options, prefs.indexed].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={setPanel} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => { const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25); setRange([Math.max(extent[0], start - pad), Math.min(extent[1], end + pad)]); }} flows={flows} nodes={nodes} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
     </div>
     <details className="border-t px-4 py-2 text-[11px] text-muted-foreground"><summary className="cursor-pointer">지표 출처 · 수록 기간 · 비교 기준</summary><p className="my-2">월 단위 비교 · 일·주간 자료는 월 마지막 관측값, 월평균·분기 자료는 원래 발표값을 사용합니다. 결측은 채우지 않습니다. 기준월=100은 상대 변화 비교입니다.</p>{rawSeries.map(s => <div key={s.def.id} className="border-t py-2"><a href={s.def.url} target="_blank" rel="noreferrer" className="underline">{s.def.label}</a> · {s.def.unit} · {s.points[0]?.date ?? "자료 없음"} ~ {s.points.at(-1)?.date ?? ""}<p>{s.def.note}</p></div>)}</details>
   </div>;

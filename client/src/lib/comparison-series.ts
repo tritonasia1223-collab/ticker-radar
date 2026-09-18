@@ -1,4 +1,5 @@
 import { PANELS, CATEGORIES } from "./capitalism-config";
+import { monthlyPoints, spreadPoints, type SpreadSpec, type SpreadPoint, type Observation } from "../../../shared/cap-comparison";
 
 export const COMPARE_CATEGORIES = CATEGORIES;
 
@@ -16,3 +17,15 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
   { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
   { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
 ];
+
+export interface SpreadData { spec: SpreadSpec; label: string; aLabel: string; bLabel: string; points: SpreadPoint[] }
+export function makeSpread(spec: SpreadSpec | null | undefined, data: Record<string, Observation[]> | undefined): SpreadData | null {
+  if (!spec) return null;
+  const a = COMPARE_SERIES.find(s => s.id === spec.a), b = COMPARE_SERIES.find(s => s.id === spec.b);
+  if (!a || !b) return null;
+  return { spec, label: a.label + " − " + b.label, aLabel: a.label, bLabel: b.label,
+    points: spreadPoints(monthlyPoints(data?.[spec.a] ?? []), monthlyPoints(data?.[spec.b] ?? [])) };
+}
+export const numberLabel = (value: number) => value.toLocaleString("ko", { maximumFractionDigits: 2 });
+export const signedLabel = (value: number) => (value > 0 ? "+" : "") + numberLabel(value);
+export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === "idx" || unit === "p" ? "pt" : unit === "원 / 1달러" ? "원" : unit === "엔 / 1달러" ? "엔" : unit; }

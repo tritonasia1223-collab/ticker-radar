@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commonBase, isPlotKey, isNoteKey, comparisonInsightSchema, zoomRange, lineSegments, monthlyPoints, movingAverage, simplifyExtrema, trendSections, moveRange, placementSchema, rebase } from "../shared/cap-comparison";
+import { commonBase, isPlotKey, isNoteKey, comparisonInsightSchema, zoomRange, lineSegments, monthlyPoints, movingAverage, simplifyExtrema, trendSections, moveRange, placementSchema, rebase, centerRange, presetRange, calendarTicks, spreadPoints, spreadSchema, periodSummary } from "../shared/cap-comparison";
 import { diff, merge } from "../shared/cap-collaboration";
 import { validateEdit } from "../server/cap-collaboration";
 
@@ -21,6 +21,20 @@ describe("time-based comparison insights", () => {
     expect(() => validateEdit({ ...op, changes: [{ path: ["flowSlug"], before: null, after: "crisis" }] })).toThrow();
     expect(() => validateEdit({ ...op, resource: "plot:abc-123" })).toThrow();
   });
+  it("remembers graph context atomically while remaining compatible with old notes", () => {
+    const context = { ids: ["dollar", "fx_jpy"], spread: { a: "gs10", b: "tb3ms" } };
+    const linked = { ...note, context };
+    expect(comparisonInsightSchema.parse(linked)).toEqual(linked);
+    const changes = diff(note, linked);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].path).toEqual(["context"]);
+    expect(validateEdit({ id: crypto.randomUUID(), session: crypto.randomUUID(), resource: "note:linked", editor: "창", changes }).changes).toEqual(changes);
+    expect(merge({ ...note, text: "새 본문" }, changes).doc).toEqual({ ...linked, text: "새 본문" });
+    expect(merge({ ...linked, context: { ...context, ids: ["fedfunds"] } }, diff(linked, { ...linked, context: { ...context, ids: ["gs10"] } })).conflicts).toHaveLength(1);
+    for (const ids of [["dollar", "dollar"], ["a", "b", "c", "d", "e"], ["../bad"]]) {
+      expect(comparisonInsightSchema.safeParse({ ...note, context: { ...context, ids } }).success).toBe(false);
+    }
+  });
   it("merges prose and dates independently, but protects concurrent prose and deleted notes", () => {
     const remote = { ...note, text: "다른 창의 분석" };
     expect(merge(remote, diff(note, { ...note, date: "1997-06-01" })).doc).toEqual({ ...remote, date: "1997-06-01" });
@@ -35,6 +49,58 @@ describe("time-based comparison insights", () => {
     expect(tiny[1] - tiny[0]).toBe(31 * day);
     const edge = zoomRange([400 * day, 500 * day], 499 * day, 2, [0, 500 * day]);
     expect(edge).toEqual([300 * day, 500 * day]);
+  });
+});
+describe("calendar navigation and interval calculations", () => {
+  const t = (date: string) => Date.parse(date);
+  const extent: [number, number] = [t("1970-01-01"), t("2030-01-01")];
+  it("jumps without changing duration and clamps at both data edges", () => {
+    const span = 730 * 86400000;
+    const jump = centerRange(t("2010-07-15"), span, extent);
+    expect((jump[0] + jump[1]) / 2).toBe(t("2010-07-15"));
+    expect(centerRange(extent[0], span, extent)).toEqual([extent[0], extent[0] + span]);
+    expect(centerRange(extent[1], span, extent)).toEqual([extent[1] - span, extent[1]]);
+    expect(centerRange(extent[0], 100000 * 86400000, extent)).toEqual(extent);
+  });
+  it("uses calendar spans for month/year presets and aligned calendar ticks", () => {
+    const range: [number, number] = [t("2019-01-01"), t("2021-01-01")];
+    const center = (range[0] + range[1]) / 2;
+    for (const mode of ["month", "year"] as const) {
+      const preset = presetRange(range, mode, extent);
+      expect((preset[0] + preset[1]) / 2).toBe(center);
+      expect((preset[1] - preset[0]) / 86400000).toBeGreaterThan(mode === "month" ? 729 : 7299);
+      expect((preset[1] - preset[0]) / 86400000).toBeLessThan(mode === "month" ? 733 : 7310);
+    }
+    const ticks = calendarTicks([t("2019-12-15"), t("2021-01-15")], 1200);
+    expect(ticks[0]).toEqual({ time: t("2020-01-01"), label: "2020-01" });
+    expect(ticks.every(p => new Date(p.time).getUTCDate() === 1)).toBe(true);
+    expect(calendarTicks(extent, 1000).every(p => /^\d{4}$/.test(p.label))).toBe(true);
+  });
+  it("summarizes raw observations inside the interval, with effective dates and extrema", () => {
+    const points = rebase(monthlyPoints([["2020-01-01", 132], ["2020-02-01", 120], ["2020-03-01", 126]]), "2020-01");
+    const summary = periodSummary(points, "2020-01-01", "2020-03-31")!;
+    expect(summary.change).toBe(-6);
+    expect(summary.percent).toBeCloseTo(-6 / 132 * 100);
+    expect(summary.first.date).toBe("2020-01-01");
+    expect(summary.last.date).toBe("2020-03-01");
+    expect(summary.low.raw).toBe(120);
+    expect(summary.high.raw).toBe(132);
+    expect(periodSummary(points, "2020-01-15", "2020-03-31")!.first.raw).toBe(120);
+    expect(periodSummary(points, "2020-02-15", "2020-03-31")).toBeNull();
+    for (const start of [0, -2]) expect(periodSummary(monthlyPoints([["2020-01-01", start], ["2020-02-01", 3]]), "2020-01-01", "2020-02-01")!.percent).toBeNull();
+  });
+  it("subtracts original rates only in common months, preserving gaps and source dates", () => {
+    const a = rebase(monthlyPoints([["2020-01-31", 5], ["2020-02-29", 4], ["2020-03-31", 1]]), "2020-01");
+    const b = monthlyPoints([["2020-01-01", 3], ["2020-03-01", 2]]);
+    const spread = spreadPoints(a, b);
+    expect(spread.map(p => p.raw)).toEqual([2, -1]);
+    expect(spread[0]).toMatchObject({ a: 5, b: 3, aDate: "2020-01-31", bDate: "2020-01-01", date: "2020-01-31" });
+    expect(lineSegments(spread, 1)).toHaveLength(2);
+    expect(periodSummary(spread, "2020-01-15", "2020-03-31")).toBeNull();
+    expect(spreadPoints(b, a).map(p => p.raw)).toEqual([-2, 1]);
+    expect(spreadPoints(a, [])).toEqual([]);
+    expect(spreadSchema.safeParse({ a: "gs10", b: "gs10" }).success).toBe(false);
+    expect(spreadSchema.safeParse({ a: "dollar", b: "tb3ms" }).success).toBe(false);
   });
 });
 describe("comparison dates and observations", () => {

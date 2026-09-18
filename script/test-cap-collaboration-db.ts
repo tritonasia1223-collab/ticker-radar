@@ -94,7 +94,17 @@ try {
   await assert.rejects(() => applyCollaborativeEdit(op("note:one", note, { ...note, text: "Conflicting prose" }), isolated), CollaborationConflict);
   await assert.rejects(() => applyCollaborativeEdit(op("note:one", written.doc, { ...written.doc, endDate: "1996-01-01" }), isolated));
   assert.deepEqual((await getResource("note:one", isolated)).doc, written.doc);
-  await applyCollaborativeEdit(op("note:one", written.doc, null), isolated);
+  const context = { ids: ["dollar", "fx_jpy"], spread: { a: "gs10", b: "tb3ms" } };
+  await Promise.all([
+    applyCollaborativeEdit(op("note:one", written.doc, { ...written.doc, context }), isolated),
+    applyCollaborativeEdit(op("note:one", written.doc, { ...written.doc, caption: "Period with linked graphs" }), isolated),
+  ]);
+  const linkedNote = await getResource("note:one", isolated);
+  assert.deepEqual(linkedNote.doc!.context, context);
+  assert.equal(linkedNote.doc!.caption, "Period with linked graphs");
+  await assert.rejects(() => applyCollaborativeEdit(op("note:one", linkedNote.doc, { ...linkedNote.doc, context: { ...context, spread: { a: "gs10", b: "gs10" } } }), isolated));
+  assert.deepEqual((await getResource("note:one", isolated)).doc, linkedNote.doc);
+  await applyCollaborativeEdit(op("note:one", linkedNote.doc, null), isolated);
   const removedNote = await getResource("note:one", isolated);
   assert.equal(removedNote.doc, null); assert.ok(removedNote.version > written.version);
   assert.equal((await getResource("plot:two", isolated)).doc!.nodeKey, "b");

@@ -29,7 +29,7 @@ const metaSchema = z.object({ id: z.string(), title: z.string(), text: z.string(
 export function validateEdit(body: unknown): EditRequest {
   const op = requestSchema.parse(body) as EditRequest;
   const paths = new Set<string>();
-  const allowed = isNoteKey(op.resource) ? ["title", "date", "endDate", "text", "caption", "sortOrder"] : isPlotKey(op.resource) ? ["flowSlug", "nodeKey", "title", "date", "endDate", "sortOrder"] : op.resource.startsWith("flow:") ? ["title", "date", "endDate", "category", "layout", "sortOrder", "insight", "nodes", "order"] : ["title", "text", "tables", "images", "blocks"];
+  const allowed = isNoteKey(op.resource) ? ["title", "date", "endDate", "text", "caption", "sortOrder", "context"] : isPlotKey(op.resource) ? ["flowSlug", "nodeKey", "title", "date", "endDate", "sortOrder"] : op.resource.startsWith("flow:") ? ["title", "date", "endDate", "category", "layout", "sortOrder", "insight", "nodes", "order"] : ["title", "text", "tables", "images", "blocks"];
   for (const change of op.changes) {
     const path = change.path, key = JSON.stringify(path);
     if (path.some((p) => ["__proto__", "constructor", "prototype"].includes(p)) || paths.has(key)) throw new Error("잘못된 변경 경로");
