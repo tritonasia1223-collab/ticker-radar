@@ -6,13 +6,14 @@ import { useEditMode } from "@/components/EditModeProvider";
 import GlobalTooltip from "@/components/GlobalTooltip";
 
 // 네비 = 클릭 안 되는 단순 구분 라벨(그룹)로만 묶음. 계층 라우팅 아님 — 라벨은 표시 전용.
-const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar }[] }[] = [
+// sub: 바로 위 항목의 하위 안(들여쓰기·작은 글씨). 라우팅 계층은 아니고 표시 전용.
+const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar; sub?: boolean }[] }[] = [
   { group: "매크로", items: [
     { href: "/capitalism", label: "자본주의 경제사", icon: History },
     { href: "/graph-compare", label: "그래프 비교(베타)", icon: Layers },
     { href: "/fed", label: "미국 유동성", icon: Building2 },
-    { href: "/liquidity", label: "미국 유동성 A안", icon: Building2 },
-    { href: "/liquidity-read", label: "미국 유동성 B안", icon: Building2 },
+    { href: "/liquidity", label: "A안", icon: Building2, sub: true },
+    { href: "/liquidity-read", label: "B안", icon: Building2, sub: true },
     { href: "/world", label: "세계 현황판", icon: Globe },
   ] },
   { group: "종목 트래킹", items: [
@@ -83,8 +84,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 const Icon = n.icon;
                 return (
                   <Link key={n.href} href={n.href} data-testid={`link-${n.href.replace("/", "") || "discover"}`}>
-                    <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm cursor-pointer hover-elevate whitespace-nowrap ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/80"}`}>
-                      <Icon className="h-4 w-4" />
+                    <div className={`flex items-center gap-3 rounded-md cursor-pointer hover-elevate whitespace-nowrap ${n.sub ? "px-3 py-1 md:pl-10 text-xs" : "px-3 py-2 text-sm"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : n.sub ? "text-sidebar-foreground/65" : "text-sidebar-foreground/80"}`}>
+                      {n.sub ? <span aria-hidden="true" className="h-1 w-1 rounded-full bg-current opacity-60" /> : <Icon className="h-4 w-4" />}
                       {n.label}
                     </div>
                   </Link>
