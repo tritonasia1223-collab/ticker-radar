@@ -106,7 +106,7 @@ export default function GraphCompare() {
   const addNote = (date: string, endDate: string | null) => {
     if (!canEdit) return;
     const id = crypto.randomUUID();
-    collaboration.edit("note:" + id, { title: "새 인사이트", date, endDate, text: "", caption: "", sortOrder: Date.now(), context: { ids: [...prefs.ids], spread: prefs.spread } });
+    collaboration.edit("note:" + id, { title: "새 인사이트", date, endDate, text: "", caption: "", sortOrder: Date.now(), context: { ids: [...prefs.ids], spread: prefs.spread ? { ...prefs.spread } : null } });
     setPrefs(p => ({ ...p, badges: true })); openNote(id); setTool("move");
   };
   const restoreContext = (context: InsightContext, note: SavedInsight) => {
