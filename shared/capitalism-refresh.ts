@@ -51,7 +51,9 @@ export function rebaseFactor(base: Point[], extension: Point[], { maxOverlap = 2
   }
   if (ratios.length < minOverlap) return null;
   const sorted = [...ratios].sort((a, b) => a - b);
-  return { factor: sorted[Math.floor(sorted.length / 2)], overlap: ratios.length, spread: sorted[sorted.length - 1] / sorted[0] };
+  const mid = sorted.length >> 1;
+  const factor = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2; // 짝수 표본은 가운데 두 값의 평균
+  return { factor, overlap: ratios.length, spread: sorted[sorted.length - 1] / sorted[0] };
 }
 
 export interface PrependOptions { from?: string; until?: string; factor?: number; decimals?: number }

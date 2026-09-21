@@ -31,6 +31,11 @@ describe("과거 확장 — 순수 함수", () => {
     expect(r).not.toBeNull(); expect(r!.factor).toBeCloseTo(2, 6); expect(r!.overlap).toBe(24); expect(r!.spread).toBeCloseTo(1.1, 6);
     expect(rebaseFactor(base.slice(0, 5), ext)).toBeNull();
     expect(rebaseFactor(base, ext.map(([d]) => [d, 0]))).toBeNull(); // 0 은 비율을 못 만든다
+    // 짝수 표본: 가운데 두 값의 평균(비율 1..12 → 6.5), 홀수 표본: 가운데 값(1..13 → 7)
+    const even: Point[] = Array.from({ length: 12 }, (_, i) => [`2000-${String(i + 1).padStart(2, "0")}-01`, i + 1]);
+    expect(rebaseFactor(even, even.map(([d]) => [d, 1]), { minOverlap: 12 })!.factor).toBe(6.5);
+    const odd: Point[] = [...even, ["2001-01-01", 13]];
+    expect(rebaseFactor(odd, odd.map(([d]) => [d, 1]), { minOverlap: 12 })!.factor).toBe(7);
   });
 
   it("ratioSeries: 연도로 짝을 맞추고 결과는 YYYY-01-01, 짝 없는 해는 뺀다", () => {

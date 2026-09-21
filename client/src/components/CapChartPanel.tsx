@@ -39,6 +39,8 @@ export function PanelChart({
   // 과거 확장 구간(출처가 다른 옛 시리즈). 경계(modernFrom) 앞은 점선 h, 뒤는 실선 v 로 그린다.
   const history = historyOf(panel.series);
   const modernT = history ? fracOf(history.modernFrom) : null;
+  // 출처가 바뀌는 모든 경계(옛 구간끼리의 전환 + 현행 시작)에 세로 점선을 긋는다.
+  const boundaries = history ? [...history.segments.slice(1).map((s) => fracOf(s.from)), modernT as number] : [];
   const data = useMemo(() => {
     if (!series) return [];
     const all = series
@@ -138,9 +140,9 @@ export function PanelChart({
           <ReferenceArea x1={band.start} x2={band.end} fill={panel.color} fillOpacity={0.12} stroke="none" />
         ) : null}
         <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
-        {modernT != null && modernT > fromYear && modernT < toYear ? (
-          <ReferenceLine x={modernT} stroke="currentColor" className="text-muted-foreground" strokeWidth={1} strokeDasharray="2 3" opacity={0.6} />
-        ) : null}
+        {boundaries.filter((b) => b > fromYear && b < toYear).map((b) => (
+          <ReferenceLine key={`src-${b}`} x={b} stroke="currentColor" className="text-muted-foreground" strokeWidth={1} strokeDasharray="2 3" opacity={0.6} />
+        ))}
         {history ? (
           <Line type="monotone" dataKey="h" stroke={panel.color} strokeWidth={1.2} strokeOpacity={0.7} strokeDasharray="4 3" dot={false} isAnimationActive={false} connectNulls={false} />
         ) : null}

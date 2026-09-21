@@ -1,5 +1,5 @@
 // 자본주의 타임라인 거시지표를 '확인 가능한 가장 이른 시점'까지 과거로 확장한다(일회성 백필, 재실행 멱등).
-//   실행:  npx tsx script/extend-capitalism-history.ts        (npm run cap:history)
+//   실행:  npx tsx script/extend-capitalism-history.ts        (npm run cap:series:history — cap:history 는 별개의 백업 스냅샷 명령)
 // ── 원칙 ────────────────────────────────────────────────────────────────────────
 //   · 앞쪽 덧붙임(prepend-only): 각 시리즈의 저장된 첫 관측일 '이전' 구간만 더한다. 기존 포인트는 한 개도 바꾸지 않는다
 //     (월간 크론 fetch-capitalism-series.ts 의 append-only 와 대칭). 실행 후 기존 구간이 그대로인지 스스로 검증한다.
@@ -28,7 +28,7 @@ export interface SeriesSources { modernFrom: string; segments: HistorySegment[] 
 interface HistoryDef {
   key: string; source: string; short: string; id: string; url: string; note: string;
   proxy?: boolean; from: string; until?: string; method: "append" | "rebase"; decimals: number;
-  maxOverlap?: number; maxSpread?: number; // rebase 허용 조건 재정의(기본 24개·분산 1.15)
+  maxOverlap?: number;             // rebase 비율 계산에 쓸 겹침 개수(기본 24, 최소 MIN_OVERLAP). 분산 허용치는 공통(MAX_SPREAD)
   fetch: () => Promise<Point[]>;   // 원 출처 전체(겹침 포함) 시계열 — 리베이스 비율 계산에 겹침이 필요하다
 }
 
@@ -84,9 +84,9 @@ const HISTORY: HistoryDef[] = [
     note: "1913년부터 있는 비계절조정 지수의 전년비. 계절 요인은 전년비에서 상쇄되므로 1948년 이후의 계절조정 전년비와 같은 뜻이다.", fetch: async () => annualChange(await fred("CPIAUCNS"), 2) },
   { key: "gdp_growth", source: "연간 실질 GDP 성장률(A191RL1A225NBEA)", short: "연간 성장률", id: "A191RL1A225NBEA", url: fredUrl("A191RL1A225NBEA"), from: "1930-01-01", method: "append", decimals: 1,
     note: "1947년 이전은 분기 자료가 없어 연간 성장률(전년 대비 %)을 쓴다. 분기 연율보다 완만하게 보인다.", fetch: () => fred("A191RL1A225NBEA") },
-  { key: "unrate", source: "NBER 실업률 1940~1946(M0892BUSM156SNBR)", short: "NBER 실업률", id: "M0892BUSM156SNBR", url: fredUrl("M0892BUSM156SNBR"), from: "1940-01-01", method: "append", decimals: 1,
+  { key: "unrate", source: "NBER 실업률(M0892BUSM156SNBR)", short: "NBER 실업률", id: "M0892BUSM156SNBR", url: fredUrl("M0892BUSM156SNBR"), from: "1940-01-01", method: "append", decimals: 1,
     note: "NBER 거시경제사 복원치(계절조정). 1947년은 자료가 없어 비워 둔다.", fetch: () => fred("M0892BUSM156SNBR") },
-  { key: "unrate", source: "NBER 실업률 1929~1939(M0892AUSM156SNBR)", short: "NBER 실업률", id: "M0892AUSM156SNBR", url: fredUrl("M0892AUSM156SNBR"), from: "1929-04-01", until: "1940-01-01", method: "append", decimals: 1,
+  { key: "unrate", source: "NBER 실업률(M0892AUSM156SNBR)", short: "NBER 실업률", id: "M0892AUSM156SNBR", url: fredUrl("M0892AUSM156SNBR"), from: "1929-04-01", until: "1940-01-01", method: "append", decimals: 1,
     note: "NBER 거시경제사 복원치(계절조정).", fetch: () => fred("M0892AUSM156SNBR") },
   { key: "fedfunds", source: "뉴욕 연은 재할인율(NBER M13009USM156NNBR)", short: "재할인율(대용)", id: "M13009USM156NNBR", url: fredUrl("M13009USM156NNBR"), from: "1914-11-01", method: "append", decimals: 2, proxy: true,
     note: "연방기금금리가 생기기 전(1954)의 정책금리 대용. 겹치는 1954~1969년에도 0.5~1%p 차이가 나므로 수준을 그대로 잇는다.", fetch: () => fred("M13009USM156NNBR") },
@@ -99,9 +99,9 @@ const HISTORY: HistoryDef[] = [
   { key: "sp500", source: "다우존스 산업지수(NBER M1109BUSM293NNBR)", short: "다우존스(접합)", id: "M1109BUSM293NNBR", url: fredUrl("M1109BUSM293NNBR"), from: "1914-12-01", method: "rebase", decimals: 2,
     note: "S&P·OECD 지수(1957~) 이전 구간을 다우존스 산업지수로 접합(1957~1958 겹침 비율). 지수 구성이 다르다.", fetch: () => fred("M1109BUSM293NNBR") },
   // 옛 12종목 지수(A)와 20종목 지수(B)는 겹치는 1914-12~1916-09 사이에 비율이 0.69~0.80 으로 벌어진다(전시 종목 차이).
-  // 접합점에 가까운 12개월만 쓰고 분산 허용을 1.2 로 넓힌다 — 1914년 이전 구간의 수준에는 ±10% 안팎의 불확실성이 있다(출처 설명에 명시).
-  { key: "sp500", source: "다우존스 산업지수 1897~1914(NBER M1109AUSM293NNBR, 12종목)", short: "다우존스(접합)", id: "M1109AUSM293NNBR", url: fredUrl("M1109AUSM293NNBR"), from: "1897-01-01", until: "1914-12-01", method: "rebase", decimals: 2, maxOverlap: 12, maxSpread: 1.2,
-    note: "1914년 이전 구간. 1914-12~1915-11 겹침 비율로 뒤 구간(20종목 지수)에 접합했으며 두 지수의 비율이 겹침 구간에서 최대 10% 안팎 벌어지므로 이 구간의 수준은 그만큼 불확실하다.", fetch: () => fred("M1109AUSM293NNBR") },
+  // 접합점에 가까운 12개월만 본다(그 안의 분산 1.12 — 공통 허용치 1.15 이내). 1914년 이전 구간의 수준에는 ±6% 안팎의 불확실성이 있다(출처 설명에 명시).
+  { key: "sp500", source: "다우존스 산업지수 12종목(NBER M1109AUSM293NNBR)", short: "다우존스(접합)", id: "M1109AUSM293NNBR", url: fredUrl("M1109AUSM293NNBR"), from: "1897-01-01", until: "1914-12-01", method: "rebase", decimals: 2, maxOverlap: 12,
+    note: "1914년 이전 구간. 1914-12~1915-11 겹침 비율로 뒤 구간(20종목 지수)에 접합했으며 두 지수의 비율이 그 안에서 최대 12% 벌어지므로 이 구간의 수준은 ±6% 안팎 불확실하다.", fetch: () => fred("M1109AUSM293NNBR") },
   { key: "debt_gdp", source: "재무부 총공공부채(FiscalData) ÷ 명목 GDP(GDPA)", short: "재무부 부채/GDP(대용)", id: "debt_outstanding ÷ GDPA", url: "https://fiscaldata.treasury.gov/datasets/historical-debt-outstanding/", from: "1929-01-01", method: "append", decimals: 2, proxy: true,
     note: "회계연도 말(6월) 총공공부채를 역년 명목 GDP 로 나눈 값. 1939년부터의 OMB 총연방부채(정부보증채 포함)와 정의가 달라 1939년에 약 8%p 단절이 있다.", fetch: async () => ratioSeries(await fetchTreasuryDebt(), await fred("GDPA"), 2) },
   { key: "gold", source: "datahub 금값(공정가격 구간)", short: "공정가격", id: "datahub gold-prices", url: "https://datahub.io/core/gold-prices", from: "1833-01-01", method: "append", decimals: 2,
@@ -135,7 +135,7 @@ async function main() {
     let factor = 1;
     if (def.method === "rebase") {
       const rb = rebaseFactor(stored, history, { maxOverlap: def.maxOverlap ?? 24, minOverlap: MIN_OVERLAP });
-      if (!rb || rb.spread > (def.maxSpread ?? MAX_SPREAD)) {
+      if (!rb || rb.spread >= MAX_SPREAD) {
         console.log(`리베이스 근거 부족(겹침 ${rb?.overlap ?? 0}, 분산 ${rb?.spread.toFixed(3) ?? "-"}) — SKIP`);
         report.push({ key: def.key, id: def.id, status: "rebase-rejected", overlap: rb?.overlap ?? 0, spread: rb?.spread ?? null }); skipped++; continue;
       }
@@ -143,16 +143,26 @@ async function main() {
       process.stdout.write(`[×${factor.toFixed(4)} 겹침 ${rb.overlap} 분산 ${rb.spread.toFixed(3)}] `);
     }
     const r = prependHistory(stored, history, { from: def.from, until: stop, factor, decimals: def.decimals });
+    // 접합점: 옛 구간 마지막 값 ↔ 현행 첫 값. 리베이스 구간은 두 값의 비율이 분산 허용치 안이어야 저장한다
+    // (겹침 비율은 맞아도 접합 직전 한 점이 오염됐을 수 있다). 대용·그대로 잇는 구간은 수준 차이가 있을 수 있어 보고만 한다.
+    const j = r.points.findIndex(([d]) => d >= segmentEnd);
+    const joint = r.added && j > 0 ? { oldDate: r.points[j - 1][0], oldValue: r.points[j - 1][1], newDate: r.points[j][0], newValue: r.points[j][1] } : null;
+    if (def.method === "rebase" && joint) {
+      const ratio = joint.newValue !== 0 ? joint.oldValue / joint.newValue : Infinity;
+      if (!(ratio > 0) || Math.max(ratio, 1 / ratio) >= MAX_SPREAD) {
+        console.log(`접합점 불연속 ${joint.oldDate}:${joint.oldValue} → ${joint.newDate}:${joint.newValue} — SKIP`);
+        report.push({ key: def.key, id: def.id, status: "junction-rejected", joint }); skipped++; continue;
+      }
+    }
     series[def.key] = r.points;
     added += r.added;
-    // 접합점 보고: 옛 구간 마지막 값 ↔ 현행 첫 값
-    const j = r.points.findIndex(([d]) => d >= segmentEnd);
-    const joint = r.added && j > 0 ? `접합 ${r.points[j - 1][0]}:${r.points[j - 1][1]} → ${r.points[j][0]}:${r.points[j][1]}` : "";
-    console.log(`+${r.added} (${r.from ?? "-"} ~ ${r.to ?? "-"}) ${joint}`);
-    report.push({ key: def.key, id: def.id, status: "ok", added: r.added, from: r.from, to: r.to, factor: def.method === "rebase" ? factor : null });
+    console.log(`+${r.added} (${r.from ?? "-"} ~ ${r.to ?? "-"}) ${joint ? `접합 ${joint.oldDate}:${joint.oldValue} → ${joint.newDate}:${joint.newValue}` : ""}`);
+    report.push({ key: def.key, id: def.id, status: "ok", added: r.added, from: r.from, to: r.to, factor: def.method === "rebase" ? factor : null, joint });
 
-    // 출처 메타데이터(구간은 실제 데이터에서 다시 계산). 재실행으로 0건이면 기존 항목(실제 적용된 배율)을 그대로 둔다.
-    if (!r.added && sources[def.key]?.segments.some((s) => s.id === def.id)) continue;
+    // 출처 메타데이터(구간은 실제 데이터에서 다시 계산). 재실행으로 0건이면 구간·배율은 기존 항목(실제 적용된 값)을 지키고
+    // 설명 문구(source·short·note·url·proxy)만 정의에서 새로 받는다.
+    const existing = sources[def.key]?.segments.find((s) => s.id === def.id);
+    if (!r.added && existing) { Object.assign(existing, { source: def.source, short: def.short, url: def.url, note: def.note, proxy: !!def.proxy }); continue; }
     const pts = series[def.key];
     const segFrom = pts.find(([d]) => d >= def.from && d < segmentEnd)?.[0];
     const segTo = [...pts].reverse().find(([d]) => d < segmentEnd && d >= def.from)?.[0];

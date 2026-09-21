@@ -39,7 +39,7 @@
       {
         "from": "1929-04-01",
         "to": "1939-12-01",
-        "source": "NBER 실업률 1929~1939(M0892AUSM156SNBR)",
+        "source": "NBER 실업률(M0892AUSM156SNBR)",
         "short": "NBER 실업률",
         "id": "M0892AUSM156SNBR",
         "url": "https://fred.stlouisfed.org/series/M0892AUSM156SNBR",
@@ -51,7 +51,7 @@
       {
         "from": "1940-01-01",
         "to": "1946-12-01",
-        "source": "NBER 실업률 1940~1946(M0892BUSM156SNBR)",
+        "source": "NBER 실업률(M0892BUSM156SNBR)",
         "short": "NBER 실업률",
         "id": "M0892BUSM156SNBR",
         "url": "https://fred.stlouisfed.org/series/M0892BUSM156SNBR",
@@ -126,7 +126,7 @@
         "note": "정의가 달라 1959년 접합점의 겹침 비율로 리베이스했다. 1959년 이전은 증감률만 의미가 있다.",
         "method": "rebase",
         "proxy": false,
-        "factor": 1.281691
+        "factor": 1.281202
       }
     ]
   },
@@ -136,14 +136,14 @@
       {
         "from": "1897-01-01",
         "to": "1914-07-01",
-        "source": "다우존스 산업지수 1897~1914(NBER M1109AUSM293NNBR, 12종목)",
+        "source": "다우존스 산업지수 12종목(NBER M1109AUSM293NNBR)",
         "short": "다우존스(접합)",
         "id": "M1109AUSM293NNBR",
         "url": "https://fred.stlouisfed.org/series/M1109AUSM293NNBR",
-        "note": "1914년 이전 구간. 1914-12~1915-11 겹침 비율로 뒤 구간(20종목 지수)에 접합했으며 두 지수의 비율이 겹침 구간에서 최대 10% 안팎 벌어지므로 이 구간의 수준은 그만큼 불확실하다.",
+        "note": "1914년 이전 구간. 1914-12~1915-11 겹침 비율로 뒤 구간(20종목 지수)에 접합했으며 두 지수의 비율이 그 안에서 최대 12% 벌어지므로 이 구간의 수준은 ±6% 안팎 불확실하다.",
         "method": "rebase",
         "proxy": false,
-        "factor": 0.00402
+        "factor": 0.004014
       },
       {
         "from": "1914-12-01",
