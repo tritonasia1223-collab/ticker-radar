@@ -105,7 +105,7 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 | 키 | 옛 구간 | 출처 | 방식 |
 |---|---|---|---|
 | inflation | 1914-01~1947-12 | CPIAUCNS(비계절조정 CPI) 12개월 전년비 | 그대로 이음(전년비라 계절 상쇄) |
-| gdp_growth | 1930~1947 | A191RL1A225NBEA 연간 실질 GDP 성장률 | 그대로 이음(연간·분기 혼재) |
+| gdp_growth | 1930~1946 | A191RL1A225NBEA 연간 실질 GDP 성장률 | 그대로 이음(1947년부터 분기) |
 | unrate | 1929-04~1939-12 / 1940-01~1946-12 | NBER M0892AUSM156SNBR / M0892BUSM156SNBR | 그대로 이음(1947 공백) |
 | fedfunds | 1914-11~1954-06 | NBER M13009USM156NNBR 뉴욕 연은 재할인율 | **대용** — 수준 차이(0.5~1%p) 그대로 |
 | gs10 | 1925-01~1953-03 | LTGOVTBD 장기 국채수익률(단종) | 그대로 이음 |

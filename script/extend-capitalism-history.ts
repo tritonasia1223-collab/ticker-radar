@@ -82,7 +82,8 @@ async function fetchTreasuryDebt(): Promise<Point[]> {
 const HISTORY: HistoryDef[] = [
   { key: "inflation", source: "CPI 비계절조정(CPIAUCNS)의 12개월 전년비", short: "비계절조정 CPI", id: "CPIAUCNS", url: fredUrl("CPIAUCNS"), from: "1914-01-01", method: "append", decimals: 2,
     note: "1913년부터 있는 비계절조정 지수의 전년비. 계절 요인은 전년비에서 상쇄되므로 1948년 이후의 계절조정 전년비와 같은 뜻이다.", fetch: async () => annualChange(await fred("CPIAUCNS"), 2) },
-  { key: "gdp_growth", source: "연간 실질 GDP 성장률(A191RL1A225NBEA)", short: "연간 성장률", id: "A191RL1A225NBEA", url: fredUrl("A191RL1A225NBEA"), from: "1930-01-01", method: "append", decimals: 1,
+  // 분기 자료가 1947-04 부터라 연간값은 1946년까지만(1947년 연간값을 넣으면 같은 해에 연간·분기가 섞인다).
+  { key: "gdp_growth", source: "연간 실질 GDP 성장률(A191RL1A225NBEA)", short: "연간 성장률", id: "A191RL1A225NBEA", url: fredUrl("A191RL1A225NBEA"), from: "1930-01-01", until: "1947-01-01", method: "append", decimals: 1,
     note: "1947년 이전은 분기 자료가 없어 연간 성장률(전년 대비 %)을 쓴다. 분기 연율보다 완만하게 보인다.", fetch: () => fred("A191RL1A225NBEA") },
   { key: "unrate", source: "NBER 실업률(M0892BUSM156SNBR)", short: "NBER 실업률", id: "M0892BUSM156SNBR", url: fredUrl("M0892BUSM156SNBR"), from: "1940-01-01", method: "append", decimals: 1,
     note: "NBER 거시경제사 복원치(계절조정). 1947년은 자료가 없어 비워 둔다.", fetch: () => fred("M0892BUSM156SNBR") },

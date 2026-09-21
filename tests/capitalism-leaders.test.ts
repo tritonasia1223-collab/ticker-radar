@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { leadersForYear } from "../client/src/lib/capitalism-leaders";
+import { leadersForYear as legacyLeadersForYear } from "../client/src/lib/capitalism-config";
 
 describe("연도별 대통령·연준 의장 라벨", () => {
+  it("1968~2027년 전체가 기존 하드코딩 표와 같다 — 규칙을 어긴 1977년(포드→카터)만 교정", () => {
+    for (let y = 1968; y <= 2027; y++) {
+      if (y === 1977) { expect(legacyLeadersForYear(y)?.president).toBe("카터"); expect(leadersForYear(y)).toEqual({ president: "포드→카터", fed: "번스" }); continue; }
+      expect(leadersForYear(y), String(y)).toEqual(legacyLeadersForYear(y));
+    }
+  });
+
   it("기존 라벨(1968~2027)과 같은 결과를 낸다", () => {
     const cases: [number, string, string][] = [
       [1968, "존슨", "마틴"], [1969, "존슨→닉슨", "마틴"], [1970, "닉슨", "마틴→번스"], [1974, "닉슨→포드", "번스"],
