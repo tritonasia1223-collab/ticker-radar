@@ -1,12 +1,12 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { COMPARE_SERIES, makeSpread, numberLabel, signedLabel, deltaUnit } from "@/lib/comparison-series";
 import { collaboration } from "@/lib/cap-collab-client";
 import { comparisonInsightSchema, monthlyPoints, periodSummary, type SavedInsight, type InsightContext, type Observation } from "../../../shared/cap-comparison";
 
-export function ComparisonInsightContext({ note, currentContext, seriesData, canEdit, onRestore, children }: {
+export function ComparisonInsightContext({ note, currentContext, seriesData, canEdit, onRestore, summary = false }: {
   note: SavedInsight; currentContext: InsightContext; seriesData: Record<string, Observation[]> | undefined;
   canEdit: boolean; onRestore: (context: InsightContext, note: SavedInsight) => void;
-  children: ReactNode;
+  summary?: boolean;
 }) {
   const [error, setError] = useState("");
   const context = note.context, ids = context?.ids ?? currentContext.ids;
@@ -39,7 +39,7 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
     save({ text: [current.text, "[구간 요약 " + note.date + " ~ " + note.endDate + " · " + new Date().toISOString().slice(0, 10) + " 인용]", ...lines].filter(Boolean).join("\n") });
   };
   return <div className="space-y-4">
-    <section className="rounded-lg border bg-muted/10 p-3" aria-label="인사이트 관련 그래프">
+    {!summary && <section className="rounded-lg border bg-muted/10 p-3" aria-label="인사이트 관련 그래프">
       <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-xs font-semibold">관련 그래프</h3>{context && (!!context.ids.length || !!context.spread) && <button className="rounded border px-2 py-1 text-[11px] hover:bg-muted" onClick={() => onRestore(context, note)}>관련 그래프 보기</button>}</div>
       {context ? <><div className="flex flex-wrap gap-1.5">{context.ids.map(id => { const def = COMPARE_SERIES.find(s => s.id === id); return <span key={id} className="rounded border bg-background px-2 py-1 text-[10px]" style={{ borderColor: def?.color + "60" }}>{def?.label ?? id}{currentContext.ids.includes(id) ? " · 표시 중" : " · 숨김"}</span>; })}{spread && <span className="rounded border border-violet-500/30 px-2 py-1 text-[10px] text-violet-500">{spread.label}{JSON.stringify(currentContext.spread) === JSON.stringify(context.spread) ? " · 표시 중" : " · 숨김"}</span>}</div>{!context.ids.length && !context.spread && <p className="text-[11px] text-muted-foreground">연결된 그래프가 없습니다.</p>}</> : <p className="text-[11px] leading-5 text-muted-foreground">이전에 작성한 글에는 관련 그래프가 저장되어 있지 않습니다. 지금 보고 있는 지표를 연결할 수 있습니다.</p>}
       {context && canEdit && <p className="mt-2 text-[10px] leading-4 text-muted-foreground">작성 시 켜 둔 지표·스프레드가 자동 입력됩니다. 필요할 때만 아래에서 수정하세요.</p>}
@@ -47,13 +47,12 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
         const chosen = context?.ids.includes(s.id) ?? false;
         return <label key={s.id} className="flex items-center gap-2"><input type="checkbox" aria-label={"관련 지표 " + s.label} checked={chosen} disabled={!chosen && (context?.ids.length ?? 0) >= 4} onChange={e => save({ context: { ids: e.target.checked ? [...(context?.ids ?? []), s.id] : (context?.ids ?? []).filter(id => id !== s.id), spread: context?.spread ?? null } })} />{s.label}</label>;
       })}</div><p className="mt-2 text-muted-foreground">최대 4개 · 위 버튼으로 현재 켜 둔 지표와 스프레드를 함께 반영할 수 있습니다. 화면의 그래프를 켜고 꺼도 이 글에 저장된 목록은 유지됩니다.</p>{context?.spread && <button className="mt-2 underline" onClick={() => save({ context: { ...context, spread: null } })}>스프레드 연결 해제</button>}</details>}
-    </section>
-    {children}
-    {note.endDate && <section className="rounded-lg border border-sky-500/20 p-3" aria-label="구간 변화 요약" data-testid="period-summary">
-      <div className="mb-1 flex items-center justify-between gap-2"><h3 className="text-xs font-semibold">구간 변화</h3>{canEdit && <button className="rounded border px-2 py-1 text-[11px] disabled:opacity-40" disabled={!summaries.some(r => r.result)} onClick={quote}>본문에 인용</button>}</div>
+    </section>}
+    {summary && note.endDate && <section className="border-t bg-muted/10 px-4 py-3" aria-label="구간 변화 요약" data-testid="period-summary">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2"><h3 className="text-xs font-semibold">이 구간의 변화</h3><span className="mr-auto text-[10px] text-muted-foreground">{note.date} ~ {note.endDate}</span>{canEdit && <button className="rounded border px-2 py-1 text-[11px] disabled:opacity-40" disabled={!summaries.some(r => r.result)} onClick={quote}>본문에 인용</button>}</div>
       <p className="mb-3 text-[10px] leading-4 text-muted-foreground">{context ? "저장된 관련 지표" : "현재 표시 지표 · 아직 연결 안 됨"}의 원래 값 · 기간 안의 첫/마지막 관측값</p>
       {!summaries.length && <p className="text-xs text-muted-foreground">관련 지표를 연결하면 구간 변화를 볼 수 있습니다.</p>}
-      {summaries.map(row => <div key={row.id} className="border-t py-2 text-xs" data-testid={"summary-" + row.id}><b style={{ color: row.color }}>{row.label}</b>{row.result ? <><div className="mt-1 tabular-nums">{numberLabel(row.result.first.raw)} → {numberLabel(row.result.last.raw)} <span className="text-muted-foreground">{row.unit}</span></div><p className="mt-1 font-medium tabular-nums">{signedLabel(row.result.change)}{row.delta}{row.unit === "%p" && " · " + signedLabel(row.result.change * 100) + "bp"}{!["%", "%p"].includes(row.unit) && (row.result.percent === null ? " · 변화율 계산 불가" : " · " + signedLabel(row.result.percent) + "%")}</p><p className="mt-1 text-[10px] text-muted-foreground">관측일 {row.result.first.date} → {row.result.last.date}</p></> : <p className="mt-1 text-[11px] text-muted-foreground">{seriesData ? "기간 안에 관측값이 2개 이상 필요합니다." : "시계열을 불러오는 중입니다."}</p>}</div>)}
+      <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-2 xl:grid-cols-3">{summaries.map(row => <div key={row.id} className="border-t py-2 text-xs" data-testid={"summary-" + row.id}><b style={{ color: row.color }}>{row.label}</b>{row.result ? <><div className="mt-1 tabular-nums">{numberLabel(row.result.first.raw)} → {numberLabel(row.result.last.raw)} <span className="text-muted-foreground">{row.unit}</span></div><p className="mt-1 font-medium tabular-nums">{signedLabel(row.result.change)}{row.delta}{row.unit === "%p" && " · " + signedLabel(row.result.change * 100) + "bp"}{!["%", "%p"].includes(row.unit) && (row.result.percent === null ? " · 변화율 계산 불가" : " · " + signedLabel(row.result.percent) + "%")}</p><p className="mt-1 text-[10px] text-muted-foreground">관측일 {row.result.first.date} → {row.result.last.date}</p></> : <p className="mt-1 text-[11px] text-muted-foreground">{seriesData ? "기간 안에 관측값이 2개 이상 필요합니다." : "시계열을 불러오는 중입니다."}</p>}</div>)}</div>
       {!!summaries.some(row => row.result) && <details className="mt-2 text-[11px]"><summary className="cursor-pointer text-muted-foreground">구간 최고·최저</summary>{summaries.map(row => row.result && <p key={row.id} className="mt-2 leading-5">{row.label}<br />최고 {numberLabel(row.result.high.raw)} {row.unit} ({row.result.high.date})<br />최저 {numberLabel(row.result.low.raw)} {row.unit} ({row.result.low.date})</p>)}</details>}
       <p className="mt-2 text-[10px] leading-4 text-muted-foreground">경계에 값이 없으면 실제 사용한 관측일을 표시합니다. 인용한 수치는 본문에 고정되며 자동으로 바뀌지 않습니다.</p>
     </section>}

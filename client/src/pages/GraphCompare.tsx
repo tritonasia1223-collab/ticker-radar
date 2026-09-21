@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookOpen, PanelRightClose, PanelRightOpen, Settings2, StickyNote, RotateCcw, ArrowLeftRight } from "lucide-react";
 import { CompareChart, iso, type ChartTool } from "@/components/CompareChart";
+import { ComparisonInsightContext } from "@/components/ComparisonInsightContext";
 import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
@@ -47,7 +48,15 @@ export default function GraphCompare() {
   const [selected, setSelected] = useState<string | null>(null);
   const [panel, setPanel] = useState<"insights" | "reference">("insights");
   const [sidebar, setSidebar] = useState(true), [options, setOptions] = useState(false);
-  const [indicators, setIndicators] = useState(true);
+  const [indicators, setIndicators] = useState(false);
+  const indicatorPanel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!indicators) return;
+    const outside = (e: PointerEvent) => { if (!indicatorPanel.current?.contains(e.target as Node)) setIndicators(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") setIndicators(false); };
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [indicators]);
   const [spreadOptions, setSpreadOptions] = useState(false);
   const [tool, setTool] = useState<ChartTool>("move"), [resetAxes, setResetAxes] = useState(0);
   const [contextIds, setContextIds] = useState<string[]>([]);
@@ -118,25 +127,27 @@ export default function GraphCompare() {
   const showReferences = (ids: string[] = []) => { setContextIds(ids); setPanel("reference"); setSidebar(true); };
   const errors = [flowQuery, boardQuery, noteQuery, seriesQuery].filter(q => q.isError);
   return <div className="flex min-h-full flex-col bg-background" data-testid="graph-compare-page">
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 pr-28">
-      <div className="flex items-center gap-2"><Layers size={18} className="text-sky-500" /><h1 className="text-sm font-semibold">그래프 비교</h1><span className="border-l pl-3 text-xs text-muted-foreground">시간에 남기는 인사이트</span></div>
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2 lg:pr-28">
+      <div className="flex items-center gap-2"><Layers size={18} className="text-sky-500" /><h1 className="text-sm font-semibold">그래프 비교</h1></div>
+      <div className="ml-auto text-muted-foreground [&>div]:mb-0"><CapCollaboration /></div>
       <div className="flex items-center gap-2">{editable && <button className={buttonClass + " bg-primary text-primary-foreground hover:bg-primary/90"} disabled={!canEdit} onClick={() => addNote(iso((range[0] + range[1]) / 2), null)}><Plus size={14} />인사이트 작성</button>}<button className={buttonClass} aria-label={sidebar ? "사이드바 접기" : "사이드바 열기"} onClick={() => setSidebar(!sidebar)}>{sidebar ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}</button></div>
     </header>
-    <div className="border-b px-4 pt-2"><CapCollaboration /></div>
     {!!errors.length && <div role="alert" className="border-b bg-amber-500/10 px-4 py-2 text-xs">일부 자료를 불러오지 못했습니다. <button className="underline" onClick={() => errors.forEach(q => void q.refetch())}>다시 불러오기</button></div>}
+    <div ref={indicatorPanel} className="relative">
     <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
       <button className={buttonClass} aria-expanded={indicators} aria-controls="comparison-indicators" onClick={() => setIndicators(!indicators)}><Layers size={14} />표시 지표 {prefs.ids.length}/{prefs.indexed ? 4 : 2}<ChevronDown size={13} className={indicators ? "rotate-180" : ""} /></button>
-      <div className="flex flex-1 flex-wrap gap-x-3 gap-y-1 text-[11px]">{prefs.ids.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <span key={id} className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</span>; })}{!prefs.ids.length && <span className="text-muted-foreground">비교할 지표를 체크하세요</span>}</div>
-      <select aria-label="표시 방식" className={inputClass} value={prefs.indexed ? "index" : "raw"} onChange={e => { const indexed = e.target.value === "index"; setPrefs(p => ({ ...p, indexed, ids: indexed ? p.ids : p.ids.slice(0, 2) })); }}><option value="index">기준월=100 · 최대 4개</option><option value="raw">원래 값 · 좌우 축 2개</option></select>
+      <div className="order-last flex w-full flex-wrap gap-x-3 gap-y-1 text-[11px] sm:order-none sm:w-auto sm:flex-1">{prefs.ids.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <span key={id} className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</span>; })}{!prefs.ids.length && <span className="text-muted-foreground">비교할 지표를 체크하세요</span>}</div>
+      <select title={base ? "적용 기준월 " + base + " = 100" : undefined} aria-label="표시 방식" className={inputClass} value={prefs.indexed ? "index" : "raw"} onChange={e => { const indexed = e.target.value === "index"; setPrefs(p => ({ ...p, indexed, ids: indexed ? p.ids : p.ids.slice(0, 2) })); }}><option value="index">기준월=100 · 최대 4개</option><option value="raw">원래 값 · 좌우 축 2개</option></select>
       <button className={buttonClass + (options ? " bg-accent" : "")} aria-expanded={options} onClick={() => setOptions(!options)}><Settings2 size={14} />표시 설정</button>
     </div>
-    {indicators && <section id="comparison-indicators" aria-label="표시 지표 선택" className="border-b bg-muted/10 px-4 py-3">
+    {indicators && <section id="comparison-indicators" aria-label="표시 지표 선택" className="absolute left-3 right-3 top-full z-30 mt-1 max-h-[65vh] overflow-auto rounded-lg border bg-background p-4 shadow-xl">
       <div className="grid gap-x-6 gap-y-3 xl:grid-cols-2 2xl:grid-cols-3">{Object.entries(COMPARE_CATEGORIES).map(([key, category]) => <fieldset key={key} className="min-w-0"><legend className="mb-1.5 text-[10px] font-semibold" style={{ color: category.color }}>{category.label}</legend><div className="flex flex-wrap gap-x-3 gap-y-2">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
         const checked = prefs.ids.includes(s.id), disabled = !checked && prefs.ids.length >= (prefs.indexed ? 4 : 2);
         return <label key={s.id} title={disabled ? "선택한 지표를 하나 해제하면 켤 수 있습니다." : s.note} className={"inline-flex items-center gap-1.5 text-[11px] " + (disabled ? "cursor-not-allowed text-muted-foreground/50" : "cursor-pointer hover:text-sky-600")}><input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 accent-sky-500" checked={checked} disabled={disabled} onChange={e => { const on = e.target.checked; setPrefs(p => ({ ...p, ids: on ? p.ids.includes(s.id) || p.ids.length >= (p.indexed ? 4 : 2) ? p.ids : [...p.ids, s.id] : p.ids.filter(id => id !== s.id) })); }} /><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</label>;
       })}</div></fieldset>)}</div>
       <p className="mt-3 text-[10px] text-muted-foreground">체크로 켜고 끄기 · {prefs.indexed ? "최대 4개를 같은 기준월로 비교" : "최대 2개를 좌우 축으로 비교 · 선택한 순서대로 왼쪽 / 오른쪽 축"}{prefs.ids.length >= (prefs.indexed ? 4 : 2) && " · 다른 지표를 켜려면 하나를 해제하세요."}</p>
     </section>}
+    </div>
     {options && <section className="space-y-3 border-b bg-muted/20 px-4 py-3 text-xs" aria-label="차트 표시 설정">
       <div className="flex flex-wrap items-center gap-4">{prefs.indexed && <label>기준월 <input aria-label="기준월" type="month" className={inputClass} value={prefs.base} onChange={e => { if (validDate(e.target.value + "-01")) setPrefs(p => ({ ...p, base: e.target.value })); }} /></label>}
         <label>시작 <input aria-label="기간 시작" type="date" className={inputClass} value={iso(range[0])} min={iso(extent[0])} max={iso(range[1] - 31 * DAY)} onChange={e => { const t = Date.parse(e.target.value); if (Number.isFinite(t) && t <= range[1] - 31 * DAY) setRange([t, range[1]]); }} /></label>
@@ -148,7 +159,7 @@ export default function GraphCompare() {
       {prefs.smooth && <p className="text-muted-foreground">구간별 실제 고점·저점을 연결합니다. 원래 값·기준월·세로축은 유지되며 생략된 월도 커서로 확인할 수 있습니다.</p>}
       {prefs.phases && <p className="text-muted-foreground">상승·하강은 기준 지표의 12개월 평균을 6개월 전과 비교한 경향입니다. ±1% 이내는 앞선 방향을 유지합니다.</p>}
     </section>}
-    {prefs.indexed && <div className="border-b px-4 py-1.5 text-[11px] text-muted-foreground">{base ? "기준월 " + base + " = 100 · 확대·이동해도 기준은 유지됩니다." + (base !== prefs.base ? " 요청월 이후 첫 공통 양수 월을 적용했습니다." : "") : "공통 양수 기준값이 없습니다. 지표·기준월을 바꾸거나 ‘원래 값’으로 비교하세요."}</div>}
+    {prefs.indexed && (options || !base || base !== prefs.base) && <div className="border-b px-4 py-1.5 text-[11px] text-muted-foreground">{base ? "기준월 " + base + " = 100 · 확대·이동해도 기준은 유지됩니다." + (base !== prefs.base ? " 요청월 이후 첫 공통 양수 월을 적용했습니다." : "") : "공통 양수 기준값이 없습니다. 지표·기준월을 바꾸거나 ‘원래 값’으로 비교하세요."}</div>}
     <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
       <div className="flex min-w-0 flex-1">
         <nav aria-label="차트 도구" className="flex w-11 shrink-0 flex-col items-center gap-2 border-r bg-card py-3">
@@ -160,7 +171,7 @@ export default function GraphCompare() {
         </nav>
         <div className="min-w-0 flex-1 overflow-x-auto">
           {spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
-          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} indexed={prefs.indexed} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={prefs.badges ? notes : []} selectedNote={panel === "insights" && prefs.badges ? selected : null} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.indexed, spreadOptions, !!prefs.spread].join(":")} />}
+          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart summary={chosen?.endDate && <ComparisonInsightContext summary note={chosen} currentContext={{ ids: prefs.ids, spread: prefs.spread }} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} />} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} indexed={prefs.indexed} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={prefs.badges ? notes : []} selectedNote={prefs.badges ? selected : null} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.indexed, spreadOptions, !!prefs.spread].join(":")} />}
         </div>
       </div>
       {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={{ ids: prefs.ids, spread: prefs.spread }} onRestore={restoreContext} layoutKey={[indicators, options, prefs.indexed].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => { const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25); setRange([Math.max(extent[0], start - pad), Math.min(extent[1], end + pad)]); }} flows={flows} nodes={nodes} referencesLoading={flowQuery.isLoading || boardQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}

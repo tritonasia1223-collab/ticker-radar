@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, StickyNote, Trash2, Focus } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown } from "lucide-react";
 import { CapRichText } from "./CapRichText";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { collaboration } from "@/lib/cap-collab-client";
@@ -23,30 +23,29 @@ type Props = {
 };
 
 export function ComparisonSidebar(p: Props) {
-  const [search, setSearch] = useState(""), [confirmDelete, setConfirmDelete] = useState(false);
+  const [search, setSearch] = useState("");
   const content = useRef<HTMLDivElement>(null), [panelHeight, setPanelHeight] = useState(600);
   useLayoutEffect(() => {
-    const measure = () => { if (content.current) setPanelHeight(Math.max(320, window.innerHeight - content.current.getBoundingClientRect().top - 35)); };
+    const measure = () => { if (content.current) setPanelHeight(window.innerWidth < 1024 ? Math.max(400, window.innerHeight * .75) : Math.max(320, window.innerHeight - content.current.getBoundingClientRect().top - 35)); };
     measure(); window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [p.layoutKey]);
-  useEffect(() => { setConfirmDelete(false); }, [p.selected?.id]);
+  useLayoutEffect(() => { if (p.panel === "insights" && content.current) content.current.scrollTop = 0; }, [p.panel, p.selected?.id]);
+  const relatedHidden = p.selected?.context && (p.selected.context.ids.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
   const filtered = p.notes.filter(n => (n.title + " " + n.text + " " + n.date).toLowerCase().includes(search.toLowerCase()));
-  const details = (children: ReactNode) => p.selected && <ComparisonInsightContext note={p.selected} currentContext={p.currentContext} seriesData={p.seriesData} canEdit={p.canEdit} onRestore={p.onRestore}>{children}</ComparisonInsightContext>;
-  return <aside className="w-full shrink-0 border-t bg-card lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[380px] 2xl:w-[410px]" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
-    <div className="flex border-b text-xs">
-      <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "insights" ? "border-sky-500 text-sky-600 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("insights")}><StickyNote size={15} />인사이트 <span className="tabular-nums">{p.notes.length}</span></button>
+  return <aside className="w-full min-w-0 shrink-0 border-t bg-muted/15 lg:w-[42%] lg:max-w-[640px] lg:border-l lg:border-t-0" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
+    <div className="flex border-b bg-background text-xs">
+      <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "insights" ? "border-red-400 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("insights")}><Star size={14} className="fill-red-400 text-red-400" />인사이트 <span className="tabular-nums text-muted-foreground">{p.notes.length}</span></button>
       <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "reference" ? "border-amber-500 text-amber-600 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("reference")}><BookOpen size={15} />경제사 참고</button>
     </div>
     <div ref={content} style={{ maxHeight: panelHeight }} className="min-h-80 overflow-y-auto overscroll-contain" data-testid="comparison-sidebar-scroll">
-      {p.panel === "reference" ? <ReferencePanel {...p} scrollContainer={content} /> : p.selected ? <div className="p-4">
-        <div className="mb-4 flex items-center justify-between"><button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={p.onCloseNote}><ArrowLeft size={14} />인사이트 목록</button><button className={button} onClick={() => p.onView(p.selected!)}><Focus size={13} />이 기간 보기</button></div>
-        {p.canEdit ? <InsightEditor key={p.selected.id} note={p.selected} details={details} /> : <article data-testid="insight-reader"><h2 className="break-words text-lg font-semibold">{p.selected.title}</h2><p className="mt-2 text-xs text-muted-foreground">{p.selected.date}{p.selected.endDate && " ~ " + p.selected.endDate}</p><div className="mt-4">{details(<><div className="whitespace-pre-wrap break-words text-sm leading-7">{p.selected.text || "아직 작성된 내용이 없습니다."}</div>{p.selected.caption && <div className="rounded-lg bg-sky-500/10 p-3 text-xs">{p.selected.caption}</div>}</>)}</div></article>}
-        {p.canEdit && <div className="mt-6 border-t pt-4">{confirmDelete ? <div className="space-y-2 text-xs"><p>이 인사이트를 삭제할까요? 변경 이력에서 복원할 수 있습니다.</p><div className="flex gap-2"><button className={button + " text-red-500"} onClick={() => p.onRemove(p.selected!.id)}>삭제하기</button><button className={button} onClick={() => setConfirmDelete(false)}>취소</button></div></div> : <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}><Trash2 size={12} />인사이트 삭제</button>}</div>}
+      {p.panel === "reference" ? <ReferencePanel {...p} scrollContainer={content} /> : p.selected ? <div className="p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={p.onCloseNote}><ArrowLeft size={14} />모든 기록</button><div className="flex items-center gap-1">{relatedHidden && <button className="rounded px-2 py-1 text-[11px] text-sky-600 hover:bg-muted" title="이 글에 연결된 그래프 중 일부가 숨겨져 있습니다." onClick={() => p.onRestore(p.selected!.context!, p.selected!)}>관련 그래프 보기</button>}<button className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted" onClick={() => p.onView(p.selected!)}><Focus size={13} />이 기간 보기</button></div></div>
+        <InsightDocument key={p.selected.id + String(p.canEdit)} {...p} note={p.selected} />
       </div> : <div className="p-4">
         <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="인사이트 검색" placeholder="제목, 내용, 날짜 검색" className={field + " pl-9 text-xs"} value={search} onChange={e => setSearch(e.target.value)} /></div>
-        {p.loading ? <p className="py-8 text-center text-xs text-muted-foreground">인사이트 불러오는 중…</p> : !p.notes.length ? <div className="rounded-xl border border-dashed px-5 py-8 text-center"><StickyNote size={25} className="mx-auto mb-3 text-sky-500/70" /><h2 className="text-sm font-medium">발견한 흐름을 남겨보세요</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">날짜나 기간에 생각을 기록하세요.<br />어떤 지표를 보더라도 기록은 그 시간에 남습니다.</p>{p.canEdit && <button className={button + " mt-4"} onClick={p.onAdd}><Plus size={13} />첫 인사이트 작성</button>}</div> : <div className="space-y-2">
-          {filtered.map(n => <button key={n.id} className="block w-full rounded-lg border p-3 text-left transition-colors hover:border-sky-500/50 hover:bg-sky-500/5" data-testid={"insight-list-" + n.id} onClick={() => p.onSelect(n.id)}><p className="mb-1.5 text-[10px] tabular-nums text-muted-foreground">{n.date}{n.endDate && " ~ " + n.endDate}</p><h3 className="break-words text-sm font-semibold">{n.title}</h3><p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">{n.text || "내용을 작성해 주세요."}</p></button>)}
+        {p.loading ? <p className="py-8 text-center text-xs text-muted-foreground">인사이트 불러오는 중…</p> : !p.notes.length ? <div className="rounded-xl border border-dashed px-5 py-8 text-center"><Star size={25} className="mx-auto mb-3 text-red-400" /><h2 className="text-sm font-medium">발견한 흐름을 남겨보세요</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">날짜나 기간에 생각을 기록하세요.<br />어떤 지표를 보더라도 기록은 그 시간에 남습니다.</p>{p.canEdit && <button className={button + " mt-4"} onClick={p.onAdd}><Plus size={13} />첫 인사이트 작성</button>}</div> : <div className="space-y-2">
+          {filtered.map(n => <button key={n.id} className="block w-full rounded-lg border bg-background p-3 text-left transition-colors hover:border-red-400/50" data-testid={"insight-list-" + n.id} onClick={() => p.onSelect(n.id)}><p className="mb-1.5 text-[11px] tabular-nums text-muted-foreground">{n.date}{n.endDate && " ~ " + n.endDate}</p><h3 className="flex items-start gap-1.5 break-words text-sm font-semibold"><Star size={14} className="mt-0.5 shrink-0 fill-red-400 text-red-400" />{n.title}</h3><p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-[22px] text-muted-foreground">{n.text || "내용을 작성해 주세요."}</p></button>)}
           {!filtered.length && <p className="py-6 text-center text-xs text-muted-foreground">검색 결과가 없습니다.</p>}
         </div>}
       </div>}
@@ -54,41 +53,50 @@ export function ComparisonSidebar(p: Props) {
   </aside>;
 }
 
-function InsightEditor({ note, details }: { note: SavedInsight; details: (children: ReactNode) => ReactNode }) {
-  const key = "note:" + note.id, scope = useCapEditScope(key);
-  const [error, setError] = useState("");
+function InsightDocument(p: Props & { note: SavedInsight }) {
+  const { note } = p, key = "note:" + note.id, scope = useCapEditScope(key);
+  const [error, setError] = useState(""), [settings, setSettings] = useState(false), [dates, setDates] = useState(false), [confirmDelete, setConfirmDelete] = useState(false);
+  const prose = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = prose.current; if (!el) return;
+    const resize = () => { el.style.height = "0px"; el.style.height = Math.max(280, el.scrollHeight) + "px"; };
+    resize(); const ro = new ResizeObserver(() => { if (el.clientWidth !== lastWidth) { lastWidth = el.clientWidth; resize(); } });
+    let lastWidth = el.clientWidth; ro.observe(el); return () => ro.disconnect();
+  }, [note.text, p.canEdit]);
   const save = (patch: Partial<ComparisonInsight>) => {
-    const current = collaboration.get(key);
-    if (!current) return false;
+    const current = collaboration.get(key); if (!current) return false;
     const result = comparisonInsightSchema.safeParse({ ...current, ...patch });
     if (!result.success) { setError(result.error.issues[0].message); return false; }
     collaboration.edit(key, { ...result.data }); setError(""); return true;
   };
-  return <div {...scope} className="space-y-4" data-testid="insight-editor">
-    <BufferedInput label="제목" value={note.title} maxLength={160} save={value => save({ title: value })} />
-    <div className="flex gap-1 rounded-lg bg-muted/50 p-1" role="group" aria-label="인사이트 기록 범위">{([{ label: "시점", period: false }, { label: "구간", period: true }] as const).map(mode => <button key={mode.label} className={"flex-1 rounded-md py-1.5 text-xs " + ((note.endDate !== null) === mode.period ? "bg-background font-semibold text-sky-600 shadow-sm" : "text-muted-foreground")} aria-pressed={(note.endDate !== null) === mode.period} onClick={() => save({ endDate: mode.period ? note.endDate ?? note.date : null })}>{mode.label}</button>)}</div>
-    <div className="grid grid-cols-2 gap-2">
-      <BufferedInput label="시작일" type="date" value={note.date} save={value => save({ date: value })} />
-      {note.endDate !== null && <BufferedInput label="종료일" type="date" min={note.date} value={note.endDate} save={value => save({ endDate: value || null })} />}
+  return <article {...scope} className="rounded-lg border bg-background p-3" data-testid={p.canEdit ? "insight-editor" : "insight-reader"}>
+    <div className="flex items-start justify-between gap-2">
+      <button className="flex items-center gap-1 py-1 text-left text-[11px] tabular-nums text-muted-foreground disabled:cursor-default" disabled={!p.canEdit} aria-label="인사이트 날짜 수정" aria-expanded={dates} onClick={() => setDates(!dates)}>{note.date}{note.endDate && " ~ " + note.endDate}{p.canEdit && <ChevronDown size={11} />}</button>
+      <button className="rounded p-1 text-muted-foreground hover:bg-muted" aria-label="인사이트 설정" aria-expanded={settings} onClick={() => setSettings(!settings)}><MoreHorizontal size={17} /></button>
     </div>
-    {error && <p role="alert" className="text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
-    {details(<>
-    <label className="block text-xs font-medium">내 인사이트<textarea aria-label="인사이트 본문" className={field + " mt-2 min-h-[310px] resize-y border-transparent bg-muted/20 text-sm leading-7 focus:border-sky-500/30"} placeholder="이 시기에 무엇을 발견했나요? 비교한 지표와 생각을 자유롭게 적어보세요." maxLength={100000} value={note.text} onChange={e => save({ text: e.target.value })} /></label>
-    <label className="block text-xs font-medium">차트에 표시할 짧은 설명 <span className="font-normal text-muted-foreground">(선택)</span><textarea aria-label="차트 짧은 설명" className={field + " mt-2 min-h-20 resize-y text-xs leading-5"} placeholder="예: 원화와 엔화의 움직임이 갈라지는 구간" maxLength={180} value={note.caption} onChange={e => save({ caption: e.target.value })} /></label>
-    </>)}
-    <p className="text-[11px] leading-5 text-muted-foreground">글은 자동 저장됩니다. 배지를 선택하면 날짜·기간과 짧은 설명이 차트에 나타납니다.</p>
-  </div>;
+    {dates && p.canEdit && <div className="my-2 space-y-3 rounded-md border bg-muted/20 p-3">
+      <div className="flex gap-1 rounded bg-muted p-1" role="group" aria-label="인사이트 기록 범위">{([{ label: "시점", period: false }, { label: "구간", period: true }] as const).map(mode => <button key={mode.label} className={"flex-1 rounded py-1 text-xs " + ((note.endDate !== null) === mode.period ? "bg-background font-semibold shadow-sm" : "text-muted-foreground")} aria-pressed={(note.endDate !== null) === mode.period} onClick={() => save({ endDate: mode.period ? note.endDate ?? note.date : null })}>{mode.label}</button>)}</div>
+      <div className="grid grid-cols-2 gap-2"><BufferedInput label="시작일" type="date" value={note.date} save={value => save({ date: value })} />{note.endDate !== null && <BufferedInput label="종료일" type="date" min={note.date} value={note.endDate} save={value => save({ endDate: value || null })} />}</div>
+      <button className="text-xs text-muted-foreground" onClick={() => setDates(false)}>접기</button>
+    </div>}
+    {settings && <div className="my-2 space-y-3 rounded-md border p-3" aria-label="인사이트 상세 설정">
+      <ComparisonInsightContext note={note} currentContext={p.currentContext} seriesData={p.seriesData} canEdit={p.canEdit} onRestore={p.onRestore} />
+      {p.canEdit && <><label className="block text-xs">차트에 표시할 짧은 설명<textarea aria-label="차트 짧은 설명" className={field + " mt-2 min-h-20 resize-y text-xs leading-5"} placeholder="차트에서 함께 볼 한 줄 요약 (선택)" maxLength={180} value={note.caption} onChange={e => save({ caption: e.target.value })} /></label>
+      {confirmDelete ? <div className="space-y-2 text-xs"><p>이 인사이트를 삭제할까요? 변경 이력에서 복원할 수 있습니다.</p><button className={button + " text-red-500"} onClick={() => p.onRemove(note.id)}>삭제하기</button> <button className={button} onClick={() => setConfirmDelete(false)}>취소</button></div> : <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}><Trash2 size={12} />인사이트 삭제</button>}</>}
+    </div>}
+    {error && <p role="alert" className="my-2 text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
+    <div className="flex items-start gap-1.5 border-b pb-2"><Star size={15} className="mt-1 shrink-0 fill-red-400 text-red-400" />{p.canEdit ? <BufferedInput label="제목" compact value={note.title} maxLength={160} save={value => save({ title: value })} /> : <h2 className="break-words text-sm font-semibold leading-6">{note.title}</h2>}</div>
+    {p.canEdit ? <textarea ref={prose} aria-label="인사이트 본문" className="mt-3 block w-full resize-none overflow-hidden rounded-sm bg-transparent p-0 text-sm font-normal leading-[22px] text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-sky-500/20" placeholder="이 시기에 발견한 흐름과 생각을 적어보세요." maxLength={100000} value={note.text} onChange={e => save({ text: e.target.value })} /> : <div className="mt-3 min-h-[280px] whitespace-pre-wrap break-words text-sm leading-[22px]">{note.text || "아직 작성된 내용이 없습니다."}</div>}
+  </article>;
 }
 
 // Metadata commits on blur; prose journals immediately to protect long writing sessions.
-// An invalid metadata edit restores only that field, never the user's prose.
-function BufferedInput({ label, value, save, type = "text", min, maxLength }: { label: string; value: string; save: (value: string) => boolean; type?: string; min?: string; maxLength?: number }) {
+function BufferedInput({ label, value, save, type = "text", min, maxLength, compact = false }: { label: string; value: string; save: (value: string) => boolean; type?: string; min?: string; maxLength?: number; compact?: boolean }) {
   const [draft, setDraft] = useState(value);
-  const pending = useRef({ draft, value, save });
-  pending.current = { draft, value, save };
+  const pending = useRef({ draft, value, save }); pending.current = { draft, value, save };
   useLayoutEffect(() => () => { const p = pending.current; if (p.draft !== p.value) p.save(p.draft); }, []);
   useEffect(() => { setDraft(value); }, [value]);
-  return <label className="block min-w-0 text-xs font-medium">{label}<input aria-label={"인사이트 " + label} className={field + " mt-2"} type={type} min={min} maxLength={maxLength} value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => { if (draft !== value && !save(draft)) setDraft(value); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></label>;
+  return <label className="block w-full min-w-0 text-xs font-medium"><span className={compact ? "sr-only" : ""}>{label}</span><input aria-label={"인사이트 " + label} className={compact ? "w-full min-w-0 rounded-sm bg-transparent py-0.5 text-sm font-semibold leading-5 outline-none focus-visible:ring-2 focus-visible:ring-sky-500/20" : field + " mt-2"} type={type} min={min} maxLength={maxLength} value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => { if (draft !== value && !save(draft)) setDraft(value); }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></label>;
 }
 
 function ReferencePanel(p: Props & { scrollContainer: RefObject<HTMLDivElement> }) {

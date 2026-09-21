@@ -1,8 +1,9 @@
-import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type ComparePoint, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
 import type { CompareSeriesDef, SpreadData } from "@/lib/comparison-series";
 import { frameMeasurement } from "@/lib/capitalism-layout";
 
+import { Star } from "lucide-react";
 import { ComparisonTimeNavigation } from "./ComparisonTimeNavigation";
 export interface ChartSeries { def: CompareSeriesDef; points: ComparePoint[] }
 export type ChartTool = "move" | "date" | "period";
@@ -13,7 +14,8 @@ const fmt = (v: number) => v.toLocaleString("ko", { maximumFractionDigits: 2 });
 export const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 
-export const CompareChart = memo(function CompareChart({ series, range, extent, indexed, onRange, phases, events, onEvents, simplifyMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread }: {
+export const CompareChart = memo(function CompareChart({ series, range, extent, indexed, onRange, phases, events, onEvents, simplifyMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary }: {
+  summary?: ReactNode;
   spread: SpreadData | null; onRemoveSpread: () => void;
   series: ChartSeries[]; range: Domain; extent: Domain; indexed: boolean; onRange: (value: Domain) => void;
   phases: TrendSection[]; events: HistoryEvent[]; onEvents: (ids: string[]) => void; simplifyMonths: number;
@@ -21,6 +23,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
   onCreate: (date: string, endDate: string | null) => void; tool: ChartTool; onCancelTool: () => void; resetAxes: number; layoutKey: string;
 }) {
   const host = useRef<HTMLDivElement>(null), svg = useRef<SVGSVGElement>(null);
+  const chartHeader = useRef<HTMLDivElement>(null), chartFooter = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900), [chartHeight, setChartHeight] = useState(530);
   const [cursor, setCursor] = useState<number | null>(null), [preview, setPreview] = useState<Domain | null>(null);
   const [jumpTime, setJumpTime] = useState<number | null>(null);
@@ -35,11 +38,12 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
   useEffect(() => { drag.current = null; setPreview(null); }, [tool]);
   useEffect(() => {
     const el = host.current; if (!el) return;
-    const m = frameMeasurement(() => { setWidth(Math.max(420, el.clientWidth)); setChartHeight(clamp(window.innerHeight - Math.max(0, el.getBoundingClientRect().top) - (spread ? 240 : 200), spread ? 460 : 330, 800)); });
-    const ro = new ResizeObserver(m.schedule); ro.observe(el); window.addEventListener("resize", m.schedule); m.schedule();
+    const m = frameMeasurement(() => { setWidth(Math.max(280, el.clientWidth)); setChartHeight(clamp(window.innerHeight - Math.max(0, el.getBoundingClientRect().top) - (chartHeader.current?.offsetHeight ?? 72) - (chartFooter.current?.offsetHeight ?? 50) - 38, spread ? 460 : 330, 800)); });
+    const ro = new ResizeObserver(m.schedule); ro.observe(el); if (chartHeader.current) ro.observe(chartHeader.current); if (chartFooter.current) ro.observe(chartFooter.current); window.addEventListener("resize", m.schedule); m.schedule();
     return () => { ro.disconnect(); window.removeEventListener("resize", m.schedule); m.dispose(); };
-  }, [layoutKey, !!spread]);
-  const left = 65, right = width - 65, span = right - left;
+  }, [layoutKey, !!spread, !!summary]);
+  const left = width < 500 ? 48 : 65, right = width - (width < 500 ? 44 : 55), span = right - left;
+  const badgeWidth = Math.min(180, span);
   const axisBottom = chartHeight - (events.length ? 85 : 43);
   const plotTop = 76, plotBottom = axisBottom - (spread ? 175 : 0), plotHeight = plotBottom - plotTop, spreadTop = plotBottom + 48;
   const x = (time: number) => left + (time - from) / (to - from) * span;
@@ -66,8 +70,8 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
   const badges = useMemo(() => {
     const groups: { px: number; items: SavedInsight[] }[] = [];
     for (const n of notes.filter(n => Date.parse(n.endDate ?? n.date) >= from && Date.parse(n.date) <= to).sort((a, b) => a.date.localeCompare(b.date))) {
-      const px = clamp(x(Date.parse(n.date)), left, right - 140), last = groups.at(-1);
-      if (last && px - last.px < 148) last.items.push(n);
+      const px = clamp(x(Date.parse(n.date)), left, right - badgeWidth), last = groups.at(-1);
+      if (last && px - last.px < badgeWidth + 8) last.items.push(n);
       else groups.push({ px, items: [n] });
     }
     return groups;
@@ -110,10 +114,13 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     else if (d.tool === "period" && Math.abs(px - d.px) > 3) onCreate(iso(Math.min(d.time, end)), iso(Math.max(d.time, end)));
   };
   const cursorMonth = cursor === null ? null : iso(cursor).slice(0, 7);
-  return <div ref={host} className="relative min-w-[420px]" data-testid="compare-chart">
+  return <div ref={host} className="relative min-w-0" data-testid="compare-chart">
+    <div ref={chartHeader}>
     <div className="flex min-h-9 items-center justify-between gap-2 border-b px-3 py-2 text-[10px] text-muted-foreground">
       <span>{tool === "date" ? "차트에서 날짜를 클릭하세요 · Esc 취소" : tool === "period" ? "차트에서 시작부터 끝까지 드래그하세요 · Esc 취소" : "드래그 이동 · 휠 확대 · 축 드래그로 축척 조절"}</span>
       <div className="flex shrink-0 gap-2"><button aria-label="기간 확대" onClick={() => zoom(.7)} className="rounded border px-2">＋</button><button aria-label="기간 축소" onClick={() => zoom(1.4)} className="rounded border px-2">－</button><button className="rounded border px-2" onClick={() => setDomains({})}>세로축 자동</button></div>
+    </div>
+    <div className="flex h-9 items-center gap-4 overflow-x-auto whitespace-nowrap border-b px-4 text-[11px] tabular-nums" data-testid="compare-values"><span className="text-muted-foreground">{cursorMonth ?? "커서로 값 비교"}</span>{series.map(s => { const p = cursorMonth ? s.points.find(p => p.month === cursorMonth) : null; return <span key={s.def.id} className="inline-flex items-center gap-1.5" title={p ? "관측일 " + p.date + (indexed ? " · 지수 " + fmt(p.value) : "") : undefined}><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.def.color }} />{s.def.label}{cursorMonth && <b className="font-medium">{p ? fmt(p.raw) + " " + s.def.unit : "—"}</b>}</span>; })}</div>
     </div>
     <svg ref={svg} width="100%" height={chartHeight} viewBox={"0 0 " + width + " " + chartHeight} className="touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500/30" tabIndex={0} aria-label="시간 기준 인사이트와 거시지표 비교 그래프"
       onKeyDown={e => {
@@ -123,7 +130,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") onRange(moveRange(range, (to - from) * (e.key === "ArrowLeft" ? -.1 : .1), extent));
         if (e.key === "+" || e.key === "=") zoom(.7); if (e.key === "-") zoom(1.4);
       }}
-      onDoubleClick={e => { const { px } = coordinates(e.clientX, e.clientY); if (px < left || px > right) setDomains({}); else if (tool === "move") onRange(extent); }}
+      onDoubleClick={e => { if ((e.target as Element).closest("[data-chart-control]")) return; const { px } = coordinates(e.clientX, e.clientY); if (px < left || px > right) setDomains({}); else if (tool === "move") onRange(extent); }}
       onPointerDown={e => {
         if (e.button !== 0 || (e.target as Element).closest("[data-chart-control]")) return;
         setGroupIds([]);
@@ -159,8 +166,8 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <text x={left} y={plotTop - 10} fontSize={10} fill="currentColor" opacity={.55}>{indexed ? "기준월=100" : (shapes[0]?.def.label ?? "") + " · " + (shapes[0]?.def.unit ?? "")}</text>
       {!indexed && shapes[1] && <text x={right} y={plotTop - 10} textAnchor="end" fontSize={10} fill={shapes[1].def.color}>{shapes[1].def.label} · {shapes[1].def.unit}</text>}
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none">
-        {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#0ea5e9" opacity={.075} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#0ea5e9" strokeDasharray="4 4" opacity={.7} />)}</g>}
-        {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#0ea5e9" opacity={.15} />}
+        {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.06} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
+        {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
         {shapes.map(s => <g key={s.def.id} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
       </g>
       {!shapes.some(s => s.points.length) && <text x={width / 2} y={plotTop + plotHeight / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={.6}>이 구간에 표시할 관측값이 없습니다.</text>}
@@ -171,7 +178,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         <g pointerEvents="none" clipPath={"url(#" + clip + "-spread)"}>
           <rect x={left} y={spreadTop} width={span} height={spreadShape.y(0) - spreadTop} fill="#10b981" opacity={.04} />
           <rect x={left} y={spreadShape.y(0)} width={span} height={axisBottom - spreadShape.y(0)} fill="#f43f5e" opacity={.04} />
-          {active && <rect x={Math.max(left, x(Date.parse(active.date)))} y={spreadTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={axisBottom - spreadTop} fill="#0ea5e9" opacity={.08} />}
+          {active && <rect x={Math.max(left, x(Date.parse(active.date)))} y={spreadTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={axisBottom - spreadTop} fill="#f34d58" opacity={.06} />}
           <line x1={left} x2={right} y1={spreadShape.y(0)} y2={spreadShape.y(0)} stroke="currentColor" opacity={.3} strokeDasharray="4 4" />
           {spreadShape.paths.map((d, i) => <path key={i} d={d} fill="none" stroke="#8b5cf6" strokeWidth={1.8} />)}
           {spreadShape.points.map(p => <circle key={p.month} cx={x(p.time)} cy={spreadShape.y(p.value)} r={1.3} fill="#8b5cf6" />)}
@@ -181,17 +188,20 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       </g>}
       {jumpTime !== null && jumpTime >= from && jumpTime <= to && <g pointerEvents="none" data-testid="date-jump-marker"><line x1={x(jumpTime)} x2={x(jumpTime)} y1={plotTop} y2={axisBottom} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" /><text x={clamp(x(jumpTime), left + 35, right - 35)} y={plotTop + 15} textAnchor="middle" fontSize={10} fill="#d97706">{iso(jumpTime)}</text></g>}
       {cursor !== null && <line x1={x(cursor)} x2={x(cursor)} y1={plotTop} y2={axisBottom} stroke="currentColor" strokeDasharray="3 4" opacity={.3} pointerEvents="none" />}
-      {active?.caption && <foreignObject x={clamp(x(Date.parse(active.date)) + 12, left + 8, right - Math.min(240, span - 16))} y={plotTop + 14} width={Math.min(240, span - 16)} height={110} data-chart-control="true"><div className="max-h-[100px] overflow-auto rounded-lg border border-sky-500/25 bg-card/95 px-3 py-2 text-xs leading-5 shadow-sm" data-testid="insight-caption">{active.caption}</div></foreignObject>}
+      {active?.endDate && <line x1={Math.max(left, x(Date.parse(active.date)))} x2={Math.min(right, x(Date.parse(active.endDate)))} y1={plotTop - 2} y2={plotTop - 2} stroke="#f34d58" strokeWidth={2} opacity={.55} pointerEvents="none" />}
+      {active?.caption && <foreignObject x={clamp(x(Date.parse(active.date)) + 12, left + 8, right - Math.min(240, span - 16))} y={plotTop + 14} width={Math.min(240, span - 16)} height={110} data-chart-control="true"><div className="max-h-[100px] overflow-auto rounded-lg border border-red-400/20 border-l-2 border-l-red-400 bg-card/95 px-3 py-2 text-xs leading-5 shadow-sm" data-testid="insight-caption">{active.caption}</div></foreignObject>}
       {!badges.length && <text x={left} y={30} fontSize={11} fill="currentColor" opacity={.45}>시간축에 인사이트를 남겨보세요</text>}
-      {badges.map(group => { const n = group.items.find(n => n.id === selectedNote) ?? group.items[0], activeGroup = group.items.some(n => n.id === selectedNote); const open = () => { if (group.items.length === 1) onNote(n.id); else setGroupIds(group.items.map(n => n.id)); }; return <g key={group.items[0].id} role="button" tabIndex={0} data-chart-control="true" aria-label={"인사이트: " + group.items.map(n => n.title).join(", ")} data-testid={"insight-badge-" + group.items[0].id} onClick={open} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }} style={{ cursor: "pointer" }}>
-        <title>{group.items.map(n => n.date + " · " + n.title).join("\n")}</title><rect x={group.px} y={16} width={140} height={28} rx={14} className={activeGroup ? "fill-sky-500" : "fill-card"} stroke="#0ea5e9" strokeOpacity={activeGroup ? 1 : .4} /><circle cx={group.px + 12} cy={30} r={3} fill={activeGroup ? "white" : "#0ea5e9"} /><text x={group.px + 22} y={34} fontSize={10} fill={activeGroup ? "white" : "currentColor"}>{n.title.slice(0, group.items.length > 1 ? 9 : 12)}{n.title.length > (group.items.length > 1 ? 9 : 12) ? "…" : ""}{group.items.length > 1 ? " +" + (group.items.length - 1) : ""}</text>
+      {badges.map(group => { const n = group.items.find(n => n.id === selectedNote) ?? group.items[0], activeGroup = group.items.some(n => n.id === selectedNote); const open = () => { if (group.items.length === 1) onNote(n.id); else setGroupIds(group.items.map(n => n.id)); }; return <g key={group.items[0].id} role="button" tabIndex={0} data-chart-control="true" aria-pressed={activeGroup} aria-label={"인사이트: " + group.items.map(n => n.title).join(", ")} data-testid={"insight-badge-" + group.items[0].id} onClick={open} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }} style={{ cursor: "pointer" }}>
+        <title>{group.items.map(n => n.date + " · " + n.title).join("\n")}</title><rect x={group.px} y={16} width={badgeWidth} height={28} rx={6} className={activeGroup ? "fill-red-400/10" : "fill-card"} stroke={activeGroup ? "#f34d58" : "currentColor"} strokeOpacity={activeGroup ? .35 : .12} /><Star x={group.px + 8} y={23} width={14} height={14} stroke="#f34d58" fill={activeGroup ? "#f34d58" : "none"} strokeWidth={1.7} /><text x={group.px + 29} y={34} fontSize={11} fontWeight={activeGroup ? 600 : 400} fill="currentColor">{n.title.slice(0, group.items.length > 1 ? 11 : 13)}{n.title.length > (group.items.length > 1 ? 11 : 13) ? "…" : ""}{group.items.length > 1 ? " +" + (group.items.length - 1) : ""}</text>
         {n.endDate && group.items.length === 1 && <text x={group.px + 5} y={56} fontSize={9} fill="currentColor" opacity={.55}>{n.date.slice(0, 7)} ~ {n.endDate.slice(0, 7)}</text>}
       </g>; })}
       {!!eventGroups.length && <g data-testid="history-events">{eventGroups.map(g => <g key={g.items[0].id} role="button" tabIndex={0} data-chart-control="true" aria-label={"경제사: " + g.items.map(e => e.title).join(", ")} onClick={() => onEvents(g.items.map(e => e.id))} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEvents(g.items.map(e => e.id)); } }} style={{ cursor: "pointer" }}><title>{g.items.map(e => e.date + " · " + e.title).join("\n")}</title><rect x={g.px} y={axisBottom + 38} width={115} height={22} rx={4} fill="#d97706" fillOpacity={.1} /><text x={g.px + 6} y={axisBottom + 53} fontSize={9} fill="currentColor">{g.items[0].title.slice(0, 8)}{g.items[0].title.length > 8 ? "…" : ""}{g.items.length > 1 ? " +" + (g.items.length - 1) : ""}</text></g>)}</g>}
     </svg>
     {!!groupIds.length && <div className="absolute left-16 top-16 z-20 max-h-64 w-64 overflow-auto rounded-lg border bg-card p-2 shadow-lg" role="dialog" aria-label="이 시기의 인사이트"><div className="mb-1 flex items-center justify-between px-2 text-xs"><b>이 시기의 인사이트</b><button aria-label="배지 목록 닫기" onClick={() => setGroupIds([])}>✕</button></div>{notes.filter(n => groupIds.includes(n.id)).map(n => <button key={n.id} className="block w-full rounded p-2 text-left text-xs hover:bg-muted" onClick={() => { onNote(n.id); setGroupIds([]); }}><span className="mb-1 block text-[10px] text-muted-foreground">{n.date}</span>{n.title}</button>)}</div>}
-    <div className="flex min-h-[62px] flex-wrap content-start gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] tabular-nums" data-testid="compare-values"><b className="w-full">{cursorMonth ?? "마우스를 올려 같은 월의 값을 비교하세요"}</b>{cursorMonth && series.map(s => { const p = s.points.find(p => p.month === cursorMonth); return <span key={s.def.id} style={{ color: s.def.color }}>{s.def.label}: {p ? fmt(p.raw) + " " + s.def.unit + (indexed ? " · 지수 " + fmt(p.value) : "") + " (관측일 " + p.date + ")" : "이 월 표시값 없음"}</span>; })}</div>
+    <div ref={chartFooter}>
     {spread && <div className="border-t px-4 py-1.5 text-[11px] text-violet-500" data-testid="spread-values">{(() => { const p = spread.points.find(p => p.month === cursorMonth); return p ? spread.aLabel + " " + fmt(p.a) + "% − " + spread.bLabel + " " + fmt(p.b) + "% = " + fmt(p.raw) + "%p (" + fmt(p.raw * 100) + "bp) · 관측일 A " + p.aDate + " / B " + p.bDate : spread.label + " · " + (cursorMonth ? "이 월 공통 관측값 없음" : "원래 금리의 차이 · 위 차트와 시간축 공유"); })()}</div>}
+    {summary}
     <ComparisonTimeNavigation extent={extent} range={range} onRange={onRange} onJump={setJumpTime} />
+    </div>
   </div>;
 });
