@@ -1,5 +1,6 @@
 import { PANELS, CATEGORIES } from "./capitalism-config";
 import { monthlyPoints, spreadPoints, type SpreadSpec, type SpreadPoint, type Observation } from "../../../shared/cap-comparison";
+import { historyNote } from "./capitalism-history";
 
 export const COMPARE_CATEGORIES = CATEGORIES;
 
@@ -17,6 +18,9 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
   { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
   { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
 ];
+// 과거 확장 구간이 있는 지표는 출처 목록 설명에 구간을 덧붙인다(수록 기간은 데이터에서 자동으로 첫 관측일이 된다).
+for (const s of COMPARE_SERIES) { const h = historyNote(s.id); if (h) s.note = `${s.note} · ${h}`; }
+
 
 export interface SpreadData { spec: SpreadSpec; label: string; aLabel: string; bLabel: string; points: SpreadPoint[] }
 export function makeSpread(spec: SpreadSpec | null | undefined, data: Record<string, Observation[]> | undefined): SpreadData | null {

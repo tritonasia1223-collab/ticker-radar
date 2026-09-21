@@ -98,6 +98,25 @@ npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capita
 - **FRED 가 막는 것**(라이선스): S&P500 → OECD `SPASTT01USM661N`, 금값 → datahub.io GitHub raw CSV 로 우회.
 - 시리즈 키 19종: `gdp_growth, inflation, unrate, debt_gdp, mktcap, sp500, nasdaq, fedfunds, tb3ms, gs10, dollar, oil, gold, trade, m2, monbase, walcl, wresbal, rrp`.
 
+### 과거 확장(옛 출처 접합) — `npm run cap:history`
+
+현행 FRED 시리즈는 대부분 전후 통계 체계에서 시작(GDP 1947·CPI(SA) 1947·실업률 1948·연방기금금리 1954·M2 1959)하므로, 같은 지표의 옛 시리즈로 **확인 가능한 가장 이른 시점까지** 앞을 채웠다. `script/extend-capitalism-history.ts`(일회성 백필, 재실행 멱등)가 저장된 첫 관측일 **이전** 구간만 덧붙이고 기존 포인트는 건드리지 않는다(append-only 의 대칭, 실행 후 자체 검증). 구간 출처는 `client/src/data/capitalism-series-sources.json` 에 남고, 패널은 옛 구간을 **점선·옅은 선**, 경계를 **세로 점선**, 툴팁에 **출처 라벨**로 구분한다. 결측(예: NBER 실업률 1947, 1914년 NYSE 휴장)은 채우지 않는다.
+
+| 키 | 옛 구간 | 출처 | 방식 |
+|---|---|---|---|
+| inflation | 1914-01~1947-12 | CPIAUCNS(비계절조정 CPI) 12개월 전년비 | 그대로 이음(전년비라 계절 상쇄) |
+| gdp_growth | 1930~1947 | A191RL1A225NBEA 연간 실질 GDP 성장률 | 그대로 이음(연간·분기 혼재) |
+| unrate | 1929-04~1939-12 / 1940-01~1946-12 | NBER M0892AUSM156SNBR / M0892BUSM156SNBR | 그대로 이음(1947 공백) |
+| fedfunds | 1914-11~1954-06 | NBER M13009USM156NNBR 뉴욕 연은 재할인율 | **대용** — 수준 차이(0.5~1%p) 그대로 |
+| gs10 | 1925-01~1953-03 | LTGOVTBD 장기 국채수익률(단종) | 그대로 이음 |
+| tb3ms | 1857-01~1933-12 | NBER M13002US35620M156NNBR 뉴욕 상업어음 금리 | **대용** — 1934년 수준 차이 그대로 |
+| monbase | 1918-01~1958-12 | AMBSL 세인트루이스 조정 본원통화(단종) | 1959년 접합점 24개월 겹침 비율(×1.28)로 리베이스 |
+| sp500 | 1914-12~1956-12 / 1897-01~1914-07 | NBER 다우존스 산업지수 M1109BUSM293NNBR(20종목) / M1109AUSM293NNBR(12종목) | 겹침 비율로 리베이스(OECD 지수 기준). 1914년 이전은 ±10% 안팎 불확실 |
+| debt_gdp | 1929~1938 | 재무부 FiscalData 총공공부채(회계연도 말) ÷ FRED GDPA 명목 GDP | **대용** — 1939년 OMB 총연방부채(정부보증채 포함)와 약 8%p 단절 |
+| gold | 1833-01~1943-12 | datahub 월간 금값(공정가격 구간) | 그대로 이음(1968년 이전은 공식 고정가격) |
+
+확장하지 않은 것: **mktcap**(자금순환표 1945 이전 없음), **m2**(1959년 이전 정의가 맞는 시리즈를 확인하지 못함), nasdaq·walcl·wresbal·rrp·dollar·oil·trade·fx(옛 시리즈 없음 또는 고정환율). 리베이스는 겹침 12개 이상·비율 분산 1.15 이하(1914년 이전 다우만 1.2)일 때만 하고, 아니면 그 구간을 SKIP 한다. 월간 크론(`cap:series`)은 이 확장과 무관하게 뒤쪽만 이어 붙인다.
+
 ---
 
 ## 5. 인사이트 시스템

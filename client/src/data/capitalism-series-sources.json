@@ -1,0 +1,196 @@
+{
+  "inflation": {
+    "modernFrom": "1948-01-01",
+    "segments": [
+      {
+        "from": "1914-01-01",
+        "to": "1947-12-01",
+        "source": "CPI 비계절조정(CPIAUCNS)의 12개월 전년비",
+        "short": "비계절조정 CPI",
+        "id": "CPIAUCNS",
+        "url": "https://fred.stlouisfed.org/series/CPIAUCNS",
+        "note": "1913년부터 있는 비계절조정 지수의 전년비. 계절 요인은 전년비에서 상쇄되므로 1948년 이후의 계절조정 전년비와 같은 뜻이다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
+  },
+  "gdp_growth": {
+    "modernFrom": "1947-04-01",
+    "segments": [
+      {
+        "from": "1930-01-01",
+        "to": "1947-01-01",
+        "source": "연간 실질 GDP 성장률(A191RL1A225NBEA)",
+        "short": "연간 성장률",
+        "id": "A191RL1A225NBEA",
+        "url": "https://fred.stlouisfed.org/series/A191RL1A225NBEA",
+        "note": "1947년 이전은 분기 자료가 없어 연간 성장률(전년 대비 %)을 쓴다. 분기 연율보다 완만하게 보인다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
+  },
+  "unrate": {
+    "modernFrom": "1948-01-01",
+    "segments": [
+      {
+        "from": "1929-04-01",
+        "to": "1939-12-01",
+        "source": "NBER 실업률 1929~1939(M0892AUSM156SNBR)",
+        "short": "NBER 실업률",
+        "id": "M0892AUSM156SNBR",
+        "url": "https://fred.stlouisfed.org/series/M0892AUSM156SNBR",
+        "note": "NBER 거시경제사 복원치(계절조정).",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      },
+      {
+        "from": "1940-01-01",
+        "to": "1946-12-01",
+        "source": "NBER 실업률 1940~1946(M0892BUSM156SNBR)",
+        "short": "NBER 실업률",
+        "id": "M0892BUSM156SNBR",
+        "url": "https://fred.stlouisfed.org/series/M0892BUSM156SNBR",
+        "note": "NBER 거시경제사 복원치(계절조정). 1947년은 자료가 없어 비워 둔다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
+  },
+  "fedfunds": {
+    "modernFrom": "1954-07-01",
+    "segments": [
+      {
+        "from": "1914-11-01",
+        "to": "1954-06-01",
+        "source": "뉴욕 연은 재할인율(NBER M13009USM156NNBR)",
+        "short": "재할인율(대용)",
+        "id": "M13009USM156NNBR",
+        "url": "https://fred.stlouisfed.org/series/M13009USM156NNBR",
+        "note": "연방기금금리가 생기기 전(1954)의 정책금리 대용. 겹치는 1954~1969년에도 0.5~1%p 차이가 나므로 수준을 그대로 잇는다.",
+        "method": "append",
+        "proxy": true,
+        "factor": null
+      }
+    ]
+  },
+  "gs10": {
+    "modernFrom": "1953-04-01",
+    "segments": [
+      {
+        "from": "1925-01-01",
+        "to": "1953-03-01",
+        "source": "장기 국채수익률(LTGOVTBD, 단종)",
+        "short": "장기국채(단종 시리즈)",
+        "id": "LTGOVTBD",
+        "url": "https://fred.stlouisfed.org/series/LTGOVTBD",
+        "note": "10년물 고정만기 수익률(1953~) 이전의 장기 국채 수익률. 겹치는 구간에서 거의 같다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
+  },
+  "tb3ms": {
+    "modernFrom": "1934-01-01",
+    "segments": [
+      {
+        "from": "1857-01-01",
+        "to": "1933-12-01",
+        "source": "뉴욕 상업어음 금리(NBER M13002US35620M156NNBR)",
+        "short": "상업어음(대용)",
+        "id": "M13002US35620M156NNBR",
+        "url": "https://fred.stlouisfed.org/series/M13002US35620M156NNBR",
+        "note": "3개월 T-bill(1934~) 이전의 단기 시장금리 대용. T-bill 보다 높게 형성되는 금리라 1934년에 수준 차이가 있다.",
+        "method": "append",
+        "proxy": true,
+        "factor": null
+      }
+    ]
+  },
+  "monbase": {
+    "modernFrom": "1959-01-01",
+    "segments": [
+      {
+        "from": "1918-01-01",
+        "to": "1958-12-01",
+        "source": "세인트루이스 조정 본원통화(AMBSL, 단종)",
+        "short": "조정 본원통화(접합)",
+        "id": "AMBSL",
+        "url": "https://fred.stlouisfed.org/series/AMBSL",
+        "note": "정의가 달라 1959년 접합점의 겹침 비율로 리베이스했다. 1959년 이전은 증감률만 의미가 있다.",
+        "method": "rebase",
+        "proxy": false,
+        "factor": 1.281691
+      }
+    ]
+  },
+  "sp500": {
+    "modernFrom": "1957-01-01",
+    "segments": [
+      {
+        "from": "1897-01-01",
+        "to": "1914-07-01",
+        "source": "다우존스 산업지수 1897~1914(NBER M1109AUSM293NNBR, 12종목)",
+        "short": "다우존스(접합)",
+        "id": "M1109AUSM293NNBR",
+        "url": "https://fred.stlouisfed.org/series/M1109AUSM293NNBR",
+        "note": "1914년 이전 구간. 1914-12~1915-11 겹침 비율로 뒤 구간(20종목 지수)에 접합했으며 두 지수의 비율이 겹침 구간에서 최대 10% 안팎 벌어지므로 이 구간의 수준은 그만큼 불확실하다.",
+        "method": "rebase",
+        "proxy": false,
+        "factor": 0.00402
+      },
+      {
+        "from": "1914-12-01",
+        "to": "1956-12-01",
+        "source": "다우존스 산업지수(NBER M1109BUSM293NNBR)",
+        "short": "다우존스(접합)",
+        "id": "M1109BUSM293NNBR",
+        "url": "https://fred.stlouisfed.org/series/M1109BUSM293NNBR",
+        "note": "S&P·OECD 지수(1957~) 이전 구간을 다우존스 산업지수로 접합(1957~1958 겹침 비율). 지수 구성이 다르다.",
+        "method": "rebase",
+        "proxy": false,
+        "factor": 0.005212
+      }
+    ]
+  },
+  "debt_gdp": {
+    "modernFrom": "1939-01-01",
+    "segments": [
+      {
+        "from": "1929-01-01",
+        "to": "1938-01-01",
+        "source": "재무부 총공공부채(FiscalData) ÷ 명목 GDP(GDPA)",
+        "short": "재무부 부채/GDP(대용)",
+        "id": "debt_outstanding ÷ GDPA",
+        "url": "https://fiscaldata.treasury.gov/datasets/historical-debt-outstanding/",
+        "note": "회계연도 말(6월) 총공공부채를 역년 명목 GDP 로 나눈 값. 1939년부터의 OMB 총연방부채(정부보증채 포함)와 정의가 달라 1939년에 약 8%p 단절이 있다.",
+        "method": "append",
+        "proxy": true,
+        "factor": null
+      }
+    ]
+  },
+  "gold": {
+    "modernFrom": "1944-01-01",
+    "segments": [
+      {
+        "from": "1833-01-01",
+        "to": "1943-12-01",
+        "source": "datahub 금값(공정가격 구간)",
+        "short": "공정가격",
+        "id": "datahub gold-prices",
+        "url": "https://datahub.io/core/gold-prices",
+        "note": "1968년 이전은 시장가가 아닌 공식 고정가격(1834~1933 $20.67, 1934~1971 $35)이다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
+  }
+}

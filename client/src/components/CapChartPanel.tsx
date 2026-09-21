@@ -9,6 +9,7 @@ import {
 import { Maximize2, X } from "lucide-react";
 import type { PanelDef } from "@/lib/capitalism-config";
 import { fracYearToLabel, krwConversion, USD_KRW } from "@/lib/capitalism-config";
+import { historyOf, type HistorySegment } from "@/lib/capitalism-history";
 
 // 축 눈금용 한국어 축약 표기(만/억 등). 원화 큰 값도 40px 폭에 들어가게.
 const tickFmt = (v: number) => new Intl.NumberFormat("ko", { notation: "compact", maximumFractionDigits: 1 }).format(v);
@@ -35,11 +36,18 @@ export function PanelChart({
   scale?: number;   // 값 배율(원화 환산 등). 1=원본.
   unit: string;     // 표시 단위(원화 전환 시 조₩ 등).
 }) {
+  // 과거 확장 구간(출처가 다른 옛 시리즈). 경계(modernFrom) 앞은 점선 h, 뒤는 실선 v 로 그린다.
+  const history = historyOf(panel.series);
+  const modernT = history ? fracOf(history.modernFrom) : null;
   const data = useMemo(() => {
     if (!series) return [];
     const all = series
-      .map(([date, value]) => ({ t: fracOf(date), v: value * scale }))
-      .filter((d) => d.v != null && !Number.isNaN(d.v));
+      .map(([date, value]) => {
+        const y = value * scale, t = fracOf(date);
+        const old = modernT != null && t < modernT, edge = modernT != null && date === history!.modernFrom;
+        return { t, v: old ? undefined : y, h: old || edge ? y : undefined, y };
+      })
+      .filter((d) => d.y != null && !Number.isNaN(d.y));
     // 창 경계 바깥 한 점씩 포함해 라인이 창 끝까지 자연스럽게 이어지게 한다(잘림 방지).
     const inFrom = all.findIndex((d) => d.t >= fromYear);
     if (inFrom === -1) return [];
@@ -111,14 +119,16 @@ export function PanelChart({
           wrapperStyle={{ zIndex: 20 }}
           content={({ active, payload, label }: any) => {
             if (!active || !payload || !payload.length) return null;
-            const v = payload[0]?.value;
+            const v = payload[0]?.payload?.y ?? payload[0]?.value;
             if (v == null) return null;
+            const seg = history ? segmentAt(history.segments, Number(label)) : null;
             return (
               <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[10.5px] leading-tight text-popover-foreground shadow-sm backdrop-blur-sm">
                 <span className="text-muted-foreground tabular-nums">{fracYearToLabel(Number(label))}</span>
                 {" · "}
                 <span className="font-semibold tabular-nums" style={{ color: panel.color }}>{Number(v).toLocaleString("ko", { maximumFractionDigits: 2 })}</span>
                 <span className="text-muted-foreground"> {unit}</span>
+                {seg ? <span className="text-muted-foreground"> · {seg.short}</span> : null}
               </div>
             );
           }}
@@ -128,10 +138,16 @@ export function PanelChart({
           <ReferenceArea x1={band.start} x2={band.end} fill={panel.color} fillOpacity={0.12} stroke="none" />
         ) : null}
         <ReferenceLine x={playYear} stroke={panel.color} strokeWidth={1.5} strokeDasharray="3 3" />
+        {modernT != null && modernT > fromYear && modernT < toYear ? (
+          <ReferenceLine x={modernT} stroke="currentColor" className="text-muted-foreground" strokeWidth={1} strokeDasharray="2 3" opacity={0.6} />
+        ) : null}
+        {history ? (
+          <Line type="monotone" dataKey="h" stroke={panel.color} strokeWidth={1.2} strokeOpacity={0.7} strokeDasharray="4 3" dot={false} isAnimationActive={false} connectNulls={false} />
+        ) : null}
         {panel.kind === "area" ? (
-          <Area type="monotone" dataKey="v" stroke={panel.color} fill={panel.color} fillOpacity={0.18} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          <Area type="monotone" dataKey="v" stroke={panel.color} fill={panel.color} fillOpacity={0.18} strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
         ) : (
-          <Line type="monotone" dataKey="v" stroke={panel.color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="v" stroke={panel.color} strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
         )}
       </ComposedChart>
     </ResponsiveContainer>
@@ -199,10 +215,10 @@ export function CapChartPanel({
             title={`클릭하면 ${krw ? "달러" : "원화"}로 전환 (고정 환율 1$=${USD_KRW.toLocaleString("ko")}원)`}
             data-testid={`panel-unit-${panel.id}`}
           >
-            {displayUnit} · {panel.start}~
+            {displayUnit} · {fullRange ? fullRange[0] : panel.start}~
           </button>
         ) : (
-          <span className="text-[10.5px] text-muted-foreground tabular-nums">{panel.unit} · {panel.start}~</span>
+          <span className="text-[10.5px] text-muted-foreground tabular-nums">{panel.unit} · {fullRange ? fullRange[0] : panel.start}~</span>
         )}
       </div>
 
@@ -243,6 +259,11 @@ export function CapChartPanel({
                     <X className="h-4 w-4" />
                   </button>
                 </div>
+                {historyOf(panel.series) ? (
+                  <p className="mb-2 text-[11px] leading-snug text-muted-foreground" data-testid={`panel-history-${panel.id}`}>
+                    {historyOf(panel.series)!.segments.map((s) => `${s.from.slice(0, 4)}~${s.to.slice(0, 4)} ${s.source}${s.proxy ? " · 대용" : s.method === "rebase" ? " · 접합" : ""}`).join(" / ")} / {historyOf(panel.series)!.modernFrom.slice(0, 4)}~ 현행 시리즈. 점선 = 옛 출처 구간.
+                  </p>
+                ) : null}
                 {/* 전체 데이터 구간 + Y축도 전체 기준 고정. 현재 슬라이더 시점은 점선으로 위치 표시. */}
                 <PanelChart
                   panel={panel} series={series}
@@ -257,4 +278,9 @@ export function CapChartPanel({
         : null}
     </div>
   );
+}
+
+// 소수 연도 t 가 속한 옛 출처 구간(툴팁 라벨용). 구간 밖(현행)이면 null.
+function segmentAt(segments: HistorySegment[], t: number): HistorySegment | null {
+  return segments.find((s) => t >= fracOf(s.from) - 1e-9 && t < fracOf(s.to) + 1 / 12) ?? null;
 }
