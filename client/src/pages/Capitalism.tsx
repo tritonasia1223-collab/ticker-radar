@@ -14,7 +14,8 @@ import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
 import { useEditMode } from "@/components/EditModeProvider";
-import { PANELS, CATEGORIES, toFracYear, fracYearToLabel, leadersForYear } from "@/lib/capitalism-config";
+import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
+import { leadersForYear } from "@/lib/capitalism-leaders"; // 1789~ 대통령 · 1914~ 연준 의장 전체 표(시계열이 1833년까지 늘어나 필요)
 import { newNodeKey, enqueueSave, withRetry, hasInsightContent, hasUnsavedChanges, hasFailedSaves, subscribeSaves, saveRevision, flushScheduledSaves, retryFailedSaves } from "@/lib/capitalism-flowops";
 import type { NodeContentPatch } from "@/lib/capitalism-types";
 import { apiRequest } from "@/lib/queryClient";
