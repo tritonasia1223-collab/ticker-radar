@@ -36,6 +36,15 @@ export function yearAtAnchor(anchors: ScrollAnchor[], anchorY: number, { minTran
   return sorted[sorted.length - 1].year;
 }
 
+// 스크롤 리스너의 상태 갱신 여부. 잦은 setState 를 막는 0.01년 문턱은 두되, 표시 단위(월)가 바뀌면 — 특히 연말 카드(12-31)에서
+// 연초 카드(01-01)로 넘어가 정수 연도가 달라지면 — 차이가 0.01년 미만이어도 갱신한다(라벨이 "1900년 12월"에 묶이던 문제).
+export function shouldUpdatePlayYear(prev: number, next: number, threshold = 0.01): boolean {
+  if (!Number.isFinite(next)) return false;
+  if (!Number.isFinite(prev)) return true;
+  if (Math.abs(prev - next) > threshold) return true;
+  return Math.floor(prev) !== Math.floor(next) || Math.floor(prev * 12) !== Math.floor(next * 12);
+}
+
 // 연도 그룹(헤더 포함 상자) 안의 카드 상자들 → 앵커. 그룹 상단(헤더·여백)부터 첫 카드 아래까지는 첫 카드에 속하게
 // 첫 카드의 top 을 그룹 top 까지 끌어올린다 — 헤더가 보이는 동안 이전 그룹과의 보간값(1873 헤더에서 1864)이 나오지 않게.
 export interface GroupBoxes { top: number; cards: { year: number; top: number; bottom: number }[] }

@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildCardAnchors, yearAtAnchor, type ScrollAnchor } from "../client/src/lib/capitalism-scroll";
+import { buildCardAnchors, shouldUpdatePlayYear, yearAtAnchor, type ScrollAnchor } from "../client/src/lib/capitalism-scroll";
+
+describe("스크롤 리스너 상태 갱신 문턱", () => {
+  it("연말 카드(12-31) → 연초 카드(01-01)처럼 차이가 0.01년 미만이어도 정수 연도·월이 바뀌면 갱신한다", () => {
+    const dec31 = 1900 + 364 / 365, jan1 = 1901, jan2 = 1901 + 1 / 365;
+    expect(shouldUpdatePlayYear(dec31, jan1)).toBe(true);
+    expect(shouldUpdatePlayYear(dec31, jan2)).toBe(true);
+    expect(shouldUpdatePlayYear(jan1, jan2)).toBe(false);          // 같은 해·같은 달, 0.003년 차이 → 갱신 안 함
+    expect(shouldUpdatePlayYear(1873.2, 1873.2 + 0.005)).toBe(false);
+    expect(shouldUpdatePlayYear(1873.2, 1873.25)).toBe(true);      // 0.05년 차이
+    expect(shouldUpdatePlayYear(1873 + 0.0833, 1873 + 0.0834)).toBe(true); // 1월→2월 경계(1/12) 넘음
+    expect(shouldUpdatePlayYear(NaN, 1873)).toBe(true);
+    expect(shouldUpdatePlayYear(1873, NaN)).toBe(false);
+  });
+});
 
 describe("연도 그룹 → 카드 앵커", () => {
   it("그룹 상단(헤더·여백)은 첫 카드에 속하고, 나머지 카드는 제 상자 그대로", () => {

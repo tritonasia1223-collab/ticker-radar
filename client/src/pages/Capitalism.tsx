@@ -24,7 +24,7 @@ import { collaboration, seedCollaboration, saveFlowDraft, saveMetaDrafts } from 
 import { CapCollaboration } from "@/components/CapCollaboration";
 import type { FlowDTO, FlowNodeDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { buildCardAnchors, yearAtAnchor } from "@/lib/capitalism-scroll"; // 스크롤 위치 → 시점: 카드 상자 안은 고정, 카드 사이만 보간
+import { buildCardAnchors, shouldUpdatePlayYear, yearAtAnchor } from "@/lib/capitalism-scroll"; // 스크롤 위치 → 시점: 카드 상자 안은 고정, 카드 사이만 보간
 
 const YEAR_MIN = 1971;
 const YEAR_MAX = 1980;
@@ -336,7 +336,7 @@ export default function Capitalism() {
         const frac = yearAtAnchor(anchors, anchorY);
         if (frac == null) return;
         const clamped = Math.max(fromY, Math.min(toY, frac));
-        setPlayYear((prev) => (Math.abs(prev - clamped) > 0.01 ? clamped : prev));
+        setPlayYear((prev) => (shouldUpdatePlayYear(prev, clamped) ? clamped : prev)); // 0.01년 문턱 + 연도·월 경계는 항상 갱신
       });
     };
     board.addEventListener("scroll", onScroll, { passive: true });
