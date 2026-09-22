@@ -24,6 +24,7 @@ import { collaboration, seedCollaboration, saveFlowDraft, saveMetaDrafts } from 
 import { CapCollaboration } from "@/components/CapCollaboration";
 import type { FlowDTO, FlowNodeDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
 import { useCapSeries } from "@/lib/capitalism-series";
+import { buildCardAnchors, yearAtAnchor } from "@/lib/capitalism-scroll"; // 스크롤 위치 → 시점: 카드 상자 안은 고정, 카드 사이만 보간
 
 const YEAR_MIN = 1971;
 const YEAR_MAX = 1980;
@@ -306,8 +307,8 @@ export default function Capitalism() {
     return { start, end, mid: (start + end) / 2 };
   }, [flows, activeSlug]);
 
-  // 세로 스크롤 = 시간 이동. 사용자가 마우스로 스크롤하면 뷰포트 상단 앵커에 가장 가까운
-  // 연도 그룹들 사이를 보간해 playYear 를 갱신한다(스크롤→playYear 역동기화).
+  // 세로 스크롤 = 시간 이동. 사용자가 마우스로 스크롤하면 뷰포트 상단 앵커가 놓인 카드(또는 카드 사이)의
+  // 시점으로 playYear 를 갱신한다(스크롤→playYear 역동기화). 계산은 lib/capitalism-scroll 의 순수 함수.
   // programScrollRef 가 켜진 동안(=seekToYear 가 프로그램 스크롤 중)에는 건너뛴다.
   useEffect(() => {
     const board = boardRef.current;
@@ -318,33 +319,22 @@ export default function Capitalism() {
       raf = window.requestAnimationFrame(() => {
         raf = 0;
         if (programScrollRef.current) return;
-        const els = Array.from(board.querySelectorAll<HTMLElement>("[data-group-year]"));
-        if (els.length === 0) return;
+        // 앵커 = 카드(data-flow-year, 실제 날짜, top~bottom 상자). 앵커선이 카드 안이면 그 카드의 시점에 고정되고
+        // 카드 사이 빈 구간에서만 보간한다 — 카드가 길거나 많은 그룹 안에서 다음 그룹 연도로 새던 문제(1873 에서 1885) 해결.
+        // 그룹 헤더~첫 카드 사이 여백은 첫 카드에 속한다(buildCardAnchors). 카드가 하나도 없으면 그룹 헤더(점 앵커) 보간으로 폴백.
+        const groupEls = Array.from(board.querySelectorAll<HTMLElement>("[data-group-year]"));
+        const anchors = buildCardAnchors(groupEls.map((g) => ({
+          top: g.getBoundingClientRect().top,
+          cards: Array.from(g.querySelectorAll<HTMLElement>("[data-flow-year]")).map((el) => { const r = el.getBoundingClientRect(); return { year: Number(el.dataset.flowYear), top: r.top, bottom: r.bottom }; }),
+        })));
+        if (anchors.length === 0) groupEls.forEach((el) => anchors.push({ year: Number(el.dataset.groupYear), top: el.getBoundingClientRect().top }));
+        if (anchors.length === 0) return;
         const boardBox = board.getBoundingClientRect();
         // 뷰포트 상단에서 약간 아래 지점을 "현재 보는 시점" 앵커로 삼는다.
         const anchor = Math.min(120, board.clientHeight * 0.25);
         const anchorY = boardBox.top + anchor;
-        // 앵커보다 위에 있는(=이미 지난) 마지막 그룹과 그 다음 그룹 사이를 보간.
-        const sorted = els
-          .map((el) => ({ year: Number(el.dataset.groupYear), top: el.getBoundingClientRect().top }))
-          .sort((a, b) => a.top - b.top);
-        let frac: number;
-        if (anchorY <= sorted[0].top) {
-          frac = sorted[0].year; // 첫 그룹보다 위 → 첫 연도
-        } else if (anchorY >= sorted[sorted.length - 1].top) {
-          frac = sorted[sorted.length - 1].year; // 마지막 그룹보다 아래 → 마지막 연도
-        } else {
-          // anchorY 가 끼인 두 그룹을 찾아 선형 보간.
-          let lo = sorted[0], hi = sorted[sorted.length - 1];
-          for (let i = 0; i < sorted.length - 1; i++) {
-            if (anchorY >= sorted[i].top && anchorY < sorted[i + 1].top) {
-              lo = sorted[i]; hi = sorted[i + 1]; break;
-            }
-          }
-          const span = hi.top - lo.top;
-          const t = span > 0 ? (anchorY - lo.top) / span : 0;
-          frac = lo.year + t * (hi.year - lo.year);
-        }
+        const frac = yearAtAnchor(anchors, anchorY);
+        if (frac == null) return;
         const clamped = Math.max(fromY, Math.min(toY, frac));
         setPlayYear((prev) => (Math.abs(prev - clamped) > 0.01 ? clamped : prev));
       });

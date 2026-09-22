@@ -13,6 +13,7 @@ import { applyInlineTextCommand } from "@/lib/capitalism-richtext";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
 import { frameMeasurement, relativeLayoutTop } from "@/lib/capitalism-layout";
 import type { FlowDTO, FlowNodeDTO, CapTableData, NodeContentPatch } from "@/lib/capitalism-types";
+import { toFracYear } from "@/lib/capitalism-config"; // 카드 래퍼 data-flow-year(스크롤→시점 앵커)
 
 // 노드 배열을 통째로 바꿔 저장하는 콜백(페이지가 서버 반영 담당).
 export type MutateNodes = (flow: FlowDTO, nextNodes: FlowNodeDTO[]) => void;
@@ -860,6 +861,7 @@ export function FlowColumn({
       }`}
       onClick={() => onSelect(flow)}
       data-testid={`flow-${flow.slug}`}
+      data-flow-year={toFracYear(flow.date)}
     >
       {/* 인사이트 별(★) — 우상단. 인사이트 있으면 빨강 채움, 없으면 흐린 외곽선(추가용). 클릭 시 오른쪽 패널에 인사이트. */}
       {editable || flow.insight ? (
