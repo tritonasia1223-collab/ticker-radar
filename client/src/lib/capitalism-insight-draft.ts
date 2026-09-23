@@ -41,6 +41,10 @@ export const shouldSaveOnLeave = <T>(state: DraftState<T>): boolean => state.dir
 export const isSaveShortcut = (e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean }): boolean =>
   (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "s" || e.key === "S");
 
+// 잠금 해제 뒤 재조회 결과를 적용할지: 이미 확정된 버전보다 새로울 때만(저장 응답·폴링보다 늦게 도착한 옛 조회가 최신값을 되돌리지 않게).
+export const isNewerVersion = (current: number | null | undefined, incoming: number | null | undefined): boolean =>
+  Number.isFinite(Number(incoming)) && (current == null || !Number.isFinite(Number(current)) || Number(incoming) > Number(current));
+
 // 메타 카드 목록 갱신(id 기준). 같은 틱에 여러 카드가 저장돼도 호출부가 '마지막으로 보낸 목록'을 넘기면 누적된다.
 export function upsertCardById<C extends { id: string }>(cards: C[], next: C): C[] {
   return cards.some((c) => c.id === next.id) ? cards.map((c) => (c.id === next.id ? next : c)) : [...cards, next];

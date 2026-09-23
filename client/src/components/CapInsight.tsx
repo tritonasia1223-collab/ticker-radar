@@ -8,7 +8,7 @@ import {
 } from "@/components/CapBlocks";
 import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalism-types";
 import { collaboration, collabApi, focusResource } from "@/lib/cap-collab-client";
-import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById, type DraftState } from "@/lib/capitalism-insight-draft";
+import { acceptRemote, changeDraft, discardDraft, isNewerVersion, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById, type DraftState } from "@/lib/capitalism-insight-draft";
 
 // 초안 저장기 — 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
 //   · change/markDirty: 로컬 초안만 바꾸고, dirty 가 되는 순간 협업 엔진의 '로컬 편집 잠금'(beginLocalEdit)을 잡아 저장할 때까지
@@ -23,10 +23,18 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
   // 잠금은 '저장 안 된 변경이 있는 동안'만 잡는다. 포커스만으로는 잡지 않는다 — 포커스 잠금은 저장 응답 처리(waitForLocalEdit)까지 막아
   // 포커스를 유지한 연속 저장이 두 번째부터 전송되지 않게 했다. 편집 중 표시(누가 어디를 보는지)는 focusResource 로만 알린다.
   const acquire = () => { if (!lockRef.current) lockRef.current = collaboration.beginLocalEdit(key); };
-  // 잠금 중 건너뛴 다른 창의 변경(특히 메타 카드는 전역 버전만 갱신돼 폴링이 다시 안 읽는다)을 해제 직후 한 번 다시 읽는다.
-  const release = () => { const r = lockRef.current; lockRef.current = null; if (!r) return; r(); void collabApi(`resource?key=${encodeURIComponent(key)}`).then((res) => collaboration.receive(res)).catch(() => {}); };
+  // 잠금 중 건너뛴 다른 창의 변경(특히 메타 카드는 전역 버전만 갱신돼 폴링이 다시 안 읽는다)은 '저장 없이 clean 으로 돌아온' 해제에서만 다시 읽는다.
+  // 저장한 해제는 저장 응답이 최신 확정값을 주므로 읽지 않는다(늦게 온 옛 조회가 방금 저장한 값을 되돌리는 경쟁 방지).
+  // 읽은 결과도 이미 확정된 버전보다 새로울 때만 적용한다.
+  const release = (refetch: boolean) => {
+    const r = lockRef.current; lockRef.current = null; if (!r) return; r();
+    if (!refetch) return;
+    void collabApi(`resource?key=${encodeURIComponent(key)}`)
+      .then((res) => { if (isNewerVersion(collaboration.confirmed.get(key)?.version, res?.version)) return collaboration.receive(res); })
+      .catch(() => {});
+  };
   const flushChildren = () => { const a = document.activeElement; if (a instanceof HTMLElement && rootRef.current?.contains(a)) a.blur(); };
-  const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); if (n.dirty) acquire(); else release(); }; // clean(원문 복귀·변경 없는 blur)이면 잠금을 남기지 않는다
+  const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); if (n.dirty) acquire(); else release(true); }; // clean(원문 복귀·변경 없는 blur)이면 잠금을 남기지 않고 건너뛴 원격 변경을 읽는다
   // 표 셀처럼 blur 때만 값이 올라오는 자식 편집기의 입력: 이벤트 캡처 단계에서 state 를 바꾸면 제어 입력의 첫 글자가 되돌아가므로
   // ref 만 dirty 로 두고 '저장 안 됨' 표시는 이벤트가 끝난 뒤(setTimeout 0) 갱신한다.
   const markDirty = () => { const n = markDraftDirty(draftRef.current); acquire(); if (n === draftRef.current) return; draftRef.current = n; setTimeout(() => setDraft(draftRef.current), 0); };
@@ -35,15 +43,15 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
     const { next, toSave } = takeDraftForSave(draftRef.current);
     if (toSave !== null) commitRef.current(toSave);
     draftRef.current = next; setDraft(next);
-    release();
+    release(toSave === null); // 저장했으면 응답이 최신값 — 재조회 없음. 값이 같아 저장이 없었으면 건너뛴 원격 변경을 읽는다
     if (toSave !== null && opts.flush) void collaboration.flushAll();
     return toSave !== null;
   };
-  const discard = () => { const n = discardDraft(draftRef.current); draftRef.current = n; setDraft(n); release(); };
+  const discard = () => { const n = discardDraft(draftRef.current); draftRef.current = n; setDraft(n); release(true); };
   const saveRef = useRef(save); saveRef.current = save;
   // 언마운트·대상 전환: passive cleanup 은 자식(표 셀 등)의 layout cleanup 이 최신 값을 올린 '뒤'에 돌므로 그 값까지 담아 한 번 저장하고 잠금을 푼다.
   // (layout cleanup 에서 저장하면 자식의 뒤늦은 값 전달이 잠금을 다시 잡아 새고, 표의 마지막 입력이 빠진다. DOM 은 이미 제거돼 blur 확정은 없다.)
-  useEffect(() => () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true, noBlur: true }); else release(); }, [key]);
+  useEffect(() => () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true, noBlur: true }); else release(false); }, [key]);
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === "hidden" && shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
     // 페이지의 beforeunload 리스너는 엔진 초안이 아직 없고 포커스도 밖이면 확인을 띄우지 않으므로, 여기서 저장(기기 초안 기록)과 함께 직접 확인을 요청한다.

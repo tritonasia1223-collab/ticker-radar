@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById } from "../client/src/lib/capitalism-insight-draft";
+import { acceptRemote, changeDraft, discardDraft, isNewerVersion, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById } from "../client/src/lib/capitalism-insight-draft";
+
+describe("잠금 해제 뒤 재조회 적용 여부", () => {
+  it("확정 버전보다 새로울 때만 적용한다 — 저장 응답 뒤에 도착한 옛 조회는 버린다", () => {
+    expect(isNewerVersion(100, 101)).toBe(true);
+    expect(isNewerVersion(101, 100)).toBe(false);
+    expect(isNewerVersion(101, 101)).toBe(false);
+    expect(isNewerVersion(undefined, 5)).toBe(true);
+    expect(isNewerVersion(5, undefined)).toBe(false);
+    expect(isNewerVersion(5, NaN)).toBe(false);
+  });
+});
 
 describe("인사이트 편집 저장 정책 — 3차 보강(변경 없는 저장 생략)", () => {
   it("마지막 저장값과 같은 값으로 바뀌면 dirty 가 아니고 저장도 나가지 않는다(리치텍스트의 변경 없는 blur 콜백)", () => {
