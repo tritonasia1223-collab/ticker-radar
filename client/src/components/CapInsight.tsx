@@ -7,6 +7,28 @@ import {
   BlockStack, insightToBlocks, blocksToInsight, blocksHaveContent, metaCardToBlocks, blocksToMetaFields,
 } from "@/components/CapBlocks";
 import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalism-types";
+import { useCapEditScope } from "@/lib/use-cap-edit-scope";
+import { collaboration } from "@/lib/cap-collab-client";
+import { acceptRemote, changeDraft, isSaveShortcut, seedDraft, shouldSaveOnLeave, takeDraftForSave, type DraftState } from "@/lib/capitalism-insight-draft";
+
+// 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
+// 저장은 "저장" 버튼·Ctrl+S, 그리고 이탈(패널 닫기·다른 카드로 전환·언마운트·페이지 숨김)에서 dirty 일 때만 한 번.
+// 이탈 저장은 협업 저장기를 즉시 흘려보내 페이지를 떠나도 남게 한다.
+function useLeaveSave(draftRef: { current: DraftState<unknown> }, save: () => void, key: string) {
+  const saveRef = useRef(save); saveRef.current = save;
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === "hidden" && shouldSaveOnLeave(draftRef.current)) { saveRef.current(); void collaboration.flushAll(); } };
+    const onUnload = () => { if (shouldSaveOnLeave(draftRef.current)) { saveRef.current(); void collaboration.flushAll(); } };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("beforeunload", onUnload);
+      if (shouldSaveOnLeave(draftRef.current)) saveRef.current(); // 언마운트·대상 전환(key 변경) 시
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+}
 
 // 본문 블록 중 보일 게 하나라도 있나(텍스트는 비어있지 않을 때만, 표/이미지/그래프는 항상).
 const hasVisibleBlock = (blocks: CapBlock[]) => blocks.some((b) => (b.type === "text" ? !!b.text.trim() : true));
@@ -27,39 +49,48 @@ export function InsightPanel({
     const b = insightToBlocks(f.insight);
     return b.length ? b : [{ type: "text", text: "" }];
   };
-  const [blocks, setBlocks] = useState<CapBlock[]>(() => seedBlocks(flow));
-  const blocksRef = useRef(blocks);
-  blocksRef.current = blocks;
+  const [draft, setDraft] = useState<DraftState<CapBlock[]>>(() => seedDraft(seedBlocks(flow)));
+  const draftRef = useRef(draft); draftRef.current = draft;
+  const blocks = draft.value;
+  // 편집기 안에 포커스가 있는 동안 협업 엔진이 이 카드의 원격 변경 반영을 미룬다(노드 칸과 같은 규칙).
+  const editScope = useCapEditScope(`flow:${flow.slug}`);
   // 내용이 있으면 읽기 뷰로(가독성), 비어 있으면(새 인사이트) 바로 편집. 보기 모드면 항상 읽기.
   const [editing, setEditing] = useState(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
   const showEditor = editing && editable;
 
   // 다른 카드의 별을 누르면 그 사건 인사이트로 재시드.
   useEffect(() => {
-    const b = seedBlocks(flow);
-    setBlocks(b); blocksRef.current = b;
+    setDraft(seedDraft(seedBlocks(flow)));
     setEditing(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flow.slug, editable]);
-  useEffect(() => { const next = seedBlocks(flow); setBlocks(next); blocksRef.current = next; }, [flow.insight]);
+  // 서버본(폴링·저장 응답)이 바뀌면 재시드 — 단, 저장 안 된 변경이 있는 동안은 타이핑을 지키려고 무시한다.
+  useEffect(() => { setDraft((d) => acceptRemote(d, seedBlocks(flow))); }, [flow.insight]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
   const eventFrac = toFracYear(flow.date);
 
-  const persist = (next: CapBlock[]) => onCommit(flow.slug, blocksToInsight(next));
-  // 입력과 구조 변경 모두 부모 저장기에 전달한다. 부모에서 디바운스·직렬화한다.
-  const handleChange = (next: CapBlock[], _doCommit: boolean) => {
-    setBlocks(next); blocksRef.current = next;
-    persist(next);
+  // 타이핑·블록 구조 변경은 로컬 초안만 바꾼다(doCommit 무시). 저장은 아래 save 에서만.
+  const handleChange = (next: CapBlock[], _doCommit: boolean) => setDraft((d) => changeDraft(d, next));
+  // dirty 일 때만 그 시점의 블록을 한 번 부모 저장기(onCommit → 캐시 갱신 + 협업 저장)로 보낸다.
+  const save = () => {
+    const { next, toSave } = takeDraftForSave(draftRef.current);
+    if (toSave) onCommit(flow.slug, blocksToInsight(toSave));
+    draftRef.current = next; setDraft(next);
+    return toSave !== null;
   };
-  const finishEditing = () => { persist(blocksRef.current); setEditing(false); };
+  const finishEditing = () => { save(); setEditing(false); };
+  const closePanel = () => { save(); onClose(); };
+  const onKeyDownCapture = (e: React.KeyboardEvent) => { if (showEditor && isSaveShortcut(e)) { e.preventDefault(); save(); } };
+  useLeaveSave(draftRef, save, flow.slug);
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3" {...editScope} onKeyDownCapture={onKeyDownCapture}>
       <div className="flex items-start justify-between gap-2 border-b border-border/50 pb-2">
         <div className="min-w-0">
           <div className="text-[11px] tabular-nums text-muted-foreground">
             {flow.endDate ? `${flow.date} ~ ${flow.endDate}` : flow.date}
+            {draft.dirty ? <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600" data-testid="insight-unsaved">저장 안 됨</span> : null}
           </div>
           <div className="flex items-center gap-1.5 text-sm font-semibold">
             <Star className="h-3.5 w-3.5 shrink-0 text-red-500" fill="currentColor" />
@@ -72,10 +103,10 @@ export function InsightPanel({
               type="button"
               onClick={finishEditing}
               className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
-              title="작성 완료 — 읽기 화면으로"
+              title="저장하고 읽기 화면으로 (편집 중 Ctrl+S: 저장만)"
               data-testid="insight-done"
             >
-              <Check className="h-3.5 w-3.5" /> 완료
+              <Check className="h-3.5 w-3.5" /> 저장
             </button>
           ) : (
             <button
@@ -91,9 +122,9 @@ export function InsightPanel({
           {variant !== "inline" ? (
             <button
               type="button"
-              onClick={onClose}
+              onClick={closePanel}
               className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-              title="그래프로 돌아가기"
+              title="그래프로 돌아가기 (저장 안 된 변경은 저장)"
               data-testid="insight-close"
             >
               <X className="h-3.5 w-3.5" /> 그래프
@@ -138,30 +169,34 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
     const b = metaCardToBlocks(c);
     return b.length ? b : [{ type: "text", text: "" }];
   };
-  const [title, setTitle] = useState(card.title ?? "");
-  const titleRef = useRef(title); titleRef.current = title;
-  const [blocks, setBlocks] = useState<CapBlock[]>(() => seedBlocks(card));
-  const blocksRef = useRef(blocks); blocksRef.current = blocks;
+  const [draft, setDraft] = useState<DraftState<{ title: string; blocks: CapBlock[] }>>(() => seedDraft({ title: card.title ?? "", blocks: seedBlocks(card) }));
+  const draftRef = useRef(draft); draftRef.current = draft;
+  const title = draft.value.title, blocks = draft.value.blocks;
+  const editScope = useCapEditScope(`meta:${card.id}`);
   const hasContent = !!(card.title ?? "").trim() || hasVisibleBlock(metaCardToBlocks(card));
   const [editing, setEditing] = useState(editable && !hasContent);
   const showEditor = editing && editable;
 
-  useEffect(() => { setTitle(card.title ?? ""); titleRef.current = card.title ?? ""; }, [card.title]);
-  useEffect(() => { const next = seedBlocks(card); setBlocks(next); blocksRef.current = next; }, [card.blocks, card.text, card.tables, card.images]);
-  const commit = (nextBlocks: CapBlock[] = blocksRef.current, nextTitle: string = titleRef.current) =>
-    onChange({ ...card, title: nextTitle, ...blocksToMetaFields(nextBlocks) });
-  const handleChange = (next: CapBlock[], _doCommit: boolean) => {
-    setBlocks(next); blocksRef.current = next;
-    commit(next);
+  // 서버본이 바뀌면 재시드 — 저장 안 된 변경이 있는 동안은 무시(타이핑 보호).
+  useEffect(() => { setDraft((d) => acceptRemote(d, { title: card.title ?? "", blocks: seedBlocks(card) })); }, [card.title, card.blocks, card.text, card.tables, card.images]);
+  // 제목·본문 타이핑은 로컬 초안만. 저장은 save 에서만(dirty 일 때 한 번).
+  const handleChange = (next: CapBlock[], _doCommit: boolean) => setDraft((d) => changeDraft(d, { ...d.value, blocks: next }));
+  const save = () => {
+    const { next, toSave } = takeDraftForSave(draftRef.current);
+    if (toSave) onChange({ ...card, title: toSave.title, ...blocksToMetaFields(toSave.blocks) });
+    draftRef.current = next; setDraft(next);
+    return toSave !== null;
   };
-  const finishEditing = () => { commit(); setEditing(false); };
+  const finishEditing = () => { save(); setEditing(false); };
+  const onKeyDownCapture = (e: React.KeyboardEvent) => { if (showEditor && isSaveShortcut(e)) { e.preventDefault(); save(); } };
+  useLeaveSave(draftRef, save, card.id);
 
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4">
+    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" {...editScope} onKeyDownCapture={onKeyDownCapture}>
       <div className="mb-2 flex items-center justify-between gap-2">
         {showEditor ? (
           <input
-            type="text" value={title} onChange={(e) => { setTitle(e.target.value); titleRef.current = e.target.value; commit(blocksRef.current, e.target.value); }} onBlur={() => commit()}
+            type="text" value={title} onChange={(e) => { const v = e.target.value; setDraft((d) => changeDraft(d, { ...d.value, title: v })); }}
             placeholder="소제목 (선택)"
             className="min-w-0 flex-1 rounded border-0 bg-transparent text-sm font-bold text-primary outline-none placeholder:font-medium placeholder:text-primary/40 focus:bg-background/40"
             data-testid="meta-title"
@@ -173,10 +208,11 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
         )}
         {editable ? (
           <div className="flex shrink-0 items-center gap-1.5">
+            {draft.dirty ? <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600" data-testid="meta-unsaved">저장 안 됨</span> : null}
             {showEditor ? (
-              <button type="button" onClick={finishEditing}
+              <button type="button" onClick={finishEditing} title="저장하고 읽기 화면으로 (편집 중 Ctrl+S: 저장만)"
                 className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
-                data-testid="meta-done"><Check className="h-3.5 w-3.5" /> 완료</button>
+                data-testid="meta-done"><Check className="h-3.5 w-3.5" /> 저장</button>
             ) : (
               <button type="button" onClick={() => setEditing(true)}
                 className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"

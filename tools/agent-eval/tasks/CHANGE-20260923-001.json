@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20260923-001",
+  "title": "자본주의 경제사 인사이트·메타 카드 편집을 키 입력마다 저장하지 않고 '저장' 버튼(또는 편집 종료) 시점에 저장",
+  "baseRef": "origin/master",
+  "requirement": "사용자 보고: 카드(노드) 편집은 예전에 '칸 밖 클릭 시 확정'으로 고쳐져 부드러운데, 인사이트 편집은 한 글자 칠 때마다 실시간 저장이 들어가 타이핑·지우기가 심하게 버벅인다. 인사이트도 '저장'을 눌렀을 때 저장되게 해 달라. 원인: client/src/components/CapInsight.tsx 의 InsightPanel.handleChange 가 BlockStack 의 doCommit 플래그를 무시하고 모든 변경(타이핑 포함)마다 onCommit → 페이지의 onCommitInsight(react-query 캐시 갱신 = 타임라인 전체 재렌더 + 협업 저장기 saveFlowDraft)를 호출한다. MetaCard 도 제목 입력·본문 변경마다 commit → saveMetaDrafts(메타 카드 전체 diff) 를 호출한다. 수정(CapInsight.tsx 안에서만): (1) 타이핑·블록 추가/삭제·표/그래프 조정 등 편집 중 변경은 패널 로컬 상태만 바꾸고 '저장 안 됨' 표시를 켠다. 부모 onCommit/onChange 는 호출하지 않는다. (2) '완료' 버튼을 '저장'으로 바꾸고, 누르면 그 시점의 블록을 한 번 onCommit 하고 읽기 화면으로 간다. 편집기 안에서 Ctrl/Cmd+S 는 저장하고 편집을 계속한다. (3) 저장 안 된 변경이 있는 상태로 패널을 닫거나(그래프 버튼), 다른 카드의 ★로 전환하거나, 인사이트 모드를 나가 패널이 언마운트되거나, 페이지를 떠나면(beforeunload/visibilitychange hidden) 자동으로 한 번 저장한다 — 입력이 사라지지 않게. (4) 편집 중(저장 안 된 변경이 있을 때)에는 5초 주기 협업 폴링으로 flow.insight 가 바뀌어도 로컬 블록을 재시드하지 않는다(타이핑이 덮이지 않게). 저장 후에는 예전처럼 서버본을 따른다. 충돌은 기존 협업 저장기가 처리한다. (5) MetaCard 도 같은 정책: 제목·본문은 로컬, '저장' 버튼/언마운트/페이지 이탈 시 한 번 onChange. 카드 추가/삭제(MetaCards)는 지금처럼 즉시 저장. (6) 정책의 순수 부분(dirty 전이·재시드 허용 여부·이탈 시 저장 결정)은 client/src/lib/capitalism-insight-draft.ts 로 뽑아 테스트한다. 제약: Capitalism.tsx·capitalism-config.ts(사용자 미커밋 변경 파일)와 협업 저장기(cap-collab-client.ts, cap-collaboration)는 건드리지 않는다. 카드(노드) 편집 경로는 변경하지 않는다.",
+  "acceptanceCriteria": [
+    "인사이트 편집기에서 글자를 입력·삭제하는 동안 부모 onCommit(페이지의 onCommitInsight)이 호출되지 않는다 — 협업 저장 요청(/api/capitalism/collab/edit)과 react-query flows 캐시 갱신이 타이핑 중에는 0회다. 편집기의 로컬 상태만 바뀌고 '저장 안 됨' 표시가 보인다.",
+    "'저장' 버튼을 누르면 그 시점의 블록이 정확히 한 번 onCommit 되어 협업 저장기로 가고(저장 요청 1회), 읽기 화면으로 돌아가며 표시가 사라진다. 새로고침 뒤에도 저장한 내용이 보인다.",
+    "편집기에서 Ctrl/Cmd+S 를 누르면 저장되고 편집 화면이 유지된다.",
+    "저장 안 된 변경이 있을 때 패널 닫기(그래프 버튼)·다른 카드 ★ 클릭·인사이트 모드 종료·탭 숨김/페이지 이탈에서 각각 한 번 자동 저장되어 입력이 사라지지 않는다. 변경이 없으면 저장하지 않는다.",
+    "편집 중(저장 안 된 변경이 있을 때) flow.insight 가 외부(폴링)로 바뀌어도 로컬 블록이 재시드되지 않는다. 저장 안 된 변경이 없으면 외부 변경을 따라 재시드된다.",
+    "메타 카드: 제목·본문 타이핑 중에는 onChange(saveMetaDrafts)가 호출되지 않고, '저장'/언마운트/페이지 이탈에서 한 번 호출된다. 카드 추가·삭제는 즉시 저장된다.",
+    "카드(노드) 편집의 확정 경로(blur 커밋)와 협업 충돌 처리·초안 복구는 변경되지 않는다(관련 기존 테스트 통과).",
+    "변경 파일은 CapInsight.tsx, 새 lib(capitalism-insight-draft.ts)와 테스트, docs/CAPITALISM.md 에 한정되며 Capitalism.tsx·capitalism-config.ts·cap-collab-client.ts 는 diff 에 없다.",
+    "npm run check · test · build 통과."
+  ],
+  "requiredChecks": [
+    "npm.cmd run check",
+    "npm.cmd test",
+    "npm.cmd run build"
+  ],
+  "requiresEvaluationDatabase": false,
+  "notes": "이 프로젝트 테스트 환경은 node(jsdom 없음)라 React 컴포넌트 렌더 테스트는 하지 않고, 정책의 순수 부분만 단위 테스트한다. 실제 동작은 구현 세션이 script/stability-fixture.ts(메모리 API, DB 미접촉) + 헤드리스 Chrome 에서 확인한다: fixture 로그로 타이핑 중 저장 요청 수(0)와 저장 버튼 후 요청 수(1)를 세고, 새로고침 뒤 내용 유지를 본다. 검증자도 같은 fixture 로 재현할 수 있다. 협업 두 창 시나리오(편집 중 다른 창의 변경 → 저장 시 충돌 UI)는 기존 저장기 동작이라 이번 범위에서는 재시드 억제까지만 확인한다. 구현 세션 실측(script/stability-fixture.ts 메모리 API + 헤드리스 Chrome, DB 미접촉): 인사이트 편집기에 8자 타이핑 → /api/capitalism/collab/edit 요청 0회·\"저장 안 됨\" 표시; 저장 버튼 → 요청 1회·읽기 화면·fixture 본문 갱신; 새로고침 후 본문 유지; Ctrl+S → 요청 1회·편집기 유지·표시 사라짐; 저장 안 누르고 다른 카드 ★ → 요청 1회(자동 저장); 변경 없이 저장 버튼 → 0회. 콘솔 오류는 fixture 의 vite HMR 웹소켓뿐. 정책의 순수 부분은 tests/capitalism-insight-draft.test.ts 5건."
+}
