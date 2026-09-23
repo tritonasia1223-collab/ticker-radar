@@ -1,5 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { acceptRemote, changeDraft, isSaveShortcut, seedDraft, shouldSaveOnLeave, takeDraftForSave } from "../client/src/lib/capitalism-insight-draft";
+import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById } from "../client/src/lib/capitalism-insight-draft";
+
+describe("인사이트 편집 저장 정책 — 2차 보강", () => {
+  it("markDraftDirty: 값은 그대로 두고 저장 대상으로만 만든다(표 셀 입력). 이미 dirty 면 같은 객체", () => {
+    const clean = seedDraft("a");
+    const marked = markDraftDirty(clean);
+    expect(marked).toEqual({ value: "a", dirty: true, saved: "a" });
+    expect(markDraftDirty(marked)).toBe(marked);
+    expect(takeDraftForSave(marked).toSave).toBe("a"); // 값이 같아도 저장은 한 번 나간다(자식 편집기 확정값 반영은 호출부)
+  });
+
+  it("discardDraft: 명시적 삭제처럼 저장하지 않고 버리면 이탈 저장이 일어나지 않는다", () => {
+    const d = discardDraft(changeDraft(seedDraft("a"), "b"));
+    expect(shouldSaveOnLeave(d)).toBe(false); expect(takeDraftForSave(d).toSave).toBeNull();
+    const clean = seedDraft("a"); expect(discardDraft(clean)).toBe(clean);
+  });
+
+  it("메타 카드 목록: id 기준 갱신·삭제가 누적된다 — 같은 틱에 두 카드가 저장돼도 앞 카드 변경이 남는다", () => {
+    const cards = [{ id: "m1", title: "1" }, { id: "m2", title: "2" }];
+    let latest = cards;
+    latest = upsertCardById(latest, { id: "m1", title: "UNSAVED_ONE" });
+    latest = upsertCardById(latest, { id: "m2", title: "UNSAVED_TWO" });
+    expect(latest.map((c) => c.title)).toEqual(["UNSAVED_ONE", "UNSAVED_TWO"]);
+    expect(upsertCardById(latest, { id: "m3", title: "3" })).toHaveLength(3);
+    expect(removeCardById(latest, "m1").map((c) => c.id)).toEqual(["m2"]);
+    expect(removeCardById(latest, "zzz")).toEqual(latest);
+  });
+});
 
 describe("인사이트 편집 저장 정책", () => {
   it("타이핑은 초안만 바꾸고 저장 대상이 되지 않는다 — 글자마다 저장하던 동작 제거", () => {

@@ -13,6 +13,12 @@ export const seedDraft = <T>(value: T): DraftState<T> => ({ value, dirty: false,
 // 편집 중 변경. 저장하지 않는다.
 export const changeDraft = <T>(state: DraftState<T>, value: T): DraftState<T> => ({ ...state, value, dirty: true });
 
+// 값은 그대로인데 저장할 게 생겼음(예: 표 셀처럼 blur 때만 값이 올라오는 자식 편집기의 입력). 이미 dirty 면 같은 객체.
+export const markDraftDirty = <T>(state: DraftState<T>): DraftState<T> => (state.dirty ? state : { ...state, dirty: true });
+
+// 저장하지 않고 버림(명시적 삭제 등) — 이탈 저장이 일어나지 않게 clean 으로.
+export const discardDraft = <T>(state: DraftState<T>): DraftState<T> => (state.dirty ? { ...state, dirty: false, saved: state.value } : state);
+
 // 저장 결정: dirty 일 때만 값을 내주고 상태를 clean 으로. dirty 가 아니면 null(저장 호출 없음).
 export function takeDraftForSave<T>(state: DraftState<T>): { next: DraftState<T>; toSave: T | null } {
   if (!state.dirty) return { next: state, toSave: null };
@@ -30,3 +36,9 @@ export const shouldSaveOnLeave = <T>(state: DraftState<T>): boolean => state.dir
 // 저장 단축키: Ctrl+S / Cmd+S (편집기 안에서). 브라우저의 '페이지 저장' 대화상자를 막는 판단은 호출부가 한다.
 export const isSaveShortcut = (e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean }): boolean =>
   (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "s" || e.key === "S");
+
+// 메타 카드 목록 갱신(id 기준). 같은 틱에 여러 카드가 저장돼도 호출부가 '마지막으로 보낸 목록'을 넘기면 누적된다.
+export function upsertCardById<C extends { id: string }>(cards: C[], next: C): C[] {
+  return cards.some((c) => c.id === next.id) ? cards.map((c) => (c.id === next.id ? next : c)) : [...cards, next];
+}
+export const removeCardById = <C extends { id: string }>(cards: C[], id: string): C[] => cards.filter((c) => c.id !== id);

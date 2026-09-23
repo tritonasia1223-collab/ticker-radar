@@ -1,6 +1,6 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 본문은 '블록 스택'(텍스트·표·이미지·그래프를 순서대로 섞어 배치) — BlockStack 컴포넌트가 담당.
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, type MutableRefObject, type RefObject } from "react";
 import { X, Star, Plus, Pencil, Check, Trash2 } from "lucide-react";
 import { toFracYear } from "@/lib/capitalism-config";
 import {
@@ -9,25 +9,43 @@ import {
 import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalism-types";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
 import { collaboration } from "@/lib/cap-collab-client";
-import { acceptRemote, changeDraft, isSaveShortcut, seedDraft, shouldSaveOnLeave, takeDraftForSave, type DraftState } from "@/lib/capitalism-insight-draft";
+import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById, type DraftState } from "@/lib/capitalism-insight-draft";
 
-// 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
-// 저장은 "저장" 버튼·Ctrl+S, 그리고 이탈(패널 닫기·다른 카드로 전환·언마운트·페이지 숨김)에서 dirty 일 때만 한 번.
-// 이탈 저장은 협업 저장기를 즉시 흘려보내 페이지를 떠나도 남게 한다.
-function useLeaveSave(draftRef: { current: DraftState<unknown> }, save: () => void, key: string) {
+// 초안 저장기 — 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
+//   · change/markDirty: 로컬 초안만 바꾸고, dirty 가 되는 순간 협업 엔진의 '로컬 편집 잠금'(beginLocalEdit)을 잡아 저장할 때까지
+//     이 자원의 비교 기준을 고정한다 — 그래야 저장 시 내가 바꾼 필드만 diff 로 나가고 다른 창의 변경은 병합·충돌로 처리된다.
+//   · save: 자식 편집기(리치텍스트·표 셀)의 진행 중 입력을 blur 로 확정한 뒤 dirty 일 때만 한 번 commit 하고 잠금을 푼다.
+//     flush 옵션이면 협업 저장기를 즉시 흘려보낸다(이탈·명시 저장).
+//   · 이탈(언마운트·대상 전환)은 layout cleanup 에서 처리한다 — DOM 제거 전이라 자식 blur 확정이 가능하다.
+//   · discard: 명시적 삭제처럼 저장하면 안 되는 이탈.
+function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>, setDraft: (d: DraftState<T>) => void, commit: (value: T) => void, rootRef: RefObject<HTMLElement>) {
+  const lockRef = useRef<(() => void) | null>(null);
+  const commitRef = useRef(commit); commitRef.current = commit;
+  const acquire = () => { if (!lockRef.current) lockRef.current = collaboration.beginLocalEdit(key); };
+  const release = () => { const r = lockRef.current; lockRef.current = null; r?.(); };
+  const flushChildren = () => { const a = document.activeElement; if (a instanceof HTMLElement && rootRef.current?.contains(a)) a.blur(); };
+  const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); acquire(); };
+  const markDirty = () => { const n = markDraftDirty(draftRef.current); if (n !== draftRef.current) { draftRef.current = n; setDraft(n); } acquire(); };
+  const save = (opts: { flush?: boolean } = {}) => {
+    flushChildren();
+    const { next, toSave } = takeDraftForSave(draftRef.current);
+    if (toSave !== null) commitRef.current(toSave);
+    draftRef.current = next; setDraft(next);
+    release();
+    if (toSave !== null && opts.flush) void collaboration.flushAll();
+    return toSave !== null;
+  };
+  const discard = () => { const n = discardDraft(draftRef.current); draftRef.current = n; setDraft(n); release(); };
   const saveRef = useRef(save); saveRef.current = save;
+  useLayoutEffect(() => () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); else release(); }, [key]); // 언마운트·대상 전환
   useEffect(() => {
-    const onHide = () => { if (document.visibilityState === "hidden" && shouldSaveOnLeave(draftRef.current)) { saveRef.current(); void collaboration.flushAll(); } };
-    const onUnload = () => { if (shouldSaveOnLeave(draftRef.current)) { saveRef.current(); void collaboration.flushAll(); } };
+    const onHide = () => { if (document.visibilityState === "hidden" && shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
+    const onUnload = () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("beforeunload", onUnload);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("beforeunload", onUnload);
-      if (shouldSaveOnLeave(draftRef.current)) saveRef.current(); // 언마운트·대상 전환(key 변경) 시
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("beforeunload", onUnload); };
   }, [key]);
+  return { change, markDirty, save, discard };
 }
 
 // 본문 블록 중 보일 게 하나라도 있나(텍스트는 비어있지 않을 때만, 표/이미지/그래프는 항상).
@@ -58,34 +76,40 @@ export function InsightPanel({
   const [editing, setEditing] = useState(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
   const showEditor = editing && editable;
 
-  // 다른 카드의 별을 누르면 그 사건 인사이트로 재시드.
+  // 다른 카드의 별을 누르면 그 사건 인사이트로 재시드(이전 카드의 저장 안 된 초안은 저장기 cleanup 이 먼저 저장한다).
   useEffect(() => {
-    setDraft(seedDraft(seedBlocks(flow)));
+    const next = seedDraft(seedBlocks(flow)); draftRef.current = next; setDraft(next);
     setEditing(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flow.slug, editable]);
+  }, [flow.slug]);
+  // 편집 가능 여부가 꺼지면(보기 모드·다른 카드의 충돌 처리 등) 초안을 버리지 않고 저장한 뒤 읽기 화면으로.
+  useEffect(() => { if (!editable) { if (shouldSaveOnLeave(draftRef.current)) saver.save({ flush: true }); setEditing(false); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editable]);
   // 서버본(폴링·저장 응답)이 바뀌면 재시드 — 단, 저장 안 된 변경이 있는 동안은 타이핑을 지키려고 무시한다.
-  useEffect(() => { setDraft((d) => acceptRemote(d, seedBlocks(flow))); }, [flow.insight]);
+  useEffect(() => { const next = acceptRemote(draftRef.current, seedBlocks(flow)); if (next !== draftRef.current) { draftRef.current = next; setDraft(next); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flow.insight]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
   const eventFrac = toFracYear(flow.date);
 
-  // 타이핑·블록 구조 변경은 로컬 초안만 바꾼다(doCommit 무시). 저장은 아래 save 에서만.
-  const handleChange = (next: CapBlock[], _doCommit: boolean) => setDraft((d) => changeDraft(d, next));
-  // dirty 일 때만 그 시점의 블록을 한 번 부모 저장기(onCommit → 캐시 갱신 + 협업 저장)로 보낸다.
-  const save = () => {
-    const { next, toSave } = takeDraftForSave(draftRef.current);
-    if (toSave) onCommit(flow.slug, blocksToInsight(toSave));
-    draftRef.current = next; setDraft(next);
-    return toSave !== null;
+  // 타이핑·블록 구조 변경은 로컬 초안만 바꾼다(doCommit 무시). 저장은 saver.save 에서만(부모 onCommit → 캐시 갱신 + 협업 저장).
+  const saver = useDraftSaver<CapBlock[]>(`flow:${flow.slug}`, draftRef, setDraft, (blocks) => onCommit(flow.slug, blocksToInsight(blocks)), editScope.ref);
+  const handleChange = (next: CapBlock[], _doCommit: boolean) => saver.change(next);
+  const finishEditing = () => { saver.save({ flush: true }); setEditing(false); };
+  const closePanel = () => { saver.save({ flush: true }); onClose(); };
+  // Ctrl/Cmd+S: 자식 편집기를 확정(blur)한 뒤 저장하고 포커스를 돌려준다 — 편집은 이어진다.
+  const onKeyDownCapture = (e: React.KeyboardEvent) => {
+    if (!showEditor || !isSaveShortcut(e)) return;
+    e.preventDefault();
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    saver.save({ flush: true });
+    active?.focus();
   };
-  const finishEditing = () => { save(); setEditing(false); };
-  const closePanel = () => { save(); onClose(); };
-  const onKeyDownCapture = (e: React.KeyboardEvent) => { if (showEditor && isSaveShortcut(e)) { e.preventDefault(); save(); } };
-  useLeaveSave(draftRef, save, flow.slug);
+  // 표 셀처럼 blur 때만 올라오는 자식 편집기의 입력도 '저장 안 됨'으로 잡는다.
+  const onInputCapture = () => { if (showEditor) saver.markDirty(); };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3" {...editScope} onKeyDownCapture={onKeyDownCapture}>
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3" {...editScope} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
       <div className="flex items-start justify-between gap-2 border-b border-border/50 pb-2">
         <div className="min-w-0">
           <div className="text-[11px] tabular-nums text-muted-foreground">
@@ -177,26 +201,33 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   const [editing, setEditing] = useState(editable && !hasContent);
   const showEditor = editing && editable;
 
+  const cardRef = useRef(card); cardRef.current = card;
   // 서버본이 바뀌면 재시드 — 저장 안 된 변경이 있는 동안은 무시(타이핑 보호).
-  useEffect(() => { setDraft((d) => acceptRemote(d, { title: card.title ?? "", blocks: seedBlocks(card) })); }, [card.title, card.blocks, card.text, card.tables, card.images]);
-  // 제목·본문 타이핑은 로컬 초안만. 저장은 save 에서만(dirty 일 때 한 번).
-  const handleChange = (next: CapBlock[], _doCommit: boolean) => setDraft((d) => changeDraft(d, { ...d.value, blocks: next }));
-  const save = () => {
-    const { next, toSave } = takeDraftForSave(draftRef.current);
-    if (toSave) onChange({ ...card, title: toSave.title, ...blocksToMetaFields(toSave.blocks) });
-    draftRef.current = next; setDraft(next);
-    return toSave !== null;
+  useEffect(() => { const next = acceptRemote(draftRef.current, { title: card.title ?? "", blocks: seedBlocks(card) }); if (next !== draftRef.current) { draftRef.current = next; setDraft(next); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.title, card.blocks, card.text, card.tables, card.images]);
+  // 제목·본문 타이핑은 로컬 초안만. 저장은 saver.save 에서만(dirty 일 때 한 번, 최신 card 위에 내 제목·본문만 얹어서).
+  const saver = useDraftSaver<{ title: string; blocks: CapBlock[] }>(`meta:${card.id}`, draftRef, setDraft,
+    (v) => onChange({ ...cardRef.current, title: v.title, ...blocksToMetaFields(v.blocks) }), editScope.ref);
+  const handleChange = (next: CapBlock[], _doCommit: boolean) => saver.change({ ...draftRef.current.value, blocks: next });
+  const finishEditing = () => { saver.save({ flush: true }); setEditing(false); };
+  const removeCard = () => { saver.discard(); onDelete(); }; // 명시적 삭제 — 언마운트 저장이 삭제를 되살리지 않게
+  useEffect(() => { if (!editable) { if (shouldSaveOnLeave(draftRef.current)) saver.save({ flush: true }); setEditing(false); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editable]);
+  const onKeyDownCapture = (e: React.KeyboardEvent) => {
+    if (!showEditor || !isSaveShortcut(e)) return;
+    e.preventDefault();
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    saver.save({ flush: true });
+    active?.focus();
   };
-  const finishEditing = () => { save(); setEditing(false); };
-  const onKeyDownCapture = (e: React.KeyboardEvent) => { if (showEditor && isSaveShortcut(e)) { e.preventDefault(); save(); } };
-  useLeaveSave(draftRef, save, card.id);
+  const onInputCapture = () => { if (showEditor) saver.markDirty(); };
 
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" {...editScope} onKeyDownCapture={onKeyDownCapture}>
+    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" {...editScope} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
       <div className="mb-2 flex items-center justify-between gap-2">
         {showEditor ? (
           <input
-            type="text" value={title} onChange={(e) => { const v = e.target.value; setDraft((d) => changeDraft(d, { ...d.value, title: v })); }}
+            type="text" value={title} onChange={(e) => saver.change({ ...draftRef.current.value, title: e.target.value })}
             placeholder="소제목 (선택)"
             className="min-w-0 flex-1 rounded border-0 bg-transparent text-sm font-bold text-primary outline-none placeholder:font-medium placeholder:text-primary/40 focus:bg-background/40"
             data-testid="meta-title"
@@ -218,7 +249,7 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
                 className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                 data-testid="meta-edit"><Pencil className="h-3 w-3" /> 편집</button>
             )}
-            <button type="button" onClick={onDelete} title="카드 삭제"
+            <button type="button" onClick={removeCard} title="카드 삭제"
               className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground/70 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
               data-testid="meta-delete"><Trash2 className="h-3 w-3" /></button>
           </div>
@@ -246,15 +277,19 @@ function MetaCards({ cards, onSave, onJump, editable = true }: {
   onJump?: (slug: string) => void;
   editable?: boolean;
 }) {
-  const updateAt = (i: number, next: CapMetaCard) => onSave(cards.map((c, j) => (j === i ? next : c)));
-  const removeAt = (i: number) => onSave(cards.filter((_, j) => j !== i));
-  const addCard = () => onSave([...cards, newMetaCard()]);
+  // 여러 카드의 이탈 저장이 같은 틱에 몰려도 앞 카드의 변경이 뒤 카드 저장에 덮이지 않게, 마지막으로 보낸 목록을 기준으로 누적한다.
+  const latest = useRef(cards);
+  useEffect(() => { latest.current = cards; }, [cards]);
+  const apply = (next: CapMetaCard[]) => { latest.current = next; onSave(next); };
+  const updateCard = (next: CapMetaCard) => apply(upsertCardById(latest.current, next));
+  const removeCard = (id: string) => apply(removeCardById(latest.current, id));
+  const addCard = () => apply([...latest.current, newMetaCard()]);
   if (!editable && cards.length === 0) return null; // 보기 모드 + 내용 없음 → 섹션 숨김
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-bold text-primary">전체 관통 — 메타 인사이트</h2>
-      {cards.map((c, i) => (
-        <MetaCard key={c.id} card={c} onChange={(n) => updateAt(i, n)} onDelete={() => removeAt(i)} onJump={onJump} editable={editable} />
+      {cards.map((c) => (
+        <MetaCard key={c.id} card={c} onChange={updateCard} onDelete={() => removeCard(c.id)} onJump={onJump} editable={editable} />
       ))}
       {editable ? (
         <button type="button" onClick={addCard}
