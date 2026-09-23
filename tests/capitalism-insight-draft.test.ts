@@ -1,13 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById } from "../client/src/lib/capitalism-insight-draft";
 
+describe("인사이트 편집 저장 정책 — 3차 보강(변경 없는 저장 생략)", () => {
+  it("마지막 저장값과 같은 값으로 바뀌면 dirty 가 아니고 저장도 나가지 않는다(리치텍스트의 변경 없는 blur 콜백)", () => {
+    const s0 = seedDraft([{ type: "text", text: "a" }]);
+    const same = changeDraft(s0, [{ type: "text", text: "a" }]); // 새 배열이지만 같은 내용
+    expect(same.dirty).toBe(false); expect(takeDraftForSave(same).toSave).toBeNull();
+    const diff = changeDraft(s0, [{ type: "text", text: "ab" }]);
+    expect(diff.dirty).toBe(true);
+    const back = changeDraft(diff, [{ type: "text", text: "a" }]); // 도로 지우면 clean
+    expect(back.dirty).toBe(false);
+  });
+  it("표시만 켜졌다가(markDraftDirty) 값이 결국 같으면 저장 없이 표시만 끈다", () => {
+    const marked = markDraftDirty(seedDraft("a"));
+    const r = takeDraftForSave(marked);
+    expect(r.toSave).toBeNull(); expect(r.next.dirty).toBe(false); expect(shouldSaveOnLeave(r.next)).toBe(false);
+  });
+});
+
 describe("인사이트 편집 저장 정책 — 2차 보강", () => {
   it("markDraftDirty: 값은 그대로 두고 저장 대상으로만 만든다(표 셀 입력). 이미 dirty 면 같은 객체", () => {
     const clean = seedDraft("a");
     const marked = markDraftDirty(clean);
     expect(marked).toEqual({ value: "a", dirty: true, saved: "a" });
     expect(markDraftDirty(marked)).toBe(marked);
-    expect(takeDraftForSave(marked).toSave).toBe("a"); // 값이 같아도 저장은 한 번 나간다(자식 편집기 확정값 반영은 호출부)
+    // 표시만 켜졌고 확정된 값이 결국 같으면 저장은 나가지 않는다(3차: 변경 없는 저장 생략). 실제 값 변경은 change 가 올린다.
+    expect(takeDraftForSave(marked).toSave).toBeNull();
+    expect(takeDraftForSave(changeDraft(marked, "b")).toSave).toBe("b");
   });
 
   it("discardDraft: 명시적 삭제처럼 저장하지 않고 버리면 이탈 저장이 일어나지 않는다", () => {

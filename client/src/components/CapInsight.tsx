@@ -1,6 +1,6 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 본문은 '블록 스택'(텍스트·표·이미지·그래프를 순서대로 섞어 배치) — BlockStack 컴포넌트가 담당.
-import { useState, useRef, useEffect, useLayoutEffect, type MutableRefObject, type RefObject } from "react";
+import { useState, useRef, useEffect, type MutableRefObject, type RefObject } from "react";
 import { X, Star, Plus, Pencil, Check, Trash2 } from "lucide-react";
 import { toFracYear } from "@/lib/capitalism-config";
 import {
@@ -25,9 +25,11 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
   const release = () => { const r = lockRef.current; lockRef.current = null; r?.(); };
   const flushChildren = () => { const a = document.activeElement; if (a instanceof HTMLElement && rootRef.current?.contains(a)) a.blur(); };
   const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); acquire(); };
-  const markDirty = () => { const n = markDraftDirty(draftRef.current); if (n !== draftRef.current) { draftRef.current = n; setDraft(n); } acquire(); };
-  const save = (opts: { flush?: boolean } = {}) => {
-    flushChildren();
+  // 표 셀처럼 blur 때만 값이 올라오는 자식 편집기의 입력: 이벤트 캡처 단계에서 state 를 바꾸면 제어 입력의 첫 글자가 되돌아가므로
+  // ref 만 dirty 로 두고 '저장 안 됨' 표시는 이벤트가 끝난 뒤(setTimeout 0) 갱신한다.
+  const markDirty = () => { const n = markDraftDirty(draftRef.current); acquire(); if (n === draftRef.current) return; draftRef.current = n; setTimeout(() => setDraft(draftRef.current), 0); };
+  const save = (opts: { flush?: boolean; noBlur?: boolean } = {}) => {
+    if (!opts.noBlur) flushChildren();
     const { next, toSave } = takeDraftForSave(draftRef.current);
     if (toSave !== null) commitRef.current(toSave);
     draftRef.current = next; setDraft(next);
@@ -37,7 +39,9 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
   };
   const discard = () => { const n = discardDraft(draftRef.current); draftRef.current = n; setDraft(n); release(); };
   const saveRef = useRef(save); saveRef.current = save;
-  useLayoutEffect(() => () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); else release(); }, [key]); // 언마운트·대상 전환
+  // 언마운트·대상 전환: passive cleanup 은 자식(표 셀 등)의 layout cleanup 이 최신 값을 올린 '뒤'에 돌므로 그 값까지 담아 한 번 저장하고 잠금을 푼다.
+  // (layout cleanup 에서 저장하면 자식의 뒤늦은 값 전달이 잠금을 다시 잡아 새고, 표의 마지막 입력이 빠진다. DOM 은 이미 제거돼 blur 확정은 없다.)
+  useEffect(() => () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true, noBlur: true }); else release(); }, [key]);
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === "hidden" && shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
     const onUnload = () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
