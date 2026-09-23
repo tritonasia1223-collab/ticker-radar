@@ -24,7 +24,7 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
   const acquire = () => { if (!lockRef.current) lockRef.current = collaboration.beginLocalEdit(key); };
   const release = () => { const r = lockRef.current; lockRef.current = null; r?.(); };
   const flushChildren = () => { const a = document.activeElement; if (a instanceof HTMLElement && rootRef.current?.contains(a)) a.blur(); };
-  const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); acquire(); };
+  const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); if (n.dirty) acquire(); else release(); }; // clean(원문 복귀·변경 없는 blur)이면 잠금을 남기지 않는다
   // 표 셀처럼 blur 때만 값이 올라오는 자식 편집기의 입력: 이벤트 캡처 단계에서 state 를 바꾸면 제어 입력의 첫 글자가 되돌아가므로
   // ref 만 dirty 로 두고 '저장 안 됨' 표시는 이벤트가 끝난 뒤(setTimeout 0) 갱신한다.
   const markDirty = () => { const n = markDraftDirty(draftRef.current); acquire(); if (n === draftRef.current) return; draftRef.current = n; setTimeout(() => setDraft(draftRef.current), 0); };
@@ -107,7 +107,9 @@ export function InsightPanel({
     e.preventDefault();
     const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     saver.save({ flush: true });
-    active?.focus();
+    // 재포커스는 다음 매크로태스크에: blur 로 풀린 포커스 잠금의 해제(microtask)와 엔진 전송이 먼저 끝나야 한다.
+    // 동기로 되돌리면 잠금이 곧바로 다시 잡혀 방금 낸 저장이 전송되지 못한다(연속 Ctrl+S 두 번째 유실).
+    if (active) setTimeout(() => active.focus(), 0);
   };
   // 표 셀처럼 blur 때만 올라오는 자식 편집기의 입력도 '저장 안 됨'으로 잡는다.
   const onInputCapture = () => { if (showEditor) saver.markDirty(); };
@@ -222,7 +224,7 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
     e.preventDefault();
     const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     saver.save({ flush: true });
-    active?.focus();
+    if (active) setTimeout(() => active.focus(), 0); // 인사이트 패널과 같은 이유로 매크로태스크 재포커스
   };
   const onInputCapture = () => { if (showEditor) saver.markDirty(); };
 
