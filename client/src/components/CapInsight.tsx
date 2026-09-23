@@ -46,12 +46,13 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
   useEffect(() => () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true, noBlur: true }); else release(); }, [key]);
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === "hidden" && shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
-    const onUnload = () => { if (shouldSaveOnLeave(draftRef.current)) saveRef.current({ flush: true }); };
+    // 페이지의 beforeunload 리스너는 엔진 초안이 아직 없고 포커스도 밖이면 확인을 띄우지 않으므로, 여기서 저장(기기 초안 기록)과 함께 직접 확인을 요청한다.
+    const onUnload = (e: BeforeUnloadEvent) => { if (!shouldSaveOnLeave(draftRef.current)) return; saveRef.current({ flush: true }); e.preventDefault(); e.returnValue = ""; };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("beforeunload", onUnload);
     return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("beforeunload", onUnload); };
   }, [key]);
-  return { change, markDirty, save, discard };
+  return { change, markDirty, save, discard, flushChildren };
 }
 
 // 본문 블록 중 보일 게 하나라도 있나(텍스트는 비어있지 않을 때만, 표/이미지/그래프는 항상).
@@ -92,7 +93,13 @@ export function InsightPanel({
   useEffect(() => { if (!editable) { if (shouldSaveOnLeave(draftRef.current)) saver.save({ flush: true }); setEditing(false); } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editable]);
   // 서버본(폴링·저장 응답)이 바뀌면 재시드 — 단, 저장 안 된 변경이 있는 동안은 타이핑을 지키려고 무시한다.
-  useEffect(() => { const next = acceptRemote(draftRef.current, seedBlocks(flow)); if (next !== draftRef.current) { draftRef.current = next; setDraft(next); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (draftRef.current.dirty) return; // 타이핑 보호 — acceptRemote 가 무시한다
+    // 포커스 중인 표 셀·리치텍스트는 props 가 바뀌어도 화면을 갱신하지 않으므로, 먼저 blur 로 (변경 없는) 확정을 시킨 뒤 외부본으로 재시드한다.
+    // 그러지 않으면 뒤늦은 blur 가 옛 화면값을 새 변경으로 등록해 다른 창의 저장을 덮어쓴다.
+    saver.flushChildren();
+    const next = acceptRemote(draftRef.current, seedBlocks(flow)); if (next !== draftRef.current) { draftRef.current = next; setDraft(next); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flow.insight]);
 
   // 사건 시점(소수 연도) — 참고 그래프에 점선 마커로 표시.
@@ -212,7 +219,11 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
 
   const cardRef = useRef(card); cardRef.current = card;
   // 서버본이 바뀌면 재시드 — 저장 안 된 변경이 있는 동안은 무시(타이핑 보호).
-  useEffect(() => { const next = acceptRemote(draftRef.current, { title: card.title ?? "", blocks: seedBlocks(card) }); if (next !== draftRef.current) { draftRef.current = next; setDraft(next); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (draftRef.current.dirty) return;
+    saver.flushChildren(); // 인사이트 패널과 같은 이유(포커스 중인 표 셀·제목·리치텍스트의 옛 값이 blur 에서 새 변경이 되지 않게)
+    const next = acceptRemote(draftRef.current, { title: card.title ?? "", blocks: seedBlocks(card) }); if (next !== draftRef.current) { draftRef.current = next; setDraft(next); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.title, card.blocks, card.text, card.tables, card.images]);
   // 제목·본문 타이핑은 로컬 초안만. 저장은 saver.save 에서만(dirty 일 때 한 번, 최신 card 위에 내 제목·본문만 얹어서).
   const saver = useDraftSaver<{ title: string; blocks: CapBlock[] }>(`meta:${card.id}`, draftRef, setDraft,
