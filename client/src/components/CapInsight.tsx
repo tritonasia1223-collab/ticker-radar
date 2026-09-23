@@ -7,8 +7,7 @@ import {
   BlockStack, insightToBlocks, blocksToInsight, blocksHaveContent, metaCardToBlocks, blocksToMetaFields,
 } from "@/components/CapBlocks";
 import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalism-types";
-import { useCapEditScope } from "@/lib/use-cap-edit-scope";
-import { collaboration } from "@/lib/cap-collab-client";
+import { collaboration, collabApi, focusResource } from "@/lib/cap-collab-client";
 import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById, type DraftState } from "@/lib/capitalism-insight-draft";
 
 // 초안 저장기 — 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
@@ -21,8 +20,11 @@ import { acceptRemote, changeDraft, discardDraft, isSaveShortcut, markDraftDirty
 function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>, setDraft: (d: DraftState<T>) => void, commit: (value: T) => void, rootRef: RefObject<HTMLElement>) {
   const lockRef = useRef<(() => void) | null>(null);
   const commitRef = useRef(commit); commitRef.current = commit;
+  // 잠금은 '저장 안 된 변경이 있는 동안'만 잡는다. 포커스만으로는 잡지 않는다 — 포커스 잠금은 저장 응답 처리(waitForLocalEdit)까지 막아
+  // 포커스를 유지한 연속 저장이 두 번째부터 전송되지 않게 했다. 편집 중 표시(누가 어디를 보는지)는 focusResource 로만 알린다.
   const acquire = () => { if (!lockRef.current) lockRef.current = collaboration.beginLocalEdit(key); };
-  const release = () => { const r = lockRef.current; lockRef.current = null; r?.(); };
+  // 잠금 중 건너뛴 다른 창의 변경(특히 메타 카드는 전역 버전만 갱신돼 폴링이 다시 안 읽는다)을 해제 직후 한 번 다시 읽는다.
+  const release = () => { const r = lockRef.current; lockRef.current = null; if (!r) return; r(); void collabApi(`resource?key=${encodeURIComponent(key)}`).then((res) => collaboration.receive(res)).catch(() => {}); };
   const flushChildren = () => { const a = document.activeElement; if (a instanceof HTMLElement && rootRef.current?.contains(a)) a.blur(); };
   const change = (value: T) => { const n = changeDraft(draftRef.current, value); draftRef.current = n; setDraft(n); if (n.dirty) acquire(); else release(); }; // clean(원문 복귀·변경 없는 blur)이면 잠금을 남기지 않는다
   // 표 셀처럼 blur 때만 값이 올라오는 자식 편집기의 입력: 이벤트 캡처 단계에서 state 를 바꾸면 제어 입력의 첫 글자가 되돌아가므로
@@ -74,8 +76,8 @@ export function InsightPanel({
   const [draft, setDraft] = useState<DraftState<CapBlock[]>>(() => seedDraft(seedBlocks(flow)));
   const draftRef = useRef(draft); draftRef.current = draft;
   const blocks = draft.value;
-  // 편집기 안에 포커스가 있는 동안 협업 엔진이 이 카드의 원격 변경 반영을 미룬다(노드 칸과 같은 규칙).
-  const editScope = useCapEditScope(`flow:${flow.slug}`);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onFocusCapture = () => focusResource(`flow:${flow.slug}`); // 다른 창에 '편집 중' 표시만(엔진 잠금은 dirty 동안 저장기가 잡는다)
   // 내용이 있으면 읽기 뷰로(가독성), 비어 있으면(새 인사이트) 바로 편집. 보기 모드면 항상 읽기.
   const [editing, setEditing] = useState(editable && !hasVisibleBlock(insightToBlocks(flow.insight)));
   const showEditor = editing && editable;
@@ -97,7 +99,7 @@ export function InsightPanel({
   const eventFrac = toFracYear(flow.date);
 
   // 타이핑·블록 구조 변경은 로컬 초안만 바꾼다(doCommit 무시). 저장은 saver.save 에서만(부모 onCommit → 캐시 갱신 + 협업 저장).
-  const saver = useDraftSaver<CapBlock[]>(`flow:${flow.slug}`, draftRef, setDraft, (blocks) => onCommit(flow.slug, blocksToInsight(blocks)), editScope.ref);
+  const saver = useDraftSaver<CapBlock[]>(`flow:${flow.slug}`, draftRef, setDraft, (blocks) => onCommit(flow.slug, blocksToInsight(blocks)), rootRef);
   const handleChange = (next: CapBlock[], _doCommit: boolean) => saver.change(next);
   const finishEditing = () => { saver.save({ flush: true }); setEditing(false); };
   const closePanel = () => { saver.save({ flush: true }); onClose(); };
@@ -115,7 +117,7 @@ export function InsightPanel({
   const onInputCapture = () => { if (showEditor) saver.markDirty(); };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3" {...editScope} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
+    <div ref={rootRef} className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3" onFocusCapture={onFocusCapture} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
       <div className="flex items-start justify-between gap-2 border-b border-border/50 pb-2">
         <div className="min-w-0">
           <div className="text-[11px] tabular-nums text-muted-foreground">
@@ -202,7 +204,8 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   const [draft, setDraft] = useState<DraftState<{ title: string; blocks: CapBlock[] }>>(() => seedDraft({ title: card.title ?? "", blocks: seedBlocks(card) }));
   const draftRef = useRef(draft); draftRef.current = draft;
   const title = draft.value.title, blocks = draft.value.blocks;
-  const editScope = useCapEditScope(`meta:${card.id}`);
+  const rootRef = useRef<HTMLElement>(null);
+  const onFocusCapture = () => focusResource(`meta:${card.id}`);
   const hasContent = !!(card.title ?? "").trim() || hasVisibleBlock(metaCardToBlocks(card));
   const [editing, setEditing] = useState(editable && !hasContent);
   const showEditor = editing && editable;
@@ -213,7 +216,7 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   }, [card.title, card.blocks, card.text, card.tables, card.images]);
   // 제목·본문 타이핑은 로컬 초안만. 저장은 saver.save 에서만(dirty 일 때 한 번, 최신 card 위에 내 제목·본문만 얹어서).
   const saver = useDraftSaver<{ title: string; blocks: CapBlock[] }>(`meta:${card.id}`, draftRef, setDraft,
-    (v) => onChange({ ...cardRef.current, title: v.title, ...blocksToMetaFields(v.blocks) }), editScope.ref);
+    (v) => onChange({ ...cardRef.current, title: v.title, ...blocksToMetaFields(v.blocks) }), rootRef);
   const handleChange = (next: CapBlock[], _doCommit: boolean) => saver.change({ ...draftRef.current.value, blocks: next });
   const finishEditing = () => { saver.save({ flush: true }); setEditing(false); };
   const removeCard = () => { saver.discard(); onDelete(); }; // 명시적 삭제 — 언마운트 저장이 삭제를 되살리지 않게
@@ -229,7 +232,7 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   const onInputCapture = () => { if (showEditor) saver.markDirty(); };
 
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" {...editScope} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
+    <section ref={rootRef} className="rounded-lg border border-primary/30 bg-primary/[0.06] p-4" onFocusCapture={onFocusCapture} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
       <div className="mb-2 flex items-center justify-between gap-2">
         {showEditor ? (
           <input
