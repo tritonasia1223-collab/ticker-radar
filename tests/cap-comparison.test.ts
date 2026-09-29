@@ -40,7 +40,7 @@ describe("time-based comparison insights", () => {
     expect(() => validateEdit({ ...op, resource: "plot:abc-123" })).toThrow();
   });
   it("remembers graph context atomically while remaining compatible with old notes", () => {
-    const context = { ids: ["dollar", "fx_jpy"], spread: { a: "gs10", b: "tb3ms" } };
+    const context = { ids: ["dollar", "fx_jpy", "fx_krw", "gs10", "tb3ms", "fedfunds"], spread: { a: "gs10", b: "tb3ms" } };
     const linked = { ...note, context };
     expect(comparisonInsightSchema.parse(linked)).toEqual(linked);
     const changes = diff(note, linked);
@@ -49,7 +49,7 @@ describe("time-based comparison insights", () => {
     expect(validateEdit({ id: crypto.randomUUID(), session: crypto.randomUUID(), resource: "note:linked", editor: "창", changes }).changes).toEqual(changes);
     expect(merge({ ...note, text: "새 본문" }, changes).doc).toEqual({ ...linked, text: "새 본문" });
     expect(merge({ ...linked, context: { ...context, ids: ["fedfunds"] } }, diff(linked, { ...linked, context: { ...context, ids: ["gs10"] } })).conflicts).toHaveLength(1);
-    for (const ids of [["dollar", "dollar"], ["a", "b", "c", "d", "e"], ["../bad"]]) {
+    for (const ids of [["dollar", "dollar"], ["../bad"]]) {
       expect(comparisonInsightSchema.safeParse({ ...note, context: { ...context, ids } }).success).toBe(false);
     }
   });
