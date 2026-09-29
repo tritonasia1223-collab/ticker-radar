@@ -571,18 +571,15 @@ export default function LiquidityRead() {
                   </ResponsiveContainer>
                 </div>
               </div>
-              {hasStablecoinHint && <div data-stablecoin-note="true" style={{ borderLeft: `3px solid ${STABLECOIN_FILL}`, padding: "4px 0 4px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-                <Sub>참고 띠 · 스테이블코인 발행사 (참고용)</Sub>
-                <Body max={9999}>Circle·Tether 등 발행사의 준비금 운용이 단기국채 수요로 이어지는 경로를 강조한 표시입니다. 참고 띠의 폭은 실제 매입액이나 간접 입찰 내 비중을 뜻하지 않습니다. 기존 간접 입찰 총액에 색만 겹쳤으며, 별도 낙찰 금액으로 더하거나 빼지 않습니다.</Body>
-                <Cap>공개 입찰 집계로는 발행사별 몫을 분리할 수 없습니다. 발행사·운용 펀드는 직접 입찰이나 유통시장에서도 매수할 수 있고, 입찰 매입에는 만기 재투자가 포함될 수 있고, 보유액 변화에는 현금·레포 간 자산 배분의 영향도 섞입니다. 이 표시만으로 해당 기간의 매입 규모나 경로를 확정할 수 없습니다.</Cap>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: C.cap }}>
-                  <a href="https://www.treasurydirect.gov/help-center/faqs/auction-faqs/" target="_blank" rel="noreferrer" className="underline">재무부 입찰 분류</a>
-                  <a href="https://www.circle.com/transparency" target="_blank" rel="noreferrer" className="underline">Circle 준비금</a>
-                  <a href="https://tether.to/en/transparency/" target="_blank" rel="noreferrer" className="underline">Tether 준비금</a>
-                </div>
-              </div>}
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
+              {hasStablecoinHint && <div data-stablecoin-note="true" className="flex flex-col md:flex-row gap-1 md:gap-5" style={{ padding: "12px 0", borderTop: `1px solid ${C.line}`, fontSize: 14, lineHeight: 1.6 }}>
+                <span style={{ width: 130, flexShrink: 0, fontWeight: 600 }}>스테이블코인 발행사 (참고용)</span>
+                <div style={{ color: C.body, display: "flex", flexDirection: "column", gap: 6 }}>
+                <span>Circle·Tether 등의 준비금 운용이 단기국채 수요로 이어지는 경로를 표시했습니다. 띠의 폭은 실제 매입액이나 간접 입찰 내 비중을 뜻하지 않으며, 기존 낙찰 총액에도 가감하지 않습니다.</span>
+                <span>공개 입찰 집계로는 발행사별 몫을 분리할 수 없습니다. 직접 입찰·유통시장 매수도 가능하며, 만기 재투자와 현금·레포 간 자산 배분 때문에 보유액 변화만으로 해당 기간의 입찰 매입액을 확정할 수 없습니다.</span>
+                </div>
+              </div>}
               {([["간접 입찰", "해외 중앙은행, 펀드처럼 딜러를 거쳐 응찰하는 곳. 실수요에 가장 가깝습니다."], ["프라이머리 딜러", "연준과 직접 거래하는 대형 은행·증권사. 입찰에 의무로 참여해 남는 물량을 떠안습니다."], ["직접 입찰", "딜러를 거치지 않고 직접 응찰하는 기관."], ["연준 SOMA", "연준이 만기 돌아온 보유분만큼 다시 받아가는 몫. 새 돈이 아닙니다."]] as [string, string][]).map(([k, v]) => (
                 <div key={k} className="flex flex-col md:flex-row gap-1 md:gap-5" style={{ padding: "12px 0", borderTop: `1px solid ${C.line}`, fontSize: 14, lineHeight: 1.6 }}><span style={{ width: 130, flexShrink: 0, fontWeight: 600 }}>{k}</span><span style={{ color: C.body }}>{v}</span></div>
               ))}
