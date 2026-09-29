@@ -141,11 +141,6 @@ export default function LiquidityBeta() {
     staleTime: 6 * 60 * 60 * 1000,
   });
   const [months, setMonths] = useState<3 | 1>(3);
-  const auctions = useQuery<LiquidityAuctions>({
-    queryKey: ["/api/liquidity/auctions", months],
-    queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}`).then((r) => r.json()),
-    staleTime: 6 * 60 * 60 * 1000,
-  });
 
   const [idx, setIdx] = useState<number>(-1);
   const [cmp, setCmp] = useState<4 | 13>(4);
@@ -154,9 +149,15 @@ export default function LiquidityBeta() {
   const weeks = overview.data?.weeks ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
   const sel = weeks.length ? weeks[curIdx] : null;
+  const auctions = useQuery<LiquidityAuctions>({
+    queryKey: ["/api/liquidity/auctions", months, sel?.date],
+    enabled: !!sel,
+    queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&asOf=${sel!.date}`).then((r) => r.json()),
+    staleTime: 6 * 60 * 60 * 1000,
+  });
   const prev = sel ? weeksBefore(weeks, sel.date, cmp) : undefined;
   const band = sel && prev ? liquidityBand(prev, sel) : null;
-  const ctx = context.data?.series ?? {};
+  const ctx = useMemo(() => Object.fromEntries(Object.entries(context.data?.series ?? {}).map(([key, points]) => [key, points?.filter(p => sel && p.date <= sel.date)])) as LiquidityContext["series"], [context.data, sel?.date]);
   const ctxErr = context.data?.errors ?? {};
   const ctxFailed = context.isError; // 요청 자체 실패(HTTP 5xx 등) — 부분 실패(errors)와 별개로 안내·재시도(Codex 2차 F2)
 
@@ -185,25 +186,25 @@ export default function LiquidityBeta() {
     if (!weeks.length) return [];
     const netObs: Obs[] = weeks.map((w) => ({ date: w.date, value: netLiquidity(w) })).filter((o) => Number.isFinite(o.value));
     const spObs: Obs[] = (overview.data?.daily ?? []).filter((d) => d.sp500 != null && Number.isFinite(d.sp500)).map((d) => ({ date: d.date, value: d.sp500 as number }));
-    const start = new Date(Date.parse(weeks[weeks.length - 1].date) - 5 * 365 * 86_400_000).toISOString().slice(0, 10);
-    return weeks.filter((w) => w.date >= start).map((w) => ({
+    const start = new Date(Date.parse((sel?.date ?? weeks[weeks.length - 1].date)) - 5 * 365 * 86_400_000).toISOString().slice(0, 10);
+    return weeks.filter((w) => w.date >= start && !!sel && w.date <= sel.date).map((w) => ({
       date: w.date,
       netLiq: yoyWeekly(netObs, w.date)?.pct ?? NaN,
       m2: yoyMonthly(ctx.m2 ?? [], w.date)?.pct ?? NaN,
       sp: changeFrom(spObs, w.date, 364, 4)?.pct ?? NaN,
     }));
-  }, [weeks, overview.data?.daily, ctx.m2]);
+  }, [weeks, overview.data?.daily, ctx.m2, sel?.date]);
 
-  // 맥락(최신 관측 기준)
+  // 맥락(선택일 이하 관측 기준)
   // SOFR 는 익일 발표, IORB 는 당일 — 최신 '공통' 관측일에서만 차감한다(Codex F2: 9/15 SOFR − 9/17 IORB 가 −26bp 로 보였음).
   const pair = latestCommon(ctx.sofr ?? [], ctx.iorb ?? []);
   const sofr = pair?.a ?? null;
   const spreadValue = pair ? spreadBp(pair.a.value, pair.b.value) : NaN;
-  const loansLatest = weeks.length ? weeks[weeks.length - 1] : null;
+  const loansLatest = sel;
   const hy = latest(ctx.hy), nfci = latest(ctx.nfci), dfii = latest(ctx.dfii10), unrate = latest(ctx.unrate);
-  const dxy3m = ctx.dtwexbgs ? changeFrom(ctx.dtwexbgs, latest(ctx.dtwexbgs)!.date, 91, 5) : null;
-  const indproYoy = ctx.indpro ? yoyMonthly(ctx.indpro, latest(ctx.indpro)!.date) : null;
-  const pceYoy = ctx.pcepilfe ? yoyMonthly(ctx.pcepilfe, latest(ctx.pcepilfe)!.date) : null;
+  const dxy3m = sel && ctx.dtwexbgs?.length ? changeFrom(ctx.dtwexbgs, sel.date, 91, 5) : null;
+  const indproYoy = sel && ctx.indpro?.length ? yoyMonthly(ctx.indpro, sel.date) : null;
+  const pceYoy = sel && ctx.pcepilfe?.length ? yoyMonthly(ctx.pcepilfe, sel.date) : null;
 
   // 생애주기 표 — SOMA 3버킷(단기 / 중장기 N·B·FRN / TIPS) 기준. 발행·인수는 입찰 집계, 보유는 fedWeekly.
   const agg = auctions.data?.agg ?? null;
@@ -237,7 +238,7 @@ export default function LiquidityBeta() {
         <span className="text-[11px] text-muted-foreground">얼마나 → 어디서 → 어디로 · H.4.1 주간 · 기존 페이지는 그대로</span>
         <span className="ml-auto flex items-center gap-1.5">
           <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" className="px-1 text-[13px] text-foreground/70 hover:text-foreground disabled:opacity-25">◀</button>
-          <span className="text-[11.5px] font-semibold tabular-nums">{sel.date.slice(0, 4)}년 {weekLabel(sel.date)} <span className="font-normal text-muted-foreground">({sel.date})</span></span>
+          <select aria-label="조회 주차" value={sel.date} onChange={e => setIdx(weeks.findIndex(w => w.date === e.target.value))} className="max-w-[230px] bg-background rounded border px-2 py-1 text-[11.5px] font-semibold tabular-nums">{[...weeks].reverse().map(w => <option key={w.date} value={w.date}>{w.date.slice(0, 4)}년 {weekLabel(w.date)} ({w.date})</option>)}</select>
           <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" className="px-1 text-[13px] text-foreground/70 hover:text-foreground disabled:opacity-25">▶</button>
           {curIdx < weeks.length - 1 && <button type="button" onClick={() => setIdx(-1)} className="rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[10.5px] hover:bg-amber-500/10">현재로</button>}
           <Pill options={[{ k: "4", label: "4주 전 대비" }, { k: "13", label: "13주 전 대비" }]} value={String(cmp)} onChange={(k) => setCmp(Number(k) as 4 | 13)} />
@@ -402,7 +403,7 @@ export default function LiquidityBeta() {
       <Card className="p-3 border-dashed">
         <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-[11px]">
           <span className="font-semibold">맥락</span>
-          <span className="text-muted-foreground">최신 관측</span>
+          <span className="text-muted-foreground">선택 주차 기준</span>
           <span className="w-px h-3.5 bg-border" />
           <span className="font-semibold text-muted-foreground">경고</span>
           {([
@@ -428,7 +429,7 @@ export default function LiquidityBeta() {
           {(ctxFailed || Object.keys(ctxErr).length > 0) && <span className="ml-auto text-amber-700" role="alert">{ctxFailed ? "맥락 지표 요청 실패" : `일부 지표 조회 실패(${Object.keys(ctxErr).join(", ")})`} <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></span>}
         </div>
       </Card>
-      <CreditMonitor />
+      <CreditMonitor asOf={sel.date} />
     </div>
   );
 }

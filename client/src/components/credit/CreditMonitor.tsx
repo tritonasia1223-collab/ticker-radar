@@ -17,7 +17,7 @@ const signed = (v: number | null | undefined, digits = 2) => v == null ? "—" :
 function value(v: number | null | undefined, unit: string) { if (v == null) return "—"; if (unit === "billions") return Math.abs(v) >= 1000 ? `${num(v / 1000)}조 달러` : `${num(v * 10, 1)}억 달러`; return `${num(v)}${unit === "usd" ? " 달러" : units[unit] ?? ""}`; }
 function delta(line: LineAnalysis, weeks: number) {
   const c = line.changes[weeks]; if (!c) return "비교 자료 부족";
-  if (c.unchangedRelease) return "신규 발표 없음";
+  if (c.unchangedRelease) return "새 관측 없음";
   if (line.unit === "pp") return `${signed(c.value * 100, 0)} bp`;
   if (line.unit === "percent") return `${signed(c.value)} %p`;
   if (line.unit === "ratio") return `${signed(c.value)} 배`;
@@ -38,7 +38,7 @@ function IndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator
     });
     return [...rows.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [result.lines, start, indexed]);
-  const available = result.lines.some(l => l.latest);
+  const available = data.length > 0;
   const warnings = [...new Set(result.lines.flatMap(l => l.errors))];
   const slow = ["monthly", "quarterly"].includes(spec.frequency);
   return <article data-credit-indicator={spec.id} className="p-4 md:p-5 min-w-0 flex flex-col gap-4">
@@ -50,15 +50,15 @@ function IndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator
     {spec.refresh && <div className="rounded-lg bg-muted/40 px-3 py-2 text-[10px] leading-relaxed text-muted-foreground"><div>발표 주기: {spec.refresh.publication}</div><div>{spec.refresh.collection}</div><div>최근 원천 확인: {focus.sources.filter(s => s.checkedAt).map(s => new Date(s.checkedAt!).toLocaleString("ko-KR")).filter((v, n, all) => all.indexOf(v) === n).join(" · ") || "아직 확인 전"}</div>{focus.stale && focus.latest && <div className="text-amber-700 dark:text-amber-400">{focus.collectionOverdue ? "수집 확인이 3일 넘게 지연되었습니다." : "관측·공시가 예상 갱신 간격을 넘었습니다."}</div>}</div>}
     <div>
       {result.lines.length > 1 && <div className="flex flex-wrap gap-1 mb-2" aria-label={`${spec.name} 표시 계열`}>{result.lines.map((l, n) => <button type="button" key={l.key} onClick={() => setSelected(l.key)} aria-pressed={focus.key === l.key} className={`text-[10px] px-2 py-1 rounded-md border ${focus.key === l.key ? "border-foreground/30 bg-muted" : "border-transparent text-muted-foreground"}`}><span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: colors[n % colors.length] }} />{l.label}</button>)}</div>}
-      <div className="flex items-end gap-3 flex-wrap"><strong className="text-2xl tracking-tight tabular-nums font-semibold">{value(focus.latest?.value, focus.unit)}</strong><span className="text-[11px] text-muted-foreground pb-1">{focus.latest ? `${focus.latest.date} 관측 · ${slow && focus.latest.publishedAt ? "공시 후 " : ""}${focus.ageDays}일 경과` : "유효 관측을 기다리는 중"}</span></div>
-      {focus.latest?.publishedAt && <p className="text-[10px] text-muted-foreground mt-1">공시 {focus.latest.publishedAt}{focus.navAgeDays != null ? ` · NAV 기준 ${focus.latest.basis} · 공시 후 ${focus.navAgeDays}일` : ""}</p>}
+      <div className="flex items-end gap-3 flex-wrap"><strong className="text-2xl tracking-tight tabular-nums font-semibold">{value(focus.latest?.value, focus.unit)}</strong><span className="text-[11px] text-muted-foreground pb-1">{focus.latest ? `${focus.latest.date} 관측 · 선택일 기준 ${focus.ageDays}일 전` : "유효 관측을 기다리는 중"}</span></div>
+      {focus.latest?.publishedAt && <p className="text-[10px] text-muted-foreground mt-1">공시 {focus.latest.publishedAt}{focus.latest.publishedAt > asOf ? " · 선택일 이후 공시된 관측 자료" : ""}{focus.navAgeDays != null ? ` · NAV 기준 ${focus.latest.basis} · NAV 관측 후 ${focus.navAgeDays}일` : ""}</p>}
     </div>
     <div className="grid grid-cols-3 divide-x divide-border border-y border-border py-2.5">
       {[1, 4, 13].map(w => <div key={w} className="px-2 first:pl-0"><div className="text-[10px] text-muted-foreground mb-1">{w}주 변화</div><div className="text-xs font-medium tabular-nums">{delta(focus, w)}</div>{focus.changes[w] && <div className="text-[9px] text-muted-foreground mt-1">{focus.changes[w]!.from} → {focus.changes[w]!.to}</div>}</div>)}
     </div>
-    {slow && <p className="text-[10px] text-muted-foreground -mt-2">{focus.latest?.publishedAt ? "주간 변화는 공시 시점을 기준으로 비교합니다." : "발표일 미확인으로 주간 변화는 비워둡니다."} 직전 관측 대비 {signed(focus.metrics.previousDelta)} {focus.unit === "percent" ? "%p" : units[focus.unit]}</p>}
+    {slow && <p className="text-[10px] text-muted-foreground -mt-2">주간 변화는 선택일과 관측 시점을 기준으로 비교합니다. 직전 관측 대비 {signed(focus.metrics.previousDelta)} {focus.unit === "percent" ? "%p" : units[focus.unit]}</p>}
     <div>
-      <div className="flex justify-between items-center mb-2"><span className="text-[10px] text-muted-foreground">{indexed ? "표시 기간 첫 관측 = 100" : units[spec.chart.unit]} · 최근 {years}년</span>{spec.chart.indexed && <button type="button" className="text-[10px] rounded border px-2 py-1" onClick={() => setIndexed(v => !v)}>{indexed ? "실제 값 보기" : "기준 100 보기"}</button>}</div>
+      <div className="flex justify-between items-center mb-2"><span className="text-[10px] text-muted-foreground">{indexed ? "표시 기간 첫 관측 = 100" : units[spec.chart.unit]} · 선택일 이전 {years}년</span>{spec.chart.indexed && <button type="button" className="text-[10px] rounded border px-2 py-1" onClick={() => setIndexed(v => !v)}>{indexed ? "실제 값 보기" : "기준 100 보기"}</button>}</div>
       <div className="h-[190px] min-w-0">
         {available ? <ResponsiveContainer width="100%" height="100%"><LineChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 4" />
@@ -67,7 +67,7 @@ function IndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator
           <Tooltip contentStyle={{ background: "hsl(var(--popover))", borderColor: "hsl(var(--border))", color: "hsl(var(--popover-foreground))", borderRadius: 10, fontSize: 11 }} formatter={(v: any, n: any) => [indexed ? num(Number(v)) : value(Number(v), spec.chart.unit), n]} />
           {spec.chart.unit === "ratio" && <ReferenceLine y={1} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />}
           {result.lines.map((l, n) => <Line key={l.key} name={l.label} dataKey={`s${n}`} stroke={colors[n % colors.length]} strokeWidth={focus.key === l.key ? 2 : 1.3} opacity={result.lines.length <= 4 || focus.key === l.key ? 1 : 0.35} dot={l.points.length === 1 ? { r: 3 } : false} type={slow ? "stepAfter" : "linear"} connectNulls={false} isAnimationActive={false} />)}
-        </LineChart></ResponsiveContainer> : <div className="h-full rounded-xl border border-dashed flex items-center justify-center text-xs text-muted-foreground px-6 text-center leading-6">{result.status === "manual" ? "수동 CSV를 입력하면 이 자리에 차트가 표시됩니다." : "수집된 데이터가 없습니다. 자료가 들어오면 자동으로 표시됩니다."}</div>}
+        </LineChart></ResponsiveContainer> : <div className="h-full rounded-xl border border-dashed flex items-center justify-center text-xs text-muted-foreground px-6 text-center leading-6">{result.status === "manual" ? "수동 CSV를 입력하면 이 자리에 차트가 표시됩니다." : "선택한 기간에 확보된 관측 자료가 없습니다. 다른 주차나 표시 기간을 선택하세요."}</div>}
       </div>
     </div>
     {spec.chart.unit === "billions" && <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground"><span>전년비 <b className="text-foreground">{signed(focus.metrics.yoy)}%</b></span>{spec.frequency === "weekly" && <span>13주 연율화 <b className="text-foreground">{signed(focus.metrics.annual13)}%</b></span>}</div>}
@@ -108,16 +108,15 @@ function CreditPath({ path, index, results, years, asOf, signals }: {
   </div>;
 }
 
-export default function CreditMonitor() {
+export default function CreditMonitor({ asOf }: { asOf: string }) {
   const [years, setYears] = useState(3);
-  const query = useQuery<Response>({ queryKey: ["/api/liquidity/credit"], queryFn: async () => { const r = await fetch("/api/liquidity/credit"); const body = await r.json(); if (!body.indicators) throw new Error("신용 자료 응답 오류"); return body; }, staleTime: 5 * 60 * 1000, retry: 1 });
-  const empty = useMemo(() => analyze(null), []); const results = query.data?.indicators ?? empty; const outcome = query.data?.scenarios ?? scenarios(empty);
-  const asOf = query.data?.asOf ?? new Date().toISOString().slice(0, 10);
+  const query = useQuery<Response>({ queryKey: ["/api/liquidity/credit", asOf, years, "observation"], queryFn: async ({ signal }) => { const r = await fetch(`/api/liquidity/credit?asOf=${asOf}&basis=observation&years=${years}`, { signal }); const body = await r.json(); if (!body.indicators) throw new Error("신용 자료 응답 오류"); return body; }, staleTime: 5 * 60 * 1000, retry: 1 });
+  const empty = useMemo(() => analyze(null, asOf, "observation"), [asOf]); const results = query.data?.indicators ?? empty; const outcome = query.data?.scenarios ?? scenarios(empty);
   return <section id="credit-monitor" className="pt-10 pb-8 space-y-7" aria-label="민간 신용 경로 모니터">
     <header className="border-t-2 border-foreground/80 pt-6 space-y-3">
       <div className="flex justify-between items-start gap-3"><div><div className="text-[10px] uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300 font-semibold mb-2">미국 · 민간 신용</div><h2 className="text-xl md:text-2xl font-semibold tracking-tight">돈은 계속 공급되고 있나</h2></div><button type="button" onClick={() => void query.refetch()} disabled={query.isFetching} className="p-2 rounded-lg border text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label="저장된 신용 자료 다시 불러오기"><RefreshCw size={15} className={query.isFetching ? "animate-spin" : ""} /></button></div>
       <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">은행의 대출 태도와 실제 대출, 시장의 조달 비용과 발행량을 함께 봅니다. 경로별 지표 이름을 선택하거나 화살표로 넘겨보세요.</p>
-      <div className="flex justify-between items-center flex-wrap gap-3"><div className="text-[11px] text-muted-foreground">신용 기준일 <b className="text-foreground">{asOf}</b> · 상단 연준 주 선택과 별도{query.data?.collectedAt && <span className="block mt-1">최근 수집 {new Date(query.data.collectedAt).toLocaleString("ko-KR")}</span>}</div><div className="inline-flex rounded-full border p-0.5" aria-label="신용 차트 기간">{[1, 3, 5, 10].map(y => <button type="button" key={y} aria-pressed={years === y} className={`px-3 py-1 text-xs rounded-full ${years === y ? "bg-foreground text-background" : "text-muted-foreground"}`} onClick={() => setYears(y)}>{y}년</button>)}</div></div>
+      <div className="flex justify-between items-center flex-wrap gap-3"><div className="text-[11px] text-muted-foreground">신용 기준일 <b className="text-foreground">{asOf}</b> · 상단 선택 주차와 연동{query.data?.collectedAt && <span className="block mt-1">자료 수집 시각 {new Date(query.data.collectedAt).toLocaleString("ko-KR")}</span>}</div><div className="inline-flex rounded-full border p-0.5" aria-label="신용 차트 기간">{[1, 3, 5, 10].map(y => <button type="button" key={y} aria-pressed={years === y} className={`px-3 py-1 text-xs rounded-full ${years === y ? "bg-foreground text-background" : "text-muted-foreground"}`} onClick={() => setYears(y)}>{y}년</button>)}</div></div>
       {(query.isError || query.data?.error) && <p role="alert" className="text-xs text-amber-700 dark:text-amber-400">{query.data?.error ?? "신용 자료를 불러오지 못했습니다."} 카드에서 필요한 항목을 확인할 수 있습니다.</p>}
       {query.isLoading && <p role="status" className="text-xs text-muted-foreground">저장된 신용 자료를 불러오는 중…</p>}
       {query.data?.configChanged && <p className="text-xs text-amber-700">지표 설정이 변경되었습니다. 다음 수집 시 원자료를 갱신합니다.</p>}
@@ -128,6 +127,6 @@ export default function CreditMonitor() {
       <p className="text-sm font-medium">{outcome.closest.length ? `가까운 시나리오: ${outcome.closest.join(" · ")}${outcome.closest.length > 1 ? " (혼합)" : ""}` : "대표 시나리오 판단 보류 — 필수 근거 또는 조건이 충분하지 않습니다."}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{outcome.rows.map(row => <div key={row.id} className={`rounded-xl border p-4 ${row.candidate ? "border-indigo-500/60 bg-indigo-500/5" : "bg-card"}`}><div className="flex justify-between gap-2"><h3 className="font-semibold text-sm">{row.id} · {row.name}</h3><span className="text-sm font-semibold tabular-nums">{num(row.score, 0)}<span className="text-[10px] font-normal text-muted-foreground"> / 100</span></span></div><div className="flex justify-between text-[10px] text-muted-foreground mt-2"><span>{row.candidate ? "조건 충족" : "조건 미충족·확인 대기"}</span><span>자료 충족률 {num(row.coverage * 100, 0)}%</span></div><div className="h-1.5 bg-muted rounded-full mt-2"><div className="h-full bg-indigo-500/60 rounded-full" style={{ width: `${row.score ?? 0}%` }} /></div><details className="mt-3 text-[11px]"><summary className="cursor-pointer text-muted-foreground">일치·반대·부족 근거 보기</summary><div className="space-y-3 pt-3">{row.evidence.map(e => <div key={e.signal}><div className="font-medium flex items-center gap-1">{e.status === true ? <ArrowUpRight size={12} /> : e.status === false ? <ArrowDownRight size={12} /> : "—"}{e.label} · {e.status === true ? "일치" : e.status === false ? "반대" : "자료 부족"}{e.required ? " (필수)" : ""}</div>{e.evidence.map((p, idx) => <p key={idx} className="text-[10px] text-muted-foreground pl-4 mt-0.5">{p.line} · {metricLabels[p.metric] ?? p.metric}: {num(p.value)} (조건 {ruleLabel(p.expected)}) · {p.from ? `${p.from} → ` : ""}{p.date ?? "관측 없음"}{p.reason ? ` · ${p.reason}` : ""}</p>)}</div>)}</div></details></div>)}</div>
     </div>
-    <footer className="text-[10px] text-muted-foreground leading-relaxed border-t pt-4">개별 지표의 출처·주기·대상 범위가 다릅니다. 확보된 관측 기간을 표시하며, 10년 미만의 자료를 10년 백분위로 표시하지 않습니다. 수동 지표는 CSV 입력 전까지 판단 근거에서 제외됩니다.</footer>
+    <footer className="text-[10px] text-muted-foreground leading-relaxed border-t pt-4">현재 확보한 자료를 관측 시점에 배치한 과거 분석입니다. 선택일 이후의 공시·수정 수치가 포함될 수 있습니다. BDC P/NAV는 해당 주가와 그날까지의 최신 분기말 NAV를 연결합니다. 개별 지표의 출처·주기·대상 범위가 다릅니다. 확보된 관측 기간을 표시하며, 10년 미만의 자료를 10년 백분위로 표시하지 않습니다. 수동 지표는 CSV 입력 전까지 판단 근거에서 제외됩니다.</footer>
   </section>;
 }

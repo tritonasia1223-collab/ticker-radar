@@ -428,10 +428,12 @@ export function registerRoutes(app: Express) {
   app.get("/api/liquidity/auctions", async (req, res) => {
     const months = Number(req.query.months ?? 3);
     const offset = Number(req.query.offset ?? 0);
+    const asOf = req.query.asOf === undefined ? new Date().toISOString().slice(0, 10) : String(req.query.asOf);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || !Number.isFinite(Date.parse(asOf)) || new Date(asOf).toISOString().slice(0, 10) !== asOf || asOf > new Date().toISOString().slice(0, 10)) return res.status(400).json({ error: "기준일을 확인하세요." });
     if (months !== 1 && months !== 3) return res.status(400).json({ error: "months 는 1 또는 3 이어야 합니다." });
     if (offset !== 0 && offset !== 1) return res.status(400).json({ error: "offset 은 0 또는 1 이어야 합니다." });
     try {
-      const data = await liquidityAuctions(months, offset);
+      const data = await liquidityAuctions(months, offset, asOf);
       res.setHeader("Cache-Control", data.errors.auctions ? "no-store" : "public, max-age=300, s-maxage=21600");
       res.json(data);
     } catch {

@@ -1,6 +1,7 @@
 import { config, indicators, type Indicator, type Point, type Series, type Snapshot } from "./schema.js";
 
 export const DAY = 86400000;
+export type TimeBasis = "publication" | "observation";
 export const days = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / DAY);
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 export function clean(points: Point[]) { return [...new Map(points.filter(p => Number.isFinite(p.value)).map(p => [p.date, p])).values()].sort((a, b) => a.date.localeCompare(b.date)); }
@@ -9,10 +10,10 @@ export function joinSpread(a: Point[], b: Point[]): Point[] {
   const map = new Map(b.map(p => [p.date, p]));
   return clean(a.flatMap(p => { const q = map.get(p.date); return q ? [{ date: p.date, value: p.value - q.value }] : []; }));
 }
-export function joinNav(prices: Point[], nav: Point[]): Point[] {
-  const releases = [...nav].filter(p => p.effectiveAt).sort((a, b) => a.effectiveAt!.localeCompare(b.effectiveAt!) || a.date.localeCompare(b.date));
+export function joinNav(prices: Point[], nav: Point[], basis: TimeBasis = "publication"): Point[] {
+  const releases = basis === "observation" ? clean(nav) : [...nav].filter(p => p.effectiveAt).sort((a, b) => a.effectiveAt!.localeCompare(b.effectiveAt!) || a.date.localeCompare(b.date));
   return clean(prices.flatMap(p => {
-    const n = releases.findLast(n => n.effectiveAt! <= p.date);
+    const n = releases.findLast(n => (basis === "observation" ? n.date : n.effectiveAt!) <= p.date);
     return n && n.value > 0 ? [{ date: p.date, value: p.value / n.value, publishedAt: n.publishedAt, effectiveAt: n.effectiveAt, basis: n.date }] : [];
   }));
 }
@@ -21,14 +22,15 @@ export function percentile(values: number[], value: number) {
   return 100 * (values.filter(v => v < value).length + values.filter(v => v === value).length / 2) / values.length;
 }
 export interface Change { value: number; pct: number | null; from: string; to: string; unchangedRelease: boolean }
-export function change(points: Point[], weeks: number, frequency: string, referenceDate?: string): Change | null {
+export function change(points: Point[], weeks: number, frequency: string, referenceDate?: string, basis: TimeBasis = "publication"): Change | null {
   const to = points.at(-1); if (!to) return null;
   const slow = frequency === "monthly" || frequency === "quarterly";
-  if (slow && !to.publishedAt) return null;
-  const anchor = slow ? referenceDate ?? to.publishedAt! : to.date;
+  if (slow && basis === "publication" && !to.publishedAt) return null;
+  const byRelease = slow && basis === "publication";
+  const anchor = basis === "observation" ? referenceDate ?? to.date : slow ? referenceDate ?? to.publishedAt! : to.date;
   const target = iso(Date.parse(anchor) - weeks * 7 * DAY);
-  const from = slow ? points.findLast(p => p.publishedAt && p.publishedAt <= target) : before(points, target);
-  if (!from || days(slow ? from.publishedAt! : from.date, target) > config.settings.toleranceDays[frequency]) return null;
+  const from = byRelease ? points.findLast(p => p.publishedAt && p.publishedAt <= target) : before(points, target);
+  if (!from || days(byRelease ? from.publishedAt! : from.date, target) > config.settings.toleranceDays[frequency]) return null;
   return { value: to.value - from.value, pct: from.value > 0 ? (to.value / from.value - 1) * 100 : null, from: from.date, to: to.date, unchangedRelease: from.date === to.date };
 }
 export interface LineAnalysis {
@@ -45,12 +47,13 @@ function issuanceYoy(points: Point[], asOf: string) {
   if ([...a, ...b].some(v => v === undefined)) return null;
   const sum = (v: (number | undefined)[]) => v.reduce<number>((s, n) => s + n!, 0); return sum(b) > 0 ? (sum(a) / sum(b) - 1) * 100 : null;
 }
-function analyzeLine(i: Indicator, key: string, label: string, input: Point[], series: Series[], asOf: string, price?: Point[]): LineAnalysis {
-  const points = clean(input.filter(p => p.date <= asOf && (!p.effectiveAt || p.effectiveAt <= asOf) && (!p.publishedAt || p.publishedAt <= asOf))); const latest = points.at(-1) ?? null;
-  const changes = Object.fromEntries([1, 4, 13].map(w => [String(w), change(points, w, i.frequency, asOf)]));
+function analyzeLine(i: Indicator, key: string, label: string, input: Point[], series: Series[], asOf: string, basis: TimeBasis, price?: Point[]): LineAnalysis {
+  // 관측 기준은 현재 확보한 수정 자료로 과거를 읽는다. 공시일은 보존하되 날짜 필터로 쓰지 않는다.
+  const points = clean(input.filter(p => p.date <= asOf && (basis === "observation" || ((!p.effectiveAt || p.effectiveAt <= asOf) && (!p.publishedAt || p.publishedAt <= asOf))))); const latest = points.at(-1) ?? null;
+  const changes = Object.fromEntries([1, 4, 13].map(w => [String(w), change(points, w, i.frequency, asOf, basis)]));
   const slow = ["monthly", "quarterly"].includes(i.frequency);
-  const ageDays = latest ? days(latest.publishedAt && slow ? latest.publishedAt : latest.date, asOf) : null;
-  const navAgeDays = i.chart.kind === "pnav" && latest?.publishedAt ? days(latest.publishedAt, asOf) : null;
+  const ageDays = latest ? days(basis === "publication" && latest.publishedAt && slow ? latest.publishedAt : latest.date, asOf) : null;
+  const navAgeDays = i.chart.kind === "pnav" && latest ? days(basis === "observation" ? latest.basis! : latest.publishedAt!, asOf) : null;
   const collectionOverdue = series.some(s => s.checkedAt && config.sources.find(src => src.key === s.key)?.provider !== "manual" && days(s.checkedAt.slice(0, 10), asOf) > config.settings.collectionStaleDays);
   const stale = collectionOverdue || ageDays === null || ageDays > config.settings.staleDays[i.frequency] || (navAgeDays !== null && navAgeDays > config.settings.staleDays.quarterly);
   const cutoff = iso(Date.parse(asOf) - config.settings.lookbackYears * 365.25 * DAY);
@@ -58,8 +61,8 @@ function analyzeLine(i: Indicator, key: string, label: string, input: Point[], s
   const p = latest && enough ? percentile(sample.map(p => p.value), latest.value) : null;
   const old = latest ? before(points, iso(Date.parse(latest.date) - 91 * DAY)) : undefined;
   const yoy = latest ? before(points, iso(Date.parse(latest.date) - 365 * DAY)) : undefined;
-  const speed = points.flatMap((p, idx) => { if (p.date < cutoff) return []; const c = change(points.slice(0, idx + 1), 4, i.frequency); return c?.pct != null ? [c.pct] : []; });
-  const speed13 = points.flatMap((p, idx) => { if (p.date < cutoff) return []; const c = change(points.slice(0, idx + 1), 13, i.frequency); return c?.pct != null ? [c.pct] : []; });
+  const speed = points.flatMap((p, idx) => { if (p.date < cutoff) return []; const c = change(points.slice(0, idx + 1), 4, i.frequency, undefined, basis); return c?.pct != null ? [c.pct] : []; });
+  const speed13 = points.flatMap((p, idx) => { if (p.date < cutoff) return []; const c = change(points.slice(0, idx + 1), 13, i.frequency, undefined, basis); return c?.pct != null ? [c.pct] : []; });
   const validOld = old && latest && days(old.date, latest.date) <= 91 + config.settings.toleranceDays[i.frequency];
   const previous = points.at(-2);
   const metrics: Record<string, number | null> = {
@@ -70,19 +73,19 @@ function analyzeLine(i: Indicator, key: string, label: string, input: Point[], s
     percentile: p, speedPercentile: enough && changes[4]?.pct != null ? percentile(speed, changes[4]!.pct!) : null,
     speed13Percentile: enough && changes[13]?.pct != null ? percentile(speed13, changes[13]!.pct!) : null,
     issuanceYoy: i.frequency === "monthly" ? issuanceYoy(points, asOf) : null,
-    priceChange4: price ? change(price.filter(p => p.date <= asOf && p.adjustedValue != null).map(p => ({ ...p, value: p.adjustedValue! })), 4, "daily")?.pct ?? null : null,
+    priceChange4: price ? change(price.filter(p => p.date <= asOf && p.adjustedValue != null).map(p => ({ ...p, value: p.adjustedValue! })), 4, "daily", asOf, basis)?.pct ?? null : null,
     stressPercentile: p === null ? null : i.stress_direction === "higher_is_stress" ? p : ["lower_is_stress", "lower_price_is_stress"].includes(i.stress_direction) ? 100 - p : null,
   };
   const full = enough && points.length > 0 && points[0].date <= iso(Date.parse(cutoff) + config.settings.toleranceDays[i.frequency] * DAY);
   return { key, label, points, unit: i.chart.unit, latest, changes, metrics, stale, ageDays, navAgeDays, collectionOverdue, sampleStart: sample[0]?.date ?? null, sampleEnd: sample.at(-1)?.date ?? null, sampleCount: sample.length, tenYearPercentile: full ? p : null, errors: series.flatMap(s => s.error ? [s.error] : []), notes: [...new Set(series.flatMap(s => s.notes))], sources: series.map(s => { const src = config.sources.find(x => x.key === s.key); return { url: latest?.sourceUrl ?? src?.url, label: src?.label ?? s.key, transport: s.transport, checkedAt: s.checkedAt }; }) };
 }
-export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString().slice(0, 10)): IndicatorAnalysis[] {
+export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString().slice(0, 10), basis: TimeBasis = "publication"): IndicatorAnalysis[] {
   const byKey = new Map(snapshot?.series.map(s => [s.key, s]) ?? []);
   const source = (key: string): Series => byKey.get(key) ?? { key, points: [], checkedAt: "", transport: "미수집", notes: [] };
   return indicators.map(i => {
-    const lines = i.chart.kind === "spread" ? (() => { const a = source(i.chart.lines[0].key), b = source(i.chart.lines[1].key); return [analyzeLine(i, i.id, i.name, joinSpread(a.points, b.points), [a, b], asOf)]; })() : i.chart.lines.map(l => {
+    const lines = i.chart.kind === "spread" ? (() => { const a = source(i.chart.lines[0].key), b = source(i.chart.lines[1].key); return [analyzeLine(i, i.id, i.name, joinSpread(a.points, b.points), [a, b], asOf, basis)]; })() : i.chart.lines.map(l => {
       const a = source(l.key); const nav = l.navKey ? source(l.navKey) : null;
-      return analyzeLine(i, l.key, l.label, nav ? joinNav(a.points, nav.points) : a.points, nav ? [a, nav] : [a], asOf, nav ? a.points : undefined);
+      return analyzeLine(i, l.key, l.label, nav ? joinNav(a.points, nav.points, basis) : a.points, nav ? [a, nav] : [a], asOf, basis, nav ? a.points : undefined);
     });
     const present = lines.filter(l => l.latest).length;
     return { id: i.id, lines, status: !present ? i.chart.kind === "manual" ? "manual" : "missing" : present < lines.length || lines.some(l => l.errors.length || l.stale) ? "partial" : "ok" };

@@ -7,7 +7,7 @@ import { creditAudit } from "../server/credit/audit.js";
 async function main() {
   const dry = process.argv.includes("--dry-run");
   const previous = dry ? null : await readCreditSnapshot();
-  const snapshot = await collectCredit(previous);
+  const snapshot = await collectCredit(previous, new Date(), process.argv.includes("--backfill"));
   await mkdir("output/credit", { recursive: true });
   await writeFile("output/credit/collection-status.json", JSON.stringify({ collectedAt: snapshot.collectedAt, sources: snapshot.series.map(s => ({ key: s.key, count: s.points.length, from: s.points[0]?.date, to: s.points.at(-1)?.date, transport: s.transport, error: s.error })) }, null, 2));
   if (!dry) await saveCreditSnapshot(snapshot);

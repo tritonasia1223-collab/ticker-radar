@@ -60,7 +60,7 @@ export function parseNav(j: any, src: Source): Point[] {
   }
   return points.sort((a, b) => a.date.localeCompare(b.date) || a.publishedAt!.localeCompare(b.publishedAt!));
 }
-export async function collectCredit(previous: Snapshot | null, now = new Date()): Promise<Snapshot> {
+export async function collectCredit(previous: Snapshot | null, now = new Date(), backfill = false): Promise<Snapshot> {
   const collectedAt = now.toISOString(), today = collectedAt.slice(0, 10), start = new Date(now.getTime() - config.settings.historyYears * 365.25 * DAY).toISOString().slice(0, 10);
   const prior = new Map(previous?.series.map(s => [s.key, s]) ?? []); const series: Series[] = [];
   const requests = new Map<string, Promise<any>>();
@@ -76,7 +76,7 @@ export async function collectCredit(previous: Snapshot | null, now = new Date())
       try {
         let result: { points: Point[]; transport: string; notes: string[] };
         if (src.provider === "fred") result = await fred(src, start);
-        else if (src.provider === "sec") result = { points: parseNav(await once(`https://data.sec.gov/api/xbrl/companyfacts/CIK${src.cik}.json`, true), src), transport: "SEC Company Facts", notes: ["주당 NAV는 공시 다음 날짜부터 적용합니다. 분기말 소급 적용 없음."] };
+        else if (src.provider === "sec") result = { points: parseNav(await once(`https://data.sec.gov/api/xbrl/companyfacts/CIK${src.cik}.json`, true), src), transport: "SEC Company Facts", notes: ["NAV 관측일·공시일을 분리 저장합니다. 관측 기준 조회는 분기말부터, 공시 기준 조회는 공시 다음날부터 연결합니다."] };
         else if (src.provider === "xlsx") {
           const response = await fetch(src.workbook!.downloadUrl, { signal: AbortSignal.timeout(config.settings.sourceTimeoutMs) });
           if (!response.ok) throw new Error(`원천 응답 HTTP ${response.status}`);
@@ -86,7 +86,7 @@ export async function collectCredit(previous: Snapshot | null, now = new Date())
           result = { points: [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)), transport: "SIFMA 공개 엑셀", notes: ["월별 전체 회사채 발행액 · 등급별 IG/HY와 구분 · 개별 발표일 이력 미확인"] };
         }
         else if (src.provider === "sec_credit") {
-          if (!bdcs.has(src.cik!)) bdcs.set(src.cik!, collectBdc(src, previous, once, today));
+          if (!bdcs.has(src.cik!)) bdcs.set(src.cik!, collectBdc(src, previous, once, today, backfill));
           const bdc = await bdcs.get(src.cik!)!; const points = bdc.points[src.metric!];
           result = { points, transport: "SEC 분기 공시 자동 추출", notes: bdc.warnings };
           if (!points.length || points.at(-1)!.date !== bdc.latestReport || bdc.warnings.some(w => w.startsWith(bdc.latestReport!) && w.includes("연결"))) throw new Error("공시 최신 분기 추출 미확인");
@@ -94,6 +94,10 @@ export async function collectCredit(previous: Snapshot | null, now = new Date())
         else { const params = new URLSearchParams({ interval: "1d", period1: String(Math.floor(Date.parse(start) / 1000)), period2: String(Math.floor(now.getTime() / 1000)), events: "splits,div", includeAdjustedClose: "true" }); result = { points: parsePrices(await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(src.ticker!)}?${params}`, true), src, today), transport: "Yahoo 일별 가격", notes: [src.adjusted ? "분배금·분할 수정 가격" : "P/NAV용 당시 주식수 기준 종가 · 당일 미완료 봉 제외"] }; }
         if (!result.points.length) throw new Error("유효 관측 없음");
         if (old?.points.length && result.points.at(-1)!.date < old.points.at(-1)!.date) throw new Error("원천 최신 관측이 이전 수집보다 과거입니다");
+        if (["fred", "yahoo"].includes(src.provider) && old?.points.length) {
+          const first = result.points[0].date;
+          result.points = clean([...old.points.filter(p => p.date < first), ...result.points]);
+        }
         return { key: src.key, checkedAt: collectedAt, ...result };
       } catch (error) {
         // 외부 오류 URL에는 키가 포함될 수 있으므로 원문 메시지를 기록하지 않는다.

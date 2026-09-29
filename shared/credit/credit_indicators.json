@@ -285,7 +285,10 @@
             "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
             "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
             "url": "https://fred.stlouisfed.org/"
-          }
+          },
+          "caveats": [
+            "FRED는 2026년 4월부터 ICE 지수의 최근 3년 관측만 제공합니다. 확보한 과거 자료는 보존하며, 그 이전 구간은 자료 없음으로 표시합니다."
+          ]
         },
         {
           "id": "cp_spread",
@@ -380,7 +383,10 @@
             "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
             "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
             "url": "https://fred.stlouisfed.org/"
-          }
+          },
+          "caveats": [
+            "FRED는 2026년 4월부터 ICE 지수의 최근 3년 관측만 제공합니다. 확보한 과거 자료는 보존하며, 그 이전 구간은 자료 없음으로 표시합니다."
+          ]
         },
         {
           "id": "bdc_price_to_nav",
@@ -487,7 +493,10 @@
             "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
             "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
             "url": "https://fred.stlouisfed.org/"
-          }
+          },
+          "caveats": [
+            "FRED는 2026년 4월부터 ICE 지수의 최근 3년 관측만 제공합니다. 확보한 과거 자료는 보존하며, 그 이전 구간은 자료 없음으로 표시합니다."
+          ]
         },
         {
           "id": "corporate_bond_issuance",
@@ -532,7 +541,7 @@
           "caveats": [
             "전체 발행액은 SIFMA 공개 엑셀에서 자동 수집합니다. IG·HY 별도 자료는 다운로드 양식 경유로 현재 입력 대기입니다.",
             "전체 발행액을 IG·HY로 대체하지 않으며, 등급별 발행 신호는 해당 자료 확보 후 계산합니다.",
-            "월별 발표일 이력이 없어 주간 변화는 비워둡니다. 파일의 최신 갱신일을 과거 발표일로 소급하지 않습니다."
+            "선택 주차 조회는 월말 관측일 기준으로 계산합니다. 파일 갱신일을 과거 개별 월의 발표일로 소급하지 않습니다."
           ],
           "refresh": {
             "publication": "월간 · SIFMA 공개 엑셀 갱신 후 반영",
@@ -975,7 +984,7 @@
     ]
   },
   "settings": {
-    "historyYears": 11,
+    "historyYears": 35,
     "lookbackYears": 10,
     "staleDays": {
       "daily": 7,
@@ -1253,7 +1262,8 @@
           "DividendIncomeOperatingPaidInKind"
         ],
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1287750"
     },
@@ -1277,7 +1287,8 @@
           "DividendIncomeOperatingPaidInKind"
         ],
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1287750"
     },
@@ -1301,7 +1312,8 @@
           "DividendIncomeOperatingPaidInKind"
         ],
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1287750"
     },
@@ -1321,7 +1333,8 @@
         "pikTags": [],
         "pikAccruedTag": "InterestAndDividendIncomeOperatingPaidInKindAccruedInPeriod",
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1655888"
     },
@@ -1341,7 +1354,8 @@
         "pikTags": [],
         "pikAccruedTag": "InterestAndDividendIncomeOperatingPaidInKindAccruedInPeriod",
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1655888"
     },
@@ -1361,7 +1375,8 @@
         "pikTags": [],
         "pikAccruedTag": "InterestAndDividendIncomeOperatingPaidInKindAccruedInPeriod",
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1655888"
     },
@@ -1382,7 +1397,8 @@
           "InterestIncomeOperatingPaidInKind"
         ],
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1422183"
     },
@@ -1403,7 +1419,8 @@
           "InterestIncomeOperatingPaidInKind"
         ],
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1422183"
     },
@@ -1424,7 +1441,8 @@
           "InterestIncomeOperatingPaidInKind"
         ],
         "denominatorTag": "GrossInvestmentIncomeOperating",
-        "maxFilings": 20
+        "maxFilings": 20,
+        "backfillFilings": 100
       },
       "url": "https://www.sec.gov/edgar/browse/?CIK=1422183"
     },

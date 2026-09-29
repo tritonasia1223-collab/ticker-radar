@@ -12,17 +12,17 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 // unit: billions → ×1000 (musd 통일). percent·index 는 원값.
 interface ContextSpec { key: ContextKey; id: string; unit: "billions" | "percent" | "index"; years: number }
 export const CONTEXT_SERIES: ContextSpec[] = [
-  { key: "m2",       id: "M2SL",           unit: "billions", years: 7 },  // 월간
-  { key: "deposits", id: "DPSACBW027SBOG", unit: "billions", years: 7 },  // 주간(수요일) H.8
-  { key: "sofr",     id: "SOFR",           unit: "percent",  years: 3 },  // 일간
-  { key: "iorb",     id: "IORB",           unit: "percent",  years: 3 },  // 일간
-  { key: "nfci",     id: "NFCI",           unit: "index",    years: 7 },  // 주간(금요일)
-  { key: "hy",       id: "BAMLH0A0HYM2",   unit: "percent",  years: 7 },  // 일간, OAS %
-  { key: "dfii10",   id: "DFII10",         unit: "percent",  years: 7 },  // 일간, 10년 실질금리
-  { key: "dtwexbgs", id: "DTWEXBGS",       unit: "index",    years: 7 },  // 일간, 광의 달러지수
-  { key: "indpro",   id: "INDPRO",         unit: "index",    years: 7 },  // 월간
-  { key: "unrate",   id: "UNRATE",         unit: "percent",  years: 7 },  // 월간
-  { key: "pcepilfe", id: "PCEPILFE",       unit: "index",    years: 7 },  // 월간, 근원 PCE 지수
+  { key: "m2",       id: "M2SL",           unit: "billions", years: 35 },  // 월간
+  { key: "deposits", id: "DPSACBW027SBOG", unit: "billions", years: 35 },  // 주간(수요일) H.8
+  { key: "sofr",     id: "SOFR",           unit: "percent",  years: 35 },  // 일간
+  { key: "iorb",     id: "IORB",           unit: "percent",  years: 35 },  // 일간
+  { key: "nfci",     id: "NFCI",           unit: "index",    years: 35 },  // 주간(금요일)
+  { key: "hy",       id: "BAMLH0A0HYM2",   unit: "percent",  years: 35 },  // 일간, OAS %
+  { key: "dfii10",   id: "DFII10",         unit: "percent",  years: 35 },  // 일간, 10년 실질금리
+  { key: "dtwexbgs", id: "DTWEXBGS",       unit: "index",    years: 35 },  // 일간, 광의 달러지수
+  { key: "indpro",   id: "INDPRO",         unit: "index",    years: 35 },  // 월간
+  { key: "unrate",   id: "UNRATE",         unit: "percent",  years: 35 },  // 월간
+  { key: "pcepilfe", id: "PCEPILFE",       unit: "index",    years: 35 },  // 월간, 근원 PCE 지수
 ];
 
 export async function fetchFredCsv(id: string, cosd: string): Promise<Obs[]> {
@@ -102,8 +102,8 @@ async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[
   return rows;
 }
 
-async function collectAuctions(months: number, offset: number): Promise<LiquidityAuctions> {
-  const { start, end } = auctionWindow(months, new Date(), offset);
+async function collectAuctions(months: number, offset: number, asOf: string): Promise<LiquidityAuctions> {
+  const { start, end } = auctionWindow(months, new Date(asOf + "T00:00:00Z"), offset);
   // offset 을 넘기지 않은 기본 호출은 기존 응답 형태를 그대로 유지한다(Codex F6) — 필드는 offset>0 일 때만.
   const base = { months, ...(offset ? { offset } : {}), start, end, fetchedAt: new Date().toISOString() };
   try {
@@ -116,15 +116,15 @@ async function collectAuctions(months: number, offset: number): Promise<Liquidit
   }
 }
 
-export async function liquidityAuctions(months: number, offset = 0): Promise<LiquidityAuctions> {
+export async function liquidityAuctions(months: number, offset = 0, asOf = iso(new Date())): Promise<LiquidityAuctions> {
   if (months !== 1 && months !== 3) throw new Error("months 는 1 또는 3");
   if (offset !== 0 && offset !== 1) throw new Error("offset 은 0 또는 1");
-  const key = `${months}:${offset}`;
+  const key = `${months}:${offset}:${asOf}`;
   const found = auctionCache.get(key);
   if (found && found.expires > Date.now()) return found.data;
   const ongoing = auctionPending.get(key);
   if (ongoing) return ongoing;
-  const work = collectAuctions(months, offset).then((data) => {
+  const work = collectAuctions(months, offset, asOf).then((data) => {
     if (!data.errors.auctions) auctionCache.set(key, { data, expires: Date.now() + TTL });
     return data;
   }).finally(() => auctionPending.delete(key));

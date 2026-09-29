@@ -97,16 +97,26 @@ export function parseBdcEarnings(html: string, date: string) {
 function filings(recent: any): Filing[] {
   return (recent.form ?? []).map((form: string, n: number) => ({ form, date: recent.reportDate[n], filed: recent.filingDate[n], accn: recent.accessionNumber[n], doc: recent.primaryDocument[n] }));
 }
-export async function collectBdc(src: Source, previous: Snapshot | null, get: Getter, today: string) {
+export async function collectBdc(src: Source, previous: Snapshot | null, get: Getter, today: string, backfill = false) {
   const j = await get(`https://data.sec.gov/submissions/CIK${src.cik}.json`, true);
   if (String(j.cik).padStart(10, "0") !== src.cik) throw new Error("공시 회사 식별자 불일치");
   const facts = await get(`https://data.sec.gov/api/xbrl/companyfacts/CIK${src.cik}.json`, true);
-  const all = filings(j.filings.recent), wanted = all.filter(f => ["10-Q", "10-K"].includes(f.form) && f.filed <= today).slice(0, src.credit!.maxFilings).reverse();
+  const warnings: string[] = [];
+  let all = filings(j.filings.recent);
+  if (backfill) {
+    // 오래된 공시 목록은 SEC가 제공한 추가 파일만 따라간다.
+    for (const file of j.filings.files ?? []) {
+      if (!/^CIK\d{10}-submissions-\d+\.json$/.test(file.name)) continue;
+      try { all.push(...filings(await get(`https://data.sec.gov/submissions/${file.name}`, true))); }
+      catch { warnings.push("과거 공시 목록 일부 연결 확인 필요"); }
+    }
+  }
+  all = [...new Map(all.map(f => [f.accn, f])).values()].sort((a, b) => b.filed.localeCompare(a.filed));
+  const wanted = all.filter(f => ["10-Q", "10-K"].includes(f.form) && f.filed <= today).slice(0, backfill ? src.credit!.backfillFilings ?? src.credit!.maxFilings : src.credit!.maxFilings).reverse();
   const result: Record<string, Point[]> = Object.fromEntries(["nonaccrual_fv", "nonaccrual_cost", "pik"].map(metric => {
     const key = config.sources.find(s => s.provider === "sec_credit" && s.ticker === src.ticker && s.metric === metric)?.key;
     return [metric, [...(previous?.series.find(s => s.key === key)?.points ?? [])]];
   }));
-  const warnings: string[] = [];
   for (const [n, f] of wanted.entries()) {
     if (n < wanted.length - 1 && Object.values(result).every(points => points.some(p => p.date === f.date && p.publishedAt === f.filed))) continue;
     try {
