@@ -207,7 +207,7 @@ function ReadSankeyLink(props: any) {
   const sy = sourceY - w / 2, ty = targetY - w / 2;
   const hint = `M${sourceX},${sy} C${sourceControlX},${sy} ${targetControlX},${ty} ${targetX},${ty} L${targetX},${ty + hintWidth} C${targetControlX},${ty + hintWidth} ${sourceControlX},${sy + hintWidth} ${sourceX},${sy + hintWidth} Z`;
   return <g key={`l${index}`}>
-    <path d={d} fill={fill} fillOpacity={0.5} stroke="none"><title>{`${payload?.source?.name} → ${payload?.target?.name} ${dollars(payload?.value ?? 0)}`}</title></path>
+    <path d={d} fill={fill} fillOpacity={0.5} stroke="none" />
     {stablecoin && <g data-stablecoin-hint="true" pointerEvents="none" role="img" aria-label="스테이블코인 발행사 (참고용). 참고 띠의 폭은 실제 금액이나 비중을 뜻하지 않습니다.">
       <path d={hint} fill={STABLECOIN_FILL} fillOpacity={0.95} />
       <path d={`M${targetX - 6},${ty + hintWidth / 2} L${targetX - 6},${ty - 23} L${targetX + 18},${ty - 23}`} fill="none" stroke="#527D78" strokeWidth={1} />
@@ -567,7 +567,6 @@ export default function LiquidityRead() {
                 <div style={{ minWidth: 640, height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <Sankey data={sank} nodeWidth={14} nodePadding={22} linkCurvature={0.5} iterations={32} margin={{ top: hasStablecoinHint ? 62 : 24, right: hasStablecoinHint ? 260 : 200, bottom: 8, left: 210 }} node={<ReadSankeyNode />} link={<ReadSankeyLink />}>
-                      <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8, fontFamily: SANS }} formatter={(v: any) => [dollars(v), "낙찰"]} />
                     </Sankey>
                   </ResponsiveContainer>
                 </div>
