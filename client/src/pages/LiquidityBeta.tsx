@@ -14,6 +14,7 @@ import {
   type LiquidityContext, type LiquidityAuctions, type Obs, type Band, type Maturity, type Bidder, type LiquidityBand,
 } from "@shared/liquidity-beta";
 import { Card } from "@/components/ui/card";
+import CreditMonitor from "@/components/credit/CreditMonitor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TAccount, asMoney, signed, weekLabel, A_SOMA, L_RES, TB, POS, NEG, type WeekPoint } from "@/components/fed-taccount";
 
@@ -427,6 +428,7 @@ export default function LiquidityBeta() {
           {(ctxFailed || Object.keys(ctxErr).length > 0) && <span className="ml-auto text-amber-700" role="alert">{ctxFailed ? "맥락 지표 요청 실패" : `일부 지표 조회 실패(${Object.keys(ctxErr).join(", ")})`} <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></span>}
         </div>
       </Card>
+      <CreditMonitor />
     </div>
   );
 }

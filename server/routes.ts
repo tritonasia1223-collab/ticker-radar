@@ -1,3 +1,4 @@
+import { registerCreditRoutes } from "./credit/routes.js";
 import type { Express } from "express";
 import { storage } from "./storage.js";
 import { collectAll } from "./apify.js";
@@ -18,6 +19,7 @@ import { registerCollaborationRoutes } from "./cap-collaboration.js";
 const COLLECTION_DISABLED = process.env.DEPLOY_TARGET === "vercel";
 
 export function registerRoutes(app: Express) {
+  registerCreditRoutes(app);
   registerCollaborationRoutes(app);
   // Old, already-open clients must not bypass the collaboration protocol after deployment.
   app.use("/api/capitalism", (req, res, next) => {

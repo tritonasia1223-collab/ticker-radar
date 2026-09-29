@@ -1,0 +1,42 @@
+name: Credit monitor — daily collection
+
+on:
+  schedule:
+    # 한국시간 화~토 10:20. 미국 월~금 장 마감 및 H.8 금요일 발표 이후 확인.
+    - cron: "20 1 * * 2-6"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: credit-monitor
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Collect credit data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          EDGAR_UA: ${{ secrets.EDGAR_UA }}
+        run: npm run credit:collect
+      - name: Preserve collection and refresh reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: credit-refresh-reports
+          path: |
+            output/credit/collection-status.json
+            output/credit/refresh-audit.json
+          retention-days: 30

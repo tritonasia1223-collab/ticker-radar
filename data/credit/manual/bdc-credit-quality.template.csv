@@ -1,0 +1,10 @@
+source_key,observation_date,published_at,value,unit,basis,source_url
+manual:ARCC:nonaccrual_fv,,,,percent,fair_value,
+manual:ARCC:nonaccrual_cost,,,,percent,amortized_cost,
+manual:ARCC:pik,,,,percent,pik_income_over_total_investment_income,
+manual:OBDC:nonaccrual_fv,,,,percent,fair_value,
+manual:OBDC:nonaccrual_cost,,,,percent,amortized_cost,
+manual:OBDC:pik,,,,percent,pik_income_over_total_investment_income,
+manual:FSK:nonaccrual_fv,,,,percent,fair_value,
+manual:FSK:nonaccrual_cost,,,,percent,amortized_cost,
+manual:FSK:pik,,,,percent,pik_income_over_total_investment_income,

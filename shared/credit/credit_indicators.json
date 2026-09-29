@@ -1,0 +1,1912 @@
+{
+  "meta": {
+    "title": "민간 신용 경로 추적 지표 (미국)",
+    "purpose": "연준 준비금 감소 국면에서 민간 신용이 은행·비은행 경로로 계속 공급되는지, 어디서 스트레스가 생기는지 판별",
+    "version": "1.2.0",
+    "notes": [
+      "essential=true 지표 6개만으로 시나리오 A~F 대부분을 구분할 수 있음. 나머지는 원인 확인용",
+      "priority는 각 경로(bank/nonbank) 안에서의 중요도 순위 (1이 가장 중요)",
+      "series_id는 사용 전 반드시 FRED API로 존재 여부와 정의를 검증할 것",
+      "needs_lookup=true 항목은 series_id가 확정되지 않아 조회가 필요함",
+      "reference_ranges는 과거 경험에 기반한 대략적 감각이며 공식 기준선이 아님"
+    ],
+    "changes": [
+      "2026-09-29: 주간 C&I를 BUSLOANS(월간)에서 TOTCI로 교정. 검증된 NDFI·대형/소형 계열 추가."
+    ]
+  },
+  "paths": [
+    {
+      "path_id": "bank",
+      "path_name": "은행 경로",
+      "description": "상업은행이 기업에 직접 대출하는 경로",
+      "indicators": [
+        {
+          "id": "sloos_ci_standards",
+          "name": "SLOOS 대출기준 (C&I, 대·중견기업)",
+          "priority": 1,
+          "essential": true,
+          "category": "은행 대출 태도",
+          "source": {
+            "provider": "FRED",
+            "series_id": "DRTSCILM",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "quarterly",
+          "measures": "대출기준을 강화했다고 답한 은행 비율 − 완화했다고 답한 은행 비율 (순%)",
+          "role": "선행: 은행의 대출 의지",
+          "stress_direction": "higher_is_stress",
+          "interpretation": "양수이고 상승하면 은행이 대출을 조이는 중. 음수면 완화",
+          "chart": {
+            "kind": "series",
+            "unit": "percent",
+            "lines": [
+              {
+                "key": "DRTSCILM",
+                "label": "SLOOS 대출기준 (C&I, 대·중견기업)"
+              }
+            ]
+          },
+          "signal_keys": [
+            "bank_tight",
+            "bank_ease",
+            "bank_neutral"
+          ],
+          "refresh": {
+            "publication": "분기 · 통상 1~2월·4~5월·7~8월·10~11월 발표",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/data/sloos.htm"
+          }
+        },
+        {
+          "id": "h8_ci_loans",
+          "name": "H.8 C&I 대출 잔액",
+          "priority": 2,
+          "essential": true,
+          "category": "은행 대출 실적",
+          "source": {
+            "provider": "FRED",
+            "series_id": "TOTCI",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "weekly",
+          "measures": "상업은행의 기업 운영자금 대출 잔액",
+          "role": "동행~후행: 실제로 돈이 나갔는지",
+          "stress_direction": "both",
+          "transform": [
+            "yoy_pct",
+            "13w_annualized_pct"
+          ],
+          "interpretation": "증가율 둔화는 긴축 또는 수요 감소. 단, CP 스프레드 급등과 동시에 나타나는 급증은 기업의 비상 한도대출 인출(시나리오 E)이므로 좋은 신호가 아님",
+          "caveats": [
+            "과거 수치가 Call Report 기준으로 사후 수정됨. 저장 시 vintage 관리 권장"
+          ],
+          "chart": {
+            "kind": "series",
+            "unit": "billions",
+            "lines": [
+              {
+                "key": "TOTCI",
+                "label": "H.8 C&I 대출 잔액"
+              }
+            ]
+          },
+          "signal_keys": [
+            "loan_growth",
+            "loan_slow",
+            "loan_emergency_warning"
+          ],
+          "refresh": {
+            "publication": "주간 · 미국 동부 금요일 16:15 발표(공휴일 조정)",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/releases/h8/"
+          }
+        },
+        {
+          "id": "sloos_ci_demand",
+          "name": "SLOOS 대출수요 (C&I, 대·중견기업)",
+          "priority": 3,
+          "essential": false,
+          "category": "은행 대출 태도",
+          "source": {
+            "provider": "FRED",
+            "series_id": "DRSDCILM",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "quarterly",
+          "measures": "대출수요가 강해졌다고 답한 은행 순%",
+          "role": "대출 둔화가 공급 문제인지 수요 문제인지 구분",
+          "stress_direction": "lower_is_weak_demand",
+          "interpretation": "대출기준은 그대로인데 수요가 줄었다면 신용 경색이 아니라 경기 둔화(시나리오 C)",
+          "chart": {
+            "kind": "series",
+            "unit": "percent",
+            "lines": [
+              {
+                "key": "DRSDCILM",
+                "label": "SLOOS 대출수요 (C&I, 대·중견기업)"
+              }
+            ]
+          },
+          "signal_keys": [
+            "demand_weak"
+          ],
+          "refresh": {
+            "publication": "분기 · 통상 1~2월·4~5월·7~8월·10~11월 발표",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/data/sloos.htm"
+          }
+        },
+        {
+          "id": "h8_loans_to_nondepository",
+          "name": "H.8 비은행 금융회사 대출",
+          "priority": 4,
+          "essential": false,
+          "category": "은행-비은행 연결고리",
+          "source": {
+            "provider": "FRED 또는 Fed H.8 원자료",
+            "series_id": "LNFACBW027SBOG",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "weekly",
+          "measures": "상업은행이 사모대출 펀드 등 비은행 금융회사에 빌려준 대출",
+          "role": "은행과 사모대출 사이 전이 경로 규모 확인",
+          "stress_direction": "rapid_growth_is_risk",
+          "interpretation": "빠르게 늘어날수록 사모대출 부실이 은행으로 번질 통로가 커짐",
+          "chart": {
+            "kind": "series",
+            "unit": "billions",
+            "lines": [
+              {
+                "key": "LNFACBW027SBOG",
+                "label": "H.8 비은행 금융회사 대출"
+              }
+            ]
+          },
+          "caveats": [
+            "비은행 금융회사 전체 대출이며 사모대출 펀드만의 잔액이 아닙니다. 분류 변경으로 인한 증감에 유의하세요."
+          ],
+          "signal_keys": [
+            "ndfi_growth"
+          ],
+          "refresh": {
+            "publication": "주간 · 미국 동부 금요일 16:15 발표(공휴일 조정)",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/releases/h8/"
+          }
+        },
+        {
+          "id": "h8_large_vs_small_banks",
+          "name": "H.8 대형/소형 국내은행 구분",
+          "priority": 5,
+          "essential": false,
+          "category": "은행 구조",
+          "source": {
+            "provider": "FRED 또는 Fed H.8 원자료",
+            "series_id": null,
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "weekly",
+          "measures": "상위 25개 대형은행 vs 나머지 소형은행의 대출·예금 추이",
+          "role": "지역은행발 스트레스 조기 포착",
+          "stress_direction": "divergence_is_risk",
+          "interpretation": "대형은행은 멀쩡한데 소형은행 예금·대출만 꺾이면 2023년 SVB형 지역은행 스트레스",
+          "chart": {
+            "kind": "group",
+            "unit": "billions",
+            "indexed": true,
+            "lines": [
+              {
+                "key": "DPSLCBW027SBOG",
+                "label": "대형 · 예금"
+              },
+              {
+                "key": "DPSSCBW027SBOG",
+                "label": "소형 · 예금"
+              },
+              {
+                "key": "LLBLCBW027SBOG",
+                "label": "대형 · 대출·리스"
+              },
+              {
+                "key": "LLBSCBW027SBOG",
+                "label": "소형 · 대출·리스"
+              }
+            ]
+          },
+          "signal_keys": [
+            "small_bank_divergence"
+          ],
+          "refresh": {
+            "publication": "주간 · 미국 동부 금요일 16:15 발표(공휴일 조정)",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/releases/h8/"
+          }
+        }
+      ]
+    },
+    {
+      "path_id": "nonbank",
+      "path_name": "비은행 경로",
+      "description": "회사채·CP 등 공개시장과 사모대출(BDC 포함)을 통한 조달 경로",
+      "indicators": [
+        {
+          "id": "hy_oas",
+          "name": "HY OAS",
+          "priority": 1,
+          "essential": true,
+          "category": "회사채",
+          "source": {
+            "provider": "FRED",
+            "series_id": "BAMLH0A0HYM2",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "daily",
+          "unit": "percentage_points",
+          "measures": "투기등급 회사채 금리 − 국채 금리 (옵션 효과 조정)",
+          "role": "신용 긴장의 가격 신호",
+          "stress_direction": "higher_is_stress",
+          "reference_ranges": {
+            "tight": "<=3.0",
+            "normal": "4.0-5.0",
+            "stressed": ">=6.0",
+            "crisis_examples": {
+              "2008": "~20",
+              "2020-03": ">10"
+            }
+          },
+          "interpretation": "수준보다 확대 속도가 중요. 몇 주 사이 급확대는 위험회피 가속",
+          "chart": {
+            "kind": "series",
+            "unit": "pp",
+            "lines": [
+              {
+                "key": "BAMLH0A0HYM2",
+                "label": "HY OAS"
+              }
+            ]
+          },
+          "signal_keys": [
+            "hy_wide",
+            "hy_stable"
+          ],
+          "refresh": {
+            "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://fred.stlouisfed.org/"
+          }
+        },
+        {
+          "id": "cp_spread",
+          "name": "CP 스프레드 (A2/P2 비금융 90일 − 3개월 T-bill)",
+          "priority": 2,
+          "essential": true,
+          "category": "단기자금",
+          "source": {
+            "provider": "FRED",
+            "series_id": null,
+            "derived": true,
+            "formula": "RIFSPPNA2P2D90NB - DTB3",
+            "components": [
+              "RIFSPPNA2P2D90NB",
+              "DTB3"
+            ],
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "daily",
+          "unit": "percentage_points",
+          "measures": "중간 등급 기업의 단기 운영자금 조달 비용",
+          "role": "단기 자금 급소",
+          "stress_direction": "higher_is_stress",
+          "reference_ranges": {
+            "normal": "0.1-0.3",
+            "stressed": ">=1.0"
+          },
+          "interpretation": "급등 + CP 잔액 감소 = 시장이 닫혀 기업이 은행 한도대출로 이동",
+          "caveats": [
+            "두 시계열의 날짜를 맞춘 뒤 차이 계산",
+            "위기 시 T-bill 금리 하락으로 스프레드가 추가로 벌어지는데 이것도 스트레스의 일부",
+            "DTB3는 할인율 기준입니다. 같은 날짜의 원계열 차이를 사용한 조달여건 대리지표입니다."
+          ],
+          "chart": {
+            "kind": "spread",
+            "unit": "pp",
+            "lines": [
+              {
+                "key": "RIFSPPNA2P2D90NB",
+                "label": "A2/P2 비금융 90일 CP"
+              },
+              {
+                "key": "DTB3",
+                "label": "3개월 T-bill 할인율"
+              }
+            ]
+          },
+          "signal_keys": [
+            "cp_jump"
+          ],
+          "refresh": {
+            "publication": "CP 금리: 일간·통상 1영업일 시차 / 국채 금리: 일간",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/releases/cp/about.htm"
+          }
+        },
+        {
+          "id": "ccc_oas",
+          "name": "CCC 이하 OAS",
+          "priority": 3,
+          "essential": true,
+          "category": "회사채",
+          "source": {
+            "provider": "FRED",
+            "series_id": "BAMLH0A3HYC",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "daily",
+          "unit": "percentage_points",
+          "measures": "가장 약한 등급 회사채의 스프레드",
+          "role": "사모대출 차주 여건의 공개시장 대리지표",
+          "stress_direction": "higher_is_stress",
+          "interpretation": "HY 전체는 안정인데 CCC만 확대되면 약한 차주부터 선별적으로 막히는 단계",
+          "chart": {
+            "kind": "series",
+            "unit": "pp",
+            "lines": [
+              {
+                "key": "BAMLH0A3HYC",
+                "label": "CCC 이하 OAS"
+              }
+            ]
+          },
+          "signal_keys": [
+            "ccc_wide"
+          ],
+          "refresh": {
+            "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://fred.stlouisfed.org/"
+          }
+        },
+        {
+          "id": "bdc_price_to_nav",
+          "name": "상장 BDC 주가/순자산가치(P/NAV)",
+          "priority": 4,
+          "essential": true,
+          "category": "사모대출",
+          "source": {
+            "provider": "시장 가격 데이터 + BDC 분기 공시",
+            "tickers": [
+              "ARCC",
+              "OBDC",
+              "FSK"
+            ],
+            "etf_proxy": "BIZD",
+            "access": "free",
+            "needs_lookup": true,
+            "validation": "collection_pending"
+          },
+          "frequency": "daily",
+          "measures": "개별 BDC 주가 ÷ 최근 공시 주당 NAV",
+          "role": "사모대출의 가장 빠른 경보",
+          "stress_direction": "lower_is_stress",
+          "interpretation": "할인 확대 = 시장이 운용사의 장부 평가를 믿지 않음. 사모대출은 장부 평가가 느리므로 이 가격이 먼저 반응",
+          "caveats": [
+            "BIZD는 ETF라 P/NAV가 거의 1로 유지되므로 가격·낙폭 추적용으로만 사용",
+            "NAV는 분기마다 갱신되므로 최신 공시값을 forward-fill"
+          ],
+          "chart": {
+            "kind": "pnav",
+            "unit": "ratio",
+            "lines": [
+              {
+                "key": "price:ARCC",
+                "label": "ARCC",
+                "navKey": "nav:ARCC"
+              },
+              {
+                "key": "price:OBDC",
+                "label": "OBDC",
+                "navKey": "nav:OBDC"
+              },
+              {
+                "key": "price:FSK",
+                "label": "FSK",
+                "navKey": "nav:FSK"
+              }
+            ]
+          },
+          "signal_keys": [
+            "bdc_stable",
+            "bdc_discount",
+            "bdc_crash"
+          ],
+          "refresh": {
+            "publication": "주가: 미국 거래일 일간 / NAV: 분기 공시 후 반영",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces"
+          }
+        },
+        {
+          "id": "ig_oas",
+          "name": "IG OAS",
+          "priority": 5,
+          "essential": false,
+          "category": "회사채",
+          "source": {
+            "provider": "FRED",
+            "series_id": "BAMLC0A0CM",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "daily",
+          "unit": "percentage_points",
+          "measures": "우량 등급 회사채 스프레드",
+          "role": "전반적 위험회피 여부",
+          "stress_direction": "higher_is_stress",
+          "reference_ranges": {
+            "tight": "<=1.0",
+            "normal": "1.2-1.5",
+            "stressed": ">=2.0",
+            "crisis_examples": {
+              "2008": "~6",
+              "2020-03": "~4"
+            }
+          },
+          "interpretation": "HY만 확대되면 선별적 긴장, IG까지 동반 확대되면 전반적 위험회피",
+          "chart": {
+            "kind": "series",
+            "unit": "pp",
+            "lines": [
+              {
+                "key": "BAMLC0A0CM",
+                "label": "IG OAS"
+              }
+            ]
+          },
+          "signal_keys": [
+            "ig_wide",
+            "ig_stable"
+          ],
+          "refresh": {
+            "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://fred.stlouisfed.org/"
+          }
+        },
+        {
+          "id": "corporate_bond_issuance",
+          "name": "회사채 발행량 (전체·IG·HY)",
+          "priority": 6,
+          "essential": false,
+          "category": "회사채",
+          "source": {
+            "provider": "SIFMA 등",
+            "series_id": null,
+            "access": "free_download_and_manual",
+            "needs_lookup": true,
+            "validation": "official_page_verified"
+          },
+          "frequency": "monthly",
+          "measures": "실제 발행 규모",
+          "role": "가격(스프레드)과 짝을 이루는 수량 확인",
+          "stress_direction": "lower_is_stress",
+          "interpretation": "스프레드가 안정적이어도 발행이 끊기면 시장이 사실상 닫힌 것",
+          "chart": {
+            "kind": "group",
+            "unit": "billions",
+            "lines": [
+              {
+                "key": "sifma:issuance:total",
+                "label": "전체 발행 (참고)"
+              },
+              {
+                "key": "manual:issuance:IG",
+                "label": "IG 발행"
+              },
+              {
+                "key": "manual:issuance:HY",
+                "label": "HY 발행"
+              }
+            ]
+          },
+          "signal_keys": [
+            "issuance_active",
+            "issuance_collapse"
+          ],
+          "caveats": [
+            "전체 발행액은 SIFMA 공개 엑셀에서 자동 수집합니다. IG·HY 별도 자료는 다운로드 양식 경유로 현재 입력 대기입니다.",
+            "전체 발행액을 IG·HY로 대체하지 않으며, 등급별 발행 신호는 해당 자료 확보 후 계산합니다.",
+            "월별 발표일 이력이 없어 주간 변화는 비워둡니다. 파일의 최신 갱신일을 과거 발표일로 소급하지 않습니다."
+          ],
+          "refresh": {
+            "publication": "월간 · SIFMA 공개 엑셀 갱신 후 반영",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.sifma.org/research/statistics/us-corporate-bonds-statistics"
+          }
+        },
+        {
+          "id": "cp_outstanding",
+          "name": "CP 발행잔액",
+          "priority": 7,
+          "essential": false,
+          "category": "단기자금",
+          "source": {
+            "provider": "FRED",
+            "series_id": "COMPOUT",
+            "access": "free",
+            "needs_lookup": false,
+            "validation": "official_page_verified"
+          },
+          "frequency": "weekly",
+          "measures": "CP 시장 전체 잔액",
+          "role": "CP 스프레드 급등 시 시장이 실제로 닫혔는지 확인",
+          "stress_direction": "sharp_decline_is_stress",
+          "chart": {
+            "kind": "series",
+            "unit": "billions",
+            "lines": [
+              {
+                "key": "COMPOUT",
+                "label": "CP 발행잔액"
+              }
+            ]
+          },
+          "caveats": [
+            "전체 CP 시장 잔액입니다. A2/P2 비금융 CP 금리와 관측 대상이 완전히 같지는 않습니다."
+          ],
+          "signal_keys": [
+            "cp_fall"
+          ],
+          "refresh": {
+            "publication": "주간 · 수요일 마감 잔액, 통상 다음 영업일 발표",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.federalreserve.gov/releases/cp/about.htm"
+          }
+        },
+        {
+          "id": "bdc_credit_quality",
+          "name": "BDC 부실(non-accrual)·PIK 비중",
+          "priority": 8,
+          "essential": false,
+          "category": "사모대출",
+          "source": {
+            "provider": "SEC 10-Q·10-K 및 실적발표 8-K",
+            "tickers": [
+              "ARCC",
+              "OBDC",
+              "FSK"
+            ],
+            "access": "free_public_filings",
+            "needs_lookup": true,
+            "validation": "official_page_verified"
+          },
+          "frequency": "quarterly",
+          "measures": "이자를 못 받는 대출 비중, 이자를 현금 대신 원금에 얹어 받는 비중",
+          "role": "BDC 가격 경보가 실제 부실로 이어지는지 확인",
+          "stress_direction": "higher_is_stress",
+          "chart": {
+            "kind": "group",
+            "unit": "percent",
+            "lines": [
+              {
+                "key": "manual:ARCC:nonaccrual_fv",
+                "label": "ARCC 부실 · 공정가치"
+              },
+              {
+                "key": "manual:ARCC:nonaccrual_cost",
+                "label": "ARCC 부실 · 원가"
+              },
+              {
+                "key": "manual:ARCC:pik",
+                "label": "ARCC PIK / 총투자수익"
+              },
+              {
+                "key": "manual:OBDC:nonaccrual_fv",
+                "label": "OBDC 부실 · 공정가치"
+              },
+              {
+                "key": "manual:OBDC:nonaccrual_cost",
+                "label": "OBDC 부실 · 원가"
+              },
+              {
+                "key": "manual:OBDC:pik",
+                "label": "OBDC PIK / 총투자수익"
+              },
+              {
+                "key": "manual:FSK:nonaccrual_fv",
+                "label": "FSK 부실 · 공정가치"
+              },
+              {
+                "key": "manual:FSK:nonaccrual_cost",
+                "label": "FSK 부실 · 원가"
+              },
+              {
+                "key": "manual:FSK:pik",
+                "label": "FSK PIK / 총투자수익"
+              }
+            ]
+          },
+          "signal_keys": [
+            "defaults_up",
+            "pik_up"
+          ],
+          "caveats": [
+            "ARCC·OBDC는 PIK 이자·배당 수익, FSK는 별도 공시된 PIK 이자수익을 총투자수익으로 나눕니다. 회사별 PIK 범위가 달라 자체 추세 중심으로 비교합니다.",
+            "부실은 전체 포트폴리오의 공정가치·원가 기준을 구분합니다. 분기 누적 수익은 차감해 단일 분기로 변환합니다."
+          ],
+          "refresh": {
+            "publication": "분기 · 회사별 실적발표·10-Q/10-K 제출 후 반영",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces"
+          }
+        },
+        {
+          "id": "leveraged_loans",
+          "name": "레버리지론 가격·CLO 스프레드",
+          "priority": 9,
+          "essential": false,
+          "category": "사모대출",
+          "source": {
+            "provider": "PitchBook LCD 등",
+            "access": "paid",
+            "free_proxy_tickers": [
+              "BKLN",
+              "SRLN"
+            ],
+            "needs_lookup": true,
+            "validation": "official_page_verified"
+          },
+          "frequency": "daily",
+          "measures": "사모대출과 차주층·구조가 가장 비슷한 공개 대출시장",
+          "role": "사모대출 여건의 근접 대리지표",
+          "stress_direction": "lower_price_is_stress",
+          "interpretation": "유료 데이터가 없으면 BKLN·SRLN ETF 가격으로 대체",
+          "chart": {
+            "kind": "group",
+            "unit": "usd",
+            "indexed": true,
+            "lines": [
+              {
+                "key": "price:BKLN",
+                "label": "BKLN"
+              },
+              {
+                "key": "price:SRLN",
+                "label": "SRLN"
+              }
+            ]
+          },
+          "caveats": [
+            "레버리지론 ETF의 분배금·분할 수정 가격 대리지표입니다. CLO 스프레드나 원대출 가격을 직접 측정하지 않습니다."
+          ],
+          "signal_keys": [
+            "etf_drop"
+          ],
+          "refresh": {
+            "publication": "BKLN·SRLN: 미국 거래일 종가, 당일 미완료 봉 제외",
+            "collection": "수집 작업: 한국시간 화~토 10:20 자동 확인",
+            "url": "https://www.invesco.com/us/financial-products/etfs/product-detail?productId=ETF-BKLN"
+          }
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "A",
+      "name": "건강한 확장",
+      "bank": "대출기준 완화, 대출 증가",
+      "public_markets": "스프레드 안정·축소, 발행 활발",
+      "private_credit": "BDC 할인 작음",
+      "interpretation": "모든 경로로 돈이 잘 돈다. 준비금이 줄어도 흡수 가능",
+      "rules": [
+        {
+          "signal": "bank_ease",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "loan_growth",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "hy_calm",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "ig_calm",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "issuance_active",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "bdc_stable",
+          "weight": 1,
+          "required": true
+        }
+      ],
+      "blockers": [
+        "loan_emergency_warning"
+      ]
+    },
+    {
+      "id": "B",
+      "name": "경로 이동",
+      "bank": "대출기준 강화, 대출 둔화",
+      "public_markets": "스프레드 안정, 발행 활발",
+      "private_credit": "안정",
+      "interpretation": "은행이 빠진 자리를 시장이 메움. 스트레스 아님",
+      "rules": [
+        {
+          "signal": "bank_tight",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "loan_slow",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "hy_stable",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "ig_stable",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "issuance_active",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "bdc_stable",
+          "weight": 1,
+          "required": true
+        }
+      ],
+      "blockers": []
+    },
+    {
+      "id": "C",
+      "name": "수요 둔화",
+      "bank": "대출기준 그대로, 수요 감소, 대출 둔화",
+      "public_markets": "스프레드 안정, 발행 감소",
+      "private_credit": "안정",
+      "interpretation": "돈줄이 막힌 게 아니라 기업이 차입을 줄이는 것. 경기 둔화 신호",
+      "rules": [
+        {
+          "signal": "bank_neutral",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "demand_weak",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "loan_slow",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "hy_stable",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "ig_stable",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "issuance_down",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "bdc_stable",
+          "weight": 1,
+          "required": true
+        }
+      ],
+      "blockers": []
+    },
+    {
+      "id": "D",
+      "name": "숨은 스트레스",
+      "bank": "안정",
+      "public_markets": "HY 안정, CCC만 확대",
+      "private_credit": "BDC 할인 확대, PIK 증가",
+      "interpretation": "공개시장에 안 보이는 중견기업 쪽 부실 누적. 은행의 비은행 대출이 크면 전이 위험",
+      "rules": [
+        {
+          "signal": "bank_neutral",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "hy_stable",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "ccc_wide",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "bdc_discount",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "pik_up",
+          "weight": 1,
+          "required": true
+        }
+      ],
+      "blockers": []
+    },
+    {
+      "id": "E",
+      "name": "단기 자금 경색",
+      "bank": "한도대출 인출로 C&I 대출 급증",
+      "public_markets": "CP 스프레드 급등, CP 잔액 감소",
+      "private_credit": "흔들림",
+      "interpretation": "기업이 시장에서 못 구해 은행 한도를 긁음. 2020년 3월 유형. 대출 증가를 좋은 신호로 읽으면 안 됨",
+      "rules": [
+        {
+          "signal": "cp_jump",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "cp_fall",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "loan_surge",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "bdc_discount",
+          "weight": 1,
+          "required": false
+        }
+      ],
+      "blockers": []
+    },
+    {
+      "id": "F",
+      "name": "전면 긴축",
+      "bank": "대출기준 강화, 대출 둔화",
+      "public_markets": "IG·HY 동반 확대, 발행 급감",
+      "private_credit": "BDC 급락, 부실 증가",
+      "interpretation": "모든 경로가 동시에 조여짐. 진짜 신용 경색",
+      "rules": [
+        {
+          "signal": "bank_tight",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "loan_slow",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "hy_wide",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "ig_wide",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "issuance_collapse",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "bdc_crash",
+          "weight": 1,
+          "required": true
+        },
+        {
+          "signal": "defaults_up",
+          "weight": 1,
+          "required": true
+        }
+      ],
+      "blockers": []
+    }
+  ],
+  "monitoring_cadence": {
+    "daily_alert": [
+      "hy_oas",
+      "ccc_oas",
+      "cp_spread",
+      "bdc_price_to_nav"
+    ],
+    "weekly_check": [
+      "h8_ci_loans",
+      "cp_outstanding",
+      "h8_loans_to_nondepository",
+      "h8_large_vs_small_banks"
+    ],
+    "quarterly_review": [
+      "sloos_ci_standards",
+      "sloos_ci_demand",
+      "bdc_credit_quality"
+    ],
+    "monthly": [
+      "corporate_bond_issuance"
+    ]
+  },
+  "settings": {
+    "historyYears": 11,
+    "lookbackYears": 10,
+    "staleDays": {
+      "daily": 7,
+      "weekly": 21,
+      "monthly": 75,
+      "quarterly": 120
+    },
+    "toleranceDays": {
+      "daily": 5,
+      "weekly": 8,
+      "monthly": 40,
+      "quarterly": 100
+    },
+    "minimumSamples": {
+      "daily": 500,
+      "weekly": 104,
+      "monthly": 36,
+      "quarterly": 20
+    },
+    "coverageMin": 0.7,
+    "scoreMin": 70,
+    "mixedGap": 10,
+    "sourceTimeoutMs": 20000,
+    "concurrency": 3,
+    "collectionStaleDays": 3
+  },
+  "sources": [
+    {
+      "key": "DRTSCILM",
+      "label": "SLOOS 대출기준 (C&I, 대·중견기업)",
+      "provider": "fred",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "seriesId": "DRTSCILM",
+      "url": "https://fred.stlouisfed.org/series/DRTSCILM"
+    },
+    {
+      "key": "TOTCI",
+      "label": "H.8 C&I 대출 잔액",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "TOTCI",
+      "url": "https://fred.stlouisfed.org/series/TOTCI"
+    },
+    {
+      "key": "DRSDCILM",
+      "label": "SLOOS 대출수요 (C&I, 대·중견기업)",
+      "provider": "fred",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "seriesId": "DRSDCILM",
+      "url": "https://fred.stlouisfed.org/series/DRSDCILM"
+    },
+    {
+      "key": "LNFACBW027SBOG",
+      "label": "H.8 비은행 금융회사 대출",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "LNFACBW027SBOG",
+      "url": "https://fred.stlouisfed.org/series/LNFACBW027SBOG"
+    },
+    {
+      "key": "BAMLH0A0HYM2",
+      "label": "HY OAS",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "pp",
+      "seriesId": "BAMLH0A0HYM2",
+      "url": "https://fred.stlouisfed.org/series/BAMLH0A0HYM2"
+    },
+    {
+      "key": "BAMLH0A3HYC",
+      "label": "CCC 이하 OAS",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "pp",
+      "seriesId": "BAMLH0A3HYC",
+      "url": "https://fred.stlouisfed.org/series/BAMLH0A3HYC"
+    },
+    {
+      "key": "BAMLC0A0CM",
+      "label": "IG OAS",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "pp",
+      "seriesId": "BAMLC0A0CM",
+      "url": "https://fred.stlouisfed.org/series/BAMLC0A0CM"
+    },
+    {
+      "key": "COMPOUT",
+      "label": "CP 발행잔액",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "COMPOUT",
+      "url": "https://fred.stlouisfed.org/series/COMPOUT"
+    },
+    {
+      "key": "DPSLCBW027SBOG",
+      "label": "대형 · 예금",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "DPSLCBW027SBOG",
+      "url": "https://fred.stlouisfed.org/series/DPSLCBW027SBOG"
+    },
+    {
+      "key": "DPSSCBW027SBOG",
+      "label": "소형 · 예금",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "DPSSCBW027SBOG",
+      "url": "https://fred.stlouisfed.org/series/DPSSCBW027SBOG"
+    },
+    {
+      "key": "LLBLCBW027SBOG",
+      "label": "대형 · 대출·리스",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "LLBLCBW027SBOG",
+      "url": "https://fred.stlouisfed.org/series/LLBLCBW027SBOG"
+    },
+    {
+      "key": "LLBSCBW027SBOG",
+      "label": "소형 · 대출·리스",
+      "provider": "fred",
+      "frequency": "weekly",
+      "unit": "billions",
+      "seriesId": "LLBSCBW027SBOG",
+      "url": "https://fred.stlouisfed.org/series/LLBSCBW027SBOG"
+    },
+    {
+      "key": "RIFSPPNA2P2D90NB",
+      "label": "A2/P2 비금융 90일 CP",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "RIFSPPNA2P2D90NB",
+      "url": "https://fred.stlouisfed.org/series/RIFSPPNA2P2D90NB"
+    },
+    {
+      "key": "DTB3",
+      "label": "3개월 T-bill 할인율",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "DTB3",
+      "url": "https://fred.stlouisfed.org/series/DTB3"
+    },
+    {
+      "key": "price:ARCC",
+      "label": "ARCC",
+      "provider": "yahoo",
+      "frequency": "daily",
+      "unit": "usd",
+      "ticker": "ARCC",
+      "url": "https://finance.yahoo.com/quote/ARCC/history/"
+    },
+    {
+      "key": "nav:ARCC",
+      "label": "ARCC 주당 NAV",
+      "provider": "sec",
+      "frequency": "quarterly",
+      "unit": "usd",
+      "ticker": "ARCC",
+      "cik": "0001287750",
+      "namespace": "us-gaap",
+      "tag": "NetAssetValuePerShare",
+      "factUnit": "USD/shares",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0001287750"
+    },
+    {
+      "key": "price:OBDC",
+      "label": "OBDC",
+      "provider": "yahoo",
+      "frequency": "daily",
+      "unit": "usd",
+      "ticker": "OBDC",
+      "url": "https://finance.yahoo.com/quote/OBDC/history/"
+    },
+    {
+      "key": "nav:OBDC",
+      "label": "OBDC 주당 NAV",
+      "provider": "sec",
+      "frequency": "quarterly",
+      "unit": "usd",
+      "ticker": "OBDC",
+      "cik": "0001655888",
+      "namespace": "us-gaap",
+      "tag": "NetAssetValuePerShare",
+      "factUnit": "USD/shares",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0001655888"
+    },
+    {
+      "key": "price:FSK",
+      "label": "FSK",
+      "provider": "yahoo",
+      "frequency": "daily",
+      "unit": "usd",
+      "ticker": "FSK",
+      "url": "https://finance.yahoo.com/quote/FSK/history/"
+    },
+    {
+      "key": "nav:FSK",
+      "label": "FSK 주당 NAV",
+      "provider": "sec",
+      "frequency": "quarterly",
+      "unit": "usd",
+      "ticker": "FSK",
+      "cik": "0001422183",
+      "namespace": "us-gaap",
+      "tag": "NetAssetValuePerShare",
+      "factUnit": "USD/shares",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0001422183"
+    },
+    {
+      "key": "price:BKLN",
+      "label": "BKLN",
+      "provider": "yahoo",
+      "frequency": "daily",
+      "unit": "usd",
+      "ticker": "BKLN",
+      "adjusted": true,
+      "url": "https://finance.yahoo.com/quote/BKLN/history/"
+    },
+    {
+      "key": "price:SRLN",
+      "label": "SRLN",
+      "provider": "yahoo",
+      "frequency": "daily",
+      "unit": "usd",
+      "ticker": "SRLN",
+      "adjusted": true,
+      "url": "https://finance.yahoo.com/quote/SRLN/history/"
+    },
+    {
+      "key": "manual:issuance:IG",
+      "label": "IG 발행",
+      "provider": "manual",
+      "frequency": "monthly",
+      "unit": "billions",
+      "basis": "gross_issuance",
+      "url": "https://www.sifma.org/research/statistics/us-corporate-bonds-statistics"
+    },
+    {
+      "key": "manual:issuance:HY",
+      "label": "HY 발행",
+      "provider": "manual",
+      "frequency": "monthly",
+      "unit": "billions",
+      "basis": "gross_issuance",
+      "url": "https://www.sifma.org/research/statistics/us-corporate-bonds-statistics"
+    },
+    {
+      "key": "manual:ARCC:nonaccrual_fv",
+      "label": "ARCC 부실 · 공정가치",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "ARCC",
+      "basis": "fair_value",
+      "metric": "nonaccrual_fv",
+      "manualAllowed": true,
+      "cik": "0001287750",
+      "credit": {
+        "method": "tagged",
+        "costTag": "InvestmentOwnedNonAccrualStatusPercentOfCost",
+        "fairValueTag": "InvestmentOwnedNonAccrualStatusPercentOfFairValue",
+        "pikTags": [
+          "InterestIncomeOperatingPaidInKind",
+          "DividendIncomeOperatingPaidInKind"
+        ],
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1287750"
+    },
+    {
+      "key": "manual:ARCC:nonaccrual_cost",
+      "label": "ARCC 부실 · 원가",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "ARCC",
+      "basis": "amortized_cost",
+      "metric": "nonaccrual_cost",
+      "manualAllowed": true,
+      "cik": "0001287750",
+      "credit": {
+        "method": "tagged",
+        "costTag": "InvestmentOwnedNonAccrualStatusPercentOfCost",
+        "fairValueTag": "InvestmentOwnedNonAccrualStatusPercentOfFairValue",
+        "pikTags": [
+          "InterestIncomeOperatingPaidInKind",
+          "DividendIncomeOperatingPaidInKind"
+        ],
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1287750"
+    },
+    {
+      "key": "manual:ARCC:pik",
+      "label": "ARCC PIK / 총투자수익",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "ARCC",
+      "basis": "pik_income_over_total_investment_income",
+      "metric": "pik",
+      "manualAllowed": true,
+      "cik": "0001287750",
+      "credit": {
+        "method": "tagged",
+        "costTag": "InvestmentOwnedNonAccrualStatusPercentOfCost",
+        "fairValueTag": "InvestmentOwnedNonAccrualStatusPercentOfFairValue",
+        "pikTags": [
+          "InterestIncomeOperatingPaidInKind",
+          "DividendIncomeOperatingPaidInKind"
+        ],
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1287750"
+    },
+    {
+      "key": "manual:OBDC:nonaccrual_fv",
+      "label": "OBDC 부실 · 공정가치",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "OBDC",
+      "basis": "fair_value",
+      "metric": "nonaccrual_fv",
+      "manualAllowed": true,
+      "cik": "0001655888",
+      "credit": {
+        "method": "table",
+        "pikTags": [],
+        "pikAccruedTag": "InterestAndDividendIncomeOperatingPaidInKindAccruedInPeriod",
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1655888"
+    },
+    {
+      "key": "manual:OBDC:nonaccrual_cost",
+      "label": "OBDC 부실 · 원가",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "OBDC",
+      "basis": "amortized_cost",
+      "metric": "nonaccrual_cost",
+      "manualAllowed": true,
+      "cik": "0001655888",
+      "credit": {
+        "method": "table",
+        "pikTags": [],
+        "pikAccruedTag": "InterestAndDividendIncomeOperatingPaidInKindAccruedInPeriod",
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1655888"
+    },
+    {
+      "key": "manual:OBDC:pik",
+      "label": "OBDC PIK / 총투자수익",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "OBDC",
+      "basis": "pik_income_over_total_investment_income",
+      "metric": "pik",
+      "manualAllowed": true,
+      "cik": "0001655888",
+      "credit": {
+        "method": "table",
+        "pikTags": [],
+        "pikAccruedTag": "InterestAndDividendIncomeOperatingPaidInKindAccruedInPeriod",
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1655888"
+    },
+    {
+      "key": "manual:FSK:nonaccrual_fv",
+      "label": "FSK 부실 · 공정가치",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "FSK",
+      "basis": "fair_value",
+      "metric": "nonaccrual_fv",
+      "manualAllowed": true,
+      "cik": "0001422183",
+      "credit": {
+        "method": "earnings",
+        "pikTags": [
+          "InterestIncomeOperatingPaidInKind"
+        ],
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1422183"
+    },
+    {
+      "key": "manual:FSK:nonaccrual_cost",
+      "label": "FSK 부실 · 원가",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "FSK",
+      "basis": "amortized_cost",
+      "metric": "nonaccrual_cost",
+      "manualAllowed": true,
+      "cik": "0001422183",
+      "credit": {
+        "method": "earnings",
+        "pikTags": [
+          "InterestIncomeOperatingPaidInKind"
+        ],
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1422183"
+    },
+    {
+      "key": "manual:FSK:pik",
+      "label": "FSK PIK / 총투자수익",
+      "provider": "sec_credit",
+      "frequency": "quarterly",
+      "unit": "percent",
+      "ticker": "FSK",
+      "basis": "pik_income_over_total_investment_income",
+      "metric": "pik",
+      "manualAllowed": true,
+      "cik": "0001422183",
+      "credit": {
+        "method": "earnings",
+        "pikTags": [
+          "InterestIncomeOperatingPaidInKind"
+        ],
+        "denominatorTag": "GrossInvestmentIncomeOperating",
+        "maxFilings": 20
+      },
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1422183"
+    },
+    {
+      "key": "sifma:issuance:total",
+      "label": "SIFMA 회사채 전체 발행",
+      "provider": "xlsx",
+      "frequency": "monthly",
+      "unit": "billions",
+      "basis": "gross_issuance_all_corporates",
+      "url": "https://www.sifma.org/research/statistics/fixed-income-chart",
+      "workbook": {
+        "downloadUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx",
+        "sheet": "Issuance",
+        "column": "Corporates",
+        "units": "$ Billion",
+        "security": "US Fixed Income Securities",
+        "updateSheet": "Table of Contents"
+      }
+    }
+  ],
+  "signals": {
+    "bank_tight": {
+      "any": [
+        {
+          "indicator": "sloos_ci_standards",
+          "metric": "latest",
+          "op": "gte",
+          "value": 10
+        },
+        {
+          "indicator": "sloos_ci_standards",
+          "metric": "previousDelta",
+          "op": "gte",
+          "value": 10
+        }
+      ]
+    },
+    "bank_ease": {
+      "all": [
+        {
+          "any": [
+            {
+              "indicator": "sloos_ci_standards",
+              "metric": "latest",
+              "op": "lte",
+              "value": -10
+            },
+            {
+              "indicator": "sloos_ci_standards",
+              "metric": "previousDelta",
+              "op": "lte",
+              "value": -10
+            }
+          ]
+        },
+        {
+          "not": {
+            "signal": "bank_tight"
+          }
+        }
+      ]
+    },
+    "bank_neutral": {
+      "all": [
+        {
+          "indicator": "sloos_ci_standards",
+          "metric": "latest",
+          "op": "absLt",
+          "value": 10
+        },
+        {
+          "indicator": "sloos_ci_standards",
+          "metric": "previousDelta",
+          "op": "absLt",
+          "value": 5
+        }
+      ]
+    },
+    "demand_weak": {
+      "any": [
+        {
+          "indicator": "sloos_ci_demand",
+          "metric": "latest",
+          "op": "lte",
+          "value": -10
+        },
+        {
+          "indicator": "sloos_ci_demand",
+          "metric": "previousDelta",
+          "op": "lte",
+          "value": -10
+        }
+      ]
+    },
+    "loan_growth": {
+      "indicator": "h8_ci_loans",
+      "metric": "annual13",
+      "op": "gte",
+      "value": 2
+    },
+    "loan_slow": {
+      "indicator": "h8_ci_loans",
+      "metric": "annual13",
+      "op": "lte",
+      "value": 0
+    },
+    "loan_surge": {
+      "all": [
+        {
+          "indicator": "h8_ci_loans",
+          "metric": "change4",
+          "op": "gte",
+          "value": 3
+        },
+        {
+          "indicator": "h8_ci_loans",
+          "metric": "speedPercentile",
+          "op": "gte",
+          "value": 90
+        }
+      ]
+    },
+    "hy_wide": {
+      "indicator": "hy_oas",
+      "metric": "delta4",
+      "op": "gte",
+      "value": 0.75
+    },
+    "hy_stable": {
+      "all": [
+        {
+          "indicator": "hy_oas",
+          "metric": "percentile",
+          "op": "lte",
+          "value": 75
+        },
+        {
+          "indicator": "hy_oas",
+          "metric": "delta4",
+          "op": "absLte",
+          "value": 0.25
+        }
+      ]
+    },
+    "hy_calm": {
+      "all": [
+        {
+          "indicator": "hy_oas",
+          "metric": "percentile",
+          "op": "lte",
+          "value": 75
+        },
+        {
+          "indicator": "hy_oas",
+          "metric": "delta4",
+          "op": "lte",
+          "value": 0.25
+        }
+      ]
+    },
+    "ccc_wide": {
+      "indicator": "ccc_oas",
+      "metric": "delta4",
+      "op": "gte",
+      "value": 1.5
+    },
+    "ccc_stable": {
+      "all": [
+        {
+          "indicator": "ccc_oas",
+          "metric": "percentile",
+          "op": "lte",
+          "value": 75
+        },
+        {
+          "indicator": "ccc_oas",
+          "metric": "delta4",
+          "op": "absLte",
+          "value": 0.5
+        }
+      ]
+    },
+    "ccc_calm": {
+      "all": [
+        {
+          "indicator": "ccc_oas",
+          "metric": "percentile",
+          "op": "lte",
+          "value": 75
+        },
+        {
+          "indicator": "ccc_oas",
+          "metric": "delta4",
+          "op": "lte",
+          "value": 0.5
+        }
+      ]
+    },
+    "ig_wide": {
+      "indicator": "ig_oas",
+      "metric": "delta4",
+      "op": "gte",
+      "value": 0.2
+    },
+    "ig_stable": {
+      "all": [
+        {
+          "indicator": "ig_oas",
+          "metric": "percentile",
+          "op": "lte",
+          "value": 75
+        },
+        {
+          "indicator": "ig_oas",
+          "metric": "delta4",
+          "op": "absLte",
+          "value": 0.1
+        }
+      ]
+    },
+    "ig_calm": {
+      "all": [
+        {
+          "indicator": "ig_oas",
+          "metric": "percentile",
+          "op": "lte",
+          "value": 75
+        },
+        {
+          "indicator": "ig_oas",
+          "metric": "delta4",
+          "op": "lte",
+          "value": 0.1
+        }
+      ]
+    },
+    "cp_jump": {
+      "any": [
+        {
+          "indicator": "cp_spread",
+          "metric": "delta4",
+          "op": "gte",
+          "value": 0.5
+        },
+        {
+          "all": [
+            {
+              "indicator": "cp_spread",
+              "metric": "latest",
+              "op": "gte",
+              "value": 1
+            },
+            {
+              "indicator": "cp_spread",
+              "metric": "delta4",
+              "op": "gte",
+              "value": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    "cp_fall": {
+      "indicator": "cp_outstanding",
+      "metric": "change4",
+      "op": "lte",
+      "value": -5
+    },
+    "issuance_active": {
+      "indicator": "corporate_bond_issuance",
+      "metric": "issuanceYoy",
+      "op": "gte",
+      "value": 0,
+      "line": "manual:issuance:"
+    },
+    "issuance_down": {
+      "indicator": "corporate_bond_issuance",
+      "metric": "issuanceYoy",
+      "op": "lte",
+      "value": -10,
+      "line": "manual:issuance:"
+    },
+    "issuance_collapse": {
+      "indicator": "corporate_bond_issuance",
+      "metric": "issuanceYoy",
+      "op": "lte",
+      "value": -30,
+      "line": "manual:issuance:"
+    },
+    "bdc_stable": {
+      "perLine": {
+        "indicator": "bdc_price_to_nav",
+        "minimum": 2,
+        "conditions": [
+          {
+            "metric": "latest",
+            "op": "gte",
+            "value": 0.9
+          },
+          {
+            "metric": "delta4",
+            "op": "gte",
+            "value": -0.03
+          }
+        ]
+      }
+    },
+    "bdc_discount": {
+      "indicator": "bdc_price_to_nav",
+      "metric": "delta4",
+      "op": "lte",
+      "value": -0.05,
+      "minimum": 2
+    },
+    "bdc_crash": {
+      "indicator": "bdc_price_to_nav",
+      "metric": "priceChange4",
+      "op": "lte",
+      "value": -15,
+      "minimum": 2
+    },
+    "pik_up": {
+      "indicator": "bdc_credit_quality",
+      "metric": "previousDelta",
+      "op": "gte",
+      "value": 2,
+      "line": ":pik",
+      "minimum": 2
+    },
+    "defaults_up": {
+      "indicator": "bdc_credit_quality",
+      "metric": "previousDelta",
+      "op": "gte",
+      "value": 1,
+      "line": ":nonaccrual_fv",
+      "minimum": 2
+    },
+    "emergency": {
+      "all": [
+        {
+          "signal": "cp_jump"
+        },
+        {
+          "signal": "cp_fall"
+        },
+        {
+          "signal": "loan_surge"
+        }
+      ]
+    },
+    "ndfi_growth": {
+      "all": [
+        {
+          "indicator": "h8_loans_to_nondepository",
+          "metric": "annual13",
+          "op": "gte",
+          "value": 15
+        },
+        {
+          "indicator": "h8_loans_to_nondepository",
+          "metric": "speed13Percentile",
+          "op": "gte",
+          "value": 90
+        }
+      ]
+    },
+    "small_bank_divergence": {
+      "all": [
+        {
+          "indicator": "h8_large_vs_small_banks",
+          "metric": "change4",
+          "op": "lte",
+          "value": -3,
+          "line": "DPSSCBW027SBOG"
+        },
+        {
+          "indicator": "h8_large_vs_small_banks",
+          "metric": "change4",
+          "op": "lte",
+          "value": -3,
+          "line": "DPSSCBW027SBOG",
+          "subtractLine": "DPSLCBW027SBOG"
+        },
+        {
+          "indicator": "h8_large_vs_small_banks",
+          "metric": "change13",
+          "op": "lte",
+          "value": 0,
+          "line": "LLBSCBW027SBOG"
+        }
+      ]
+    },
+    "loan_emergency_warning": {
+      "all": [
+        {
+          "signal": "cp_jump"
+        },
+        {
+          "signal": "loan_surge"
+        }
+      ]
+    },
+    "etf_drop": {
+      "indicator": "leveraged_loans",
+      "metric": "change4",
+      "op": "lte",
+      "value": -5,
+      "minimum": 2
+    }
+  },
+  "signalLabels": {
+    "bank_tight": "은행 대출기준 강화",
+    "bank_ease": "은행 대출기준 완화",
+    "bank_neutral": "은행 대출기준 중립",
+    "demand_weak": "대출수요 약화",
+    "loan_growth": "기업대출 증가",
+    "loan_slow": "기업대출 둔화",
+    "loan_surge": "기업대출 급증",
+    "hy_wide": "HY 확대",
+    "hy_stable": "HY 안정",
+    "hy_calm": "HY 안정·축소",
+    "ccc_wide": "CCC 확대",
+    "ccc_stable": "CCC 안정",
+    "ccc_calm": "CCC 안정·축소",
+    "ig_wide": "IG 확대",
+    "ig_stable": "IG 안정",
+    "ig_calm": "IG 안정·축소",
+    "cp_jump": "CP 조달비용 급등",
+    "cp_fall": "CP 잔액 급감",
+    "issuance_active": "회사채 발행 활발",
+    "issuance_down": "회사채 발행 감소",
+    "issuance_collapse": "회사채 발행 급감",
+    "bdc_stable": "BDC 할인 안정",
+    "bdc_discount": "BDC 할인 확대",
+    "bdc_crash": "BDC 주가 급락",
+    "pik_up": "PIK 증가",
+    "defaults_up": "BDC 부실 증가",
+    "emergency": "CP 경색과 은행 비상 인출 동반",
+    "ndfi_growth": "비은행 연결 대출 급증",
+    "small_bank_divergence": "소형은행 예금·대출 동반 약화",
+    "loan_emergency_warning": "CP 가격과 기업대출의 비상 인출 조합",
+    "etf_drop": "대출 ETF 동반 하락"
+  },
+  "summaries": [
+    {
+      "name": "은행 경로",
+      "signals": [
+        "bank_tight",
+        "loan_slow",
+        "demand_weak"
+      ],
+      "calm": [
+        "bank_ease",
+        "loan_growth"
+      ]
+    },
+    {
+      "name": "공개시장",
+      "signals": [
+        "hy_wide",
+        "ig_wide",
+        "cp_jump",
+        "issuance_collapse"
+      ],
+      "calm": [
+        "hy_stable",
+        "ig_stable",
+        "issuance_active"
+      ]
+    },
+    {
+      "name": "사모대출",
+      "signals": [
+        "bdc_discount",
+        "bdc_crash",
+        "pik_up",
+        "defaults_up"
+      ],
+      "calm": [
+        "bdc_stable"
+      ]
+    }
+  ]
+}
