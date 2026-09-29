@@ -13,6 +13,8 @@ import { howMuch, whereFrom, whereTo, whoBought, whoSankey, stress, emergencyLoa
 import { s1, s2, s3, s4, s5, rowDescription, fmt, josa, type Part } from "@shared/liquidity-sentences";
 import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
+import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioReading } from "@/components/credit/CreditReading";
+import { readingGroups } from "@shared/credit/reading";
 
 // ── 서버 응답 형태 ──
 interface TreasuryMonth { date: string; bills: number; total: number }
@@ -55,7 +57,7 @@ function Expander({ label, open, onToggle, children }: { label: string; open: bo
 // 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 스티키·본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
 // 라벨이 본문 폭을 잡아먹지 않고, 본문은 남는 폭의 가운데에 선다. lg 미만에서는 라벨이 본문 위로 올라간다.
 const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(150px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
-const STICKY_TOP = 84; // 스티키 머리띠 높이 + 여유. 요약 앵커로 이동할 때 가려지지 않도록 scrollMarginTop 에도 쓴다.
+const STICKY_TOP = 132; // 비교 버튼이 두 줄로 배치될 때도 요약 앵커와 본문 제목이 가려지지 않게 한다.
 function Row({ id, as = "section", aside, children }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode }) {
   const Tag = as;
   return (
@@ -226,8 +228,6 @@ export default function LiquidityRead() {
   const context = useQuery<LiquidityContext>({ queryKey: ["/api/liquidity/context"], queryFn: async () => apiRequest("GET", "/api/liquidity/context").then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
   const [auctionMode, setAuctionMode] = useState<"all" | "nobills" | "1m">("all");
   const months = auctionMode === "1m" ? 1 : 3;
-  const auctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", months, 0], queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
-  const auctionsPrev = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", months, 1], queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&offset=1`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
 
   const [idx, setIdx] = useState(-1);
   const [cmp, setCmp] = useState<CmpWeeks>(4);
@@ -240,8 +240,11 @@ export default function LiquidityRead() {
   const weeks: ReadWeek[] = overview.data?.weeks ?? [];
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
   const selDate = weeks.length ? weeks[curIdx].date : "";
+  const credit = useCreditReading(selDate);
+  const auctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", months, 0, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const auctionsPrev = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", months, 1, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&offset=1&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
   const { sel, prev } = useMemo(() => pickWeeks(weeks, selDate, cmp), [weeks, selDate, cmp]);
-  const ctx = context.data?.series ?? {};
+  const ctx = useMemo(() => Object.fromEntries(Object.entries(context.data?.series ?? {}).map(([key, points]) => [key, points.filter(p => p.date <= selDate)])) as LiquidityContext["series"], [context.data, selDate]);
   const monthly = overview.data?.treasury?.monthly ?? [];
   const monthlyTotal: Obs[] = useMemo(() => monthly.filter((m) => Number.isFinite(m.total)).map((m) => ({ date: m.date, value: m.total })), [monthly]);
   const monthlyBills: Obs[] = useMemo(() => monthly.filter((m) => Number.isFinite(m.bills)).map((m) => ({ date: m.date, value: m.bills })), [monthly]);
@@ -258,7 +261,7 @@ export default function LiquidityRead() {
   const sank = who ? whoSankey(who) : null;
   const hasStablecoinHint = !!sank?.links.some(link => sank.nodes[link.source]?.key === "bills" && sank.nodes[link.target]?.key === "indirect" && link.value > 0);
   const latestWeek = weeks.length ? weeks[weeks.length - 1] : null;
-  const st = stress(ctx.sofr ?? [], ctx.iorb ?? [], ctx.nfci ?? [], ctx.hy ?? [], latestWeek ? { ...emergencyLoans(latestWeek), date: latestWeek.date } : null, cfg);
+  const st = stress(ctx.sofr ?? [], ctx.iorb ?? [], ctx.nfci ?? [], ctx.hy ?? [], sel ? { ...emergencyLoans(sel), date: sel.date } : null, cfg);
   const bg = background(ctx);
 
   const S1 = how ? s1(how) : null, S2 = from ? s2(from, cmp, how?.flat) : null, S3 = to ? s3(to) : null, S4 = who ? s4(who) : null, S5 = s5(st);
@@ -327,7 +330,7 @@ export default function LiquidityRead() {
           <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
-            <Cap style={{ whiteSpace: "nowrap" }}>{fmt.dateKo(selW.date)} 기준 · 연준 H.4.1 · 매주 목요일 갱신</Cap>
+            <Cap>{fmt.dateKo(selW.date)} 기준 · 유동성 주간 / 신용 지표별 주기</Cap>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx <= 0 ? 0.3 : 1, cursor: "pointer" }}>◀</button>
@@ -341,6 +344,7 @@ export default function LiquidityRead() {
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID}><div className="hidden lg:block" /><div style={{ minWidth: 0 }}>
+        <CreditSummary state={credit} liquidity={S1?.summary.map(p => p.text).join("") ?? "선택 주차의 유동성 관측이 없습니다."} />
         <nav aria-label="이번 주 요약" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "12px 24px", marginBottom: 24 }}>
           {summaryRows.map((r, i) => (
             <a key={r.id} href={`#${r.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(r.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-7" style={{ padding: "20px 0", textDecoration: "none", color: C.ink, borderBottom: i < summaryRows.length - 1 ? `1px solid ${C.line2}` : undefined }}>
@@ -351,7 +355,7 @@ export default function LiquidityRead() {
             </a>
           ))}
         </nav>
-        <Cap style={{ paddingBottom: 16 }}>매주 오는 분은 여기까지. 아래는 각 문장의 근거입니다.</Cap>
+        <Cap style={{ paddingBottom: 16 }}>아래는 진단의 근거입니다. 유동성의 규모와 이동을 읽고, 은행·회사채·단기 자금·취약 기업의 신용을 차례로 확인합니다.</Cap>
         </div></div>
 
         {/* 01 얼마나 */}
@@ -618,7 +622,15 @@ export default function LiquidityRead() {
         <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나">
           <H2>{S5.headline.join(" ")}</H2>
           <div style={{ display: "flex", flexDirection: "column", borderBottom: `1px solid ${C.line}` }}>{st.rows.map((r) => <GaugeRow key={r.key} r={r} />)}</div>
+          <button type="button" onClick={() => document.getElementById("read-hy_oas")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="underline text-left" style={{ fontSize: 13, color: C.cap }}>HY 조달 비용의 상세 그래프·해설로 이동 ↓</button>
           {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
+        </Section>
+
+        {readingGroups.map((group, n) => <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question}>
+          <CreditReadingGroup group={group} state={credit} weeks={cmp} />
+        </Section>)}
+        <Section id="credit-scenarios" num="10" title="함께 읽으면" question="어떤 신용 국면에 가까운가">
+          <CreditScenarioReading state={credit} />
         </Section>
 
         {/* 배경 */}
