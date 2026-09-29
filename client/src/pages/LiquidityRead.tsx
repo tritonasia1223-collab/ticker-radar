@@ -183,6 +183,7 @@ function GaugeRow({ r }: { r: StressRow }) {
 
 // 04 생키 — 띠와 만기 노드는 만기 묶음 색(HUE), 입찰자 노드는 먹색. 최소 굵기 2px.
 const BUCKET_FILL: Record<Bucket, string> = { bills: HUE.sky, nb: HUE.blue, tips: HUE.ochre };
+const STABLECOIN_FILL = "#6D9F98";
 function ReadSankeyNode(props: any) {
   const { x, y, width, height, index, payload } = props;
   const left = payload.side === "bucket";
@@ -199,7 +200,21 @@ function ReadSankeyLink(props: any) {
   const { sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX, linkWidth, index, payload } = props;
   const w = Math.max(linkWidth, 2), fill = BUCKET_FILL[payload?.source?.key as Bucket] ?? C.n3;
   const d = `M${sourceX},${sourceY + w / 2} C${sourceControlX},${sourceY + w / 2} ${targetControlX},${targetY + w / 2} ${targetX},${targetY + w / 2} L${targetX},${targetY - w / 2} C${targetControlX},${targetY - w / 2} ${sourceControlX},${sourceY - w / 2} ${sourceX},${sourceY - w / 2} Z`;
-  return <path key={`l${index}`} d={d} fill={fill} fillOpacity={0.5} stroke="none"><title>{`${payload?.source?.name} → ${payload?.target?.name} ${dollars(payload?.value ?? 0)}`}</title></path>;
+  const stablecoin = payload?.source?.key === "bills" && payload?.target?.key === "indirect" && payload.value > 0;
+  // 참고 경로를 강조하는 주석 띠. 낙찰 데이터·합계·링크 가중치는 바꾸지 않는다.
+  // 고정 표시 두께를 사용하며, 얇은 원래 링크 안에 들어갈 때만 두께를 줄인다.
+  const hintWidth = Math.min(24, w);
+  const sy = sourceY - w / 2, ty = targetY - w / 2;
+  const hint = `M${sourceX},${sy} C${sourceControlX},${sy} ${targetControlX},${ty} ${targetX},${ty} L${targetX},${ty + hintWidth} C${targetControlX},${ty + hintWidth} ${sourceControlX},${sy + hintWidth} ${sourceX},${sy + hintWidth} Z`;
+  return <g key={`l${index}`}>
+    <path d={d} fill={fill} fillOpacity={0.5} stroke="none"><title>{`${payload?.source?.name} → ${payload?.target?.name} ${dollars(payload?.value ?? 0)}`}</title></path>
+    {stablecoin && <g data-stablecoin-hint="true" pointerEvents="none" role="img" aria-label="스테이블코인 발행사 (참고용). 참고 띠의 폭은 실제 금액이나 비중을 뜻하지 않습니다.">
+      <path d={hint} fill={STABLECOIN_FILL} fillOpacity={0.95} />
+      <path d={`M${targetX - 6},${ty + hintWidth / 2} L${targetX - 6},${ty - 23} L${targetX + 18},${ty - 23}`} fill="none" stroke="#527D78" strokeWidth={1} />
+      <text x={targetX + 24} y={ty - 22} dominantBaseline="middle" fontSize={13} fontWeight={600} fill={C.ink} fontFamily={SANS}>스테이블코인 발행사 (참고용)</text>
+      <text x={targetX + 24} y={ty - 4} fontSize={11} fill={C.cap} fontFamily={SANS}>Circle·Tether 등 · 규모·비중 미산정</text>
+    </g>}
+  </g>;
 }
 
 export default function LiquidityRead() {
@@ -241,6 +256,7 @@ export default function LiquidityRead() {
   const agg = auctions.data?.agg ?? null, prevAgg = auctionsPrev.data?.agg ?? null;
   const who = agg ? whoBought(agg, prevAgg, monthlyTotal, monthlyBills, auctionMode === "nobills") : null;
   const sank = who ? whoSankey(who) : null;
+  const hasStablecoinHint = !!sank?.links.some(link => sank.nodes[link.source]?.key === "bills" && sank.nodes[link.target]?.key === "indirect" && link.value > 0);
   const latestWeek = weeks.length ? weeks[weeks.length - 1] : null;
   const st = stress(ctx.sofr ?? [], ctx.iorb ?? [], ctx.nfci ?? [], ctx.hy ?? [], latestWeek ? { ...emergencyLoans(latestWeek), date: latestWeek.date } : null, cfg);
   const bg = background(ctx);
@@ -550,12 +566,22 @@ export default function LiquidityRead() {
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 12px", overflowX: "auto" }}>
                 <div style={{ minWidth: 640, height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <Sankey data={sank} nodeWidth={14} nodePadding={22} linkCurvature={0.5} iterations={32} margin={{ top: 24, right: 200, bottom: 8, left: 210 }} node={<ReadSankeyNode />} link={<ReadSankeyLink />}>
+                    <Sankey data={sank} nodeWidth={14} nodePadding={22} linkCurvature={0.5} iterations={32} margin={{ top: hasStablecoinHint ? 62 : 24, right: hasStablecoinHint ? 260 : 200, bottom: 8, left: 210 }} node={<ReadSankeyNode />} link={<ReadSankeyLink />}>
                       <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8, fontFamily: SANS }} formatter={(v: any) => [dollars(v), "낙찰"]} />
                     </Sankey>
                   </ResponsiveContainer>
                 </div>
               </div>
+              {hasStablecoinHint && <div data-stablecoin-note="true" style={{ borderLeft: `3px solid ${STABLECOIN_FILL}`, padding: "4px 0 4px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                <Sub>참고 띠 · 스테이블코인 발행사 (참고용)</Sub>
+                <Body max={9999}>Circle·Tether 등 발행사의 준비금 운용이 단기국채 수요로 이어지는 경로를 강조한 표시입니다. 참고 띠의 폭은 실제 매입액이나 간접 입찰 내 비중을 뜻하지 않습니다. 기존 간접 입찰 총액에 색만 겹쳤으며, 별도 낙찰 금액으로 더하거나 빼지 않습니다.</Body>
+                <Cap>공개 입찰 집계로는 발행사별 몫을 분리할 수 없습니다. 발행사·운용 펀드는 직접 입찰이나 유통시장에서도 매수할 수 있고, 입찰 매입에는 만기 재투자가 포함될 수 있고, 보유액 변화에는 현금·레포 간 자산 배분의 영향도 섞입니다. 이 표시만으로 해당 기간의 매입 규모나 경로를 확정할 수 없습니다.</Cap>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: C.cap }}>
+                  <a href="https://www.treasurydirect.gov/help-center/faqs/auction-faqs/" target="_blank" rel="noreferrer" className="underline">재무부 입찰 분류</a>
+                  <a href="https://www.circle.com/transparency" target="_blank" rel="noreferrer" className="underline">Circle 준비금</a>
+                  <a href="https://tether.to/en/transparency/" target="_blank" rel="noreferrer" className="underline">Tether 준비금</a>
+                </div>
+              </div>}
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               {([["간접 입찰", "해외 중앙은행, 펀드처럼 딜러를 거쳐 응찰하는 곳. 실수요에 가장 가깝습니다."], ["프라이머리 딜러", "연준과 직접 거래하는 대형 은행·증권사. 입찰에 의무로 참여해 남는 물량을 떠안습니다."], ["직접 입찰", "딜러를 거치지 않고 직접 응찰하는 기관."], ["연준 SOMA", "연준이 만기 돌아온 보유분만큼 다시 받아가는 몫. 새 돈이 아닙니다."]] as [string, string][]).map(([k, v]) => (
