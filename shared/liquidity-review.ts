@@ -4,21 +4,24 @@ import { fmt } from "./liquidity-sentences.js";
 
 const amount = (value: number) => `${fmt.amount(value)} 달러`;
 const sourceName = (c: Contribution) => c.key === "rrp" ? `역레포 ${c.own < 0 ? "감소" : "증가"}` : c.key === "tga" ? `TGA 자금 ${c.own < 0 ? "사용" : "축적"}` : `연준 자산 ${c.own < 0 ? "감소" : "증가"}`;
-function sourceSentence(c: Contribution) {
+function sourceSentence(c: Contribution, from: WhereFrom) {
   if (c.key === "rrp") return c.effect > 0 ? `MMF 등이 연준 역레포에 맡겨둔 돈 ${amount(c.effect)}를 순회수했습니다.` : `MMF 등이 연준 역레포에 ${amount(c.effect)}를 추가로 맡겼습니다.`;
   if (c.key === "tga") return c.effect > 0 ? `재무부는 TGA에 보관하던 자금을 사용해 순액으로 ${amount(c.effect)}를 시중에 풀었습니다.` : `재무부는 TGA에 ${amount(c.effect)}를 더 쌓아 시중 유동성을 흡수했습니다.`;
-  return `연준 자산 ${c.effect > 0 ? "증가" : "감소"}는 ${amount(c.effect)}의 유동성 ${c.effect > 0 ? "증가" : "감소"} 효과를 ${c.effect > 0 ? "더했습니다" : "냈습니다"}.`;
+  const detail = from.fedDetail.filter(d => ["treast", "mbs"].includes(d.key) && !fmt.isZeroEok(d.value)).map(d => `${d.key === "treast" ? "국채 보유" : "MBS"} ${d.value > 0 ? "증가" : "감소"}`).join(", ");
+  return `연준 자산 재조정 과정에서 순액으로 ${amount(c.effect)}가 ${c.effect > 0 ? "시중에 풀렸습니다" : "시중에서 회수됐습니다"}.${detail ? ` (${detail})` : ""}`;
 }
 
 export function liquidityReview(from: WhereFrom | null, to: WhereTo | null) {
   const active = from?.ranked.filter(c => Number.isFinite(c.effect) && !fmt.isZeroEok(c.effect)) ?? [];
-  const source = !from ? "비교 주차 자료가 없어 증감 요인을 계산할 수 없습니다." : !active.length ? "재무부·역레포·연준 자산에 뚜렷한 변화가 없습니다." :
-    `${active.length === 1 ? "변화를 만든 요인은" : "가장 크게 작용한 요인은"} ${sourceName(active[0])}입니다. ${active.map(sourceSentence).join(" ")}${active.some(c => c.effect > 0) && active.some(c => c.effect < 0) ? " 유동성을 늘린 요인과 줄인 요인이 일부 상쇄됐습니다." : ""}`;
+  const sourceIntro = !from ? "비교 주차 자료가 없어 증감 요인을 계산할 수 없습니다." : !active.length ? "재무부·역레포·연준 자산에 뚜렷한 변화가 없습니다." : `${active.length === 1 ? "변화를 만든 요인은" : "가장 크게 작용한 요인은"} ${sourceName(active[0])}입니다.`;
+  const sourceItems = active.map(c => ({ key: c.key, label: c.key === "fed" ? "연준 자산 재조정" : sourceName(c), text: sourceSentence(c, from!), effect: c.effect }));
+  const sourceOffset = active.some(c => c.effect > 0) && active.some(c => c.effect < 0) ? "유동성을 늘린 요인과 줄인 요인이 일부 상쇄됐습니다." : "";
+  const source = [sourceIntro, ...sourceItems.map(item => `${item.label}: ${item.text}`), sourceOffset].filter(Boolean).join(" ");
   const destination = !to ? "비교 주차 자료가 없어 잔액 변화를 계산할 수 없습니다." :
     to.resShare >= 0.5 && to.resShare <= 1 && !fmt.isZeroEok(to.dNl) ?
       `${to.dNl > 0 ? "늘어난" : "줄어든"} 유동성${to.resShare > 0.5 ? " 대부분" : "의 절반"}은 은행 지급준비금 ${to.dReserves > 0 ? "증가" : "감소"}(${fmt.signedEok(to.dReserves)} 달러)로 나타났습니다. ${fmt.isZeroEok(to.dOther) ? "현금통화·기타 잔액은 거의 변하지 않았습니다." : `나머지 ${amount(to.dOther)}는 현금통화·기타 항목의 ${to.dOther > 0 ? "증가분" : "감소분"}입니다.`}` :
       `같은 기간 은행 지급준비금은 ${fmt.isZeroEok(to.dReserves) ? "변화가 없고" : `${amount(to.dReserves)} ${to.dReserves > 0 ? "늘었고" : "줄었고"}`}, 현금통화·기타는 ${fmt.isZeroEok(to.dOther) ? "변화가 없습니다" : `${amount(to.dOther)} ${to.dOther > 0 ? "늘었습니다" : "줄었습니다"}`}.`;
-  return { source, destination };
+  return { source, sourceIntro, sourceItems, sourceOffset, destination };
 }
 
 export function treasuryReview(who: WhoBought) {

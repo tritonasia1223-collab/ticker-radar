@@ -2,6 +2,7 @@
 //   FRED 공개 CSV(키 불요)와 이미 쓰는 FiscalData auctions_query 만 사용. 정식 승격 시 server/fed.ts 레지스트리로 이관.
 //   패턴은 server/treasury-transactions.ts 와 동일: 부분 실패는 errors 로 명시, 실패 응답은 캐시하지 않는다.
 import { aggregateAuctions, sankeyData, type AuctionRow, type ContextKey, type LiquidityAuctions, type LiquidityContext, type Obs } from "../shared/liquidity-beta.js";
+import { debtWindow } from "../shared/treasury-flow.js";
 
 const FREDGRAPH = "https://fred.stlouisfed.org/graph/fredgraph.csv";
 const FISCAL = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service";
@@ -102,8 +103,8 @@ async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[
   return rows;
 }
 
-async function collectAuctions(months: number, offset: number, asOf: string): Promise<LiquidityAuctions> {
-  const { start, end } = auctionWindow(months, new Date(asOf + "T00:00:00Z"), offset);
+async function collectAuctions(months: number, offset: number, asOf: string, weeks?: 4 | 13): Promise<LiquidityAuctions> {
+  const { start, end } = weeks ? debtWindow(asOf, weeks, offset) : auctionWindow(months, new Date(asOf + "T00:00:00Z"), offset);
   // offset 을 넘기지 않은 기본 호출은 기존 응답 형태를 그대로 유지한다(Codex F6) — 필드는 offset>0 일 때만.
   const base = { months, ...(offset ? { offset } : {}), start, end, fetchedAt: new Date().toISOString() };
   try {
@@ -116,15 +117,15 @@ async function collectAuctions(months: number, offset: number, asOf: string): Pr
   }
 }
 
-export async function liquidityAuctions(months: number, offset = 0, asOf = iso(new Date())): Promise<LiquidityAuctions> {
+export async function liquidityAuctions(months: number, offset = 0, asOf = iso(new Date()), weeks?: 4 | 13): Promise<LiquidityAuctions> {
   if (months !== 1 && months !== 3) throw new Error("months 는 1 또는 3");
   if (offset !== 0 && offset !== 1) throw new Error("offset 은 0 또는 1");
-  const key = `${months}:${offset}:${asOf}`;
+  const key = `${months}:${offset}:${asOf}:${weeks ?? "calendar"}`;
   const found = auctionCache.get(key);
   if (found && found.expires > Date.now()) return found.data;
   const ongoing = auctionPending.get(key);
   if (ongoing) return ongoing;
-  const work = collectAuctions(months, offset, asOf).then((data) => {
+  const work = collectAuctions(months, offset, asOf, weeks).then((data) => {
     if (!data.errors.auctions) auctionCache.set(key, { data, expires: Date.now() + TTL });
     return data;
   }).finally(() => auctionPending.delete(key));

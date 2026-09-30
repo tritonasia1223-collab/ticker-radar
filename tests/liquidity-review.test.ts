@@ -17,7 +17,7 @@ describe("문장형 유동성·국채 리뷰", () => {
     const review = liquidityReview(whereFrom(base, now, 0.5), whereTo(base, now, [], [], null));
     expect(review.source).toContain("354억 달러를 순회수");
     expect(review.source).toContain("121억 달러를 시중에");
-    expect(review.source).toContain("168억 달러의 유동성 증가");
+    expect(review.source).toContain("순액으로 168억 달러가 시중에 풀렸습니다");
     expect(review.destination).toContain("+531억 달러");
     expect(review.destination).toContain("112억 달러");
     expect(review.destination).not.toContain("들어갔");

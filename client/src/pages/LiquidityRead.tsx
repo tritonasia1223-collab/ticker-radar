@@ -214,11 +214,11 @@ export default function LiquidityRead() {
   }, []);
   const overview = useQuery<Overview>({ queryKey: ["/api/fed/overview"], queryFn: async () => restoreMissingNumbers<Overview>(await apiRequest("GET", "/api/fed/overview").then((r) => r.json())) });
   const context = useQuery<LiquidityContext>({ queryKey: ["/api/liquidity/context"], queryFn: async () => apiRequest("GET", "/api/liquidity/context").then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
-  const [auctionMode, setAuctionMode] = useState<"all" | "nobills" | "1m">("all");
-  const months = auctionMode === "1m" ? 1 : 3;
+  const [auctionMode, setAuctionMode] = useState<"all" | "nobills">("all");
 
   const [idx, setIdx] = useState(-1);
   const [cmp, setCmp] = useState<CmpWeeks>(4);
+  const months = cmp === 4 ? 1 : 3;
   const [range, setRange] = useState<"5y" | "2y">("5y");
   const [sp, setSp] = useState(false);
   const [openT, setOpenT] = useState(false);
@@ -229,8 +229,9 @@ export default function LiquidityRead() {
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
   const selDate = weeks.length ? weeks[curIdx].date : "";
   const credit = useCreditReading(selDate);
-  const auctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", months, 0, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
-  const auctionsPrev = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", months, 1, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&offset=1&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const auctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", cmp, 0, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&weeks=${cmp}&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const auctionsPrev = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", cmp, 1, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&weeks=${cmp}&offset=1&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const debt = useQuery<import("@shared/treasury-flow").TreasuryFlowResponse>({ queryKey: ["/api/liquidity/treasury-flow", cmp, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/treasury-flow?weeks=${cmp}&asOf=${selDate}`).then(r => r.json()), staleTime: 6 * 60 * 60 * 1000 });
   const { sel, prev } = useMemo(() => pickWeeks(weeks, selDate, cmp), [weeks, selDate, cmp]);
   const ctx = useMemo(() => Object.fromEntries(Object.entries(context.data?.series ?? {}).map(([key, points]) => [key, points.filter(p => p.date <= selDate)])) as LiquidityContext["series"], [context.data, selDate]);
   const monthly = overview.data?.treasury?.monthly ?? [];
@@ -246,6 +247,7 @@ export default function LiquidityRead() {
   const to = sel && prev ? whereTo(prev, sel, ctx.deposits ?? [], monthlyBills, cfg.RESERVES_ZONES) : null;
   const agg = auctions.data?.agg ?? null, prevAgg = auctionsPrev.data?.agg ?? null;
   const who = agg ? whoBought(agg, prevAgg, monthlyTotal, monthlyBills, auctionMode === "nobills") : null;
+  const overviewWho = agg ? whoBought(agg, prevAgg, [], [], false) : null;
   const sank = who ? whoSankey(who) : null;
   const latestWeek = weeks.length ? weeks[weeks.length - 1] : null;
   const st = stress(ctx.sofr ?? [], ctx.iorb ?? [], ctx.nfci ?? [], ctx.hy ?? [], sel ? { ...emergencyLoans(sel), date: sel.date } : null, cfg);
@@ -322,8 +324,13 @@ export default function LiquidityRead() {
         </header>
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
-        <div className={ROW_GRID}><div className="hidden lg:block" /><div style={{ minWidth: 0 }}>
-        <LiquidityDashboard how={how} from={from} to={to} who={who} stress={st} alerts={<CreditSummary state={credit} weeks={cmp} />} />
+        <div className={ROW_GRID}>
+        <div className="lg:justify-self-end lg:w-[150px] lg:pt-6">
+          <h2 className="text-base font-semibold">개요</h2>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
+        </div>
+        <div style={{ minWidth: 0 }}>
+        <LiquidityDashboard how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} stress={st} alerts={<CreditSummary state={credit} weeks={cmp} />} />
         </div></div>
 
         {/* 01 얼마나 */}
@@ -513,7 +520,7 @@ export default function LiquidityRead() {
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
-            <H2>{S4.headline.join(" ")}</H2>
+            <H2>최근 {cmp}주간 입찰 낙찰액은 {fmt.amount(who.totalReported)} 달러입니다.</H2>
             <Body>재무부가 TGA를 다시 채우려면 국채를 더 찍어야 합니다. 그 국채를 누가 받아주느냐에 따라 돈이 흡수되는 곳이 달라집니다. 딜러의 낙찰 비중은 발행 물량을 받아간 구성을 보여줍니다. 이후 재판매될 수 있어 최종 보유액과는 다릅니다.</Body>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -521,7 +528,7 @@ export default function LiquidityRead() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <Pill active={auctionMode === "all"} onClick={() => setAuctionMode("all")}>전체</Pill>
                   <Pill active={auctionMode === "nobills"} onClick={() => setAuctionMode("nobills")}>단기채 빼고 보기</Pill>
-                  <Pill active={auctionMode === "1m"} onClick={() => setAuctionMode("1m")}>최근 1개월</Pill>
+                  <Cap>상단 기준 · 최근 {cmp}주</Cap>
                 </div>
               </div>
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 12px", overflowX: "auto" }}>
@@ -539,7 +546,7 @@ export default function LiquidityRead() {
               <div style={{ borderTop: `1px solid ${C.line}` }} />
             </div>
             <p data-testid="treasury-issuance-note" style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: "#918D83" }}>
-              참고 · {S4?.caution}. 단기채는 만기가 돌아오면 다시 발행하므로 발행액에는 기존 빚을 갈아 끼운 물량이 포함됩니다. {who.netIssuance ? <>월간 잔액으로 확인한 국채 순증감은 {fmt.signedAmount(who.netIssuance.delta)} 달러({fmt.monthKo(who.netIssuance.from.date)}→{fmt.monthKo(who.netIssuance.to.date)} 기준)이고{who.billsNet ? <>, 그중 단기채는 {fmt.signedAmount(who.billsNet.delta)} 달러입니다.</> : "."}</> : "월간 잔액 자료가 아직 없어 순증액은 다음 갱신 때 표시됩니다."}
+              참고 · {S4?.caution}. 단기채는 만기가 돌아오면 다시 발행하므로 발행액에는 기존 빚을 갈아 끼운 물량이 포함됩니다. {debt.data?.flow ? <>같은 {cmp}주간 전체 시장성 국채 순증감은 {fmt.signedAmount(debt.data.flow.net)} 달러, 단기채 순증감은 {fmt.signedAmount(debt.data.flow.billsNet)} 달러입니다. 재무부 일일 발행·상환 및 물가 조정 기준입니다.</> : "선택 기간의 순증감 자료를 확인 중입니다."}
             </p>
             <Expander label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>
               {!life ? <Cap>준비 중 — 입찰 창 안에 보유 관측이 두 개 이상 없어 표를 만들 수 없습니다</Cap> : (

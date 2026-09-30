@@ -10,6 +10,7 @@ import { creditReview } from "@shared/credit/review";
 import { ReviewText } from "../ReviewText";
 import { RateComparisonChart } from "./RateComparisonChart";
 import { rateNarrative } from "@shared/credit/rate-comparison";
+import { bondReading } from "@shared/credit/bond-reading";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -157,9 +158,11 @@ export function CreditReadingControls({ state }: { state: CreditReadingState }) 
 
 export function CreditReadingGroup({ group, state, weeks }: { group: typeof readingGroups[number]; state: CreditReadingState; weeks: 4 | 13 }) {
   const r = groupReading(group, state.outcome);
+  const bonds = group.id === "credit-bonds" ? bondReading(state.data, state.outcome) : null;
+  const unavailable = state.query.isError || state.query.data?.error || state.query.data?.configChanged;
   return <>
     <h2 style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.5, margin: 0 }}>{group.question}</h2>
-    <p style={paragraph}><b>{state.query.isLoading ? "자료 조회 중" : r.status}.</b> {!state.query.isLoading && r.text}</p>
+    {bonds ? state.query.isLoading ? <p style={paragraph}>자료 조회 중</p> : unavailable ? <p style={paragraph}>신용 자료를 확인하지 못했습니다.</p> : <div><ReviewText className="text-sm leading-[1.8] text-[#3B3934]" text={bonds.text} /><details className="mt-3 text-xs leading-relaxed text-[#918D83]"><summary className="cursor-pointer">세부 기준·자료 범위</summary><div className="mt-2 space-y-1">{bonds.details.map(text => <p key={text}>{text}</p>)}</div></details></div> : <p style={paragraph}><b>{state.query.isLoading ? "자료 조회 중" : r.status}.</b> {!state.query.isLoading && r.text}</p>}
     {group.id === readingGroups[0].id && <CreditReadingControls state={state} />}
     {group.ids.map(id => { const spec = indicators.find(i => i.id === id)!, result = state.data.find(i => i.id === id)!; return <ReadingChart key={id} spec={spec} result={result} state={state} weeks={weeks} />; })}
   </>;

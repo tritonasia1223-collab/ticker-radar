@@ -10,6 +10,7 @@ import { cloMacro } from "./clo-macro.js";
 import { fedOverview } from "./fed.js";
 import { monthBounds, treasuryTransactions } from "./treasury-transactions.js";
 import { liquidityContext, liquidityAuctions } from "./liquidity-beta.js";
+import { treasuryFlow } from "./treasury-flow.js";
 import { z } from "zod";
 import { registerCollaborationRoutes } from "./cap-collaboration.js";
 
@@ -427,18 +428,27 @@ export function registerRoutes(app: Express) {
   });
   app.get("/api/liquidity/auctions", async (req, res) => {
     const months = Number(req.query.months ?? 3);
+    const weeks = req.query.weeks === undefined ? undefined : Number(req.query.weeks);
     const offset = Number(req.query.offset ?? 0);
     const asOf = req.query.asOf === undefined ? new Date().toISOString().slice(0, 10) : String(req.query.asOf);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || !Number.isFinite(Date.parse(asOf)) || new Date(asOf).toISOString().slice(0, 10) !== asOf || asOf > new Date().toISOString().slice(0, 10)) return res.status(400).json({ error: "기준일을 확인하세요." });
     if (months !== 1 && months !== 3) return res.status(400).json({ error: "months 는 1 또는 3 이어야 합니다." });
+    if (weeks !== undefined && weeks !== 4 && weeks !== 13) return res.status(400).json({ error: "weeks 는 4 또는 13 이어야 합니다." });
     if (offset !== 0 && offset !== 1) return res.status(400).json({ error: "offset 은 0 또는 1 이어야 합니다." });
     try {
-      const data = await liquidityAuctions(months, offset, asOf);
+      const data = await liquidityAuctions(months, offset, asOf, weeks);
       res.setHeader("Cache-Control", data.errors.auctions ? "no-store" : "public, max-age=300, s-maxage=21600");
       res.json(data);
     } catch {
       res.status(502).json({ error: "입찰 자료를 불러오지 못했습니다." });
     }
+  });
+  app.get("/api/liquidity/treasury-flow", async (req, res) => {
+    const asOf = String(req.query.asOf ?? ""), weeks = Number(req.query.weeks);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || !Number.isFinite(Date.parse(asOf)) || new Date(asOf).toISOString().slice(0, 10) !== asOf || asOf > new Date().toISOString().slice(0, 10) || asOf < "2006-01-01" || (weeks !== 4 && weeks !== 13)) return res.status(400).json({ error: "국채 비교일·기간을 확인하세요." });
+    const data = await treasuryFlow(asOf, weeks);
+    res.setHeader("Cache-Control", data.error ? "no-store" : "public, max-age=300, s-maxage=21600");
+    res.json(data);
   });
   // ---- Dummy data (testing) ----
   app.post("/api/seed", async (_req, res) => {

@@ -1,0 +1,7 @@
+{
+  "bondYield": {
+    "highPercentile": 80,
+    "minimumSamples": 400,
+    "minimumSpanDays": 730
+  }
+}
