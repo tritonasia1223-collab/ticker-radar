@@ -1,0 +1,26 @@
+{
+  "z1Url": "https://www.federalreserve.gov/releases/z1/current/z1_csv_files.zip",
+  "z1Page": "https://www.federalreserve.gov/releases/z1/",
+  "table": "F3_2_s",
+  "startYear": 2010,
+  "issuerStartYear": 2025,
+  "groups": [
+    { "id": "foreign", "label": "해외 투자자", "color": "#41627D", "series": ["LM263061105.Q"] },
+    { "id": "fed", "label": "연준", "color": "#7296B1", "series": ["LM713061103.Q"] },
+    { "id": "mmf", "label": "MMF", "color": "#8B80A6", "series": ["FL633061105.Q"] },
+    { "id": "households", "label": "가계·비영리", "color": "#B8A17D", "series": ["LM153061105.Q"] },
+    { "id": "funds", "label": "펀드·ETF", "color": "#A2ABB8", "series": ["LM653061105.Q", "LM553061103.Q", "LM563061103.Q"] },
+    { "id": "banks", "label": "은행·예금기관", "color": "#697C91", "series": ["LM763061100.Q", "LM753061103.Q", "LM743061103.Q", "LM473061105.Q"] },
+    { "id": "pensions", "label": "보험·연기금", "color": "#C4BBAA", "series": ["LM513061105.Q", "LM543061105.Q", "LM573061105.Q", "LM343061105.Q", "LM223061143.Q"] },
+    { "id": "other", "label": "기타 보유자", "color": "#DAD6CA", "series": ["LM103061103.Q", "LM113061003.Q", "LM213061103.Q", "LM623061103.Q", "LM403061105.Q", "FL673061103.Q", "LM663061105.Q", "LM733061103.Q", "FL503061123.Q"] }
+  ],
+  "circlePage": "https://www.circle.com/transparency",
+  "tetherReports": [
+    { "date": "2025-03-31", "publishedAt": "2025-05-01", "page": "https://tether.io/news/tether-approaching-120b-in-u-s-treasuries-confirms-quarterly-operating-profit-over-1b-and-strengthens-global-usdt-demand-in-q1-2025/" },
+    { "date": "2025-06-30", "publishedAt": "2025-07-31", "page": "https://tether.io/news/tether-issues-20b-in-usdt-ytd-becomes-one-of-largest-u-s-debt-holders-with-127b-in-treasuries-net-profit-4-9b-in-q2-2025-attestation-report/" },
+    { "date": "2025-09-30", "publishedAt": "2025-10-31", "page": "https://tether.io/news/tether-attestation-reports-q1-q3-2025-profit-surpassing-10b-record-levels-in-us-treasuries-exposure-accelerating-usdt-supply-amidst-worlds-macroeconomic-uncertainty/" },
+    { "date": "2025-12-31", "publishedAt": "2026-01-30", "page": "https://tether.io/news/tether-delivers-10b-profits-in-2025-6-3b-in-excess-reserves-and-record-141-billion-exposure-in-u-s-treasury-holdings/" },
+    { "date": "2026-03-31", "publishedAt": "2026-05-01", "pdf": "https://assets.ctfassets.net/vyse88cgwfbl/6crn1tXbl6AtWZBWucZnfg/c4ff472d70c1b48c2f689f27b54c84f5/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_31-03-2026.pdf" },
+    { "date": "2026-06-30", "publishedAt": "2026-07-31", "pdf": "https://assets.ctfassets.net/vyse88cgwfbl/2kYf7r64h3tzwiu6F0CbUB/2997abd2f11ecea74a21528048b50707/Opinion___Report_-_Tether_International_Financial_Figure_30-06-2026.pdf" }
+  ]
+}

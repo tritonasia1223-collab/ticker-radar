@@ -15,6 +15,7 @@ import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
 import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioReading } from "@/components/credit/CreditReading";
 import { readingGroups } from "@shared/credit/reading";
+import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 
 // ── 서버 응답 형태 ──
 interface TreasuryMonth { date: string; bills: number; total: number }
@@ -593,6 +594,10 @@ export default function LiquidityRead() {
             </Expander>
           </>)}
         </Section>
+
+        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap></div>}>
+          <TreasuryOwnership asOf={selDate} />
+        </Row>
 
         {/* 05 탈은 없나 */}
         <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나">

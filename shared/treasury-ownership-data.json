@@ -1,0 +1,1380 @@
+{
+  "collectedAt": "2026-09-30T01:53:25.107950+00:00",
+  "unit": "million_usd",
+  "ownershipSource": "https://www.federalreserve.gov/releases/z1/",
+  "ownershipTable": "F3_2_s",
+  "ownership": [
+    {
+      "date": "2010-03-31",
+      "total": 7555260.0,
+      "outstanding": 7714997.0,
+      "bills": 1838020.0,
+      "groups": {
+        "foreign": 3861702.0,
+        "fed": 776705.0,
+        "mmf": 379203.0,
+        "households": 523561.0,
+        "funds": 390166.0,
+        "banks": 263934.0,
+        "pensions": 576896.0,
+        "other": 783093.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2010-06-30",
+      "total": 8059341.0,
+      "outstanding": 8059428.0,
+      "bills": 1777032.0,
+      "groups": {
+        "foreign": 4069735.0,
+        "fed": 776989.0,
+        "mmf": 356585.0,
+        "households": 778574.0,
+        "funds": 453592.0,
+        "banks": 261173.0,
+        "pensions": 600436.0,
+        "other": 762257.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2010-09-30",
+      "total": 8533328.0,
+      "outstanding": 8457152.0,
+      "bills": 1783675.0,
+      "groups": {
+        "foreign": 4409180.0,
+        "fed": 811669.0,
+        "mmf": 314578.0,
+        "households": 777513.0,
+        "funds": 473267.0,
+        "banks": 306719.0,
+        "pensions": 620657.0,
+        "other": 819745.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2010-12-31",
+      "total": 8720623.0,
+      "outstanding": 8822662.0,
+      "bills": 1768931.0,
+      "groups": {
+        "foreign": 4458824.0,
+        "fed": 1021493.0,
+        "mmf": 380546.0,
+        "households": 653753.0,
+        "funds": 475387.0,
+        "banks": 299540.0,
+        "pensions": 637649.0,
+        "other": 793431.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2011-03-31",
+      "total": 8941849.0,
+      "outstanding": 9090815.0,
+      "bills": 1694692.0,
+      "groups": {
+        "foreign": 4540880.0,
+        "fed": 1340446.0,
+        "mmf": 369324.0,
+        "households": 487159.0,
+        "funds": 459125.0,
+        "banks": 304625.0,
+        "pensions": 658008.0,
+        "other": 782282.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2011-06-30",
+      "total": 9228325.0,
+      "outstanding": 9295140.0,
+      "bills": 1529417.0,
+      "groups": {
+        "foreign": 4690562.0,
+        "fed": 1619538.0,
+        "mmf": 363175.0,
+        "households": 355466.0,
+        "funds": 464015.0,
+        "banks": 270324.0,
+        "pensions": 685186.0,
+        "other": 780059.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2011-09-30",
+      "total": 9797740.0,
+      "outstanding": 9588341.0,
+      "bills": 1475557.0,
+      "groups": {
+        "foreign": 4974399.0,
+        "fed": 1664660.0,
+        "mmf": 402652.0,
+        "households": 517820.0,
+        "funds": 467701.0,
+        "banks": 273351.0,
+        "pensions": 701709.0,
+        "other": 795448.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2011-12-31",
+      "total": 10128621.0,
+      "outstanding": 9906085.0,
+      "bills": 1519462.0,
+      "groups": {
+        "foreign": 5004354.0,
+        "fed": 1663446.0,
+        "mmf": 496874.0,
+        "households": 539740.0,
+        "funds": 537702.0,
+        "banks": 252768.0,
+        "pensions": 722743.0,
+        "other": 910994.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2012-03-31",
+      "total": 10627787.0,
+      "outstanding": 10306692.0,
+      "bills": 1672607.0,
+      "groups": {
+        "foreign": 5145060.0,
+        "fed": 1892042.0,
+        "mmf": 544720.0,
+        "households": 498829.0,
+        "funds": 593925.0,
+        "banks": 281701.0,
+        "pensions": 767575.0,
+        "other": 903935.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2012-06-30",
+      "total": 10997307.0,
+      "outstanding": 10490548.0,
+      "bills": 1594427.0,
+      "groups": {
+        "foreign": 5310871.0,
+        "fed": 1964773.0,
+        "mmf": 489640.0,
+        "households": 666433.0,
+        "funds": 611397.0,
+        "banks": 297212.0,
+        "pensions": 790165.0,
+        "other": 866816.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2012-09-30",
+      "total": 11221634.0,
+      "outstanding": 10723156.0,
+      "bills": 1613026.0,
+      "groups": {
+        "foreign": 5472716.0,
+        "fed": 1967526.0,
+        "mmf": 513720.0,
+        "households": 582549.0,
+        "funds": 678827.0,
+        "banks": 330666.0,
+        "pensions": 792110.0,
+        "other": 883520.0
+      },
+      "domesticHedgeFunds": 0.0
+    },
+    {
+      "date": "2012-12-31",
+      "total": 11446633.0,
+      "outstanding": 11027944.0,
+      "bills": 1626480.0,
+      "groups": {
+        "foreign": 5571482.0,
+        "fed": 1974315.0,
+        "mmf": 510255.0,
+        "households": 603285.0,
+        "funds": 629504.0,
+        "banks": 342304.0,
+        "pensions": 805281.0,
+        "other": 1010207.0
+      },
+      "domesticHedgeFunds": 69358.0
+    },
+    {
+      "date": "2013-03-31",
+      "total": 11725975.0,
+      "outstanding": 11373129.0,
+      "bills": 1788158.0,
+      "groups": {
+        "foreign": 5721311.0,
+        "fed": 2098312.0,
+        "mmf": 531816.0,
+        "households": 607138.0,
+        "funds": 651220.0,
+        "banks": 331772.0,
+        "pensions": 805068.0,
+        "other": 979338.0
+      },
+      "domesticHedgeFunds": 77259.0
+    },
+    {
+      "date": "2013-06-30",
+      "total": 11414429.0,
+      "outstanding": 11368166.0,
+      "bills": 1568076.0,
+      "groups": {
+        "foreign": 5595017.0,
+        "fed": 2143888.0,
+        "mmf": 498739.0,
+        "households": 524052.0,
+        "funds": 605492.0,
+        "banks": 283610.0,
+        "pensions": 781881.0,
+        "other": 981750.0
+      },
+      "domesticHedgeFunds": 78006.0
+    },
+    {
+      "date": "2013-09-30",
+      "total": 11560745.0,
+      "outstanding": 11563589.0,
+      "bills": 1527909.0,
+      "groups": {
+        "foreign": 5652820.0,
+        "fed": 2262042.0,
+        "mmf": 526649.0,
+        "households": 454376.0,
+        "funds": 564525.0,
+        "banks": 277728.0,
+        "pensions": 769909.0,
+        "other": 1052696.0
+      },
+      "domesticHedgeFunds": 75487.0
+    },
+    {
+      "date": "2013-12-31",
+      "total": 11675281.0,
+      "outstanding": 11834187.0,
+      "bills": 1590563.0,
+      "groups": {
+        "foreign": 5792616.0,
+        "fed": 2341336.0,
+        "mmf": 547316.0,
+        "households": 336821.0,
+        "funds": 534936.0,
+        "banks": 305146.0,
+        "pensions": 767715.0,
+        "other": 1049395.0
+      },
+      "domesticHedgeFunds": 92110.0
+    },
+    {
+      "date": "2014-03-31",
+      "total": 12040953.0,
+      "outstanding": 12098504.0,
+      "bills": 1650233.0,
+      "groups": {
+        "foreign": 5948311.0,
+        "fed": 2494381.0,
+        "mmf": 525350.0,
+        "households": 227415.0,
+        "funds": 643567.0,
+        "banks": 352762.0,
+        "pensions": 781987.0,
+        "other": 1067180.0
+      },
+      "domesticHedgeFunds": 96162.0
+    },
+    {
+      "date": "2014-06-30",
+      "total": 12102802.0,
+      "outstanding": 12047511.0,
+      "bills": 1386402.0,
+      "groups": {
+        "foreign": 6018693.0,
+        "fed": 2614159.0,
+        "mmf": 427503.0,
+        "households": 139064.0,
+        "funds": 660926.0,
+        "banks": 387261.0,
+        "pensions": 812199.0,
+        "other": 1042997.0
+      },
+      "domesticHedgeFunds": 101256.0
+    },
+    {
+      "date": "2014-09-30",
+      "total": 12287354.0,
+      "outstanding": 12255772.0,
+      "bills": 1409628.0,
+      "groups": {
+        "foreign": 6069151.0,
+        "fed": 2662378.0,
+        "mmf": 446312.0,
+        "households": 97251.0,
+        "funds": 729389.0,
+        "banks": 448211.0,
+        "pensions": 825959.0,
+        "other": 1008703.0
+      },
+      "domesticHedgeFunds": 102538.0
+    },
+    {
+      "date": "2014-12-31",
+      "total": 12620706.0,
+      "outstanding": 12480854.0,
+      "bills": 1456692.0,
+      "groups": {
+        "foreign": 6157966.0,
+        "fed": 2736293.0,
+        "mmf": 484687.0,
+        "households": 104390.0,
+        "funds": 756783.0,
+        "banks": 502805.0,
+        "pensions": 844532.0,
+        "other": 1033250.0
+      },
+      "domesticHedgeFunds": 105027.0
+    },
+    {
+      "date": "2015-03-31",
+      "total": 12865299.0,
+      "outstanding": 12606703.0,
+      "bills": 1476540.0,
+      "groups": {
+        "foreign": 6172631.0,
+        "fed": 2773131.0,
+        "mmf": 508750.0,
+        "households": 229293.0,
+        "funds": 786586.0,
+        "banks": 507710.0,
+        "pensions": 820473.0,
+        "other": 1066725.0
+      },
+      "domesticHedgeFunds": 102482.0
+    },
+    {
+      "date": "2015-06-30",
+      "total": 12690768.0,
+      "outstanding": 12670654.0,
+      "bills": 1393162.0,
+      "groups": {
+        "foreign": 6163141.0,
+        "fed": 2682775.0,
+        "mmf": 444548.0,
+        "households": 242199.0,
+        "funds": 802549.0,
+        "banks": 509485.0,
+        "pensions": 816335.0,
+        "other": 1029736.0
+      },
+      "domesticHedgeFunds": 98250.0
+    },
+    {
+      "date": "2015-09-30",
+      "total": 12960271.0,
+      "outstanding": 12812842.0,
+      "bills": 1355231.0,
+      "groups": {
+        "foreign": 6105885.0,
+        "fed": 2720453.0,
+        "mmf": 435774.0,
+        "households": 485997.0,
+        "funds": 880381.0,
+        "banks": 505872.0,
+        "pensions": 804127.0,
+        "other": 1021782.0
+      },
+      "domesticHedgeFunds": 95330.0
+    },
+    {
+      "date": "2015-12-31",
+      "total": 13152602.0,
+      "outstanding": 13168996.0,
+      "bills": 1511030.0,
+      "groups": {
+        "foreign": 6146221.0,
+        "fed": 2675909.0,
+        "mmf": 530292.0,
+        "households": 511747.0,
+        "funds": 912674.0,
+        "banks": 537263.0,
+        "pensions": 803010.0,
+        "other": 1035486.0
+      },
+      "domesticHedgeFunds": 98578.0
+    },
+    {
+      "date": "2016-03-31",
+      "total": 13676293.0,
+      "outstanding": 13407102.0,
+      "bills": 1614378.0,
+      "groups": {
+        "foreign": 6284434.0,
+        "fed": 2757311.0,
+        "mmf": 606063.0,
+        "households": 656200.0,
+        "funds": 942196.0,
+        "banks": 547959.0,
+        "pensions": 821522.0,
+        "other": 1060608.0
+      },
+      "domesticHedgeFunds": 102785.0
+    },
+    {
+      "date": "2016-06-30",
+      "total": 13847892.0,
+      "outstanding": 13391647.0,
+      "bills": 1504987.0,
+      "groups": {
+        "foreign": 6279053.0,
+        "fed": 2806334.0,
+        "mmf": 555988.0,
+        "households": 717756.0,
+        "funds": 1009409.0,
+        "banks": 571832.0,
+        "pensions": 859295.0,
+        "other": 1048225.0
+      },
+      "domesticHedgeFunds": 101242.0
+    },
+    {
+      "date": "2016-09-30",
+      "total": 13976762.0,
+      "outstanding": 13621965.0,
+      "bills": 1644759.0,
+      "groups": {
+        "foreign": 6155875.0,
+        "fed": 2780236.0,
+        "mmf": 709170.0,
+        "households": 691886.0,
+        "funds": 1039774.0,
+        "banks": 619652.0,
+        "pensions": 892661.0,
+        "other": 1087508.0
+      },
+      "domesticHedgeFunds": 118345.0
+    },
+    {
+      "date": "2016-12-31",
+      "total": 13738252.0,
+      "outstanding": 13880222.0,
+      "bills": 1815667.0,
+      "groups": {
+        "foreign": 6002797.0,
+        "fed": 2640706.0,
+        "mmf": 850977.0,
+        "households": 634119.0,
+        "funds": 1000659.0,
+        "banks": 654053.0,
+        "pensions": 887762.0,
+        "other": 1067179.0
+      },
+      "domesticHedgeFunds": 118870.0
+    },
+    {
+      "date": "2017-03-31",
+      "total": 13782527.0,
+      "outstanding": 13923005.0,
+      "bills": 1754818.0,
+      "groups": {
+        "foreign": 6075334.0,
+        "fed": 2643568.0,
+        "mmf": 786773.0,
+        "households": 615637.0,
+        "funds": 1030714.0,
+        "banks": 645694.0,
+        "pensions": 928941.0,
+        "other": 1055866.0
+      },
+      "domesticHedgeFunds": 108879.0
+    },
+    {
+      "date": "2017-06-30",
+      "total": 13886652.0,
+      "outstanding": 13965794.0,
+      "bills": 1715829.0,
+      "groups": {
+        "foreign": 6151906.0,
+        "fed": 2657025.0,
+        "mmf": 662297.0,
+        "households": 664241.0,
+        "funds": 1091457.0,
+        "banks": 602098.0,
+        "pensions": 974985.0,
+        "other": 1082643.0
+      },
+      "domesticHedgeFunds": 101925.0
+    },
+    {
+      "date": "2017-09-30",
+      "total": 14058877.0,
+      "outstanding": 14156063.0,
+      "bills": 1799570.0,
+      "groups": {
+        "foreign": 6301939.0,
+        "fed": 2651193.0,
+        "mmf": 695020.0,
+        "households": 589738.0,
+        "funds": 1161568.0,
+        "banks": 596419.0,
+        "pensions": 1001617.0,
+        "other": 1061383.0
+      },
+      "domesticHedgeFunds": 100754.0
+    },
+    {
+      "date": "2017-12-31",
+      "total": 14207409.0,
+      "outstanding": 14434589.0,
+      "bills": 1952521.0,
+      "groups": {
+        "foreign": 6211279.0,
+        "fed": 2633008.0,
+        "mmf": 756197.0,
+        "households": 603099.0,
+        "funds": 1214137.0,
+        "banks": 616024.0,
+        "pensions": 1048662.0,
+        "other": 1125003.0
+      },
+      "domesticHedgeFunds": 105262.0
+    },
+    {
+      "date": "2018-03-31",
+      "total": 14476758.0,
+      "outstanding": 14894690.0,
+      "bills": 2284417.0,
+      "groups": {
+        "foreign": 6223434.0,
+        "fed": 2555722.0,
+        "mmf": 951188.0,
+        "households": 751725.0,
+        "funds": 1225729.0,
+        "banks": 612797.0,
+        "pensions": 1048146.0,
+        "other": 1108017.0
+      },
+      "domesticHedgeFunds": 109531.0
+    },
+    {
+      "date": "2018-06-30",
+      "total": 14474899.0,
+      "outstanding": 14933718.0,
+      "bills": 2157412.0,
+      "groups": {
+        "foreign": 6225015.0,
+        "fed": 2495040.0,
+        "mmf": 788105.0,
+        "households": 836024.0,
+        "funds": 1260046.0,
+        "banks": 631960.0,
+        "pensions": 1052435.0,
+        "other": 1186274.0
+      },
+      "domesticHedgeFunds": 113188.0
+    },
+    {
+      "date": "2018-09-30",
+      "total": 14623629.0,
+      "outstanding": 15227623.0,
+      "bills": 2239473.0,
+      "groups": {
+        "foreign": 6225896.0,
+        "fed": 2395142.0,
+        "mmf": 826306.0,
+        "households": 1035859.0,
+        "funds": 1281398.0,
+        "banks": 649330.0,
+        "pensions": 1049700.0,
+        "other": 1159998.0
+      },
+      "domesticHedgeFunds": 95887.0
+    },
+    {
+      "date": "2018-12-31",
+      "total": 15185243.0,
+      "outstanding": 15566216.0,
+      "bills": 2339374.0,
+      "groups": {
+        "foreign": 6270130.0,
+        "fed": 2337994.0,
+        "mmf": 945064.0,
+        "households": 1155338.0,
+        "funds": 1325968.0,
+        "banks": 737043.0,
+        "pensions": 1128292.0,
+        "other": 1285414.0
+      },
+      "domesticHedgeFunds": 108640.0
+    },
+    {
+      "date": "2019-03-31",
+      "total": 15697172.0,
+      "outstanding": 15888708.0,
+      "bills": 2479407.0,
+      "groups": {
+        "foreign": 6473999.0,
+        "fed": 2330158.0,
+        "mmf": 1010338.0,
+        "households": 1333514.0,
+        "funds": 1369164.0,
+        "banks": 736739.0,
+        "pensions": 1138247.0,
+        "other": 1305013.0
+      },
+      "domesticHedgeFunds": 97248.0
+    },
+    {
+      "date": "2019-06-30",
+      "total": 15993649.0,
+      "outstanding": 15884286.0,
+      "bills": 2250354.0,
+      "groups": {
+        "foreign": 6625860.0,
+        "fed": 2315006.0,
+        "mmf": 829281.0,
+        "households": 1464200.0,
+        "funds": 1419085.0,
+        "banks": 770159.0,
+        "pensions": 1191501.0,
+        "other": 1378557.0
+      },
+      "domesticHedgeFunds": 107380.0
+    },
+    {
+      "date": "2019-09-30",
+      "total": 16793183.0,
+      "outstanding": 16303690.0,
+      "bills": 2376370.0,
+      "groups": {
+        "foreign": 6960290.0,
+        "fed": 2366457.0,
+        "mmf": 1048004.0,
+        "households": 1515689.0,
+        "funds": 1494667.0,
+        "banks": 855814.0,
+        "pensions": 1172186.0,
+        "other": 1380076.0
+      },
+      "domesticHedgeFunds": 120638.0
+    },
+    {
+      "date": "2019-12-31",
+      "total": 16930461.0,
+      "outstanding": 16628907.0,
+      "bills": 2416417.0,
+      "groups": {
+        "foreign": 6917822.0,
+        "fed": 2540730.0,
+        "mmf": 1122598.0,
+        "households": 1391879.0,
+        "funds": 1517831.0,
+        "banks": 879267.0,
+        "pensions": 1171466.0,
+        "other": 1388868.0
+      },
+      "domesticHedgeFunds": 107149.0
+    },
+    {
+      "date": "2020-03-31",
+      "total": 18443411.0,
+      "outstanding": 17115829.0,
+      "bills": 2657089.0,
+      "groups": {
+        "foreign": 7059898.0,
+        "fed": 3757408.0,
+        "mmf": 1358143.0,
+        "households": 1278341.0,
+        "funds": 1401905.0,
+        "banks": 894181.0,
+        "pensions": 1233415.0,
+        "other": 1460120.0
+      },
+      "domesticHedgeFunds": 113730.0
+    },
+    {
+      "date": "2020-06-30",
+      "total": 21163800.0,
+      "outstanding": 19867035.0,
+      "bills": 5078833.0,
+      "groups": {
+        "foreign": 7199344.0,
+        "fed": 4807860.0,
+        "mmf": 2564674.0,
+        "households": 1110012.0,
+        "funds": 1395812.0,
+        "banks": 1103483.0,
+        "pensions": 1194677.0,
+        "other": 1787938.0
+      },
+      "domesticHedgeFunds": 111298.0
+    },
+    {
+      "date": "2020-09-30",
+      "total": 21568839.0,
+      "outstanding": 20340181.0,
+      "bills": 5028127.0,
+      "groups": {
+        "foreign": 7253228.0,
+        "fed": 5055969.0,
+        "mmf": 2493606.0,
+        "households": 1089959.0,
+        "funds": 1501073.0,
+        "banks": 1186801.0,
+        "pensions": 1230451.0,
+        "other": 1757752.0
+      },
+      "domesticHedgeFunds": 108667.0
+    },
+    {
+      "date": "2020-12-31",
+      "total": 21961629.0,
+      "outstanding": 20946158.0,
+      "bills": 4963056.0,
+      "groups": {
+        "foreign": 7291566.0,
+        "fed": 5254556.0,
+        "mmf": 2465928.0,
+        "households": 1190741.0,
+        "funds": 1589250.0,
+        "banks": 1203161.0,
+        "pensions": 1244613.0,
+        "other": 1721814.0
+      },
+      "domesticHedgeFunds": 89012.0
+    },
+    {
+      "date": "2021-03-31",
+      "total": 21584208.0,
+      "outstanding": 21347365.0,
+      "bills": 4667846.0,
+      "groups": {
+        "foreign": 7295920.0,
+        "fed": 5273242.0,
+        "mmf": 2583204.0,
+        "households": 695006.0,
+        "funds": 1642733.0,
+        "banks": 1257510.0,
+        "pensions": 1221142.0,
+        "other": 1615451.0
+      },
+      "domesticHedgeFunds": 87159.0
+    },
+    {
+      "date": "2021-06-30",
+      "total": 22178054.0,
+      "outstanding": 21699043.0,
+      "bills": 4273670.0,
+      "groups": {
+        "foreign": 7518880.0,
+        "fed": 5596511.0,
+        "mmf": 2288119.0,
+        "households": 392594.0,
+        "funds": 1783610.0,
+        "banks": 1346708.0,
+        "pensions": 1319417.0,
+        "other": 1932215.0
+      },
+      "domesticHedgeFunds": 96623.0
+    },
+    {
+      "date": "2021-09-30",
+      "total": 22249175.0,
+      "outstanding": 21846135.0,
+      "bills": 3712952.0,
+      "groups": {
+        "foreign": 7570896.0,
+        "fed": 5831294.0,
+        "mmf": 1694672.0,
+        "households": 561284.0,
+        "funds": 1849013.0,
+        "banks": 1456273.0,
+        "pensions": 1329596.0,
+        "other": 1956147.0
+      },
+      "domesticHedgeFunds": 84471.0
+    },
+    {
+      "date": "2021-12-31",
+      "total": 22940934.0,
+      "outstanding": 22557536.0,
+      "bills": 3767964.0,
+      "groups": {
+        "foreign": 7740370.0,
+        "fed": 6052055.0,
+        "mmf": 1814671.0,
+        "households": 303029.0,
+        "funds": 1929058.0,
+        "banks": 1641194.0,
+        "pensions": 1365162.0,
+        "other": 2095395.0
+      },
+      "domesticHedgeFunds": 91353.0
+    },
+    {
+      "date": "2022-03-31",
+      "total": 22593217.0,
+      "outstanding": 23246108.0,
+      "bills": 3927254.0,
+      "groups": {
+        "foreign": 7604400.0,
+        "fed": 5851446.0,
+        "mmf": 1759444.0,
+        "households": 471861.0,
+        "funds": 1867299.0,
+        "banks": 1653695.0,
+        "pensions": 1252926.0,
+        "other": 2132146.0
+      },
+      "domesticHedgeFunds": 104263.0
+    },
+    {
+      "date": "2022-06-30",
+      "total": 21859743.0,
+      "outstanding": 23253368.0,
+      "bills": 3522601.0,
+      "groups": {
+        "foreign": 7416943.0,
+        "fed": 5563801.0,
+        "mmf": 1458999.0,
+        "households": 558315.0,
+        "funds": 1793757.0,
+        "banks": 1686642.0,
+        "pensions": 1205030.0,
+        "other": 2176256.0
+      },
+      "domesticHedgeFunds": 111735.0
+    },
+    {
+      "date": "2022-09-30",
+      "total": 21340083.0,
+      "outstanding": 23616710.0,
+      "bills": 3643675.0,
+      "groups": {
+        "foreign": 7251508.0,
+        "fed": 5186546.0,
+        "mmf": 1256135.0,
+        "households": 987029.0,
+        "funds": 1729584.0,
+        "banks": 1605712.0,
+        "pensions": 1150482.0,
+        "other": 2173087.0
+      },
+      "domesticHedgeFunds": 103786.0
+    },
+    {
+      "date": "2022-12-31",
+      "total": 21526393.0,
+      "outstanding": 23844978.0,
+      "bills": 3696169.0,
+      "groups": {
+        "foreign": 7194684.0,
+        "fed": 5056405.0,
+        "mmf": 1064015.0,
+        "households": 1538336.0,
+        "funds": 1745162.0,
+        "banks": 1579707.0,
+        "pensions": 1162745.0,
+        "other": 2185339.0
+      },
+      "domesticHedgeFunds": 97994.0
+    },
+    {
+      "date": "2023-03-31",
+      "total": 22345873.0,
+      "outstanding": 24282042.0,
+      "bills": 4067536.0,
+      "groups": {
+        "foreign": 7468642.0,
+        "fed": 4960204.0,
+        "mmf": 1040799.0,
+        "households": 1947167.0,
+        "funds": 1823382.0,
+        "banks": 1492490.0,
+        "pensions": 1234263.0,
+        "other": 2378926.0
+      },
+      "domesticHedgeFunds": 129075.0
+    },
+    {
+      "date": "2023-06-30",
+      "total": 22468954.0,
+      "outstanding": 24772373.0,
+      "bills": 4465683.0,
+      "groups": {
+        "foreign": 7563215.0,
+        "fed": 4702866.0,
+        "mmf": 1243962.0,
+        "households": 2116367.0,
+        "funds": 1808464.0,
+        "banks": 1433859.0,
+        "pensions": 1238577.0,
+        "other": 2361644.0
+      },
+      "domesticHedgeFunds": 105058.0
+    },
+    {
+      "date": "2023-09-30",
+      "total": 22696878.0,
+      "outstanding": 25630167.0,
+      "bills": 5259329.0,
+      "groups": {
+        "foreign": 7509115.0,
+        "fed": 4367410.0,
+        "mmf": 1767115.0,
+        "households": 2214009.0,
+        "funds": 1788824.0,
+        "banks": 1428059.0,
+        "pensions": 1269960.0,
+        "other": 2352386.0
+      },
+      "domesticHedgeFunds": 110239.0
+    },
+    {
+      "date": "2023-12-31",
+      "total": 24193935.0,
+      "outstanding": 26226569.0,
+      "bills": 5674825.0,
+      "groups": {
+        "foreign": 7940008.0,
+        "fed": 4403083.0,
+        "mmf": 2269494.0,
+        "households": 2361884.0,
+        "funds": 1894036.0,
+        "banks": 1513982.0,
+        "pensions": 1361403.0,
+        "other": 2450045.0
+      },
+      "domesticHedgeFunds": 100793.0
+    },
+    {
+      "date": "2024-03-31",
+      "total": 24580412.0,
+      "outstanding": 26808608.0,
+      "bills": 6061736.0,
+      "groups": {
+        "foreign": 8107871.0,
+        "fed": 4176260.0,
+        "mmf": 2563670.0,
+        "households": 2266558.0,
+        "funds": 1911905.0,
+        "banks": 1614483.0,
+        "pensions": 1405304.0,
+        "other": 2534361.0
+      },
+      "domesticHedgeFunds": 105006.0
+    },
+    {
+      "date": "2024-06-30",
+      "total": 24704513.0,
+      "outstanding": 26903135.0,
+      "bills": 5764902.0,
+      "groups": {
+        "foreign": 8299265.0,
+        "fed": 3993177.0,
+        "mmf": 2449906.0,
+        "households": 2331125.0,
+        "funds": 1947871.0,
+        "banks": 1603631.0,
+        "pensions": 1522201.0,
+        "other": 2557337.0
+      },
+      "domesticHedgeFunds": 115323.0
+    },
+    {
+      "date": "2024-09-30",
+      "total": 26148038.0,
+      "outstanding": 27586426.0,
+      "bills": 6004141.0,
+      "groups": {
+        "foreign": 8766252.0,
+        "fed": 4048034.0,
+        "mmf": 2659841.0,
+        "households": 2499976.0,
+        "funds": 2085310.0,
+        "banks": 1669355.0,
+        "pensions": 1657840.0,
+        "other": 2761430.0
+      },
+      "domesticHedgeFunds": 115419.0
+    },
+    {
+      "date": "2024-12-31",
+      "total": 25990446.0,
+      "outstanding": 28139470.0,
+      "bills": 6186185.0,
+      "groups": {
+        "foreign": 8619302.0,
+        "fed": 3819872.0,
+        "mmf": 2994851.0,
+        "households": 2371740.0,
+        "funds": 2073796.0,
+        "banks": 1722729.0,
+        "pensions": 1550216.0,
+        "other": 2837940.0
+      },
+      "domesticHedgeFunds": 102233.0
+    },
+    {
+      "date": "2025-03-31",
+      "total": 26732667.0,
+      "outstanding": 28447272.0,
+      "bills": 6155073.0,
+      "groups": {
+        "foreign": 9054197.0,
+        "fed": 3832193.0,
+        "mmf": 2880571.0,
+        "households": 2556412.0,
+        "funds": 2152064.0,
+        "banks": 1740868.0,
+        "pensions": 1600321.0,
+        "other": 2916041.0
+      },
+      "domesticHedgeFunds": 111127.0
+    },
+    {
+      "date": "2025-06-30",
+      "total": 26772260.0,
+      "outstanding": 28518345.0,
+      "bills": 5783518.0,
+      "groups": {
+        "foreign": 9094017.0,
+        "fed": 3811025.0,
+        "mmf": 2614034.0,
+        "households": 2642280.0,
+        "funds": 2179060.0,
+        "banks": 1848931.0,
+        "pensions": 1580021.0,
+        "other": 3002892.0
+      },
+      "domesticHedgeFunds": 106180.0
+    },
+    {
+      "date": "2025-09-30",
+      "total": 27977776.0,
+      "outstanding": 29571648.0,
+      "bills": 6396632.0,
+      "groups": {
+        "foreign": 9237508.0,
+        "fed": 3830924.0,
+        "mmf": 3232354.0,
+        "households": 2709155.0,
+        "funds": 2318141.0,
+        "banks": 1940489.0,
+        "pensions": 1692021.0,
+        "other": 3017184.0
+      },
+      "domesticHedgeFunds": 98143.0
+    },
+    {
+      "date": "2025-12-31",
+      "total": 28481003.0,
+      "outstanding": 30069641.0,
+      "bills": 6546564.0,
+      "groups": {
+        "foreign": 9267204.0,
+        "fed": 3854942.0,
+        "mmf": 3517832.0,
+        "households": 2709915.0,
+        "funds": 2393180.0,
+        "banks": 1961742.0,
+        "pensions": 1715845.0,
+        "other": 3060343.0
+      },
+      "domesticHedgeFunds": 102791.0
+    },
+    {
+      "date": "2026-03-31",
+      "total": 28934224.0,
+      "outstanding": 30641548.0,
+      "bills": 6819224.0,
+      "groups": {
+        "foreign": 9348660.0,
+        "fed": 4000420.0,
+        "mmf": 3426437.0,
+        "households": 2673772.0,
+        "funds": 2515751.0,
+        "banks": 2049594.0,
+        "pensions": 1789679.0,
+        "other": 3129911.0
+      },
+      "domesticHedgeFunds": 108789.0
+    },
+    {
+      "date": "2026-06-30",
+      "total": 29013612.0,
+      "outstanding": 30878287.0,
+      "bills": 6690117.0,
+      "groups": {
+        "foreign": 9269220.0,
+        "fed": 4082698.0,
+        "mmf": 3281560.0,
+        "households": 2831137.0,
+        "funds": 2550863.0,
+        "banks": 2040941.0,
+        "pensions": 1784563.0,
+        "other": 3172630.0
+      },
+      "domesticHedgeFunds": 123515.0
+    }
+  ],
+  "issuers": [
+    {
+      "issuer": "circle",
+      "date": "2025-01-31",
+      "publishedAt": "2025-02-27",
+      "treasuries": 20801.877573,
+      "fund": 20801.877573,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025-USDC_Examination-Report-January-25.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-02-28",
+      "publishedAt": "2025-03-28",
+      "treasuries": 22047.086599,
+      "fund": 22047.086599,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20February%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-03-31",
+      "publishedAt": "2025-04-30",
+      "treasuries": 24862.566987,
+      "fund": 24862.566987,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20March%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "tether",
+      "date": "2025-03-31",
+      "publishedAt": "2025-05-01",
+      "treasuries": 98523.657338,
+      "source": "https://assets.ctfassets.net/vyse88cgwfbl/1LdSmP3HBynDxm6wvkDSsL/c4bcbd1f6fc18a0e8b3a12444ac8ae97/ISAE_3000R_-_Opinion_Tether_International_Financial_Figures___Reserves_Report_31.03.2025_RC187322025BD0040.pdf",
+      "frequency": "quarterly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-04-30",
+      "publishedAt": "2025-05-29",
+      "treasuries": 25481.695229,
+      "fund": 25481.695229,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025-USDC_Examination-Report-April-25.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-05-30",
+      "publishedAt": "2025-06-27",
+      "treasuries": 28342.482586,
+      "fund": 28342.482586,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20May%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-06-30",
+      "publishedAt": "2025-07-30",
+      "treasuries": 27039.491803,
+      "fund": 27039.491803,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20June%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "tether",
+      "date": "2025-06-30",
+      "publishedAt": "2025-07-31",
+      "treasuries": 105518.99361,
+      "source": "https://assets.ctfassets.net/vyse88cgwfbl/2SGAAXnsb1wKByIzkhcbSx/9efa4682b3cd4c62d87a4c88ee729693/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_RC187322025BD0201.pdf",
+      "frequency": "quarterly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-07-31",
+      "publishedAt": "2025-08-29",
+      "treasuries": 18890.847168,
+      "fund": 18890.847168,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20July%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-08-29",
+      "publishedAt": "2025-09-30",
+      "treasuries": 24405.584005,
+      "fund": 24405.584005,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20August%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-09-30",
+      "publishedAt": "2025-10-30",
+      "treasuries": 21761.417417,
+      "fund": 21761.417417,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20September%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "tether",
+      "date": "2025-09-30",
+      "publishedAt": "2025-10-31",
+      "treasuries": 112417.034272,
+      "source": "https://tether.io/wp-content/uploads/2025/10/ISAE-3000R-Opinion-Tether-International-Financial-Figure-31-10-2025-RC187322025BD0440-Fascicolo.pdf",
+      "frequency": "quarterly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-10-31",
+      "publishedAt": "2025-11-26",
+      "treasuries": 26868.073557,
+      "fund": 26868.073557,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20October%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-11-28",
+      "publishedAt": "2025-12-19",
+      "treasuries": 24515.510489,
+      "fund": 24515.510489,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20November%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2025-12-31",
+      "publishedAt": "2026-01-30",
+      "treasuries": 14963.264493,
+      "fund": 14963.264493,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20December%2025.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "tether",
+      "date": "2025-12-31",
+      "publishedAt": "2026-01-30",
+      "treasuries": 122325.714946,
+      "source": "https://assets.ctfassets.net/vyse88cgwfbl/20d2BoOAd28ZfkiQPYPjGN/4ed12f5939e1e06ee5aceccad4effbe4/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_31-12-2025.pdf",
+      "frequency": "quarterly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-01-30",
+      "publishedAt": "2026-02-26",
+      "treasuries": 18809.053367,
+      "fund": 18809.053367,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20January%2026.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-02-27",
+      "publishedAt": "2026-03-27",
+      "treasuries": 20435.478946,
+      "fund": 20435.478946,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20February%2026.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-03-31",
+      "publishedAt": "2026-04-29",
+      "treasuries": 24913.211699,
+      "fund": 24913.211699,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20March%2026.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "tether",
+      "date": "2026-03-31",
+      "publishedAt": "2026-05-01",
+      "treasuries": 117035.73205,
+      "source": "https://assets.ctfassets.net/vyse88cgwfbl/6crn1tXbl6AtWZBWucZnfg/c4ff472d70c1b48c2f689f27b54c84f5/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_31-03-2026.pdf",
+      "frequency": "quarterly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-04-30",
+      "publishedAt": "2026-05-28",
+      "treasuries": 19110.672894,
+      "fund": 19110.672894,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20April%2026.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-05-29",
+      "publishedAt": "2026-06-29",
+      "treasuries": 22061.994431,
+      "fund": 22061.994431,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20May%2026.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-06-30",
+      "publishedAt": "2026-07-29",
+      "treasuries": 8524.064231,
+      "fund": 8524.064231,
+      "direct": 0,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20June%2026.pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "tether",
+      "date": "2026-06-30",
+      "publishedAt": "2026-07-31",
+      "treasuries": 114960.963604,
+      "source": "https://assets.ctfassets.net/vyse88cgwfbl/2kYf7r64h3tzwiu6F0CbUB/2997abd2f11ecea74a21528048b50707/Opinion___Report_-_Tether_International_Financial_Figure_30-06-2026.pdf",
+      "frequency": "quarterly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-07-31",
+      "publishedAt": "2026-08-27",
+      "treasuries": 7678.498751,
+      "fund": 7179.080057,
+      "direct": 499.418694,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20July%2026%20(1).pdf",
+      "frequency": "monthly"
+    },
+    {
+      "issuer": "circle",
+      "date": "2026-08-31",
+      "publishedAt": "2026-09-29",
+      "treasuries": 13219.438973999999,
+      "fund": 11918.146195,
+      "direct": 1301.292779,
+      "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20August%2026.pdf",
+      "frequency": "monthly"
+    }
+  ]
+}
