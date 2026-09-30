@@ -13,17 +13,24 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
   const [detail, setDetail] = useState(false);
   const view = ownershipView(data, asOf);
   if (!view) return <div className="text-sm text-[#5F5C54]">선택한 주차 이전의 국채 보유 자료가 없습니다. 수집 범위: 2010년 이후.</div>;
-  const { quarter, rows, issuers, sum, share, billShare, zoomMax } = view;
+  const { quarter, rows, issuers, sum, share, billShare } = view;
   const circle = issuers[0].holding?.treasuries ?? 0;
   const tether = issuers[1].holding?.treasuries ?? 0;
+  // 좁은 화면에서도 이름을 생략하거나 실제 구성비를 늘리지 않고 가로로 확인한다.
+  const ownershipBarWidth = Math.max(640, ...rows.filter(r => r.share > 0).map(r =>
+    Math.ceil((Math.max(...r.label.split(/[ ·]/).map(part => part.length)) * 11 + 2) / (r.share / 100))));
   return <div data-testid="treasury-ownership" className="overflow-hidden rounded-2xl border border-[#D9D5CA] bg-white text-[#1A1A18]">
     <div className="p-5 sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 className="text-lg font-semibold">쌓인 국채는 누가 들고 있나</h3><p className="mt-1 text-xs leading-relaxed text-[#5F5C54]">{quarter.date} 보유 기준 · 분기 자료 · 선택 주차 {asOf}</p></div>
         <div className="sm:text-right"><div className="text-xs text-[#5F5C54]">보유자 잔액 합계</div><div className="text-2xl font-semibold tabular-nums">{money(quarter.total)}</div></div>
       </div>
-      <div className="mt-5 flex h-11 w-full overflow-hidden rounded-md" role="img" aria-label={rows.map(r => `${r.label} ${money(r.value)}, ${pct(r.share)}`).join(". ")}>
-        {rows.map(r => <div key={r.id} style={{ width: `${r.share}%`, background: r.color }} className="flex shrink-0 items-center justify-center overflow-hidden text-xs font-medium text-white">{r.share > 12 ? `${r.share.toFixed(1)}%` : ""}</div>)}
+      <div className="mt-5 overflow-x-auto">
+        <div data-testid="ownership-bar" className="flex h-14 w-full overflow-hidden rounded-md" style={{ minWidth: ownershipBarWidth }} role="img" aria-label={rows.map(r => `${r.label} ${money(r.value)}, ${pct(r.share)}`).join(". ")}>
+          {rows.map(r => <div key={r.id} style={{ width: `${r.share}%`, background: r.color, color: ["households", "funds", "pensions", "other"].includes(r.id) ? "#242824" : "#FFFFFF" }} className="flex shrink-0 items-center justify-center text-center text-[11px] font-medium leading-[1.5]">
+            <span>{r.label.split(/[ ·]/).map((part, index) => <span key={index} className="block whitespace-nowrap">{part}</span>)}</span>
+          </div>)}
+        </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
         {rows.map(r => <div key={r.id} className="flex items-center gap-1.5 text-[11px] sm:text-xs"><i className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: r.color }} /><span>{r.label}</span><span className="ml-auto text-[#5F5C54] tabular-nums">{r.share.toFixed(1)}%</span></div>)}
@@ -38,7 +45,7 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         {sum !== null && sum > 0 && <div aria-hidden="true" data-testid="holding-lens" className="pointer-events-none absolute -top-3 h-10 w-10 rounded-full" style={{ left: `calc(${(share ?? 0) / 2}% - 20px)`, boxShadow: "0 2px 5px #416F6820, 0 0 0 2px #FFFFFF" }}>
           <div className="absolute inset-0 overflow-hidden rounded-full bg-white">
             {/* 원래 막대를 같은 중심에서 확대하고 렌즈 가장자리로 잘라낸다. */}
-            <div className="absolute top-3 flex h-4 bg-[#F0EEE7]" style={{ width: "100cqw", left: `calc(20px - ${(share ?? 0) / 2}cqw)`, transform: "scale(5, 1.75)", transformOrigin: `${(share ?? 0) / 2}% 50%` }}>
+            <div className="absolute top-3 flex h-4 bg-[#F0EEE7]" style={{ width: "100cqw", left: `calc(20px - ${(share ?? 0) / 2}cqw)`, transform: "scale(2, 1.15)", transformOrigin: `${(share ?? 0) / 2}% 50%` }}>
               <div style={{ width: `${circle / quarter.total * 100}%`, background: COLORS.circle }} /><div style={{ width: `${tether / quarter.total * 100}%`, background: COLORS.tether }} />
             </div>
             <div className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(ellipse at 28% 18%, #FFFFFF90 0%, #FFFFFF18 36%, transparent 58%, #416F6820 100%)", boxShadow: "inset 0 0 5px #416F6825" }} />
@@ -58,15 +65,20 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
           <div><h4 className="text-sm font-semibold">스테이블코인 발행사 보유 · 확대</h4><p className="mt-1 text-[11px] text-[#5F5C54]">공시 기반 집계 · 직접 국채 + 전용 펀드 내 국채 · 레포 제외</p></div>
           <div className="text-right"><strong className="text-xl tabular-nums">{sum === null ? "—" : money(sum)}</strong><div className="text-[11px] text-[#5F5C54]">두 회사 합계 · 전체 발행사 합계 아님</div></div>
         </div>
-        <div className="mt-5 flex justify-between border-b border-[#CAD8D4] pb-1 text-[10px] text-[#5F5C54]"><span>$0</span><span>{money(zoomMax / 2)}</span><span>{money(zoomMax)}</span></div>
-        {issuers.map(item => {
-          const holding = item.holding;
-          return <div key={item.id} className="mt-4" data-testid={`holding-${item.id}`}>
-            <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm"><span className="font-semibold">{NAMES[item.id]} <span className="text-[11px] font-normal text-[#5F5C54]">{item.id === "circle" ? "전용 펀드 포함" : "직접 보유"}</span></span><span className="font-semibold tabular-nums">{holding ? money(holding.treasuries) : "해당 분기 자료 없음"}</span></div>
-            <div className="h-6 rounded-sm bg-[#E5EDEB]" role="img" aria-label={`${NAMES[item.id]} ${holding ? money(holding.treasuries) : "자료 없음"}`}><div className="h-full rounded-sm" style={{ width: `${holding ? holding.treasuries / zoomMax * 100 : 0}%`, background: COLORS[item.id] }} /></div>
-            <div className="mt-1.5 flex flex-wrap justify-between gap-x-2 gap-y-1 text-[11px] text-[#5F5C54]"><span>{holding ? `${holding.date} · 전체 대비 약 ${pct(holding.treasuries / quarter.total * 100)}` : "결측을 0으로 계산하지 않습니다"}</span><span>전분기 {delta(item.delta)}</span></div>
-          </div>;
-        })}
+        <div className="mt-5 mb-2 text-[11px] text-[#5F5C54]">두 회사 합계 = 100% · {quarter.date} 기준</div>
+        <div className="flex h-10 overflow-hidden rounded-md bg-[#E5EDEB]" role="img" aria-label={sum !== null && sum > 0 ? `두 회사 합계 기준 서클 ${pct(circle / sum * 100)}, 테더 ${pct(tether / sum * 100)}` : "두 회사 구성비를 계산할 자료가 없습니다"}>
+          {sum !== null && sum > 0 && issuers.map(item => <div key={item.id} className="h-full" style={{ width: `${item.holding!.treasuries / sum * 100}%`, background: COLORS[item.id] }} />)}
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-4">
+          {issuers.map(item => {
+            const holding = item.holding;
+            return <div key={item.id} data-testid={`holding-${item.id}`}>
+              <div className="flex items-center gap-1.5 text-xs"><i className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: COLORS[item.id] }} /><strong>{NAMES[item.id]}</strong><span className="text-[#5F5C54] tabular-nums">{sum !== null && sum > 0 && holding ? pct(holding.treasuries / sum * 100) : "—"}</span></div>
+              <div className="mt-1 font-semibold text-sm tabular-nums">{holding ? money(holding.treasuries) : "해당 분기 자료 없음"}</div>
+              <div className="mt-1 text-[11px] leading-relaxed text-[#5F5C54]">{item.id === "circle" ? "전용 펀드 포함" : "직접 보유"}<br />전분기 {delta(item.delta)}</div>
+            </div>;
+          })}
+        </div>
         {billShare !== null && <p className="mt-4 border-t border-[#D5E0DC] pt-3 text-xs leading-relaxed">단기채 발행 잔액과 비교하면 약 <strong>{pct(billShare)}</strong> 규모입니다. <span className="text-[#5F5C54]">분모 {money(quarter.bills)} · 공시 평가액 / 단기채 액면 잔액의 근사 비율</span></p>}
       </div>
       <p className="mt-3 text-xs leading-relaxed text-[#5F5C54]">확대 영역은 위 보유 주체에 걸쳐 있는 참고치로, 전체 합계에 다시 더하지 않습니다. 입찰 낙찰액이나 신규 매입액을 뜻하지 않습니다.</p>
