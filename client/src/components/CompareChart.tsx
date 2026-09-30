@@ -202,6 +202,8 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none">
         {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.06} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
+        {/* 원래 값 모드에서 0 을 지나는 계열(증가율·수지·격차)은 그 계열 축의 0 에 점선 기준선 — 부호(수출/수입 사이클, 흑자/적자)를 읽기 위해 */}
+        {!indexed && shapes.filter(s => s.points.length && s.lo < 0 && s.hi > 0).map(s => <line key={"zero-" + s.def.id} data-testid={"compare-zero-" + s.def.id} x1={left} x2={right} y1={s.y(0)} y2={s.y(0)} stroke={s.def.color} strokeDasharray="4 4" opacity={.55} />)}
         {shapes.map(s => <g key={s.def.id} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
       </g>
       {!shapes.some(s => s.points.length) && <text x={width / 2} y={plotTop + plotHeight / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={.6}>이 구간에 표시할 관측값이 없습니다.</text>}

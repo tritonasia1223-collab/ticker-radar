@@ -92,11 +92,13 @@
 
 ```bash
 npx tsx script/fetch-capitalism-series.ts   # FRED CSV(키 불필요) → capitalism-series.json 재생성
+npx tsx script/fetch-capitalism-series.ts --only fx_eur,trade_bal   # 지정한 키만 수집·병합(새 시리즈를 채울 때 다른 시리즈는 건드리지 않음)
 ```
 
 - 대부분 FRED 공개 CSV(`fredgraph.csv?id=X`, 키 없음).
 - **FRED 가 막는 것**(라이선스): S&P500 → OECD `SPASTT01USM661N`, 금값 → datahub.io GitHub raw CSV 로 우회.
 - 시리즈 키 19종: `gdp_growth, inflation, unrate, debt_gdp, mktcap, sp500, nasdaq, fedfunds, tb3ms, gs10, dollar, oil, gold, trade, m2, monbase, walcl, wresbal, rrp`.
+- 그래프 비교 전용 키(패널에는 없음): `fx_krw, fx_jpy, fx_eur`(환율), `trade_bal`(무역수지 $B), `exports_yoy, imports_yoy`(수출·수입 전년 동월 대비 %), `trade_cycle`(둘의 차 %p — 수집 스크립트가 저장된 두 시리즈에서 파생). 월간 크론이 함께 갱신합니다.
 
 ### 과거 확장(옛 출처 접합) — `npm run cap:series:history`
 

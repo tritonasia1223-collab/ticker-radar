@@ -76,3 +76,12 @@ export function ratioSeries(numerator: Point[], denominator: Point[], decimals: 
     return d && Number.isFinite(d) && Number.isFinite(value) ? [[`${year}-01-01`, Number(((value / d) * scale).toFixed(decimals))] as Point] : [];
   });
 }
+
+// 두 시리즈의 차(a − b). 두 쪽 모두 관측이 있는 날짜만 남긴다 — 한쪽이 비면 그 달은 뺀다(0 으로 메우지 않음).
+export function differenceSeries(a: Point[], b: Point[], decimals: number): Point[] {
+  const other = new Map(b);
+  return [...a].sort(([x], [y]) => x.localeCompare(y)).flatMap(([date, value]) => {
+    const o = other.get(date);
+    return o !== undefined && Number.isFinite(o) && Number.isFinite(value) ? [[date, Number((value - o).toFixed(decimals))] as Point] : [];
+  });
+}

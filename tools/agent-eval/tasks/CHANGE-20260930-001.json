@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20260930-001",
+  "title": "그래프 비교(베타)에 유로/달러 환율과 미국 무역수지(수출·수입 사이클) 지표 추가",
+  "baseRef": "origin/master",
+  "requirement": "사용자 요청: '그래프 비교(베타) 탭에 껐다켰다 할 수 있는 지표에 2가지 추가 — 유로/달러 환율이랑 미국 무역수지(수입 사이클인지 수출 사이클인지 넣고 싶음)'. 해석과 결정: (1) 유로/달러 환율 = FRED EXUSEU(월평균, 1유로당 달러, 1999-01~). 시장 관행(EUR/USD) 그대로 '달러 / 1유로'로 표시하고 원·엔 환율과 방향이 반대임(상승=유로 강세·달러 약세)을 설명에 적는다. (2) 미국 무역수지 = FRED BOPGSTB(상품·서비스 무역수지, 국제수지 기준, 월간, 백만달러 → 십억달러로 환산, 1992-01~). (3) '수입 사이클인지 수출 사이클인지'는 수지 하나로는 읽을 수 없으므로 수출·수입 각각의 전년 동월 대비 증가율을 별도 토글로 넣는다: FRED BOPTEXP(수출), BOPTIMP(수입)의 12개월 전년비(%), 1993-01~. 다만 '원래 값' 모드는 지표마다 세로축이 따로여서 두 선의 높낮이를 직접 비교하기 어렵다 — 그래서 한 선으로 읽는 파생 지표 '수출−수입 증가율 격차'(trade_cycle = exports_yoy − imports_yoy, %p, 1993-01~)를 함께 넣는다. 0 위면 수출 사이클, 0 아래면 수입 사이클이다. 파생은 수집 스크립트가 저장된 두 시리즈에서 계산해 같은 append-only 규칙으로 붙인다(shared/capitalism-refresh.ts differenceSeries). 구현: script/fetch-capitalism-series.ts 의 SERIES 에 네 키(fx_eur, trade_bal, exports_yoy, imports_yoy)와 파생 키 trade_cycle를 추가하고(월간 크론이 append-only 로 계속 갱신), 다른 시리즈를 건드리지 않고 새 키만 채울 수 있게 `--only <키,키>` 옵션을 더한다. client/src/lib/comparison-series.ts 의 COMPARE_SERIES 에 다섯 지표를 '통화·대외'(money) 범주로 추가하고 증감 단위(deltaUnit)를 맞춘다. 자본주의 경제사 패널(PANELS)에는 넣지 않는다(비교 전용 — 기존 fx_krw·fx_jpy 와 같은 방식). 제약: 기존 시리즈의 관측값 불변, 기존 비교 지표·스프레드·저장된 인사이트 맥락(ids) 동작 불변, 사용자 미커밋 파일(capitalism-config.ts, Capitalism.tsx)은 건드리지 않는다. 기존 '실질 순수출'(NETEXC, 분기) 지표는 그대로 둔다. 추가: 격차 지표는 부호가 핵심이므로 CompareChart 가 '원래 값' 모드에서 0 을 지나는 계열에 점선 0 기준선을 그린다(한 줄 추가, 기존 렌더 불변).",
+  "acceptanceCriteria": [
+    "그래프 비교 페이지의 '통화·대외' 범주에 '유로/달러 환율', '미국 무역수지', '수출−수입 증가율 격차', '미국 수출 증가율', '미국 수입 증가율' 다섯 토글이 나타나고, 켜면 그래프에 선이 그려지며 끄면 사라진다. 기존 지표 토글과 선택 개수 규칙(기준월=100 은 제한 없음, 원래 값은 2개)은 그대로다.",
+    "client/src/data/capitalism-series.json 에 fx_eur(1999-01-01~, 소수 4자리, FRED EXUSEU 와 일치, 진행 중인 달 제외), trade_bal(1992-01-01~, 십억달러 소수 1자리 = BOPGSTB/1000), exports_yoy·imports_yoy(1993-01-01~, % 소수 2자리 = BOPTEXP·BOPTIMP 의 12개월 전년비)가 날짜 오름차순·중복 없이 들어 있다. trade_cycle 은 exports_yoy − imports_yoy(같은 달만, 소수 2자리, 1993-01-01~)와 정확히 같다.",
+    "기존 21개 키의 관측값은 하나도 바뀌지 않는다(--only 로 새 키만 채움). `--only` 없이 실행하는 월간 크론 경로(--repair-last-month 포함)는 기존과 같은 결과에 새 키 갱신만 더해진다.",
+    "지표 출처 목록(페이지 하단 '지표 출처 · 수록 기간 · 비교 기준')에 다섯 지표의 출처 링크(FRED 시리즈)·단위·수록 기간·설명이 나온다. 유로/달러는 방향(상승=유로 강세)을, 무역수지는 음수=적자를, 증가율은 전년 동월 대비임을 적는다.",
+    "기준월=100 비교·스프레드·증감 표기에서 새 지표가 깨지지 않는다: 무역수지처럼 음수인 계열과 증가율(%) 계열의 증감 단위가 각각 '$B', '%p' 로 표기되고 유로/달러는 '달러'로 표기된다.",
+    "'원래 값' 모드에서 0 을 지나는 계열(수출−수입 증가율 격차, 무역수지, 기존 성장률·순수출 등)은 그 계열 축의 0 위치에 계열 색 점선 기준선이 그려진다(기준월=100 모드에서는 그리지 않음). 기존 선·축·툴팁·스프레드 렌더는 그대로다.",
+    "tests: 새 id 다섯 개가 COMPARE_SERIES 에 있고 데이터가 있으며 첫 관측일·단위·범주가 기대와 같다. 수출·수입 전년비는 shared/capitalism-refresh 의 annualChange 규칙(같은 달 1년 전 대비)과 일치한다. 기존 테스트가 모두 통과한다. differenceSeries 단위 테스트(공통 날짜만, 결측 제외, 반올림).",
+    "docs/GRAPH-COMPARE.md 와 docs/CAPITALISM.md 에 새 지표·시리즈 키·`--only` 사용법이 반영된다.",
+    "npm run check · test · build 통과. capitalism-config.ts·Capitalism.tsx 는 diff 에 없다."
+  ],
+  "requiredChecks": [
+    "npm.cmd run check",
+    "npm.cmd test",
+    "npm.cmd run build"
+  ],
+  "requiresEvaluationDatabase": false,
+  "notes": "데이터는 구현 세션이 실제 네트워크로 `npx tsx script/fetch-capitalism-series.ts --only fx_eur,trade_bal,exports_yoy,imports_yoy` 를 실행해 커밋한다. 그래프 비교 페이지는 인사이트·보드를 협업 API(DB)에서 읽지만 지표 토글은 브라우저 설정이라 DB 쓰기가 없다 — 구현 세션은 로컬 dev 서버에서 읽기만 하며 토글·출처 목록을 확인한다. 한계: 유로는 1999년 도입이라 그 이전 값이 없고(ECU·마르크 합성은 하지 않음), BOPGSTB 계열은 1992년부터다(그 이전 장기 흐름은 기존 '실질 순수출' 분기 지표 1947~ 로 본다). 구현 세션 실측: `--only` 로 새 키만 수집 — fx_eur 332개(1999-01~2026-08), trade_bal 415개(1992-01~2026-07, 최근 −88.6 $B), exports_yoy·imports_yoy 403개(1993-01~, 2026-07 +9.34%·+11.15%), trade_cycle 403개(2026-07 −1.81%p, 최근 12개월 중 앞 9개월 +·뒤 3개월 −). 기존 21개 키 직렬화 불변. 헤드리스 Chrome(로컬 dev, 읽기만): 통화·대외 범주에 새 토글 5개, 기준월=100 에서 유로/달러 선, 원래 값에서 격차+무역수지 두 선과 각 계열 0 기준선, 세 번째 지표는 disabled(기존 2개 제한), 출처 목록에 설명·수록 기간, 기준월=100 에서 무역수지는 기존 '공통 양수 기준값이 없습니다' 안내. 쓰기 요청은 협업 presence 핑뿐."
+}
