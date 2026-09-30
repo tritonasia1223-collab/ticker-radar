@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { indicators } from "../shared/credit/schema";
 import { analyze } from "../shared/credit/signals";
 import { scenarios } from "../shared/credit/scenarios";
-import { readingGroups, groupReading, readingChange, indicatorReading, formatCredit } from "../shared/credit/reading";
+import { readingGroups, groupReading, creditWarnings, readingChange, indicatorReading, formatCredit } from "../shared/credit/reading";
 
 const asOf = "2026-09-23";
 const spec = (id: string) => indicators.find(i => i.id === id)!;
@@ -15,6 +15,22 @@ function observed(id: string) {
 }
 
 describe("B안 민간 신용 해설", () => {
+  it("정상·미확인·비은행 대출 증가만으로 상단 경고를 만들지 않는다", () => {
+    const outcome = scenarios(analyze(null, asOf, "observation"));
+    expect(creditWarnings(outcome)).toEqual([]);
+    for (const signal of Object.values(outcome.signals)) signal.status = false;
+    outcome.signals.ndfi_growth.status = true;
+    outcome.signals.ig_stable.status = true;
+    expect(creditWarnings(outcome)).toEqual([]);
+  });
+  it("확인된 주의 신호만 표시하고 경로 간 같은 경고는 중복하지 않는다", () => {
+    const outcome = scenarios(analyze(null, asOf, "observation"));
+    outcome.signals.loan_emergency_warning.status = true;
+    outcome.signals.hy_wide.status = true;
+    const warnings = creditWarnings(outcome);
+    expect(warnings.flatMap(w => w.keys)).toEqual(["loan_emergency_warning", "hy_wide"]);
+    expect(warnings.map(w => w.id)).toEqual(["credit-bank", "credit-bonds"]);
+  });
   it("네 묶음이 기존 지표 14개를 정확히 한 번 포함한다", () => {
     const ids = readingGroups.flatMap(g => g.ids);
     expect(readingGroups.map(g => g.ids.length)).toEqual([5, 3, 2, 4]);

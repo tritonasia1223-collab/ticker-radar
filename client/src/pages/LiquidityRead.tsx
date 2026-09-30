@@ -1,5 +1,5 @@
-// 미국 유동성 B안(읽기) — 천천히 읽는 페이지. 명세: docs/liquidity-read-spec.md · 목업: docs/mockup-reference.html
-//   문장이 먼저, 그림은 증거. 모든 문장은 shared/liquidity-sentences 의 순수 함수가 만들고 이 파일은 그 출력만 그린다.
+// 미국 유동성 B안 — 상단 대시보드와 하단 지표 해설. 명세: docs/liquidity-read-spec.md · 목업: docs/mockup-reference.html
+//   상단은 변화량·기여 요인·잔액 변화를 요약하고, 하단은 계산 근거와 해설을 표시한다.
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
@@ -16,6 +16,7 @@ import type { WeekPoint } from "@/components/fed-taccount";
 import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioReading } from "@/components/credit/CreditReading";
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
+import { LiquidityDashboard } from "@/components/LiquidityDashboard";
 
 // ── 서버 응답 형태 ──
 interface TreasuryMonth { date: string; bills: number; total: number }
@@ -167,7 +168,7 @@ function GaugeRow({ r }: { r: StressRow }) {
       {!has ? (
         <Cap>준비 중 — 데이터 연결 후 표시됩니다</Cap>
       ) : tPos == null ? (
-        <Cap>경계선 설정 대기 — 값과 기준일만 표시합니다</Cap>
+        <Cap>판정 기준 미설정</Cap>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ position: "relative", height: 24 }}>
@@ -296,14 +297,6 @@ export default function LiquidityRead() {
   if (overview.isError || !latestWeek) return <div style={{ background: C.bg, minHeight: "100vh", padding: 40, fontFamily: SANS }} role="alert">유동성 데이터를 불러오지 못했습니다. <button className="underline" onClick={() => void overview.refetch()}>다시 불러오기</button></div>;
   const selW = weeks[curIdx];
 
-  // 결측 사유를 구분한다(Codex 2차 F4): 비교 주 관측 부재 / 입찰 조회 실패 / (05 는 문장 모듈이 자료·설정 부재를 구분)
-  const summaryRows: { id: string; label: string; parts: Part[] }[] = [
-    { id: "s1", label: "얼마나", parts: S1?.summary ?? [{ text: "이번 주 관측이 없습니다." }] },
-    { id: "s2", label: "어디서", parts: S2?.summary ?? [{ text: noPrev }] },
-    { id: "s3", label: "어디로", parts: S3?.summary ?? [{ text: noPrev }] },
-    { id: "s4", label: "누가 샀나", parts: S4 ? [{ text: S4.summary }] : [{ text: auctions.isLoading ? "입찰 자료를 불러오는 중입니다." : "입찰 자료를 불러오지 못해 이번 주는 표시하지 않았습니다." }] },
-    { id: "s5", label: "탈은 없나", parts: [{ text: S5.summary }] },
-  ];
   const m2Now = how?.m2Yoy?.to ?? (sel && ctx.m2 ? [...ctx.m2].reverse().find((o) => o.date <= sel.date) ?? null : null); // 선택 주 이하 최신 M2 — 전년비가 없어도 잔액은 보인다(Codex 4차 F1)
 
   return (
@@ -329,18 +322,7 @@ export default function LiquidityRead() {
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID}><div className="hidden lg:block" /><div style={{ minWidth: 0 }}>
-        <CreditSummary state={credit} liquidity={S1?.summary.map(p => p.text).join("") ?? "선택 주차의 유동성 관측이 없습니다."} />
-        <nav aria-label="이번 주 요약" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "12px 24px", marginBottom: 24 }}>
-          {summaryRows.map((r, i) => (
-            <a key={r.id} href={`#${r.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(r.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-7" style={{ padding: "20px 0", textDecoration: "none", color: C.ink, borderBottom: i < summaryRows.length - 1 ? `1px solid ${C.line2}` : undefined }}>
-              <span style={{ width: 72, flexShrink: 0, fontSize: 13, fontWeight: 600, color: C.cap }}>{r.label}</span>
-              <span className="text-[16px] md:text-[18px]" style={{ flexGrow: 1, fontFamily: SERIF, fontWeight: 500, lineHeight: 1.5 }}>
-                <Parts parts={r.parts} strongTone />
-              </span>
-            </a>
-          ))}
-        </nav>
-        <Cap style={{ paddingBottom: 16 }}>아래는 진단의 근거입니다. 유동성의 규모와 이동을 읽고, 은행·회사채·단기 자금·취약 기업의 신용을 차례로 확인합니다.</Cap>
+        <LiquidityDashboard how={how} from={from} to={to} who={who} stress={st} alerts={<CreditSummary state={credit} />} />
         </div></div>
 
         {/* 01 얼마나 */}
@@ -445,24 +427,13 @@ export default function LiquidityRead() {
               ...from.contributions.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: rowDescription(c, from.fedDetail), value: c.effect })),
               { name: "합계", desc: "", value: from.dNl, total: true },
             ]} />
-            <div className="flex flex-col md:flex-row gap-4 md:gap-7" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 32px" }}>
-              <div style={{ width: 150, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontSize: 13, fontWeight: 600, color: C.cap }}>이어질까</span><span style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.4 }}>{S2.verdictTitle}</span></div>
-              <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-                <Body max={9999}>{S2.verdictBody}</Body>
-                {cfg.TGA_TARGET != null && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ position: "relative", height: 12, background: C.n2, borderRadius: 6 }}>
-                      <div style={{ position: "absolute", left: 0, top: 0, width: `${Math.min(100, (from.tga / Math.max(cfg.TGA_TARGET, from.tga)) * 100)}%`, height: 12, background: C.cap, borderRadius: 6 }} />
-                      <div style={{ position: "absolute", left: `${Math.min(100, (cfg.TGA_TARGET / Math.max(cfg.TGA_TARGET, from.tga)) * 100)}%`, top: -5, width: 2, height: 22, background: C.ink }} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cap }}><span>TGA 현재 {dollars(from.tga)}</span><span>재무부 목표 잔고 {dollars(cfg.TGA_TARGET)}</span></div>
-                  </div>
-                )}
-              </div>
+            <div className="grid grid-cols-2 gap-4 rounded-xl border border-[#D9D5CA] bg-white p-5">
+              <div><Cap>역레포 잔액</Cap><div className="mt-1 text-xl font-semibold">{dollars(from.rrp)}</div></div>
+              <div><Cap>TGA 잔액</Cap><div className="mt-1 text-xl font-semibold">{dollars(from.tga)}</div>{cfg.TGA_TARGET != null && <Cap>목표 {dollars(cfg.TGA_TARGET)}</Cap>}</div>
             </div>
             <Expander label="연준 대차대조표(T계정) 전체 펼치기" open={openT} onToggle={() => setOpenT((v) => !v)}>
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <Cap>잔고 증감 기준 · 부채 항목 감소 = 방출. 아래 표의 부호는 위 본문과 달리 잔고 기준이며 색을 쓰지 않습니다.</Cap>
+                <Cap>잔고 증감 기준 · 부채 항목 감소 = 유동성 증가</Cap>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ minWidth: 0 }}>
                   <NeutralTAccount rows={taccountRows(sel as WeekPoint, prev as WeekPoint)} total={sel.total} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, minWidth: 0 }}>
@@ -612,6 +583,7 @@ export default function LiquidityRead() {
         </Section>)}
         <Section id="credit-scenarios" num="10" title="함께 읽으면" question="어떤 신용 국면에 가까운가">
           <CreditScenarioReading state={credit} />
+          <Cap>과거 조회: 관측일 기준 · 사후 공시·수정치 포함. 신용 조건 판정: 고정된 4주·13주 규칙. 그래프 비교: 상단 선택 기간.</Cap>
         </Section>
 
         {/* 배경 */}
@@ -630,7 +602,7 @@ export default function LiquidityRead() {
                 );
               })}
             </div>
-            <Cap style={{ lineHeight: 1.7, paddingTop: 20 }}>출처: 연준 H.4.1 · H.8, 재무부 MSPD · 입찰 결과(FiscalData), 시카고 연은, FRED. 이 페이지의 문장은 데이터에서 규칙으로 자동 생성되며 투자 판단을 담지 않습니다.</Cap>
+            <Cap style={{ lineHeight: 1.7, paddingTop: 20 }}>출처: 연준 H.4.1 · H.8, 재무부 MSPD · 입찰 결과(FiscalData), 시카고 연은, FRED.</Cap>
           </div>
         </Row>
       </div>

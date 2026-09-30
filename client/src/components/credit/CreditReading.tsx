@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Refe
 import { indicators, config, type Indicator } from "@shared/credit/schema";
 import { analyze, DAY, type IndicatorAnalysis } from "@shared/credit/signals";
 import { scenarios } from "@shared/credit/scenarios";
-import { readingGroups, readingNotes, groupReading, indicatorReading, formatCredit, type CreditOutcome } from "@shared/credit/reading";
+import { readingGroups, readingNotes, groupReading, creditWarnings, indicatorReading, formatCredit, type CreditOutcome } from "@shared/credit/reading";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -31,26 +31,17 @@ export function useCreditReading(asOf: string) {
 }
 export type CreditReadingState = ReturnType<typeof useCreditReading>;
 
-export function CreditSummary({ state, liquidity }: { state: CreditReadingState; liquidity: string }) {
+export function CreditSummary({ state }: { state: CreditReadingState }) {
   const { query, outcome, asOf } = state;
-  const candidates = outcome.rows.filter(r => outcome.closest.includes(r.id));
-  const anySignal = readingGroups.some(g => groupReading(g, outcome).matched.length);
-  const incomplete = readingGroups.some(g => groupReading(g, outcome).missing.length);
-  const bondPriceOnly = outcome.signals.ig_stable?.status === true && outcome.signals.hy_stable?.status === true && outcome.signals.issuance_active?.status == null;
-  const diagnosis = query.isLoading ? "민간 신용 자료를 불러오고 있습니다." : query.isError || query.data?.error ? "민간 신용 자료를 확인할 수 없어 종합 판단을 유보합니다." : outcome.signals.loan_emergency_warning?.status === true ? "CP 비용과 은행 대출이 함께 급증해, 비상 인출 가능성을 확인해야 합니다." : candidates.length ? `민간 신용은 ‘${candidates.map(r => r.name).join(" · ")}’ 조건에 가깝습니다.` : anySignal ? "민간 신용에서 확인할 신호가 있지만, 하나의 국면으로 확정하기는 어렵습니다." : bondPriceOnly ? "회사채 조달 비용은 안정 조건이지만, 등급별 발행량 확인이 필요합니다." : incomplete ? "민간 신용의 일부 근거가 부족해 돈줄의 상태를 단정하지 않습니다." : "민간 신용의 신호가 엇갈려 경로별 확인이 필요합니다.";
-  return <section aria-label="유동성과 민간 신용 종합 진단" data-credit-summary={asOf} style={{ borderTop: `2px solid ${ink}`, padding: "24px 0", marginBottom: 16 }}>
-    <div style={caption}>종합 진단 · {asOf} 관측 기준</div>
-    <h2 style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.55, margin: "12px 0" }}>{diagnosis}</h2>
-    <p style={paragraph}>{liquidity} 유동성의 규모와 기업에 실제로 공급되는 신용을 함께 읽습니다.</p>
-    {query.isError && <button type="button" onClick={() => void query.refetch()} className="underline mt-3 text-sm">신용 자료 다시 불러오기</button>}
-    {query.data?.configChanged && <p style={caption}>지표 설정이 바뀌어 다음 수집에서 원자료를 재확인합니다.</p>}
-    <div style={{ marginTop: 20 }}>
-      {readingGroups.map(g => { const r = groupReading(g, outcome); return <a key={g.id} href={`#${g.id}`} onClick={e => { e.preventDefault(); jump(g.id); }} className="grid grid-cols-1 md:grid-cols-[155px_1fr] gap-2 md:gap-5" style={{ textDecoration: "none", color: ink, borderTop: `1px solid ${border}`, padding: "15px 0" }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{g.title}<span style={{ display: "block", ...caption, marginTop: 3 }}>{query.isLoading ? "불러오는 중" : r.status}</span></span>
-        <span style={paragraph}>{query.isLoading ? g.question : r.text} <span aria-hidden="true">↘</span></span>
-      </a>; })}
-    </div>
-    <div style={caption}>관측 시점에 배치한 과거 분석으로, 선택일 이후 공시·수정된 값이 포함될 수 있습니다. 조건 판정은 A안과 동일한 고정 규칙(주로 4주·13주)을 사용하며, 개별 그래프의 비교 문장은 상단 비교 기간을 따릅니다.</div>
+  if (query.isLoading) return <div className="px-5 pb-5 text-xs text-[#5F5C54]">신용 자료 조회 중</div>;
+  if (query.isError || query.data?.error || query.data?.configChanged) return <div className="px-5 pb-5 text-xs text-[#5F5C54]" role="status">신용 자료 {query.data?.configChanged ? "설정 변경 · 재집계 대기" : "조회 오류 · 판단 불가"} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">다시 불러오기</button></div>;
+  const warnings = creditWarnings(outcome);
+  if (!warnings.length) return null;
+  return <section aria-label="신용 주의 신호" data-credit-summary={asOf} className="mx-5 mb-5 rounded-xl border border-[#DCC5AA] bg-[#FAF5EB] p-4 sm:mx-7 sm:mb-7">
+    <div className="mb-2 text-xs font-semibold text-[#80562F]">주의 신호 · {asOf} 관측 기준</div>
+    {warnings.map(w => <a key={w.id} href={`#${w.id}`} onClick={e => { e.preventDefault(); jump(w.id); }} className="flex flex-wrap gap-x-3 gap-y-1 py-2 text-sm text-[#684525]">
+      <strong>{w.title}</strong><span>{w.labels.join(" · ")} ↘</span>
+    </a>)}
   </section>;
 }
 
@@ -108,9 +99,9 @@ function ReadingChart({ spec, result, state, weeks }: { spec: Indicator; result:
       <div style={{ ...caption, padding: "6px 12px 0" }}>● 최신 관측 · ○ 비교 관측{all ? " · 선택한 계열을 진하게 표시" : ""}{slow ? " · 새 관측 사이의 수평선은 추가 발표를 뜻하지 않습니다" : ""}</div>
     </div>
     <div style={{ padding: "16px 0 24px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <p style={paragraph}><b>이번 관측의 의미.</b> {interpretation.meaning}</p>
-      <p style={paragraph}><b>이렇게 읽습니다.</b> {note.reading}</p>
-      <p style={paragraph}><b>함께 확인합니다.</b> {note.together}</p>
+      <p style={paragraph}><b>관측 해석.</b> {interpretation.meaning}</p>
+      <p style={paragraph}><b>지표 의미.</b> {note.reading}</p>
+      <p style={paragraph}><b>관련 신호.</b> {note.together}</p>
       {interpretation.matched.length > 0 && <p style={caption}>선택일의 조건 판정: {interpretation.matched.join(" · ")} · A안 공통 규칙</p>}
       <details style={caption}><summary style={{ cursor: "pointer" }}>관측 범위·갱신 주기·판정 근거</summary>
         <div style={{ paddingTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
@@ -128,7 +119,7 @@ function ReadingChart({ spec, result, state, weeks }: { spec: Indicator; result:
 
 export function CreditReadingControls({ state }: { state: CreditReadingState }) {
   return <div className="flex flex-wrap justify-between items-center gap-3" style={{ marginBottom: 16 }}>
-    <div style={caption}>신용 그래프 · 상단 선택 주차 {state.asOf}와 연동</div>
+    <div style={caption}>신용 지표 · {state.asOf}</div>
     <div className="flex gap-2" aria-label="신용 해설 차트 기간">{[1, 3, 5, 10].map(y => <button type="button" key={y} onClick={() => state.setYears(y)} aria-pressed={state.years === y} style={{ border: `1px solid ${border}`, borderRadius: 18, background: state.years === y ? ink : "transparent", color: state.years === y ? "#FFF" : ink, padding: "6px 12px", fontSize: 12 }}>{y}년</button>)}</div>
   </div>;
 }
@@ -137,8 +128,7 @@ export function CreditReadingGroup({ group, state, weeks }: { group: typeof read
   const r = groupReading(group, state.outcome);
   return <>
     <h2 style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.5, margin: 0 }}>{group.question}</h2>
-    <p style={paragraph}>{group.intro}</p>
-    <p style={paragraph}><b>{state.query.isLoading ? "불러오는 중" : r.status}.</b> {state.query.isLoading ? "선택 주차의 자료를 확인하고 있습니다." : r.text}</p>
+    <p style={paragraph}><b>{state.query.isLoading ? "자료 조회 중" : r.status}.</b> {!state.query.isLoading && r.text}</p>
     {group.id === readingGroups[0].id && <CreditReadingControls state={state} />}
     {group.ids.map(id => { const spec = indicators.find(i => i.id === id)!, result = state.data.find(i => i.id === id)!; return <ReadingChart key={id} spec={spec} result={result} state={state} weeks={weeks} />; })}
   </>;
@@ -152,7 +142,7 @@ export function CreditScenarioReading({ state }: { state: CreditReadingState }) 
   const evidence = (row: typeof rows[number], status: boolean | null) => row.evidence.filter(e => e.status === status).map(e => e.label).join(" · ") || "없음";
   return <>
     <h2 style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.5, margin: 0 }}>{shown.length ? `가까운 해석: ${shown.map(r => r.name).join(" · ")}` : "대표 시나리오 판단을 유보합니다."}</h2>
-    <p style={paragraph}>{shown.length ? "여러 경로의 조건을 조합한 해석입니다. 일치하는 근거뿐 아니라 반대·부족 근거도 확인합니다." : "현재는 필수 조건이 충분히 확인되지 않았습니다. 아래는 검토할 후보이며 확정 진단이 아닙니다."}</p>
+    {!shown.length && <p style={paragraph}>필수 조건 미충족 · 아래 시나리오는 검토 후보</p>}
     {rows.map(row => <div key={row.id} style={{ borderTop: `1px solid ${border}`, paddingTop: 18 }}>
       <h3 style={{ fontSize: 17, margin: "0 0 12px" }}>{row.id} · {row.name} <span style={caption}>{row.candidate ? "조건 충족" : "판단 유보"}</span></h3>
       <p style={{ ...paragraph, marginBottom: 10 }}>이 조건 조합의 해석: {row.interpretation}</p>
