@@ -33,12 +33,18 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         <span className="font-medium">스테이블코인 발행사 · 서클 + 테더</span>
         <span className="text-[#5F5C54]">{share !== null ? <>전체 보유액의 약 <b className="text-[#1A1A18]">{pct(share)}</b></> : "같은 분기의 두 회사 자료 대기"}</span>
       </div>
-      <div className="relative mt-2 h-4 rounded-sm bg-[#F0EEE7]" role="img" aria-label={share === null ? "두 회사 합계 미산출" : `전체 국채 보유액과 같은 축. 서클과 테더 합계 ${pct(share)}`}>
+      <div className="relative mt-5 h-4 rounded-sm bg-[#F0EEE7]" role="img" aria-label={share === null ? "두 회사 합계 미산출" : `전체 국채 보유액과 같은 축. 서클과 테더 합계 ${pct(share)}`}>
         {sum !== null && <div className="flex h-full"><div style={{ width: `${circle / quarter.total * 100}%`, background: COLORS.circle }} /><div style={{ width: `${tether / quarter.total * 100}%`, background: COLORS.tether }} /></div>}
+        {sum !== null && sum > 0 && <svg aria-hidden="true" className="pointer-events-none absolute -top-3 h-[60px] w-[60px] overflow-visible" style={{ left: `calc(${(share ?? 0) / 2}% - 20px)` }} viewBox="0 0 60 60">
+          <path d="M33 33 L47 47" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
+          <path d="M33 33 L47 47" stroke="#416F68" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="20" cy="20" r="18" fill="none" stroke="#FFFFFF" strokeWidth="5" />
+          <circle cx="20" cy="20" r="18" fill="none" stroke="#416F68" strokeWidth="2.5" />
+        </svg>}
       </div>
-      <div className="relative h-9" aria-hidden="true">
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 36" preserveAspectRatio="none"><path d={`M0,0 L0,35 M${Math.min(share ?? 0, 100)},0 L100,35`} fill="none" stroke="#A9BAB6" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="3 3" /></svg>
-        <span className="absolute left-1/2 top-2 -translate-x-1/2 bg-white px-3 text-[11px] text-[#5F5C54] whitespace-nowrap">↓ 작은 보유분을 금액 축으로 확대</span>
+      <div className="relative h-12" aria-hidden="true">
+        {sum !== null && sum > 0 && <svg className="absolute inset-0 h-full w-full" fill="none" stroke="#A9BAB6" strokeWidth="1" strokeDasharray="3 3"><path d="M27 20 L0 48" /><line x1="27" y1="20" x2="100%" y2="48" /></svg>}
+        <span className="absolute left-1/2 top-5 -translate-x-1/2 bg-white px-3 text-[11px] text-[#5F5C54] whitespace-nowrap">작은 보유분을 아래에서 확대</span>
       </div>
       <div className="rounded-xl border border-[#C8D7D3] bg-[#F4F8F7] p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
