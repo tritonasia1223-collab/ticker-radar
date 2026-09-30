@@ -85,6 +85,38 @@ function Section({ id, num, title, question, children }: { id: string; num: stri
   );
 }
 function H2({ children }: { children: ReactNode }) { return <h2 className="text-[20px] md:text-[24px]" style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>{children}</h2>; }
+interface LiquidityPiePart { label: string; value: number; color: string }
+function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, parts, note, empty }: { title: string; total: number | null; displayTotal?: number | null; maxTotal: number; formula: ReactNode; parts: LiquidityPiePart[]; note: ReactNode; empty?: string }) {
+  const sum = parts.reduce((acc, part) => acc + part.value, 0);
+  const valid = total != null && total > 0 && sum > 0 && parts.every(part => Number.isFinite(part.value) && part.value >= 0);
+  let start = 0;
+  const stops = valid ? parts.map(part => {
+    const end = start + part.value / sum * 100;
+    const stop = `${part.color} ${start}% ${end}%`;
+    start = end;
+    return stop;
+  }).join(", ") : "";
+  return <div style={{ display: "grid", gridTemplateRows: "subgrid", gridRow: "span 3", minWidth: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 15, fontWeight: 500 }}>{title}</div>
+      <H2>{displayTotal != null ? `${fmt.jo(displayTotal)}조 달러` : "—"}</H2>
+      <div style={{ fontSize: 14, lineHeight: 1.75, color: C.body }}>{formula}</div>
+    </div>
+    <div style={{ width: "100%", maxWidth: 280, aspectRatio: "1", justifySelf: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {valid ? <div role="img" aria-label={`${title} 구성비: ${parts.map(part => `${part.label} ${dollars(part.value)}, ${(part.value / sum * 100).toFixed(1)}%`).join(" · ")}`}
+        style={{ width: `${Math.sqrt(total! / maxTotal) * 100}%`, aspectRatio: "1", borderRadius: "50%", background: `conic-gradient(from -90deg, ${stops})` }} /> : <Cap>{empty ?? "구성 자료가 없어 파이를 표시하지 않았습니다."}</Cap>}
+    </div>
+    <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14, alignSelf: "start" }}>
+      {valid && <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {parts.map(part => <div key={part.label} style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "3px 10px", fontSize: 13, color: C.body }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 7, flex: "1 1 auto" }}><span aria-hidden="true" style={{ width: 9, height: 9, flexShrink: 0, borderRadius: 2, background: part.color }} />{part.label}</span>
+          <span style={{ whiteSpace: "nowrap" }}>{dollars(part.value)} <span style={{ color: C.cap, marginLeft: 5 }}>{(part.value / sum * 100).toFixed(1)}%</span></span>
+        </div>)}
+      </div>}
+      <Cap style={{ fontSize: 12, color: "#918D83", marginTop: 12 }}>{note}</Cap>
+    </div>
+  </div>;
+}
 // 그림 C 기저효과 표식 — 글을 선 위에 쓰면 겹치므로 번호만 찍고 설명은 아래 목록에 둔다. 이웃한 표식은 두 줄로 어긋나게.
 function NoteMarker({ x, y, n, row }: { x: number; y: number; n: number; row: number }) {
   return (
@@ -345,40 +377,16 @@ export default function LiquidityRead() {
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2><span style={{ whiteSpace: "pre-line" }}><Parts parts={S1.headline} /></span></H2>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <Sub>순유동성(근사치) = 연준이 만든 돈 {fmt.jo(how.total)}조 달러 − TGA ({dollars(how.tga)}) − 역레포 ({dollars(how.rrp)})</Sub>
-              <div style={{ display: "flex", gap: 3, height: 84 }}>
-                <div style={{ width: `${(how.nl / how.total) * 100}%`, background: C.ink, color: C.bg, borderRadius: "8px 0 0 8px", padding: "14px 18px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>순유동성</span>
-                  <span style={{ fontSize: 20, fontWeight: 600 }}>{dollars(how.nl)}</span>
-                </div>
-                <div style={{ width: `${(how.tga / how.total) * 100}%`, background: HUE.ochre }} title={`TGA ${dollars(how.tga)}`} />
-                <div style={{ flexGrow: 1, background: HUE.purple, borderRadius: "0 8px 8px 0" }} title={`역레포 ${dollars(how.rrp)}`} />
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", fontSize: 13, color: C.body, justifyContent: "flex-end" }}>
-                <span style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ width: 12, height: 12, background: HUE.ochre, borderRadius: 2 }} />TGA {dollars(how.tga)}</span>
-                <span style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ width: 12, height: 12, background: HUE.purple, borderRadius: 2 }} />역레포 {dollars(how.rrp)}</span>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <H2>M2 {m2Now ? `${fmt.jo(m2Now.value)}조 달러` : "—"}</H2>
-                {how.m2Yoy && <span style={{ fontSize: 14, color: C.body }}>전년비 {fmt.pct(how.m2Yoy.pct)}</span>}
-              </div>
-              <Sub>M2 = 현금 + 요구불예금 + 저축·기타 유동성예금 + 소액 정기예금 + 개인 MMF</Sub>
-              {m2Parts ? (<>
-                <div aria-label="M2 구성비" style={{ display: "flex", gap: 3, height: 84, borderRadius: 8, overflow: "hidden" }}>
-                  {m2Parts.parts.map((part, i) => <div key={part.key} title={`${part.label} ${dollars(part.value)} · ${part.share.toFixed(1)}%`} style={{ flex: `${part.share} 1 0`, minWidth: 0, background: [HUE.blue, HUE.sky, HUE.slate, HUE.ochre, HUE.purple][i] }} />)}
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-x-3 gap-y-3">
-                  {m2Parts.parts.map((part, i) => <div key={part.key} style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, flexShrink: 0, borderRadius: 2, background: [HUE.blue, HUE.sky, HUE.slate, HUE.ochre, HUE.purple][i] }} />{part.label}</div>
-                    <div style={{ paddingLeft: 16, fontWeight: 600 }}>{dollars(part.value)} <span style={{ fontWeight: 400, color: C.cap }}>({part.share.toFixed(1)}%)</span></div>
-                  </div>)}
-                </div>
-              </>) : <Cap>{context.isFetching ? "M2 구성 자료를 불러오는 중…" : "같은 기준월의 구성 자료가 완전하지 않아 구성비를 표시하지 않았습니다."}</Cap>}
-              <Cap style={{ color: "#918D83" }}>{m2Now ? `${m2Now.date.slice(0, 4)}년 ${fmt.monthKo(m2Now.date)} · ` : ""}월간 · 정기예금·개인 MMF는 은퇴계좌 제외</Cap>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-9 gap-y-5">
+              <LiquidityPie title="순유동성" total={how.total} displayTotal={how.nl} maxTotal={Math.max(how.total, m2Now?.value ?? 0)}
+                formula={<>순유동성(근사치) = 연준이 만든 돈 {fmt.jo(how.total)}조 달러 − TGA ({dollars(how.tga)}) − 역레포 ({dollars(how.rrp)})</>}
+                parts={[{ label: "순유동성", value: how.nl, color: C.ink }, { label: "TGA", value: how.tga, color: HUE.ochre }, { label: "역레포", value: how.rrp, color: HUE.purple }]}
+                note={<>원 전체: 연준 자산 · 검은 부분: 순유동성</>} />
+              <LiquidityPie title="M2" total={m2Now?.value ?? null} maxTotal={Math.max(how.total, m2Now?.value ?? 0)}
+                formula={<>M2 = 현금 + 요구불예금 + 저축·기타 유동성예금 + 소액 정기예금 + 개인 MMF</>}
+                parts={m2Parts?.parts.map((part, i) => ({ label: part.label, value: part.value, color: [HUE.blue, HUE.sky, HUE.slate, HUE.ochre, HUE.purple][i] })) ?? []}
+                empty={context.isFetching ? "M2 구성 자료를 불러오는 중…" : "같은 기준월의 구성 자료가 완전하지 않아 구성비를 표시하지 않았습니다."}
+                note={<>{m2Now ? `${m2Now.date.slice(0, 4)}년 ${fmt.monthKo(m2Now.date)} · ` : ""}월간 · 정기예금·개인 MMF는 은퇴계좌 제외</>} />
             </div>
 
             <Expander label={`순유동성·M2 증감률 비교 ${openComparison ? "접기" : "펼치기"}`} open={openComparison} onToggle={() => setOpenComparison(v => !v)}>
