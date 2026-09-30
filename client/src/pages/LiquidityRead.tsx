@@ -1,5 +1,5 @@
-// 미국 유동성 B안 — 상단 대시보드와 하단 지표 해설. 명세: docs/liquidity-read-spec.md · 목업: docs/mockup-reference.html
-//   상단은 변화량·기여 요인·잔액 변화를 요약하고, 하단은 계산 근거와 해설을 표시한다.
+// 미국 유동성 B안 — 상단 문장형 리뷰와 하단 지표 해설. 작성 규칙: docs/LIQUIDITY-REVIEW-RULES.md
+//   상단은 변화·수치·의미 순서로 요약하고, 하단은 계산 근거와 해설을 표시한다.
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
@@ -513,7 +513,7 @@ export default function LiquidityRead() {
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
             <H2>{S4.headline.join(" ")}</H2>
-            <Body>재무부가 TGA를 다시 채우려면 국채를 더 찍어야 합니다. 그 국채를 누가 받아주느냐에 따라 돈이 흡수되는 곳이 달라집니다. 딜러가 떠안는 몫이 커지면 시장이 소화하기 버겁다는 신호입니다.</Body>
+            <Body>재무부가 TGA를 다시 채우려면 국채를 더 찍어야 합니다. 그 국채를 누가 받아주느냐에 따라 돈이 흡수되는 곳이 달라집니다. 딜러의 낙찰 비중은 발행 물량을 받아간 구성을 보여줍니다. 이후 재판매될 수 있어 최종 보유액과는 다릅니다.</Body>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <Cap>{fmt.dateKo(who.start)} ~ {fmt.dateKo(who.end)} 결제분 · 입찰 {who.counted}건{who.excludeBills ? " · 단기채 제외" : ""}</Cap>
@@ -532,7 +532,7 @@ export default function LiquidityRead() {
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {([["간접 입찰", "해외 중앙은행, 펀드처럼 딜러를 거쳐 응찰하는 곳. 실수요에 가장 가깝습니다."], ["프라이머리 딜러", "연준과 직접 거래하는 대형 은행·증권사. 입찰에 의무로 참여해 남는 물량을 떠안습니다."], ["직접 입찰", "딜러를 거치지 않고 직접 응찰하는 기관."], ["연준 SOMA", "연준이 만기 돌아온 보유분만큼 다시 받아가는 몫. 새 돈이 아닙니다."]] as [string, string][]).map(([k, v]) => (
+              {([["간접 입찰", "펀드·해외 중앙은행 등 중개기관을 통해 응찰하는 투자자."], ["프라이머리 딜러", "연준과 직접 거래하는 대형 은행·증권사. 입찰에 참여하며 자기 계정으로 국채를 낙찰받습니다."], ["직접 입찰", "딜러를 거치지 않고 직접 응찰하는 기관."], ["연준 SOMA", "연준이 만기 국채를 새 국채로 재투자하는 물량. 순매입액이 아닙니다."]] as [string, string][]).map(([k, v]) => (
                 <div key={k} className="flex flex-col md:flex-row gap-1 md:gap-5" style={{ padding: "12px 0", borderTop: `1px solid ${C.line}`, fontSize: 14, lineHeight: 1.6 }}><span style={{ width: 130, flexShrink: 0, fontWeight: 600 }}>{k}</span><span style={{ color: C.body }}>{v}</span></div>
               ))}
               <div style={{ borderTop: `1px solid ${C.line}` }} />

@@ -4,7 +4,9 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Refe
 import { indicators, config, type Indicator } from "@shared/credit/schema";
 import { analyze, DAY, type IndicatorAnalysis } from "@shared/credit/signals";
 import { scenarios } from "@shared/credit/scenarios";
-import { readingGroups, readingNotes, groupReading, creditWarnings, indicatorReading, formatCredit, type CreditOutcome } from "@shared/credit/reading";
+import { readingGroups, readingNotes, groupReading, indicatorReading, formatCredit, type CreditOutcome } from "@shared/credit/reading";
+
+import { creditReview } from "@shared/credit/review";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -35,13 +37,14 @@ export function CreditSummary({ state }: { state: CreditReadingState }) {
   const { query, outcome, asOf } = state;
   if (query.isLoading) return <div className="px-5 pb-5 text-xs text-[#5F5C54]">신용 자료 조회 중</div>;
   if (query.isError || query.data?.error || query.data?.configChanged) return <div className="px-5 pb-5 text-xs text-[#5F5C54]" role="status">신용 자료 {query.data?.configChanged ? "설정 변경 · 재집계 대기" : "조회 오류 · 판단 불가"} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">다시 불러오기</button></div>;
-  const warnings = creditWarnings(outcome);
-  if (!warnings.length) return null;
-  return <section aria-label="신용 주의 신호" data-credit-summary={asOf} className="mx-5 mb-5 rounded-xl border border-[#DCC5AA] bg-[#FAF5EB] p-4 sm:mx-7 sm:mb-7">
-    <div className="mb-2 text-xs font-semibold text-[#80562F]">주의 신호 · {asOf} 관측 기준</div>
-    {warnings.map(w => <a key={w.id} href={`#${w.id}`} onClick={e => { e.preventDefault(); jump(w.id); }} className="flex flex-wrap gap-x-3 gap-y-1 py-2 text-sm text-[#684525]">
-      <strong>{w.title}</strong><span>{w.labels.join(" · ")} ↘</span>
-    </a>)}
+  const review = creditReview(outcome);
+  return <section aria-label="신용 상태 리뷰" data-credit-summary={asOf} className="mt-5 border-t border-[#D9D5CA] pt-5">
+    {review.stories.length ? review.stories.map(story => <div key={story.id} className="mb-3 rounded-xl border border-[#DCC5AA] bg-[#FAF5EB] p-5 text-sm leading-[1.85] text-[#684525]">
+      <a href={`#${story.id}`} onClick={e => { e.preventDefault(); jump(story.id); }} className="font-semibold text-base">{story.headline}</a>
+      {story.evidence.map((e, n) => <p key={n} className="mt-2">{e.text} <span className="text-xs text-[#796C5B]">({e.date})</span></p>)}
+      <p className="mt-2">{story.meaning}</p>
+    </div>) : <p className="text-[15px] leading-[1.85]">{review.normal}</p>}
+    {!review.stories.length && review.incompleteIssuance && <p className="mt-2 text-xs text-[#5F5C54]">등급별 회사채 발행량은 자료 부족으로 판단에서 제외했습니다.</p>}
   </section>;
 }
 
