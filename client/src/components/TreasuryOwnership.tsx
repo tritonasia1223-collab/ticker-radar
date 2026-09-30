@@ -33,17 +33,24 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         <span className="font-medium">스테이블코인 발행사 · 서클 + 테더</span>
         <span className="text-[#5F5C54]">{share !== null ? <>전체 보유액의 약 <b className="text-[#1A1A18]">{pct(share)}</b></> : "같은 분기의 두 회사 자료 대기"}</span>
       </div>
-      <div className="relative mt-5 h-4 rounded-sm bg-[#F0EEE7]" role="img" aria-label={share === null ? "두 회사 합계 미산출" : `전체 국채 보유액과 같은 축. 서클과 테더 합계 ${pct(share)}`}>
+      <div className="relative mt-6 h-4 rounded-sm bg-[#F0EEE7]" style={{ containerType: "inline-size" }} role="img" aria-label={share === null ? "두 회사 합계 미산출" : `서클과 테더 합계 ${pct(share)}. 원형 렌즈 안은 시각적으로 확대된 부분입니다.`}>
         {sum !== null && <div className="flex h-full"><div style={{ width: `${circle / quarter.total * 100}%`, background: COLORS.circle }} /><div style={{ width: `${tether / quarter.total * 100}%`, background: COLORS.tether }} /></div>}
-        {sum !== null && sum > 0 && <svg aria-hidden="true" className="pointer-events-none absolute -top-3 h-[60px] w-[60px] overflow-visible" style={{ left: `calc(${(share ?? 0) / 2}% - 20px)` }} viewBox="0 0 60 60">
-          <path d="M33 33 L47 47" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
-          <path d="M33 33 L47 47" stroke="#416F68" strokeWidth="5" strokeLinecap="round" />
-          <circle cx="20" cy="20" r="18" fill="none" stroke="#FFFFFF" strokeWidth="5" />
-          <circle cx="20" cy="20" r="18" fill="none" stroke="#416F68" strokeWidth="2.5" />
-        </svg>}
+        {sum !== null && sum > 0 && <div aria-hidden="true" data-testid="holding-lens" className="pointer-events-none absolute -top-3 h-10 w-10 rounded-full" style={{ left: `calc(${(share ?? 0) / 2}% - 20px)`, boxShadow: "0 2px 5px #416F6820, 0 0 0 2px #FFFFFF" }}>
+          <div className="absolute inset-0 overflow-hidden rounded-full bg-white">
+            {/* 원래 막대를 같은 중심에서 확대하고 렌즈 가장자리로 잘라낸다. */}
+            <div className="absolute top-3 flex h-4 bg-[#F0EEE7]" style={{ width: "100cqw", left: `calc(20px - ${(share ?? 0) / 2}cqw)`, transform: "scale(5, 1.75)", transformOrigin: `${(share ?? 0) / 2}% 50%` }}>
+              <div style={{ width: `${circle / quarter.total * 100}%`, background: COLORS.circle }} /><div style={{ width: `${tether / quarter.total * 100}%`, background: COLORS.tether }} />
+            </div>
+            <div className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(ellipse at 28% 18%, #FFFFFF90 0%, #FFFFFF18 36%, transparent 58%, #416F6820 100%)", boxShadow: "inset 0 0 5px #416F6825" }} />
+          </div>
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="19" stroke="#638C85" strokeWidth="1.5" />
+            <path d="M8 14 A14 14 0 0 1 22 6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" opacity=".85" />
+          </svg>
+        </div>}
       </div>
       <div className="relative h-12" aria-hidden="true">
-        {sum !== null && sum > 0 && <svg className="absolute inset-0 h-full w-full" fill="none" stroke="#A9BAB6" strokeWidth="1" strokeDasharray="3 3"><path d="M27 20 L0 48" /><line x1="27" y1="20" x2="100%" y2="48" /></svg>}
+        {sum !== null && sum > 0 && <svg className="absolute inset-0 h-full w-full" fill="none" stroke="#A9BAB6" strokeWidth="1" strokeDasharray="3 3"><line x1={`${(share ?? 0) / 2}%`} y1="13" x2="0" y2="48" /><line x1={`${(share ?? 0) / 2}%`} y1="13" x2="100%" y2="48" /></svg>}
         <span className="absolute left-1/2 top-5 -translate-x-1/2 bg-white px-3 text-[11px] text-[#5F5C54] whitespace-nowrap">작은 보유분을 아래에서 확대</span>
       </div>
       <div className="rounded-xl border border-[#C8D7D3] bg-[#F4F8F7] p-4 sm:p-5">
