@@ -3,7 +3,7 @@
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Sankey, Layer } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,6 +21,7 @@ import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
 import { FundingRateChart } from "@/components/credit/FundingRateChart";
+import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ── 서버 응답 형태 ──
 interface TreasuryMonth { date: string; bills: number; total: number }
@@ -87,24 +88,55 @@ function Section({ id, num, title, question, children }: { id: string; num: stri
 function H2({ children }: { children: ReactNode }) { return <h2 className="text-[20px] md:text-[24px]" style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>{children}</h2>; }
 interface LiquidityPiePart { label: string; value: number; color: string }
 function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, parts, note, empty }: { title: string; total: number | null; displayTotal?: number | null; maxTotal: number; formula: ReactNode; parts: LiquidityPiePart[]; note: ReactNode; empty?: string }) {
+  const [active, setActive] = useState<number | null>(null);
+  const [formulaOpen, setFormulaOpen] = useState(false);
+  const tooltipId = useId();
   const sum = parts.reduce((acc, part) => acc + part.value, 0);
   const valid = total != null && total > 0 && sum > 0 && parts.every(part => Number.isFinite(part.value) && part.value >= 0);
-  let start = 0;
-  const stops = valid ? parts.map(part => {
-    const end = start + part.value / sum * 100;
-    const stop = `${part.color} ${start}% ${end}%`;
+  useEffect(() => setActive(null), [total, sum]);
+  let start = -Math.PI;
+  const sectors = valid ? parts.map((part, index) => {
+    const angle = part.value / sum * Math.PI * 2, end = start + angle;
+    const point = (a: number) => `${150 + 140 * Math.cos(a)},${150 + 140 * Math.sin(a)}`;
+    const path = angle >= Math.PI * 2 - 1e-8
+      ? "M 10,150 A 140,140 0 1 1 290,150 A 140,140 0 1 1 10,150 Z"
+      : `M 150,150 L ${point(start)} A 140,140 0 ${angle > Math.PI ? 1 : 0} 1 ${point(end)} Z`;
     start = end;
-    return stop;
-  }).join(", ") : "";
+    return { ...part, index, path };
+  }).filter(part => part.value > 0) : [];
+  const selected = active == null ? null : sectors.find(part => part.index === active);
   return <div style={{ display: "grid", gridTemplateRows: "subgrid", gridRow: "span 3", minWidth: 0 }}>
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ fontSize: 15, fontWeight: 500 }}>{title}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 15, fontWeight: 500 }}>{title}
+        <TooltipProvider delayDuration={150}>
+          <HelpTooltip open={formulaOpen} onOpenChange={setFormulaOpen}>
+            <TooltipTrigger asChild>
+              <button type="button" aria-label={`${title} 계산식`} onClick={() => setFormulaOpen(true)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, padding: 0, borderRadius: "50%", border: `1px solid ${C.border2}`, background: "transparent", color: C.cap, fontSize: 12, cursor: "help" }}>?</button>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="start" collisionPadding={16} style={{ maxWidth: "min(360px, calc(100vw - 32px))", background: C.card, color: C.body, borderColor: C.line, fontFamily: SANS, fontSize: 13, lineHeight: 1.75, wordBreak: "keep-all" }}>{formula}</TooltipContent>
+          </HelpTooltip>
+        </TooltipProvider>
+      </div>
       <H2>{displayTotal != null ? `${fmt.jo(displayTotal)}조 달러` : "—"}</H2>
-      <div style={{ fontSize: 14, lineHeight: 1.75, color: C.body }}>{formula}</div>
     </div>
-    <div style={{ width: "100%", maxWidth: 280, aspectRatio: "1", justifySelf: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {valid ? <div role="img" aria-label={`${title} 구성비: ${parts.map(part => `${part.label} ${dollars(part.value)}, ${(part.value / sum * 100).toFixed(1)}%`).join(" · ")}`}
-        style={{ width: `${Math.sqrt(total! / maxTotal) * 100}%`, aspectRatio: "1", borderRadius: "50%", background: `conic-gradient(from -90deg, ${stops})` }} /> : <Cap>{empty ?? "구성 자료가 없어 파이를 표시하지 않았습니다."}</Cap>}
+    <div onPointerLeave={event => { if (event.pointerType !== "touch") setActive(null); }} style={{ position: "relative", width: "100%", maxWidth: 300, aspectRatio: "1", justifySelf: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {valid ? <svg viewBox="0 0 300 300" role="group" aria-label={`${title} 구성비`} style={{ width: `${Math.sqrt(total! / maxTotal) * 100}%`, overflow: "visible" }}>
+        <style>{`.liquidity-pie-sector { transition: transform 150ms ease, filter 150ms ease; } @media (prefers-reduced-motion: reduce) { .liquidity-pie-sector { transition: none; } }`}</style>
+        {/* 시각 효과와 고정된 입력 영역을 분리해 확대 중 경계에서 깜빡이지 않게 한다. */}
+        {[...sectors.filter(part => part.index !== active), ...sectors.filter(part => part.index === active)].map(part => <path key={part.label} d={part.path} fill={part.color} className="liquidity-pie-sector" aria-hidden="true" pointerEvents="none"
+          style={{ transformOrigin: "150px 150px", transform: part.index === active ? "scale(1.035)" : "scale(1)", filter: part.index === active ? `drop-shadow(0 0 6px ${part.color}66)` : "none" }} />)}
+        {sectors.map(part => <path key={part.label} d={part.path} fill="transparent" role="button" tabIndex={0}
+          aria-label={`${part.label} ${dollars(part.value)} · ${(part.value / sum * 100).toFixed(1)}%`} aria-describedby={part.index === active ? tooltipId : undefined}
+          onPointerEnter={event => { if (event.pointerType !== "touch") setActive(part.index); }}
+          onPointerDown={event => { if (event.pointerType === "touch") setActive(value => value === part.index ? null : part.index); }}
+          onFocus={() => setActive(part.index)} onBlur={() => setActive(null)}
+          onKeyDown={event => { if (event.key === "Escape") setActive(null); else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActive(value => value === part.index ? null : part.index); } }}
+          style={{ cursor: "pointer" }} />)}
+      </svg> : <Cap>{empty ?? "구성 자료가 없어 파이를 표시하지 않았습니다."}</Cap>}
+      {selected && <div id={tooltipId} role="tooltip" style={{ position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)", maxWidth: "100%", width: "max-content", pointerEvents: "none", zIndex: 2, background: C.card, border: `1px solid ${C.line}`, boxShadow: "0 4px 16px #1A1A1814", borderRadius: 8, padding: "10px 14px", fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600 }}><span style={{ width: 9, height: 9, background: selected.color, borderRadius: 2, flexShrink: 0 }} />{selected.label}</div>
+        <div>{dollars(selected.value)} <span style={{ color: C.cap, marginLeft: 8 }}>{(selected.value / sum * 100).toFixed(1)}%</span></div>
+      </div>}
     </div>
     <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14, alignSelf: "start" }}>
       {valid && <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -375,7 +407,7 @@ export default function LiquidityRead() {
         {/* 01 얼마나 */}
         <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나">
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
-            <H2><span style={{ whiteSpace: "pre-line" }}><Parts parts={S1.headline} /></span></H2>
+            <H2>순유동성과 M2</H2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-9 gap-y-5">
               <LiquidityPie title="순유동성" total={how.total} displayTotal={how.nl} maxTotal={Math.max(how.total, m2Now?.value ?? 0)}
@@ -426,7 +458,7 @@ export default function LiquidityRead() {
         {/* 02 어디서 */}
         <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나">
           {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
-            <H2><Parts parts={S2.headline} /></H2>
+            <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "풀린" : "흡수된"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
             <ContribBars N={cmp} centered rows={[
               ...from.ranked.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: rowDescription(c, from.fedDetail) + (c.key === "tga" ? `\nTGA 잔액 ${fmt.eok(prev.tga)}억 → ${fmt.eok(sel.tga)}억` : c.key === "rrp" ? `\n역레포 잔액 ${fmt.eok(prev.rrp)}억 → ${fmt.eok(sel.rrp)}억` : ""), value: c.effect })),
               { name: "합계", desc: "", value: from.dNl, total: true },
