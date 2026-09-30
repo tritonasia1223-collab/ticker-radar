@@ -63,9 +63,9 @@ describe("읽기 페이지 — (a) 2026-09-09 실제값이 목업 문장을 재�
   });
 
   it("01 결론·백분위·M2 문장", () => {
-    expect(plain(s1(how).headline)).toBe("시장에 도는 돈은 5.5조 달러, 4주 전보다 1,048억 달러(+1.9%) 늘었습니다.");
+    expect(plain(s1(how).headline)).toBe("현재 시장에 풀린 순유동성은 5.5조 달러,\n4주 전보다 1,048억 달러 (+1.9%) 늘었습니다.");
     expect(how.dNl).toBe(104_820); expect(how.flat).toBe(false);
-    expect(s1(how).m2note).toBe("밑돈은 1년 전과 비슷한데 M2는 5.4% 늘었습니다. 돈이 연준 바깥에서 만들어지고 있다는 뜻입니다.");
+    expect(s1(how).m2note).toBe("순유동성은 1년 전과 비슷한데 M2는 5.4% 늘었습니다. 돈이 연준 바깥에서 만들어지고 있다는 뜻입니다.");
     expect(s1(how).band).toBe(""); // 표본 20개 미만이면 백분위 문장은 비운다
   });
 
@@ -76,10 +76,10 @@ describe("읽기 페이지 — (a) 2026-09-09 실제값이 목업 문장을 재�
     expect(from.verdict).toBe("oneoff"); expect(from.dominantShare).toBeGreaterThanOrEqual(0.8);
     expect(r.verdictTitle).toBe("일회성일 가능성이 큼");
     expect(r.verdictBody).toBe("재무부가 TGA를 풀어 생긴 유동성은 TGA를 다시 채울 때 도로 흡수됩니다. 이번 증가는 거의 전부 재무부 쪽입니다.");
-    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA 잔고 감소 = 방출. 거둔 돈보다 쓴 돈이 많았음");
-    expect(rowDescription(from.contributions[1], from.fedDetail)).toBe("역레포 잔고 감소 = 방출. MMF가 연준에 넣어둔 돈을 시중으로 인출");
+    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA에 넣은 돈보다, 꺼내 쓴 돈이 많았음");
+    expect(rowDescription(from.contributions[1], from.fedDetail)).toBe("MMF 등이 연준에 넣어둔 돈을 인출해서 씀");
     // 연준 세부는 |Δ| 큰 순서로 생성 — 목업 문구(−173 이 대부분, 국채 +140)는 자체 불일치라 규칙값이 기준
-    expect(rowDescription(from.contributions[2], from.fedDetail)).toBe("자산 감소 = 흡수. MBS 상환 −173억, 기타 자산 −160억");
+    expect(rowDescription(from.contributions[2], from.fedDetail)).toContain("자산 재조정 결과 시중 유동성 흡수\n(MBS −173억, 기타 자산 −160억");
   });
 
   it("03 결론·항등식", () => {
@@ -115,7 +115,7 @@ describe("읽기 페이지 — 다른 국면", () => {
     expect(plain(s1(how).summary)).toBe("유동성은 4주간 1,550억 달러 줄었습니다.");
     expect(plain(s2(from, 4).headline)).toBe("재무부가 TGA에서 1,500억 달러를 흡수했습니다. 연준은 역시 100억 달러를 흡수했습니다.");
     expect(plain(s2(from, 4).summary)).toBe("재무부가 TGA 잔고를 채운 결과라 돈을 쓰면 되돌려집니다.");
-    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA 잔고 증가 = 흡수. 쓴 돈보다 거둔 돈(세금·국채)이 많았음");
+    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA에서 꺼내 쓴 돈보다, 넣은 돈이 많았음");
     expect(plain(s3(to).headline)).toBe("줄어든 1,550억 달러 중 1,400억이 은행 지급준비금에서 빠졌습니다.");
   });
 
@@ -124,7 +124,7 @@ describe("읽기 페이지 — 다른 국면", () => {
     expect(from.verdict).toBe("persistent");
     expect(plain(s2(from, 4).headline)).toBe("연준이 자산을 늘려 1,000억 달러를 시중에 풀었습니다. 재무부는 역시 100억 달러를 시중에 풀었습니다.");
     expect(plain(s2(from, 4).summary)).toBe("연준이 자산을 늘린 결과라 정책이 바뀌기 전까지 이어질 가능성이 큽니다.");
-    expect(rowDescription(from.contributions[2], from.fedDetail)).toBe("자산 증가 = 방출. 국채 매입 +1,000억이 대부분"); // 0 인 MBS 는 적지 않는다
+    expect(rowDescription(from.contributions[2], from.fedDetail)).toBe("자산 재조정 결과 시중에 유동성 풀림\n(국채 매입 +1,000억)"); // 0 인 MBS 는 적지 않는다
   });
 
   it("(d) 역레포 주도", () => {
@@ -144,7 +144,7 @@ describe("읽기 페이지 — 다른 국면", () => {
   it("(f) ΔNL ≈ 0 — 거의 그대로", () => {
     const { from, how } = pair({}, { tga: 790_000, total: 6_689_900 });
     expect(how.flat).toBe(true);
-    expect(plain(s1(how).headline)).toBe("시장에 도는 돈은 5.5조 달러, 4주 전과 거의 그대로입니다.");
+    expect(plain(s1(how).headline)).toBe("현재 시장에 풀린 순유동성은 5.5조 달러,\n4주 전과 거의 그대로입니다.");
     expect(plain(s1(how).summary)).toBe("유동성은 4주간 거의 그대로입니다.");
     expect(plain(s2(from, 4, true).summary)).toBe("요인들이 서로 상쇄돼 큰 변화가 없습니다.");
     expect(s2(from, 4, true).verdictTitle).toBe("서로 상쇄");
@@ -159,7 +159,7 @@ describe("읽기 페이지 — 다른 국면", () => {
   it("(h) 비교 주 관측이 없으면 수준만 말하고 변화는 비교하지 않는다", () => {
     const how = howMuch([NOW], NOW, null, 4, M2, 0.3);
     expect(Number.isNaN(how.dNl)).toBe(true); expect(how.pctl).toBeNull(); expect(how.nl).toBe(5_547_251);
-    expect(plain(s1(how).headline)).toBe("시장에 도는 돈은 5.5조 달러입니다.");
+    expect(plain(s1(how).headline)).toBe("현재 시장에 풀린 순유동성은 5.5조 달러입니다.");
     expect(plain(s1(how).summary)).toBe("유동성은 5.5조 달러입니다. 4주 전 관측이 없어 변화는 비교하지 않았습니다.");
   });
 
@@ -192,7 +192,7 @@ describe("읽기 페이지 — 다른 국면", () => {
     expect(fmt.isZeroEok(49)).toBe(true); expect(fmt.isZeroEok(-49)).toBe(true); expect(fmt.isZeroEok(50)).toBe(false); expect(fmt.isZeroEok(-50)).toBe(false);
     const { from, how } = pair({}, { tga: 800_050 }); // TGA +50 million → 표시 −1억
     expect(fmt.signedEok(from.contributions[0].effect)).toBe("−1억");
-    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA 잔고 증가 = 흡수. 쓴 돈보다 거둔 돈(세금·국채)이 많았음");
+    expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA에서 꺼내 쓴 돈보다, 넣은 돈이 많았음");
     expect(plain(s2(from, 4, how.flat).headline)).toBe("재무부가 TGA에서 1억 달러를 흡수했습니다.");
     const tiny = pair({}, { tga: 800_040 }); // +40 million → 0억
     expect(fmt.signedEok(tiny.from.contributions[0].effect)).toBe("0억");

@@ -50,21 +50,21 @@ export function s1(h: HowMuch): { headline: Part[]; summary: Part[]; band: strin
   let m2note = "";
   if (h.nlYoy && h.m2Yoy) {
     const a = h.nlYoy.pct, b = h.m2Yoy.pct;
-    if (Math.abs(a) < 2 && b >= 3) m2note = `밑돈은 1년 전과 비슷한데 M2는 ${fmt.pctPlain(b)} 늘었습니다. 돈이 연준 바깥에서 만들어지고 있다는 뜻입니다.`;
-    else if (Math.sign(a) === Math.sign(b) && Math.abs(a) >= 2 && Math.abs(b) >= 2) m2note = `밑돈과 M2가 함께 ${a >= 0 ? "늘고" : "줄고"} 있습니다.`;
-    else m2note = `밑돈은 ${fmt.pct(a)}, M2는 ${fmt.pct(b)} 변했습니다.`;
+    if (Math.abs(a) < 2 && b >= 3) m2note = `순유동성은 1년 전과 비슷한데 M2는 ${fmt.pctPlain(b)} 늘었습니다. 돈이 연준 바깥에서 만들어지고 있다는 뜻입니다.`;
+    else if (Math.sign(a) === Math.sign(b) && Math.abs(a) >= 2 && Math.abs(b) >= 2) m2note = `순유동성과 M2가 함께 ${a >= 0 ? "늘고" : "줄고"} 있습니다.`;
+    else m2note = `순유동성은 ${fmt.pct(a)}, M2는 ${fmt.pct(b)} 변했습니다.`;
   }
   // 비교 주 관측이 없으면 변화를 말하지 않고 수준만 말한다(관측 부재 ≠ 변화 없음).
   if (!Number.isFinite(h.dNl)) {
     return {
-      headline: [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러입니다.` }],
+      headline: [{ text: `현재 시장에 풀린 순유동성은 ${fmt.jo(h.nl)}조 달러입니다.` }],
       summary: [{ text: `유동성은 ${fmt.jo(h.nl)}조 달러입니다. ${N}주 전 관측이 없어 변화는 비교하지 않았습니다.` }],
       band: "", m2note,
     };
   }
   const headline: Part[] = h.flat
-    ? [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러, ${N}주 전과 거의 그대로입니다.` }]
-    : [{ text: `시장에 도는 돈은 ${fmt.jo(h.nl)}조 달러, ${N}주 전보다 ` }, { text: `${fmt.eok(h.dNl)}억 달러(${fmt.pct(h.dNlPct)})`, tone: toneOf(h.dNl) }, { text: ` ${up ? "늘었습니다" : "줄었습니다"}.` }];
+    ? [{ text: `현재 시장에 풀린 순유동성은 ${fmt.jo(h.nl)}조 달러,\n${N}주 전과 거의 그대로입니다.` }]
+    : [{ text: `현재 시장에 풀린 순유동성은 ${fmt.jo(h.nl)}조 달러,\n${N}주 전보다 ` }, { text: `${fmt.eok(h.dNl)}억 달러 (${fmt.pct(h.dNlPct)})`, tone: toneOf(h.dNl) }, { text: ` ${up ? "늘었습니다" : "줄었습니다"}.` }];
   const summary: Part[] = h.flat
     ? [{ text: `유동성은 ${N}주간 거의 그대로입니다.` }]
     : [{ text: `유동성은 ${N}주간 ` }, { text: `${fmt.eok(h.dNl)}억 달러 ${up ? "늘었습니다" : "줄었습니다"}.`, tone: toneOf(h.dNl), strong: true }];
@@ -79,15 +79,11 @@ const SOURCE: Record<Contribution["key"], (c: Contribution) => string> = {
 const verb = (v: number) => (v >= 0 ? "시중에 풀었습니다" : "흡수했습니다");
 export function rowDescription(c: Contribution, fedDetail: WhereFrom["fedDetail"]): string {
   if (isZero(c.own)) return c.key === "tga" ? "TGA 잔고 변화 없음" : c.key === "rrp" ? "역레포 잔고 변화 없음" : "자산 변화 없음"; // 0 은 방출·흡수 판정 없음(Codex 2차 F3)
-  if (c.key === "tga") return c.own < 0 ? "TGA 잔고 감소 = 방출. 거둔 돈보다 쓴 돈이 많았음" : "TGA 잔고 증가 = 흡수. 쓴 돈보다 거둔 돈(세금·국채)이 많았음";
-  if (c.key === "rrp") return c.own < 0 ? "역레포 잔고 감소 = 방출. MMF가 연준에 넣어둔 돈을 시중으로 인출" : "역레포 잔고 증가 = 흡수. MMF가 남는 돈을 연준에 예치";
-  const head = c.own >= 0 ? "자산 증가 = 방출. " : "자산 감소 = 흡수. ";
-  const [a, b] = fedDetail;
-  if (!a) return head.trim();
-  const gross = fedDetail.reduce((s, d) => s + Math.abs(d.value), 0);
-  const most = gross > 0 && Math.abs(a.value) / gross >= 0.5;
-  const second = b && !isZero(b.value) ? `, ${b.label} ${fmt.signedEok(b.value)}` : ""; // 0 인 세부 항목은 적지 않는다
-  return `${head}${a.label} ${fmt.signedEok(a.value)}${most ? "이 대부분" : ""}${second}`;
+  if (c.key === "tga") return c.own < 0 ? "TGA에 넣은 돈보다, 꺼내 쓴 돈이 많았음" : "TGA에서 꺼내 쓴 돈보다, 넣은 돈이 많았음";
+  if (c.key === "rrp") return c.own < 0 ? "MMF 등이 연준에 넣어둔 돈을 인출해서 씀" : "MMF 등이 연준 역레포에 돈을 추가로 맡김";
+  const head = c.own >= 0 ? "자산 재조정 결과 시중에 유동성 풀림" : "자산 재조정 결과 시중 유동성 흡수";
+  const detail = fedDetail.filter(d => !isZero(d.value)).map(d => `${d.key === "mbs" ? "MBS" : d.label} ${fmt.signedEok(d.value)}`).join(", ");
+  return `${head}${detail ? `\n(${detail})` : ""}`;
 }
 export function s2(f: WhereFrom, N: CmpWeeks, flat = false): { headline: Part[]; summary: Part[]; verdictTitle: string; verdictBody: string } {
   const [a, b] = f.ranked;

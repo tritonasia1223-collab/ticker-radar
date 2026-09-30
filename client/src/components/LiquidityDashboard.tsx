@@ -5,22 +5,16 @@ import { liquidityReview } from "@shared/liquidity-review";
 import { ReviewText } from "./ReviewText";
 import type { TreasuryFlow } from "@shared/treasury-flow";
 
-function FlowArrow() {
-  return <svg aria-hidden="true" width="24" height="56" viewBox="0 0 24 56" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v46m-7-8 7 8 7-8" /></svg>;
-}
-
-function ReviewRow({ question, children, dashed = false, flowArrow = false }: { question: string; children: ReactNode; dashed?: boolean; flowArrow?: boolean }) {
+function ReviewRow({ question, children, dashed = false }: { question: string; children: ReactNode; dashed?: boolean }) {
   return <div className={`grid gap-2 py-5 md:grid-cols-[130px_minmax(0,1fr)] md:gap-6 border-t border-[#D9D5CA] ${dashed ? "border-dashed" : ""}`}>
     <div className="flex flex-col">
       <h3 className="text-sm font-semibold leading-relaxed">{question}</h3>
-      {flowArrow && <div className="hidden min-h-20 flex-1 items-center pl-2 text-[#918D83] md:flex"><FlowArrow /></div>}
     </div>
     <div className="space-y-3 text-[15px] leading-[1.85] text-[#3B3934]">{children}</div>
-    {flowArrow && <div className="pl-2 text-[#918D83] md:hidden"><FlowArrow /></div>}
   </div>;
 }
 
-export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flowError, stress, alerts }: { how: HowMuch | null; from: WhereFrom | null; to: WhereTo | null; who: WhoBought | null; flow: TreasuryFlow | null; flowLoading: boolean; flowError: string | null; stress: Stress; alerts: ReactNode }) {
+export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flowError, stress, alerts, riskHeadline }: { how: HowMuch | null; from: WhereFrom | null; to: WhereTo | null; who: WhoBought | null; flow: TreasuryFlow | null; flowLoading: boolean; flowError: string | null; stress: Stress; alerts: ReactNode; riskHeadline: string }) {
   const liquidity = liquidityReview(from, to);
   const mark = (value: number, signed = false) => ({ text: `${signed ? fmt.signedEok(value) : fmt.amount(value)} 달러`, value });
   const destinationAmounts = to ? [
@@ -39,9 +33,9 @@ export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flow
     <div className="border-t-2 border-[#1A1A18] pt-6">
       <div className="text-xs text-[#918D83]">{how ? `${how.prevDate ? how.prevDate + " → " : ""}${how.date}` : "관측 자료 없음"}</div>
       <h2 className="mt-3 mb-6 text-[24px] font-semibold leading-normal sm:text-[28px]" style={{ fontFamily: "'Noto Serif KR', serif" }} data-testid="liquidity-headline">{how ? s1(how).summary.map((p, i) => <span key={i} style={{ color: p.tone === "release" ? "#1F7A4D" : p.tone === "absorb" ? "#B3402E" : undefined }}>{p.text}</span>) : "선택 주차의 유동성 관측이 없습니다."}</h2>
-      <ReviewRow question="어디서?" flowArrow>
+      <ReviewRow question="어디서?">
         <ReviewText text={liquidity.sourceIntro} />
-        {liquidity.sourceItems.map(item => <div key={item.key}><strong>{item.label}: </strong><ReviewText className="inline" text={item.text} amounts={[mark(item.effect)]} /></div>)}
+        <ul className="list-disc space-y-2 pl-5 marker:text-[#918D83]">{liquidity.sourceItems.map(item => <li key={item.key}><ReviewText text={item.text} amounts={[mark(item.effect)]} /></li>)}</ul>
         {liquidity.sourceOffset && <ReviewText text={liquidity.sourceOffset} />}
       </ReviewRow>
       <ReviewRow question="이 유동성은 어디로?" dashed><ReviewText text={liquidity.destination} amounts={destinationAmounts} /></ReviewRow>
@@ -72,9 +66,12 @@ export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flow
         </ReviewRow>
       </>}
     </div>
+    <section aria-label="위험 신호 리뷰" className="mt-6 border-t-2 border-[#1A1A18] pt-6">
+    <h2 className="mt-3 mb-6 text-[24px] font-semibold leading-normal sm:text-[28px]" style={{ fontFamily: "'Noto Serif KR', serif" }} data-testid="risk-headline">{riskHeadline}</h2>
     <ReviewRow question="위험 신호는?">
     {stress.breached.length > 0 && <div className="my-5 rounded-lg border border-[#DCC5AA] bg-[#FAF5EB] p-4 text-sm leading-relaxed" role="status"><strong>자금시장에 주의 신호가 있습니다.</strong><p className="mt-2">{stress.breached.map(r => `${r.name} ${r.value}${r.unit === "bp" ? "bp" : ""} · 경계 ${r.threshold} · ${r.date}`).join(" / ")}</p></div>}
     {alerts}
     </ReviewRow>
+    </section>
   </section>;
 }

@@ -21,22 +21,26 @@ describe("회사채 본문과 세부 기준 분리", () => {
     expect(result.text).toContain("이자 부담이 큽니다");
     expect(result.text).toContain("금리(프리미엄)를 뜻합니다");
     expect(result.text).not.toContain("판단 유보");
+    expect(result.overview).toContain("돈줄이 막힌 위기는 아니지만");
     expect(result.details.join(" ")).toContain("등급별 회사채 발행량은 미확보");
   });
   it("긴장·발행 급감이 있으면 정상 문장을 쓰지 않는다", () => {
     const { data, outcome } = sample(); outcome.signals.hy_wide.status = true; outcome.signals.issuance_collapse.status = true;
     expect(bondReading(data, outcome).text).toContain("나빠지는 신호");
     expect(bondReading(data, outcome).text).not.toContain("큰 문제는 포착되지");
+    expect(bondReading(data, outcome).overview).not.toContain("위기는 아니지만");
   });
   it("금리가 낮거나 표본이 부족한 과거에는 높은 부담으로 고정하지 않는다", () => {
     const { data, outcome } = sample();
     for (const result of data) for (const line of result.comparisonLines ?? []) line.metrics.percentile = 20;
     expect(bondReading(data, outcome).text).not.toContain("이자 부담이 큽니다");
+    expect(bondReading(data, outcome).overview).not.toContain("매우 비싸서");
     for (const result of data) for (const line of result.comparisonLines ?? []) line.stale = true;
     expect(bondReading(data, outcome).text).toContain("비교 자료는 충분하지");
   });
   it("자료가 전혀 없으면 시장 정상으로 확정하지 않는다", () => {
     const data = analyze(null, "2026-09-23", "observation");
     expect(bondReading(data, scenarios(data)).text).not.toContain("큰 문제는 포착되지");
+    expect(bondReading(data, scenarios(data)).overview).not.toContain("위기는 아니지만");
   });
 });

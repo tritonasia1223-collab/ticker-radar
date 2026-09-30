@@ -13,7 +13,16 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 // unit: billions → ×1000 (musd 통일). percent·index 는 원값.
 interface ContextSpec { key: ContextKey; id: string; unit: "billions" | "percent" | "index"; years: number }
 export const CONTEXT_SERIES: ContextSpec[] = [
+  { key: "gdp",      id: "GDP",            unit: "billions", years: 35 },  // 분기, 명목·계절조정 연율
   { key: "m2",       id: "M2SL",           unit: "billions", years: 35 },  // 월간
+  // H.6 구성 항목은 월간 계절조정. 은퇴계좌 차감만 공식 M2 산식에 따라 비계절조정값 사용.
+  { key: "m2Currency", id: "CURRSL", unit: "billions", years: 35 },
+  { key: "m2Demand", id: "DEMDEPSL", unit: "billions", years: 35 },
+  { key: "m2Liquid", id: "MDLM", unit: "billions", years: 35 },
+  { key: "m2Time", id: "STDSL", unit: "billions", years: 35 },
+  { key: "m2Retail", id: "RMFSL", unit: "billions", years: 35 },
+  { key: "m2Retirement", id: "IRA", unit: "billions", years: 35 },
+  { key: "m2RetirementDeposits", id: "IRADI", unit: "billions", years: 35 },
   { key: "deposits", id: "DPSACBW027SBOG", unit: "billions", years: 35 },  // 주간(수요일) H.8
   { key: "sofr",     id: "SOFR",           unit: "percent",  years: 35 },  // 일간
   { key: "iorb",     id: "IORB",           unit: "percent",  years: 35 },  // 일간

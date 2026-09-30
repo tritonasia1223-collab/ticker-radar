@@ -26,5 +26,8 @@ export function bondReading(data: IndicatorAnalysis[], outcome: CreditOutcome) {
     missing("issuance_active") || missing("issuance_collapse") ? "등급별 회사채 발행량은 미확보 또는 갱신 지연으로 판단에서 제외했습니다." : "등급별 발행 판단은 최근 3개월 발행액의 전년 동기 대비 변화 기준입니다.",
     issuanceKnown ? `전체 회사채 발행은 ${issuance!.latest!.date} 기준 확인됩니다. 전체 발행만으로 등급별 조달 상황을 확정하지 않습니다.` : "전체 회사채 발행도 선택 시점에 확인되지 않았습니다.",
   ].filter(Boolean);
-  return { text: `${opening}\n${burden}\n스프레드는 국채 금리보다 추가로 요구하는 금리(프리미엄)를 뜻합니다.`, details };
+  const overview = stable && issuanceKnown && !wide && !collapse && high.every(Boolean)
+    ? "지금 회사채 시장은 돈줄이 막힌 위기는 아니지만, 스프레드가 착시를 일으킬 뿐 기업이 실제로 내는 '진짜 이자(절대금리)'는 매우 비싸서 부담이 쌓이고 있는 상태입니다."
+    : `${opening} ${burden}`;
+  return { overview, text: `${opening}\n${burden}\n스프레드는 국채 금리보다 추가로 요구하는 금리(프리미엄)를 뜻합니다.`, details };
 }
