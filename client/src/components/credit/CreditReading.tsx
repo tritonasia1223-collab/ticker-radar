@@ -8,6 +8,8 @@ import { readingGroups, readingNotes, groupReading, indicatorReading, formatCred
 
 import { creditReview } from "@shared/credit/review";
 import { ReviewText } from "../ReviewText";
+import { RateComparisonChart } from "./RateComparisonChart";
+import { rateNarrative } from "@shared/credit/rate-comparison";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -34,7 +36,7 @@ export function useCreditReading(asOf: string) {
 }
 export type CreditReadingState = ReturnType<typeof useCreditReading>;
 
-export function CreditSummary({ state }: { state: CreditReadingState }) {
+export function CreditSummary({ state, weeks = 4 }: { state: CreditReadingState; weeks?: 4 | 13 }) {
   const { query, outcome, asOf } = state;
   if (query.isLoading) return <div className="text-xs text-[#918D83]">신용 자료 조회 중</div>;
   if (query.isError || query.data?.error || query.data?.configChanged) return <div className="text-xs text-[#918D83]" role="status">신용 자료 {query.data?.configChanged ? "설정 변경 · 재집계 대기" : "조회 오류 · 판단 불가"} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">다시 불러오기</button></div>;
@@ -45,11 +47,36 @@ export function CreditSummary({ state }: { state: CreditReadingState }) {
       {story.evidence.map((e, n) => <p key={n} className="mt-2">{e.text}<br /><span className="text-xs text-[#918D83]">({e.date})</span></p>)}
       <ReviewText className="mt-2" text={story.meaning} />
     </div>) : <ReviewText className="text-[15px] leading-[1.85]" text={review.normal} />}
+    <div className="mt-2 text-[13px] leading-[1.8] text-[#5F5C54]">{["ig_oas", "hy_oas"].map(id => {
+      const rate = state.data.find(i => i.id === id)?.comparisonLines?.[0], c = rate?.changes[weeks];
+      return <p key={id}>{rate?.latest && !rate.stale && !rate.errors.length ? `${rate.label} ${formatCredit(rate.latest.value, "percent")} · ${weeks}주 ${c && !c.unchangedRelease ? formatCredit(c.value, "pp", true) : "비교 자료 부족"} (${rate.latest.date})` : `${id === "ig_oas" ? "IG" : "HY"} 시장금리 자료 부족 · 금리 수준 판단 유보`}</p>;
+    })}</div>
     {!review.stories.length && review.incompleteIssuance && <p className="mt-2 text-xs text-[#918D83]">등급별 회사채 발행량은 자료 부족으로 판단에서 제외했습니다.</p>}
   </section>;
 }
 
-function ReadingChart({ spec, result, state, weeks }: { spec: Indicator; result: IndicatorAnalysis; state: CreditReadingState; weeks: 4 | 13 }) {
+function ReadingChart(props: { spec: Indicator; result: IndicatorAnalysis; state: CreditReadingState; weeks: 4 | 13 }) {
+  const { spec, result, state, weeks } = props;
+  if (!spec.chart.marketYield && spec.chart.kind !== "spread") return <OriginalReadingChart {...props} />;
+  const note = readingNotes[spec.id];
+  return <article data-credit-reading={spec.id} id={`read-${spec.id}`} style={{ borderTop: `1px solid ${border}`, paddingTop: 24, scrollMarginTop: 132 }}>
+    <div style={caption}>{spec.name} · {periods[spec.frequency]}</div>
+    <h3 style={{ fontFamily: serif, fontSize: 20, lineHeight: 1.55, margin: "8px 0" }}>{note.question}</h3>
+    <ReviewText text={rateNarrative(result, weeks)} className="text-sm font-semibold leading-[1.8] mb-4" />
+    <RateComparisonChart id={spec.id} kind={spec.chart.marketYield ? "oas" : "difference"} rates={result.comparisonLines ?? []} spread={result.lines[0]} asOf={state.asOf} years={state.years} weeks={weeks} />
+    <div className="py-4 space-y-2">
+      <p style={paragraph}>{note.reading}</p><p style={paragraph}>{note.together}</p>
+      <details style={caption}><summary className="cursor-pointer">관측 범위·갱신 주기·판정 근거</summary><div className="pt-2 space-y-2">
+        <p>{spec.refresh?.publication} · {spec.refresh?.collection}</p>
+        <p>조건 판정은 스프레드 기준입니다. 시장금리의 수준·변화와 별도로 해석합니다.</p>
+        {[...result.lines, ...(result.comparisonLines ?? [])].map(l => <p key={l.key}>{l.label}: {l.sampleStart ?? "—"} ~ {l.sampleEnd ?? "—"} · {l.sampleCount}개. {l.tenYearPercentile == null ? "10년 백분위 자료 부족" : `10년 백분위 ${formatCredit(l.tenYearPercentile, "percent")}`}{l.errors.length ? ` · ${l.errors.join(" / ")}` : ""}</p>)}
+        {spec.caveats?.map(c => <p key={c}>{c}</p>)}
+      </div></details>
+    </div>
+  </article>;
+}
+
+function OriginalReadingChart({ spec, result, state, weeks }: { spec: Indicator; result: IndicatorAnalysis; state: CreditReadingState; weeks: 4 | 13 }) {
   const [selected, setSelected] = useState(result.lines[0]?.key);
   const focus = result.lines.find(l => l.key === selected) ?? result.lines[0];
   const [indexed, setIndexed] = useState(!!spec.chart.indexed);

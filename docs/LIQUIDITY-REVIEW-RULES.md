@@ -59,3 +59,7 @@
 
 구현: `shared/liquidity-review.ts`, `shared/credit/review.ts`, `client/src/components/LiquidityDashboard.tsx`, `CreditReading.tsx`.
 검증: `tests/liquidity-review.test.ts` 및 기존 유동성·신용 해설 테스트, 타입 검사, 빌드, 실제 화면의 주차/비교 기간/펼치기 확인.
+
+## 시장금리와 위험 프리미엄
+
+OAS 확대는 위험 프리미엄 확대라고 쓴다. OAS만으로 전체 조달금리가 올랐거나 내렸다고 단정하지 않는다. 정상 신용 요약에도 위험 프리미엄 안정이 낮은 시장금리를 뜻하지 않음을 밝히고, IG·HY 시장금리와 상단 비교 기간의 변화·관측일을 함께 표시한다. 두 지표의 방향은 각각 서술하며, 새 금리 임계값을 임의로 도입하지 않는다.

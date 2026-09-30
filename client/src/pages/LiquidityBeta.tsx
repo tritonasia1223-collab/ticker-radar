@@ -15,6 +15,7 @@ import {
 } from "@shared/liquidity-beta";
 import { Card } from "@/components/ui/card";
 import CreditMonitor from "@/components/credit/CreditMonitor";
+import { FundingRateChart } from "@/components/credit/FundingRateChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TAccount, asMoney, signed, weekLabel, A_SOMA, L_RES, TB, POS, NEG, type WeekPoint } from "@/components/fed-taccount";
 
@@ -430,6 +431,7 @@ export default function LiquidityBeta() {
         </div>
       </Card>
       <CreditMonitor asOf={sel.date} />
+      <Card className="p-4 md:p-5"><FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={sel.date} /></Card>
     </div>
   );
 }

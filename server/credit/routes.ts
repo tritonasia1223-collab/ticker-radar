@@ -20,7 +20,7 @@ export function registerCreditRoutes(app: Express) {
       const outcome = scenarios(indicators);
       // 계산에는 전체 이력을 쓰고, 응답에는 표시할 차트 구간만 담는다.
       const start = new Date(Date.parse(asOf) - years * 365.25 * DAY).toISOString().slice(0, 10);
-      for (const indicator of indicators) for (const line of indicator.lines) line.points = line.points.filter(p => p.date >= start);
+      for (const indicator of indicators) for (const line of [...indicator.lines, ...(indicator.comparisonLines ?? [])]) line.points = line.points.filter(p => p.date >= start);
       res.set("Cache-Control", "private, max-age=60").json({ asOf, basis: timeBasis, collectedAt: snapshot?.collectedAt ?? null, configHash: configHash(), configChanged: !!snapshot && snapshot.configHash !== configHash(), indicators, scenarios: outcome, error: snapshot ? null : "아직 수집된 자료가 없습니다." });
     } catch {
       const indicators = analyze(null, asOf, timeBasis);

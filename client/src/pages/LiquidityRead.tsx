@@ -17,6 +17,7 @@ import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioRead
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
+import { FundingRateChart } from "@/components/credit/FundingRateChart";
 
 // ── 서버 응답 형태 ──
 interface TreasuryMonth { date: string; bills: number; total: number }
@@ -322,7 +323,7 @@ export default function LiquidityRead() {
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID}><div className="hidden lg:block" /><div style={{ minWidth: 0 }}>
-        <LiquidityDashboard how={how} from={from} to={to} who={who} stress={st} alerts={<CreditSummary state={credit} />} />
+        <LiquidityDashboard how={how} from={from} to={to} who={who} stress={st} alerts={<CreditSummary state={credit} weeks={cmp} />} />
         </div></div>
 
         {/* 01 얼마나 */}
@@ -573,7 +574,8 @@ export default function LiquidityRead() {
         <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나">
           <H2>{S5.headline.join(" ")}</H2>
           <div style={{ display: "flex", flexDirection: "column", borderBottom: `1px solid ${C.line}` }}>{st.rows.map((r) => <GaugeRow key={r.key} r={r} />)}</div>
-          <button type="button" onClick={() => document.getElementById("read-hy_oas")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="underline text-left" style={{ fontSize: 13, color: C.cap }}>HY 조달 비용의 상세 그래프·해설로 이동 ↓</button>
+          <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} />
+          <button type="button" onClick={() => document.getElementById("read-hy_oas")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="underline text-left" style={{ fontSize: 13, color: C.cap }}>HY 시장금리·위험 프리미엄의 상세 그래프로 이동 ↓</button>
           {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
         </Section>
 

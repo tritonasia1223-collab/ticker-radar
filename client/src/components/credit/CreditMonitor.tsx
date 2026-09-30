@@ -5,6 +5,8 @@ import { ArrowDownRight, ArrowUpRight, RefreshCw, Landmark, Network, ExternalLin
 import { config, type Indicator } from "@shared/credit/schema";
 import { analyze, DAY, type IndicatorAnalysis, type LineAnalysis } from "@shared/credit/signals";
 import { scenarios } from "@shared/credit/scenarios";
+import { RateComparisonChart } from "./RateComparisonChart";
+import { rateNarrative } from "@shared/credit/rate-comparison";
 
 type Response = { asOf: string; collectedAt: string | null; configChanged?: boolean; error?: string | null; indicators: IndicatorAnalysis[]; scenarios: ReturnType<typeof scenarios> };
 const colors = ["#6366f1", "#0d9488", "#d97706", "#db2777", "#7c3aed", "#0284c7", "#65a30d", "#ea580c", "#64748b"];
@@ -25,7 +27,25 @@ function delta(line: LineAnalysis, weeks: number) {
 }
 function Pill({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) { return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${muted ? "bg-muted text-muted-foreground" : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"}`}>{children}</span>; }
 
-function IndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"] }) {
+function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"] }) {
+  const { spec, result, years, asOf } = props;
+  if (!spec.chart.marketYield && spec.chart.kind !== "spread") return <OriginalIndicatorCard {...props} />;
+  return <article data-credit-indicator={spec.id} className="p-4 md:p-5 space-y-4 min-w-0">
+    <h3 className="font-semibold text-sm">{spec.name}</h3>
+    <p className="text-xs leading-relaxed text-muted-foreground">{rateNarrative(result, 4)}</p>
+    <RateComparisonChart id={spec.id} kind={spec.chart.marketYield ? "oas" : "difference"} rates={result.comparisonLines ?? []} spread={result.lines[0]} asOf={asOf} years={years} />
+    <p className="text-xs leading-relaxed text-muted-foreground">{spec.interpretation}</p>
+    <details className="text-[11px] text-muted-foreground"><summary className="cursor-pointer">갱신 주기·관측 범위·판정 근거</summary><div className="pt-2 space-y-2">
+      <p>{spec.refresh?.publication} · {spec.refresh?.collection}</p>
+      <p>신호 조건은 시장금리가 아닌 스프레드에 적용합니다.</p>
+      {spec.signal_keys.map(k => <p key={k}>{config.signalLabels[k]} · {props.signals[k]?.status === true ? "충족" : props.signals[k]?.status === false ? "미충족" : "확인 대기"}</p>)}
+      {[...result.lines, ...(result.comparisonLines ?? [])].map(l => <p key={l.key}>{l.label}: {l.sampleStart ?? "—"} ~ {l.sampleEnd ?? "—"} · {l.sampleCount}개{l.errors.length ? ` · ${l.errors.join(" / ")}` : ""}</p>)}
+      {spec.caveats?.map(c => <p key={c}>{c}</p>)}
+    </div></details>
+  </article>;
+}
+
+function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"] }) {
   const [indexed, setIndexed] = useState(!!spec.chart.indexed);
   const [selected, setSelected] = useState(spec.chart.lines[0]?.key);
   const focus = result.lines.find(l => l.key === selected) ?? result.lines[0];

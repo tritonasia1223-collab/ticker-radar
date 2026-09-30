@@ -241,7 +241,7 @@
       "indicators": [
         {
           "id": "hy_oas",
-          "name": "HY OAS",
+          "name": "HY 금리·OAS",
           "priority": 1,
           "essential": true,
           "category": "회사채",
@@ -254,7 +254,7 @@
           },
           "frequency": "daily",
           "unit": "percentage_points",
-          "measures": "투기등급 회사채 금리 − 국채 금리 (옵션 효과 조정)",
+          "measures": "회사채 시장금리와 국채 대비 위험 프리미엄(OAS)을 구분해 표시",
           "role": "신용 긴장의 가격 신호",
           "stress_direction": "higher_is_stress",
           "reference_ranges": {
@@ -266,7 +266,7 @@
               "2020-03": ">10"
             }
           },
-          "interpretation": "수준보다 확대 속도가 중요. 몇 주 사이 급확대는 위험회피 가속",
+          "interpretation": "시장금리는 신규 발행·차환 여건의 참고치입니다. OAS는 옵션을 조정한 국채 대비 프리미엄이며, 축소가 시장금리 하락을 뜻하지 않습니다.",
           "chart": {
             "kind": "series",
             "unit": "pp",
@@ -275,7 +275,11 @@
                 "key": "BAMLH0A0HYM2",
                 "label": "HY OAS"
               }
-            ]
+            ],
+            "marketYield": {
+              "key": "BAMLH0A0HYM2EY",
+              "label": "HY 회사채 시장금리"
+            }
           },
           "signal_keys": [
             "hy_wide",
@@ -311,14 +315,14 @@
           },
           "frequency": "daily",
           "unit": "percentage_points",
-          "measures": "중간 등급 기업의 단기 운영자금 조달 비용",
+          "measures": "CP 금리와 3개월 국채 할인율의 차이 · 원금리와 차이를 함께 확인",
           "role": "단기 자금 급소",
           "stress_direction": "higher_is_stress",
           "reference_ranges": {
             "normal": "0.1-0.3",
             "stressed": ">=1.0"
           },
-          "interpretation": "급등 + CP 잔액 감소 = 시장이 닫혀 기업이 은행 한도대출로 이동",
+          "interpretation": "차이 확대는 CP 금리 상승 또는 국채 금리 하락으로 나타날 수 있습니다. CP 자체 금리와 잔액을 함께 확인합니다.",
           "caveats": [
             "두 시계열의 날짜를 맞춘 뒤 차이 계산",
             "위기 시 T-bill 금리 하락으로 스프레드가 추가로 벌어지는데 이것도 스트레스의 일부",
@@ -349,7 +353,7 @@
         },
         {
           "id": "ccc_oas",
-          "name": "CCC 이하 OAS",
+          "name": "CCC 이하 금리·OAS",
           "priority": 3,
           "essential": true,
           "category": "회사채",
@@ -362,10 +366,10 @@
           },
           "frequency": "daily",
           "unit": "percentage_points",
-          "measures": "가장 약한 등급 회사채의 스프레드",
+          "measures": "회사채 시장금리와 국채 대비 위험 프리미엄(OAS)을 구분해 표시",
           "role": "사모대출 차주 여건의 공개시장 대리지표",
           "stress_direction": "higher_is_stress",
-          "interpretation": "HY 전체는 안정인데 CCC만 확대되면 약한 차주부터 선별적으로 막히는 단계",
+          "interpretation": "시장금리는 신규 발행·차환 여건의 참고치입니다. OAS는 옵션을 조정한 국채 대비 프리미엄이며, 축소가 시장금리 하락을 뜻하지 않습니다.",
           "chart": {
             "kind": "series",
             "unit": "pp",
@@ -374,7 +378,11 @@
                 "key": "BAMLH0A3HYC",
                 "label": "CCC 이하 OAS"
               }
-            ]
+            ],
+            "marketYield": {
+              "key": "BAMLH0A3HYCEY",
+              "label": "CCC 이하 회사채 시장금리"
+            }
           },
           "signal_keys": [
             "ccc_wide"
@@ -449,7 +457,7 @@
         },
         {
           "id": "ig_oas",
-          "name": "IG OAS",
+          "name": "IG 금리·OAS",
           "priority": 5,
           "essential": false,
           "category": "회사채",
@@ -462,7 +470,7 @@
           },
           "frequency": "daily",
           "unit": "percentage_points",
-          "measures": "우량 등급 회사채 스프레드",
+          "measures": "회사채 시장금리와 국채 대비 위험 프리미엄(OAS)을 구분해 표시",
           "role": "전반적 위험회피 여부",
           "stress_direction": "higher_is_stress",
           "reference_ranges": {
@@ -474,7 +482,7 @@
               "2020-03": "~4"
             }
           },
-          "interpretation": "HY만 확대되면 선별적 긴장, IG까지 동반 확대되면 전반적 위험회피",
+          "interpretation": "시장금리는 신규 발행·차환 여건의 참고치입니다. OAS는 옵션을 조정한 국채 대비 프리미엄이며, 축소가 시장금리 하락을 뜻하지 않습니다.",
           "chart": {
             "kind": "series",
             "unit": "pp",
@@ -483,7 +491,11 @@
                 "key": "BAMLC0A0CM",
                 "label": "IG OAS"
               }
-            ]
+            ],
+            "marketYield": {
+              "key": "BAMLC0A0CMEY",
+              "label": "IG 회사채 시장금리"
+            }
           },
           "signal_keys": [
             "ig_wide",
@@ -1462,6 +1474,33 @@
         "security": "US Fixed Income Securities",
         "updateSheet": "Table of Contents"
       }
+    },
+    {
+      "key": "BAMLH0A0HYM2EY",
+      "label": "HY 회사채 시장금리",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "BAMLH0A0HYM2EY",
+      "url": "https://fred.stlouisfed.org/series/BAMLH0A0HYM2EY"
+    },
+    {
+      "key": "BAMLH0A3HYCEY",
+      "label": "CCC 이하 회사채 시장금리",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "BAMLH0A3HYCEY",
+      "url": "https://fred.stlouisfed.org/series/BAMLH0A3HYCEY"
+    },
+    {
+      "key": "BAMLC0A0CMEY",
+      "label": "IG 회사채 시장금리",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "BAMLC0A0CMEY",
+      "url": "https://fred.stlouisfed.org/series/BAMLC0A0CMEY"
     }
   ],
   "signals": {
@@ -1862,16 +1901,16 @@
     "loan_growth": "기업대출 증가",
     "loan_slow": "기업대출 둔화",
     "loan_surge": "기업대출 급증",
-    "hy_wide": "HY 확대",
-    "hy_stable": "HY 안정",
+    "hy_wide": "HY 프리미엄 확대",
+    "hy_stable": "HY 프리미엄 안정",
     "hy_calm": "HY 안정·축소",
-    "ccc_wide": "CCC 확대",
-    "ccc_stable": "CCC 안정",
+    "ccc_wide": "CCC 프리미엄 확대",
+    "ccc_stable": "CCC 프리미엄 안정",
     "ccc_calm": "CCC 안정·축소",
-    "ig_wide": "IG 확대",
-    "ig_stable": "IG 안정",
+    "ig_wide": "IG 프리미엄 확대",
+    "ig_stable": "IG 프리미엄 안정",
     "ig_calm": "IG 안정·축소",
-    "cp_jump": "CP 조달비용 급등",
+    "cp_jump": "CP 금리차 급확대",
     "cp_fall": "CP 잔액 급감",
     "issuance_active": "회사채 발행 활발",
     "issuance_down": "회사채 발행 감소",

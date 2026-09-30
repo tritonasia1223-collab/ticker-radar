@@ -38,7 +38,7 @@ export interface LineAnalysis {
   stale: boolean; ageDays: number | null; navAgeDays?: number | null; collectionOverdue?: boolean; sampleStart: string | null; sampleEnd: string | null; sampleCount: number; tenYearPercentile: number | null;
   errors: string[]; notes: string[]; sources: { url?: string; label: string; transport: string; checkedAt?: string }[];
 }
-export interface IndicatorAnalysis { id: string; lines: LineAnalysis[]; status: "ok" | "partial" | "missing" | "manual" }
+export interface IndicatorAnalysis { id: string; lines: LineAnalysis[]; comparisonLines?: LineAnalysis[]; status: "ok" | "partial" | "missing" | "manual" }
 function issuanceYoy(points: Point[], asOf: string) {
   const complete = points.filter(p => p.date.slice(0, 7) < asOf.slice(0, 7)); const last = complete.at(-1); if (!last) return null;
   const d = new Date(last.date); const month = d.getUTCMonth(), year = d.getUTCFullYear();
@@ -88,6 +88,10 @@ export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString
       return analyzeLine(i, l.key, l.label, nav ? joinNav(a.points, nav.points, basis) : a.points, nav ? [a, nav] : [a], asOf, basis, nav ? a.points : undefined);
     });
     const present = lines.filter(l => l.latest).length;
-    return { id: i.id, lines, status: !present ? i.chart.kind === "manual" ? "manual" : "missing" : present < lines.length || lines.some(l => l.errors.length || l.stale) ? "partial" : "ok" };
+    // 참고 금리는 신호 판정용 lines에 섞지 않는다. OAS 규칙과 임계값을 그대로 유지한다.
+    const comparison = i.chart.marketYield ? [i.chart.marketYield] : i.chart.kind === "spread" ? i.chart.lines : [];
+    const commonDates = i.chart.kind === "spread" ? new Set(lines[0].points.map(p => p.date)) : null;
+    const comparisonLines = comparison.map(l => { const s = source(l.key); return analyzeLine({ ...i, chart: { ...i.chart, kind: "series", unit: "percent" } }, l.key, l.label, commonDates ? s.points.filter(p => commonDates.has(p.date)) : s.points, [s], asOf, basis); });
+    return { id: i.id, lines, comparisonLines, status: !present ? i.chart.kind === "manual" ? "manual" : "missing" : present < lines.length || lines.some(l => l.errors.length || l.stale) ? "partial" : "ok" };
   });
 }

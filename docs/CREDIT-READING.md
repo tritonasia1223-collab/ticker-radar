@@ -26,3 +26,12 @@ B안은 A안과 같은 `/api/liquidity/credit?asOf=...&basis=observation&years=.
 자료 없음·갱신 지연·수집 오류를 정상으로 해석하지 않는다. 회사채 전체 발행액을 IG·HY 발행량으로 대신하지 않는다. CP 비용 급등과 C&I 급증이 겹치면 비상 인출 해석을 우선한다. BDC 공시 기준과 ETF 대용 지표의 한계는 각 그래프에 표시한다. 적합도는 확률이 아니다.
 
 검증: `npx vitest run tests/credit-reading.test.ts tests/credit-history.test.ts tests/credit-monitor.test.ts tests/liquidity-read.test.ts` 및 TypeScript 검사, 실제 화면의 주차·비교 기간 전환.
+
+## 금리와 스프레드 표시
+
+- CP·SOFR−IORB는 기본값으로 두 원금리를 동일한 % 축에 표시하고 사이만 중립색으로 칠한다. 토글로 차이만 표시하며 CP는 %p, SOFR−IORB는 bp를 사용한다.
+- 날짜가 다른 관측은 차감하지 않으며 결측을 전일값으로 메우지 않는다. 교차 시 차이는 음수를 유지하며 음영 폭은 교차점에서 0이 된다. 기간과 선택 주차는 두 보기에서 같다.
+- IG·HY·CCC는 시장금리(기본)와 공식 OAS를 전환한다. 시장금리는 각각 BAMLC0A0CMEY, BAMLH0A0HYM2EY, BAMLH0A3HYCEY로 JSON에서 정의하고 기존 일간 수집으로 갱신한다. OAS에서 임의 국채 금리를 역산하거나 특정 국채와의 차이를 OAS로 표시하지 않는다.
+- 어느 보기에서나 시장금리와 프리미엄의 최신값·비교 변화·관측일을 함께 표시한다. 시장금리는 신규 발행·차환 여건의 참고치이며 기업 전체의 기존 평균 지급이자율이 아니다.
+- 참고 원금리는 API의 comparisonLines로 반환한다. 기존 lines와 시나리오 규칙은 유지하므로 시장금리를 OAS 임계값에 넣지 않는다. 금리와 스프레드의 비교일이 다르거나 자료 오류·지연이 있으면 동반 방향 해석을 유보한다.
+- 최근 3년만 제공되는 ICE 원천의 범위 밖은 자료 없음으로 표시하고, 확보 기간을 10년 백분위로 부르지 않는다.
