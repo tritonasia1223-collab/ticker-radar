@@ -8,7 +8,7 @@ import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread } from "@/lib/comparison-series";
+import { COMPARE_SERIES, SELECTABLE_COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread } from "@/lib/comparison-series";
 import { assignedAxis, buildComparisonAxes, defaultAxis, rawUnitKey, type AxisSide } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
@@ -32,7 +32,7 @@ function readPreferences(): Preferences {
     const base = parsedView.success ? parsedView.data.base : v?.base;
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
       const view = parsedView.success ? parsedView.data : { ...defaults.view, base };
-      return { ...defaults, ids: [...new Set<string>(v.ids.filter((id: string) => COMPARE_SERIES.some(s => s.id === id)))].slice(0, view.mode === "raw" ? 2 : undefined), view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
+      return { ...defaults, ids: [...new Set<string>(v.ids.filter((id: string) => SELECTABLE_COMPARE_SERIES.some(s => s.id === id)))].slice(0, view.mode === "raw" ? 2 : undefined), view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -151,7 +151,7 @@ export default function GraphCompare() {
       <button className={buttonClass + (options ? " bg-accent" : "")} aria-expanded={options} onClick={() => setOptions(!options)}><Settings2 size={14} />표시 설정</button>
     </div>
     {indicators && <section id="comparison-indicators" aria-label="표시 지표 선택" className="absolute left-3 right-3 top-full z-30 mt-1 max-h-[65vh] overflow-auto rounded-lg border bg-background p-4 shadow-xl">
-      <div className="grid gap-x-6 gap-y-3 xl:grid-cols-2 2xl:grid-cols-3">{Object.entries(COMPARE_CATEGORIES).map(([key, category]) => <fieldset key={key} className="min-w-0"><legend className="mb-1.5 text-[10px] font-semibold" style={{ color: category.color }}>{category.label}</legend><div className="flex flex-wrap gap-x-3 gap-y-2">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
+      <div className="grid gap-x-6 gap-y-3 xl:grid-cols-2 2xl:grid-cols-3">{Object.entries(COMPARE_CATEGORIES).map(([key, category]) => <fieldset key={key} className="min-w-0"><legend className="mb-1.5 text-[10px] font-semibold" style={{ color: category.color }}>{category.label}</legend><div className="flex flex-wrap gap-x-3 gap-y-2">{COMPARE_SERIES.filter(s => s.category === key && (SELECTABLE_COMPARE_SERIES.includes(s) || prefs.ids.includes(s.id))).map(s => {
         const checked = prefs.ids.includes(s.id), disabled = !checked && prefs.view.mode === "raw" && prefs.ids.length >= 2;
         return <div key={s.id} className="inline-flex items-center gap-1"><label title={disabled ? "선택한 지표를 하나 해제하면 켤 수 있습니다." : s.note} className={"inline-flex items-center gap-1.5 text-[11px] " + (disabled ? "cursor-not-allowed text-muted-foreground/50" : "cursor-pointer hover:text-sky-600")}><input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 accent-sky-500" checked={checked} disabled={disabled} onChange={e => { const on = e.target.checked; setPrefs(p => ({ ...p, view: on && p.view.mode === "mixed" && assignedAxis(s.id, p.view) === "right" ? { ...p.view, rightUnit: rawUnitKey(s) } : p.view, ids: on ? p.ids.includes(s.id) || (p.view.mode === "raw" && p.ids.length >= 2) ? p.ids : [...p.ids, s.id] : p.ids.filter(id => id !== s.id) })); }} /><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</label>{prefs.view.mode === "mixed" && <select aria-label={s.label + " 축"} title={defaultAxis(s.id) === "left" ? "기본: 왼쪽 기준월=100" : "기본: 오른쪽 실제 값"} className="rounded border bg-background px-1 py-0.5 text-[10px] disabled:opacity-40" disabled={!checked} value={assignedAxis(s.id, prefs.view)} onChange={e => setAxis(s.id, e.target.value as AxisSide)}><option value="left" disabled={checked && !commonBase([monthlyPoints(seriesQuery.data?.[s.id] ?? [])], prefs.view.base)}>왼쪽</option><option value="right">오른쪽</option></select>}</div>;
       })}</div></fieldset>)}</div>

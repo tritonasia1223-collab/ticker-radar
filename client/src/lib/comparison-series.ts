@@ -27,6 +27,9 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
 // 과거 확장 구간이 있는 지표는 출처 목록 설명에 구간을 덧붙인다(수록 기간은 데이터에서 자동으로 첫 관측일이 된다).
 for (const s of COMPARE_SERIES) { const h = historyNote(s.id); if (h) s.note = `${s.note} · ${h}`; }
 
+// Keep definitions/data for existing insight links, but omit these from new selections.
+const hiddenSeries = new Set(["exports_yoy", "imports_yoy", "trade", "trade_cycle"]);
+export const SELECTABLE_COMPARE_SERIES = COMPARE_SERIES.filter(s => !hiddenSeries.has(s.id));
 
 export interface SpreadData { spec: SpreadSpec; label: string; aLabel: string; bLabel: string; points: SpreadPoint[] }
 export function makeSpread(spec: SpreadSpec | null | undefined, data: Record<string, Observation[]> | undefined): SpreadData | null {
