@@ -3,6 +3,23 @@ import dataset from "../shared/treasury-ownership-data.json";
 import { ownershipView, atOrBefore, type OwnershipData } from "../shared/treasury-ownership";
 
 describe("국채 보유와 발행사 참고치", () => {
+  it("준비자산 구성 합계가 각 공시 총액과 같고 국채와 역레포를 분리한다", () => {
+    for (const issuer of dataset.issuers) {
+      const { total, components } = issuer.portfolio;
+      expect(Object.values(components).every(v => v === undefined || v >= 0)).toBe(true);
+      expect(Object.values(components).reduce<number>((s, v) => s + (v ?? 0), 0)).toBeCloseTo(total, 4);
+      expect(components.treasuries).toBeCloseTo(issuer.treasuries, 5);
+    }
+    const v = ownershipView(dataset, "2026-09-23")!;
+    const circle = v.issuers[0].holding!.portfolio!;
+    expect(circle.total).toBeCloseTo(73344.909176, 5);
+    expect(circle.components.overnight_repo).toBe(52527);
+    expect(circle.components.treasuries! / circle.total * 100).toBeCloseTo(11.62, 2);
+    expect(v.sum).toBeCloseTo(123485.027835, 5);
+    const older = ownershipView(dataset, "2025-07-02")!.issuers[1].holding!.portfolio!;
+    expect(older.components.mmf).toBeCloseTo(6345.999587, 5);
+    expect(v.issuers[1].holding!.portfolio!.components.mmf).toBe(0);
+  });
   it("전체 구성 합계에 서클·테더를 중복 가산하지 않는다", () => {
     const v = ownershipView(dataset, "2026-09-23")!;
     expect(v.quarter.date).toBe("2026-06-30");

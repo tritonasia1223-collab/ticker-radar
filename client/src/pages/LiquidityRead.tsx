@@ -537,10 +537,9 @@ export default function LiquidityRead() {
               ))}
               <div style={{ borderTop: `1px solid ${C.line}` }} />
             </div>
-            <div className="flex flex-col md:flex-row gap-4 md:gap-7" style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 32px" }}>
-              <div style={{ width: 150, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontSize: 13, fontWeight: 600, color: C.cap }}>읽을 때 주의</span><span style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.4 }}>{S4?.caution}</span></div>
-              <Body max={9999}>단기채는 몇 주마다 만기가 돌아와 다시 찍습니다. 그래서 발행액 대부분은 기존 빚을 갈아 끼운 것입니다. {who.netIssuance ? <>같은 시기 실제로 늘어난 국채는 <strong>{fmt.signedAmount(who.netIssuance.delta)} 달러</strong>({fmt.monthKo(who.netIssuance.from.date)}→{fmt.monthKo(who.netIssuance.to.date)} 월간 잔액 기준)이고{who.billsNet ? <>, 그중 단기채가 {fmt.signedAmount(who.billsNet.delta)} 달러입니다.</> : "."}</> : "같은 시기의 월간 잔액 자료가 아직 없어 순증액은 다음 갱신 때 표시됩니다."}</Body>
-            </div>
+            <p data-testid="treasury-issuance-note" style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: "#918D83" }}>
+              참고 · {S4?.caution}. 단기채는 만기가 돌아오면 다시 발행하므로 발행액에는 기존 빚을 갈아 끼운 물량이 포함됩니다. {who.netIssuance ? <>월간 잔액으로 확인한 국채 순증감은 {fmt.signedAmount(who.netIssuance.delta)} 달러({fmt.monthKo(who.netIssuance.from.date)}→{fmt.monthKo(who.netIssuance.to.date)} 기준)이고{who.billsNet ? <>, 그중 단기채는 {fmt.signedAmount(who.billsNet.delta)} 달러입니다.</> : "."}</> : "월간 잔액 자료가 아직 없어 순증액은 다음 갱신 때 표시됩니다."}
+            </p>
             <Expander label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>
               {!life ? <Cap>준비 중 — 입찰 창 안에 보유 관측이 두 개 이상 없어 표를 만들 수 없습니다</Cap> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

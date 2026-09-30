@@ -10,6 +10,7 @@ import csv, io, json, re, calendar, zipfile, html, math
 from urllib.request import Request, urlopen
 from urllib.parse import unquote
 from pypdf import PdfReader
+from reserve_portfolio import circle_portfolio, tether_portfolio
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / 'shared/treasury-ownership-config.json').read_text(encoding='utf-8'))
@@ -77,7 +78,8 @@ def circle_report(url):
     publication = re.findall(r'(' + month_names + r')\s+(\d{1,2}),?\s+(20\d{2})', section, re.I)
     published_at = datetime.strptime(' '.join(publication[-1]), '%B %d %Y').date().isoformat() if publication else None
     return {'issuer': 'circle', 'date': date, 'publishedAt': published_at, 'treasuries': sum(numbers), 'fund': numbers[0],
-            'direct': numbers[1] if len(numbers) == 2 else 0, 'source': url, 'frequency': 'monthly'}
+            'direct': numbers[1] if len(numbers) == 2 else 0, 'source': url, 'frequency': 'monthly',
+            'portfolio': circle_portfolio(section, sum(numbers))}
 
 def tether_report(report):
     url = report.get('pdf')
@@ -94,9 +96,26 @@ def tether_report(report):
         raise ValueError('테더 직접 국채 항목 인식 실패: ' + report['date'])
     return {'issuer': 'tether', 'date': report['date'], 'publishedAt': report['publishedAt'],
             'treasuries': int(amount[1].replace(',', '')) / 1e6,
-            'source': url, 'frequency': 'quarterly'}
+            'source': url, 'frequency': 'quarterly', 'portfolio': tether_portfolio(text)}
 
 def main():
+    # 기존 관측과 출처를 유지한 채 공시 PDF의 추가 항목만 보강한다.
+    import sys
+    if '--enrich-portfolios' in sys.argv:
+        target = ROOT / 'shared/treasury-ownership-data.json'
+        data = json.loads(target.read_text(encoding='utf-8'))
+        for item in data['issuers']:
+            parsed = circle_report(item['source']) if item['issuer'] == 'circle' else tether_report({
+                'pdf': item['source'], 'date': item['date'], 'publishedAt': item['publishedAt']})
+            if parsed['date'] != item['date'] or abs(parsed['treasuries'] - item['treasuries']) > 0.000001:
+                raise ValueError('기존 국채 관측과 불일치: ' + item['date'])
+            item['portfolio'] = parsed['portfolio']
+        data['portfolioCollectedAt'] = datetime.now(timezone.utc).isoformat()
+        temporary = target.with_suffix('.json.tmp')
+        temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        temporary.replace(target)
+        print('준비자산 구성 보강 완료:', len(data['issuers']))
+        return
     owners = collect_owners()
     circle_page = fetch(CONFIG['circlePage']).decode()
     links = set()

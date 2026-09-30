@@ -19,6 +19,7 @@ export interface IssuerHolding {
   direct?: number;
   source: string;
   frequency: string;
+  portfolio?: { total: number; components: Partial<Record<string, number>> };
 }
 export interface OwnershipData {
   collectedAt: string;

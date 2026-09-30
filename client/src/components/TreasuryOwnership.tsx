@@ -1,6 +1,6 @@
 import { useState } from "react";
 import dataset from "@shared/treasury-ownership-data.json";
-import { ownershipView, type OwnershipData } from "@shared/treasury-ownership";
+import { ownershipView, type OwnershipData, type IssuerHolding } from "@shared/treasury-ownership";
 
 const COLORS = { circle: "#477FA3", tether: "#568C82" };
 const NAMES = { circle: "서클", tether: "테더" };
@@ -8,6 +8,40 @@ const money = (v: number) => v >= 1e6 ? `$${(v / 1e6).toFixed(2)}조` : `$${(v /
 const delta = (v: number | null) => v === null ? "비교 자료 없음" : `${v < 0 ? "−" : v > 0 ? "+" : ""}${money(Math.abs(v))}`;
 const pct = (v: number) => `${v.toFixed(2)}%`;
 const data: OwnershipData = dataset;
+const ASSETS = [
+  { id: "treasuries", label: "미국 국채", color: "#477FA3" },
+  { id: "overnight_repo", label: "국채 담보 역레포 · 익일물", color: "#71A69A" },
+  { id: "term_repo", label: "기간물 역레포", color: "#A7C6B9" },
+  { id: "mmf", label: "MMF", color: "#8B80A6" },
+  { id: "cash_net", label: "현금·정산 순액", color: "#C3C8CC" },
+  { id: "cash", label: "현금·은행 예금", color: "#C3C8CC" },
+  { id: "metals", label: "금 등 귀금속", color: "#B6A073" },
+  { id: "bitcoin", label: "비트코인", color: "#C58D67" },
+  { id: "loans", label: "담보대출", color: "#8E92AA" },
+  { id: "other", label: "기타 투자자산", color: "#B9B2A8" },
+];
+
+function ReservePortfolio({ holding, issuer }: { holding: IssuerHolding | null; issuer: "circle" | "tether" }) {
+  const portfolio = holding?.portfolio;
+  if (!holding || !portfolio) return <p className="mt-4 text-[11px] text-[#918D83]">해당 시점의 준비자산 구성 자료 없음</p>;
+  const assets = ASSETS.map(asset => ({ ...asset, value: portfolio.components[asset.id] ?? 0 }))
+    .filter(asset => asset.value > 0);
+  const percent = (value: number) => value / portfolio.total * 100;
+  const display = (value: number) => percent(value) < 0.1 ? "0.1% 미만" : `${percent(value).toFixed(1)}%`;
+  return <div data-testid={`portfolio-${issuer}`} className="mt-4 border-t border-[#D5E0DC] pt-3">
+    <div className="text-xs font-medium">준비자산 구성</div>
+    <p className="mt-1 text-[11px] leading-relaxed text-[#5F5C54]">{issuer === "circle" ? "USDC 준비자산" : "공시 준비자산 · 초과분 포함"} {money(portfolio.total)} = 100%<br />{holding.date} 기준</p>
+    <div className="mt-3 flex h-5 overflow-hidden rounded-sm" role="img" aria-label={assets.map(asset => `${asset.label} ${display(asset.value)}`).join(", ")}>
+      {assets.map(asset => <div key={asset.id} style={{ width: `${percent(asset.value)}%`, background: asset.color }} />)}
+    </div>
+    <div className="mt-3 space-y-1.5">
+      {assets.map(asset => <div key={asset.id} className="flex items-baseline gap-2 text-[11px] leading-relaxed">
+        <i className="h-2 w-2 shrink-0 rounded-sm self-center" style={{ background: asset.color }} />
+        <span>{asset.label}</span><span className="ml-auto shrink-0 tabular-nums">{display(asset.value)}</span>
+      </div>)}
+    </div>
+  </div>;
+}
 
 export function TreasuryOwnership({ asOf }: { asOf: string }) {
   const [detail, setDetail] = useState(false);
@@ -69,16 +103,18 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         <div className="flex h-10 overflow-hidden rounded-md bg-[#E5EDEB]" role="img" aria-label={sum !== null && sum > 0 ? `두 회사 합계 기준 서클 ${pct(circle / sum * 100)}, 테더 ${pct(tether / sum * 100)}` : "두 회사 구성비를 계산할 자료가 없습니다"}>
           {sum !== null && sum > 0 && issuers.map(item => <div key={item.id} className="h-full" style={{ width: `${item.holding!.treasuries / sum * 100}%`, background: COLORS[item.id] }} />)}
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-4">
+        <div className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7">
           {issuers.map(item => {
             const holding = item.holding;
             return <div key={item.id} data-testid={`holding-${item.id}`}>
               <div className="flex items-center gap-1.5 text-xs"><i className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: COLORS[item.id] }} /><strong>{NAMES[item.id]}</strong><span className="text-[#5F5C54] tabular-nums">{sum !== null && sum > 0 && holding ? pct(holding.treasuries / sum * 100) : "—"}</span></div>
               <div className="mt-1 font-semibold text-sm tabular-nums">{holding ? money(holding.treasuries) : "해당 분기 자료 없음"}</div>
               <div className="mt-1 text-[11px] leading-relaxed text-[#5F5C54]">{item.id === "circle" ? "전용 펀드 포함" : "직접 보유"}<br />전분기 {delta(item.delta)}</div>
+              <ReservePortfolio holding={holding} issuer={item.id} />
             </div>;
           })}
         </div>
+        <p className="mt-4 text-[11px] leading-relaxed text-[#918D83]">서클의 미국 국채에는 블랙록 Circle Reserve Fund(MMF) 내 국채가 포함됩니다. 역레포는 담보를 받고 빌려준 돈으로, 위 국채 보유액에는 더하지 않습니다. 구성비의 역레포 금액은 대여액이며 담보 국채의 평가액과는 다릅니다.</p>
         {billShare !== null && <p className="mt-4 border-t border-[#D5E0DC] pt-3 text-xs leading-relaxed">단기채 발행 잔액과 비교하면 약 <strong>{pct(billShare)}</strong> 규모입니다. <span className="text-[#5F5C54]">분모 {money(quarter.bills)} · 공시 평가액 / 단기채 액면 잔액의 근사 비율</span></p>}
       </div>
       <p className="mt-3 text-xs leading-relaxed text-[#5F5C54]">확대 영역은 위 보유 주체에 걸쳐 있는 참고치로, 전체 합계에 다시 더하지 않습니다. 입찰 낙찰액이나 신규 매입액을 뜻하지 않습니다.</p>

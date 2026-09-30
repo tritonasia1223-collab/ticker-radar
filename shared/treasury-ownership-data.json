@@ -1136,7 +1136,15 @@
       "fund": 20801.877573,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025-USDC_Examination-Report-January-25.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 53283.800358,
+        "components": {
+          "treasuries": 20801.877573,
+          "overnight_repo": 27602.0,
+          "cash_net": 4879.922784999999
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1146,7 +1154,15 @@
       "fund": 22047.086599,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20February%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 56349.19476,
+        "components": {
+          "treasuries": 22047.086599,
+          "overnight_repo": 27473.0,
+          "cash_net": 6829.1081609999965
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1156,7 +1172,15 @@
       "fund": 24862.566987,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20March%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 60040.70704,
+        "components": {
+          "treasuries": 24862.566987,
+          "overnight_repo": 30815.0,
+          "cash_net": 4363.140053000003
+        }
+      }
     },
     {
       "issuer": "tether",
@@ -1164,7 +1188,21 @@
       "publishedAt": "2025-05-01",
       "treasuries": 98523.657338,
       "source": "https://assets.ctfassets.net/vyse88cgwfbl/1LdSmP3HBynDxm6wvkDSsL/c4bcbd1f6fc18a0e8b3a12444ac8ae97/ISAE_3000R_-_Opinion_Tether_International_Financial_Figures___Reserves_Report_31.03.2025_RC187322025BD0040.pdf",
-      "frequency": "quarterly"
+      "frequency": "quarterly",
+      "portfolio": {
+        "total": 149274.515988,
+        "components": {
+          "treasuries": 98523.657338,
+          "overnight_repo": 15093.981718,
+          "term_repo": 1613.610695,
+          "mmf": 6285.638008,
+          "cash": 64.302555,
+          "metals": 6663.205657,
+          "bitcoin": 7662.210442,
+          "loans": 8825.524405,
+          "other": 4542.3851700000005
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1174,7 +1212,15 @@
       "fund": 25481.695229,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025-USDC_Examination-Report-April-25.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 61477.725087,
+        "components": {
+          "treasuries": 25481.695229,
+          "overnight_repo": 31439.0,
+          "cash_net": 4557.029857999994
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1184,7 +1230,15 @@
       "fund": 28342.482586,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20May%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 60948.366559,
+        "components": {
+          "treasuries": 28342.482586,
+          "overnight_repo": 25402.0,
+          "cash_net": 7203.883973000004
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1194,7 +1248,15 @@
       "fund": 27039.491803,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20June%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 61397.784739,
+        "components": {
+          "treasuries": 27039.491803,
+          "overnight_repo": 27066.0,
+          "cash_net": 7292.292935999998
+        }
+      }
     },
     {
       "issuer": "tether",
@@ -1202,7 +1264,21 @@
       "publishedAt": "2025-07-31",
       "treasuries": 105518.99361,
       "source": "https://assets.ctfassets.net/vyse88cgwfbl/2SGAAXnsb1wKByIzkhcbSx/9efa4682b3cd4c62d87a4c88ee729693/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_RC187322025BD0201.pdf",
-      "frequency": "quarterly"
+      "frequency": "quarterly",
+      "portfolio": {
+        "total": 162574.933798,
+        "components": {
+          "treasuries": 105518.99361,
+          "overnight_repo": 16341.965339,
+          "term_repo": 1666.870344,
+          "mmf": 6345.999587,
+          "cash": 32.430726,
+          "metals": 8725.417224,
+          "bitcoin": 8928.174931,
+          "loans": 10137.145089,
+          "other": 4877.936948
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1212,7 +1288,15 @@
       "fund": 18890.847168,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20July%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 64000.903241,
+        "components": {
+          "treasuries": 18890.847168,
+          "overnight_repo": 35514.0,
+          "cash_net": 9596.056073
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1222,7 +1306,15 @@
       "fund": 24405.584005,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20August%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 71450.126631,
+        "components": {
+          "treasuries": 24405.584005,
+          "overnight_repo": 36906.0,
+          "cash_net": 10138.54262600001
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1232,7 +1324,15 @@
       "fund": 21761.417417,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20September%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 73814.526973,
+        "components": {
+          "treasuries": 21761.417417,
+          "overnight_repo": 41619.0,
+          "cash_net": 10434.109555999996
+        }
+      }
     },
     {
       "issuer": "tether",
@@ -1240,7 +1340,21 @@
       "publishedAt": "2025-10-31",
       "treasuries": 112417.034272,
       "source": "https://tether.io/wp-content/uploads/2025/10/ISAE-3000R-Opinion-Tether-International-Financial-Figure-31-10-2025-RC187322025BD0440-Fascicolo.pdf",
-      "frequency": "quarterly"
+      "frequency": "quarterly",
+      "portfolio": {
+        "total": 181223.149214,
+        "components": {
+          "treasuries": 112417.034272,
+          "overnight_repo": 17991.468781,
+          "term_repo": 3056.191686,
+          "mmf": 6409.774689,
+          "cash": 30.100334,
+          "metals": 12921.449635,
+          "bitcoin": 9856.011011,
+          "loans": 14604.086904,
+          "other": 3937.031902
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1250,7 +1364,15 @@
       "fund": 26868.073557,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20October%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 75878.38606,
+        "components": {
+          "treasuries": 26868.073557,
+          "overnight_repo": 40196.0,
+          "cash_net": 8814.312503000008
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1260,7 +1382,15 @@
       "fund": 24515.510489,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20November%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 76502.172739,
+        "components": {
+          "treasuries": 24515.510489,
+          "overnight_repo": 40649.0,
+          "cash_net": 11337.662250000001
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1270,7 +1400,15 @@
       "fund": 14963.264493,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2025/2025%20USDC_Examination%20Report%20December%2025.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 75332.981976,
+        "components": {
+          "treasuries": 14963.264493,
+          "overnight_repo": 50790.0,
+          "cash_net": 9579.717482999993
+        }
+      }
     },
     {
       "issuer": "tether",
@@ -1278,7 +1416,21 @@
       "publishedAt": "2026-01-30",
       "treasuries": 122325.714946,
       "source": "https://assets.ctfassets.net/vyse88cgwfbl/20d2BoOAd28ZfkiQPYPjGN/4ed12f5939e1e06ee5aceccad4effbe4/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_31-12-2025.pdf",
-      "frequency": "quarterly"
+      "frequency": "quarterly",
+      "portfolio": {
+        "total": 192877.729144,
+        "components": {
+          "treasuries": 122325.714946,
+          "overnight_repo": 19279.408559,
+          "term_repo": 5548.439332,
+          "mmf": 0,
+          "cash": 33.952735,
+          "metals": 17450.435088,
+          "bitcoin": 8430.374292,
+          "loans": 17043.516665,
+          "other": 2765.887527
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1288,7 +1440,15 @@
       "fund": 18809.053367,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20January%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 70022.091915,
+        "components": {
+          "treasuries": 18809.053367,
+          "overnight_repo": 40199.0,
+          "cash_net": 11014.038547999997
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1298,7 +1458,15 @@
       "fund": 20435.478946,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20February%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 75176.5613,
+        "components": {
+          "treasuries": 20435.478946,
+          "overnight_repo": 44571.0,
+          "cash_net": 10170.082353999998
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1308,7 +1476,15 @@
       "fund": 24913.211699,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20March%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 77125.330954,
+        "components": {
+          "treasuries": 24913.211699,
+          "overnight_repo": 40756.0,
+          "cash_net": 11456.119255000005
+        }
+      }
     },
     {
       "issuer": "tether",
@@ -1316,7 +1492,21 @@
       "publishedAt": "2026-05-01",
       "treasuries": 117035.73205,
       "source": "https://assets.ctfassets.net/vyse88cgwfbl/6crn1tXbl6AtWZBWucZnfg/c4ff472d70c1b48c2f689f27b54c84f5/ISAE_3000R_-_Opinion_Tether_International_Financial_Figure_31-03-2026.pdf",
-      "frequency": "quarterly"
+      "frequency": "quarterly",
+      "portfolio": {
+        "total": 191767.741495,
+        "components": {
+          "treasuries": 117035.73205,
+          "overnight_repo": 19334.717169,
+          "term_repo": 4745.558242,
+          "mmf": 0,
+          "cash": 107.02163,
+          "metals": 19837.696372,
+          "bitcoin": 6624.160893,
+          "loans": 15829.73619,
+          "other": 8253.118949
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1326,7 +1516,15 @@
       "fund": 19110.672894,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20April%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 77123.668726,
+        "components": {
+          "treasuries": 19110.672894,
+          "overnight_repo": 46998.0,
+          "cash_net": 11014.995832
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1336,7 +1534,15 @@
       "fund": 22061.994431,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20May%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 75961.621872,
+        "components": {
+          "treasuries": 22061.994431,
+          "overnight_repo": 45171.0,
+          "cash_net": 8728.627441000004
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1346,7 +1552,15 @@
       "fund": 8524.064231,
       "direct": 0,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20June%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 73344.909176,
+        "components": {
+          "treasuries": 8524.064231,
+          "overnight_repo": 52527.0,
+          "cash_net": 12293.844945000004
+        }
+      }
     },
     {
       "issuer": "tether",
@@ -1354,7 +1568,21 @@
       "publishedAt": "2026-07-31",
       "treasuries": 114960.963604,
       "source": "https://assets.ctfassets.net/vyse88cgwfbl/2kYf7r64h3tzwiu6F0CbUB/2997abd2f11ecea74a21528048b50707/Opinion___Report_-_Tether_International_Financial_Figure_30-06-2026.pdf",
-      "frequency": "quarterly"
+      "frequency": "quarterly",
+      "portfolio": {
+        "total": 187751.426411,
+        "components": {
+          "treasuries": 114960.963604,
+          "overnight_repo": 18625.552412,
+          "term_repo": 6993.42895,
+          "mmf": 0,
+          "cash": 40.30744,
+          "metals": 18838.357171,
+          "bitcoin": 5801.630681,
+          "loans": 13453.749726,
+          "other": 9037.436427
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1364,7 +1592,15 @@
       "fund": 7179.080057,
       "direct": 499.418694,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20July%2026%20(1).pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 71904.101332,
+        "components": {
+          "treasuries": 7678.498751,
+          "overnight_repo": 52723.0,
+          "cash_net": 11502.602581000006
+        }
+      }
     },
     {
       "issuer": "circle",
@@ -1374,7 +1610,16 @@
       "fund": 11918.146195,
       "direct": 1301.292779,
       "source": "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/USDCAttestationReports/2026/2026%20USDC_Examination%20Report%20August%2026.pdf",
-      "frequency": "monthly"
+      "frequency": "monthly",
+      "portfolio": {
+        "total": 73398.532613,
+        "components": {
+          "treasuries": 13219.438973999999,
+          "overnight_repo": 49584.0,
+          "cash_net": 10595.093639000006
+        }
+      }
     }
-  ]
+  ],
+  "portfolioCollectedAt": "2026-09-30T05:04:03.445852+00:00"
 }
