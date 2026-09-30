@@ -1,8 +1,9 @@
 import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type ComparePoint, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
 import type { CompareSeriesDef, SpreadData } from "@/lib/comparison-series";
 import { frameMeasurement } from "@/lib/capitalism-layout";
-import { nearbyObservation } from "@/lib/comparison-hover";
+import { nearbyObservation, hoverLayout } from "@/lib/comparison-hover";
 
 import { Star } from "lucide-react";
 import { ComparisonTimeNavigation } from "./ComparisonTimeNavigation";
@@ -27,9 +28,15 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
   const chartHeader = useRef<HTMLDivElement>(null), chartFooter = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900), [chartHeight, setChartHeight] = useState(530);
   const [cursor, setCursor] = useState<number | null>(null), [preview, setPreview] = useState<Domain | null>(null);
-  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
-  const tooltip = useRef<HTMLDivElement>(null);
-  const [tooltipHeight, setTooltipHeight] = useState(0);
+  const [pointer, setPointer] = useState<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
+  const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+  useEffect(() => {
+    const clear = () => { setPointer(null); setCursor(null); };
+    const resize = () => { setViewport({ width: window.innerWidth, height: window.innerHeight }); clear(); };
+    window.addEventListener("resize", resize);
+    window.addEventListener("scroll", clear, true);
+    return () => { window.removeEventListener("resize", resize); window.removeEventListener("scroll", clear, true); };
+  }, []);
   const [jumpTime, setJumpTime] = useState<number | null>(null);
   useEffect(() => { if (jumpTime === null) return; const timer = setTimeout(() => setJumpTime(null), 5000); return () => clearTimeout(timer); }, [jumpTime]);
   const [domains, setDomains] = useState<Record<string, Domain>>({});
@@ -81,20 +88,14 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     if (pointer.y >= plotTop && pointer.y <= plotBottom) return shapes.flatMap(s => {
       const hit = nearbyObservation(s.paths.map(g => ({ points: g.original, rendered: g.points })), pointer, x, s.y);
       return hit && hit.y >= plotTop && hit.y <= plotBottom ? [{ ...hit, id: s.def.id, label: s.def.label, color: s.def.color, unit: s.def.unit, indexed }] : [];
-    }).sort((a, b) => a.distance - b.distance);
+    });
     if (spread && spreadShape && pointer.y >= spreadTop && pointer.y <= axisBottom) {
       const hit = nearbyObservation(spreadShape.segments.map(points => ({ points, rendered: points })), pointer, x, spreadShape.y);
       if (hit) return [{ ...hit, id: "spread", label: spread.label, color: "#8b5cf6", unit: "%p", indexed: false }];
     }
     return [];
   }, [pointer, shapes, spread, spreadShape, from, to, width, plotBottom, spreadTop, axisBottom, indexed]);
-  useEffect(() => {
-    const el = tooltip.current; if (!el) return;
-    const measure = () => setTooltipHeight(el.offsetHeight);
-    const observer = new ResizeObserver(measure); observer.observe(el); measure();
-    return () => observer.disconnect();
-  }, [nearby.length > 0]);
-  const tooltipWidth = Math.min(320, width - 16);
+  const tooltipLayout = hoverLayout(nearby.length, viewport);
   const badges = useMemo(() => {
     const groups: { px: number; items: SavedInsight[] }[] = [];
     for (const n of notes.filter(n => Date.parse(n.endDate ?? n.date) >= from && Date.parse(n.date) <= to).sort((a, b) => a.date.localeCompare(b.date))) {
@@ -149,13 +150,13 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <span>{tool === "date" ? "차트에서 날짜를 클릭하세요 · Esc 취소" : tool === "period" ? "차트에서 시작부터 끝까지 드래그하세요 · Esc 취소" : "드래그 이동 · 휠 확대 · 축 드래그로 축척 조절"}</span>
       <div className="flex shrink-0 gap-2"><button aria-label="기간 확대" onClick={() => zoom(.7)} className="rounded border px-2">＋</button><button aria-label="기간 축소" onClick={() => zoom(1.4)} className="rounded border px-2">－</button><button className="rounded border px-2" onClick={() => setDomains({})}>세로축 자동</button></div>
     </div>
-    <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground" data-testid="compare-values"><span className="tabular-nums">{cursorMonth ?? "커서로 값 비교"}</span><span>선 가까이에 마우스를 올리면 주변 지표의 값을 함께 볼 수 있습니다.</span></div>
+    <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground" data-testid="compare-values"><span className="w-20 shrink-0 whitespace-nowrap tabular-nums">{cursorMonth ?? "커서로 값 비교"}</span><span className="min-w-0 flex-1">선 가까이에 마우스를 올리면 주변 지표의 값을 함께 볼 수 있습니다.</span></div>
     </div>
     <div className="relative" onPointerMove={e => {
         const { px, py } = coordinates(e.clientX, e.clientY);
         const inside = px >= left && px <= right && py >= plotTop && py <= axisBottom && !(e.target as Element).closest("[data-chart-control]");
         setCursor(inside ? timeAt(px) : null);
-        setPointer(inside && !drag.current && e.pointerType !== "touch" ? { x: px, y: py } : null);
+        setPointer(inside && !drag.current && e.pointerType !== "touch" ? { x: px, y: py, clientX: e.clientX, clientY: e.clientY } : null);
         const d = drag.current; if (!d) return;
         if (d.part === "value" && d.domain && d.key) { const center = (d.domain[0] + d.domain[1]) / 2, half = (d.domain[1] - d.domain[0]) / 2 * Math.exp(clamp((py - d.py) * .01, -5, 5)); setDomains(v => ({ ...v, [d.key!]: [center - half, center + half] })); }
         else if (d.part === "time") onRange(zoomRange(d.range, d.time, Math.exp(clamp((px - d.px) * .005, -5, 5)), extent));
@@ -184,7 +185,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         drag.current = { px, py, time: timeAt(px), range, part, domain: side ? [side.lo, side.hi] : undefined, key: side?.key, tool };
         if (part === "plot" && tool === "period") setPreview([timeAt(px), timeAt(px)]);
       }}
-      onPointerUp={e => release(e)} onPointerCancel={e => { release(e, true); setPointer(null); setCursor(null); }} onLostPointerCapture={() => { drag.current = null; setPreview(null); }} onPointerLeave={e => { if (!(e.relatedTarget instanceof Element) || !e.relatedTarget.closest('[data-testid="compare-hover"]')) { setPointer(null); setCursor(null); } }}>
+      onPointerUp={e => release(e)} onPointerCancel={e => { release(e, true); setPointer(null); setCursor(null); }} onLostPointerCapture={() => { drag.current = null; setPreview(null); }} onPointerLeave={() => { setPointer(null); setCursor(null); }}>
       <defs><clipPath id={clip}><rect x={left} y={plotTop} width={span} height={plotHeight} /></clipPath><clipPath id={clip + "-spread"}><rect x={left} y={spreadTop} width={span} height={Math.max(0, axisBottom - spreadTop)} /></clipPath></defs>
       <rect x={left} y={plotTop} width={span} height={plotHeight} fill="transparent" style={{ cursor: tool === "move" ? "grab" : "crosshair" }} />
       <rect x={0} y={plotTop} width={left} height={plotHeight} fill="transparent" style={{ cursor: "ns-resize" }} />
@@ -220,8 +221,8 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         {!spreadShape.points.length && <text x={width / 2} y={(axisBottom + spreadTop) / 2} textAnchor="middle" fontSize={11} fill="currentColor">이 구간에 두 금리의 공통 관측값이 없습니다.</text>}
       </g>}
       {jumpTime !== null && jumpTime >= from && jumpTime <= to && <g pointerEvents="none" data-testid="date-jump-marker"><line x1={x(jumpTime)} x2={x(jumpTime)} y1={plotTop} y2={axisBottom} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" /><text x={clamp(x(jumpTime), left + 35, right - 35)} y={plotTop + 15} textAnchor="middle" fontSize={10} fill="#d97706">{iso(jumpTime)}</text></g>}
-      {cursor !== null && <line x1={x(cursor)} x2={x(cursor)} y1={plotTop} y2={axisBottom} stroke="currentColor" strokeDasharray="3 4" opacity={.3} pointerEvents="none" />}
-      {nearby.map(hit => <circle key={hit.id} cx={hit.x} cy={hit.y} r={4} stroke={hit.color} strokeWidth={2} className="fill-background" pointerEvents="none" />)}
+      {cursor !== null && <line data-testid="compare-cursor" x1={x(cursor)} x2={x(cursor)} y1={plotTop} y2={axisBottom} stroke="currentColor" strokeDasharray="3 4" opacity={.3} pointerEvents="none" />}
+      {nearby.map(hit => <circle key={hit.id} data-testid={"hover-marker-" + hit.id} cx={hit.x} cy={hit.y} r={4} stroke={hit.color} strokeWidth={2} className="fill-background" pointerEvents="none" />)}
       {active?.endDate && <line x1={Math.max(left, x(Date.parse(active.date)))} x2={Math.min(right, x(Date.parse(active.endDate)))} y1={plotTop - 2} y2={plotTop - 2} stroke="#f34d58" strokeWidth={2} opacity={.55} pointerEvents="none" />}
       {active?.caption && <foreignObject x={clamp(x(Date.parse(active.date)) + 12, left + 8, right - Math.min(240, span - 16))} y={plotTop + 14} width={Math.min(240, span - 16)} height={110} data-chart-control="true"><div className="max-h-[100px] overflow-auto rounded-lg border border-red-400/20 border-l-2 border-l-red-400 bg-card/95 px-3 py-2 text-xs leading-5 shadow-sm" data-testid="insight-caption">{active.caption}</div></foreignObject>}
       {!badges.length && <text x={left} y={30} fontSize={11} fill="currentColor" opacity={.45}>시간축에 인사이트를 남겨보세요</text>}
@@ -231,14 +232,11 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       </g>; })}
       {!!eventGroups.length && <g data-testid="history-events">{eventGroups.map(g => <g key={g.items[0].id} role="button" tabIndex={0} data-chart-control="true" aria-label={"경제사: " + g.items.map(e => e.title).join(", ")} onClick={() => onEvents(g.items.map(e => e.id))} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEvents(g.items.map(e => e.id)); } }} style={{ cursor: "pointer" }}><title>{g.items.map(e => e.date + " · " + e.title).join("\n")}</title><rect x={g.px} y={axisBottom + 38} width={115} height={22} rx={4} fill="#d97706" fillOpacity={.1} /><text x={g.px + 6} y={axisBottom + 53} fontSize={9} fill="currentColor">{g.items[0].title.slice(0, 8)}{g.items[0].title.length > 8 ? "…" : ""}{g.items.length > 1 ? " +" + (g.items.length - 1) : ""}</text></g>)}</g>}
     </svg>
-    {pointer && !!nearby.length && <div ref={tooltip} role="tooltip" aria-label="커서 주변 지표 값" data-testid="compare-hover" onPointerMove={e => e.stopPropagation()} className="absolute z-30 overflow-y-auto overscroll-contain rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg" style={{ pointerEvents: tooltipHeight >= Math.floor(chartHeight - 16) ? "auto" : "none", width: tooltipWidth, maxHeight: chartHeight - 16, left: clamp(pointer.x + 18 + tooltipWidth <= width - 8 ? pointer.x + 18 : pointer.x - tooltipWidth - 18, 8, width - tooltipWidth - 8), top: clamp(pointer.y - 12, 8, Math.max(8, chartHeight - tooltipHeight - 8)) }}>
-      <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span>{cursorMonth} · 가까운 실제 관측값</span><span>{nearby.length}개 지표{tooltipHeight >= Math.floor(chartHeight - 16) ? " · 스크롤" : ""}</span></div>
-      <div className="divide-y">{nearby.map(hit => <div key={hit.id} data-testid={"hover-value-" + hit.id} className="py-2 first:pt-0 last:pb-0">
-        <div className="flex items-start gap-2 text-xs"><span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="font-medium">{hit.label}</span></div>
-        <div className="ml-4 mt-1 flex flex-wrap items-baseline gap-x-1.5 tabular-nums"><strong className="text-sm">{fmt(hit.point.raw)}</strong><span className="text-[11px] text-muted-foreground">{hit.unit}</span>{hit.indexed && <span className="ml-auto text-[11px] text-muted-foreground">지수 {fmt(hit.point.value)}</span>}</div>
-        <div className="ml-4 mt-0.5 text-[10px] text-muted-foreground">관측일 {hit.point.date}</div>
-      </div>)}</div>
-    </div>}
+    {pointer && !!nearby.length && createPortal(<div role="tooltip" aria-label="커서 주변 지표 값" data-testid="compare-hover" className="pointer-events-none fixed z-50 grid grid-flow-col gap-x-4 overflow-hidden rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md" style={{ width: tooltipLayout.width, height: tooltipLayout.height, gridTemplateColumns: `repeat(${tooltipLayout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${tooltipLayout.rows}, 24px)`, left: clamp(pointer.clientX + 16 + tooltipLayout.width <= viewport.width - 8 ? pointer.clientX + 16 : pointer.clientX - tooltipLayout.width - 16, 8, viewport.width - tooltipLayout.width - 8), top: clamp(pointer.clientY - 12, 8, viewport.height - tooltipLayout.height - 8) }}>
+      {nearby.map(hit => <div key={hit.id} data-testid={"hover-value-" + hit.id} className="flex min-w-0 items-center gap-2">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="truncate">{hit.id === "dollar" ? "달러지수" : hit.label}</span><span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)}</span>
+      </div>)}
+    </div>, document.body)}
     </div>
     {!!groupIds.length && <div className="absolute left-16 top-16 z-20 max-h-64 w-64 overflow-auto rounded-lg border bg-card p-2 shadow-lg" role="dialog" aria-label="이 시기의 인사이트"><div className="mb-1 flex items-center justify-between px-2 text-xs"><b>이 시기의 인사이트</b><button aria-label="배지 목록 닫기" onClick={() => setGroupIds([])}>✕</button></div>{notes.filter(n => groupIds.includes(n.id)).map(n => <button key={n.id} className="block w-full rounded p-2 text-left text-xs hover:bg-muted" onClick={() => { onNote(n.id); setGroupIds([]); }}><span className="mb-1 block text-[10px] text-muted-foreground">{n.date}</span>{n.title}</button>)}</div>}
     <div ref={chartFooter}>
