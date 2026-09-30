@@ -4,6 +4,7 @@ import { CapRichText } from "./CapRichText";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
+import { sameComparisonView } from "@/lib/comparison-axes";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 import { comparisonInsightSchema, nearestDatedReference, type ComparisonInsight, type SavedInsight, type PlacedNode, type InsightContext, type Observation } from "../../../shared/cap-comparison";
@@ -31,7 +32,7 @@ export function ComparisonSidebar(p: Props) {
     return () => window.removeEventListener("resize", measure);
   }, [p.layoutKey]);
   useLayoutEffect(() => { if (p.panel === "insights" && content.current) content.current.scrollTop = 0; }, [p.panel, p.selected?.id]);
-  const relatedHidden = p.selected?.context && (p.selected.context.ids.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
+  const relatedHidden = p.selected?.context && (!sameComparisonView(p.selected.context.view, p.currentContext.view, p.selected.context.ids) || p.selected.context.ids.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
   const filtered = p.notes.filter(n => (n.title + " " + n.text + " " + n.date).toLowerCase().includes(search.toLowerCase()));
   return <aside className="w-full min-w-0 shrink-0 border-t bg-muted/15 lg:w-[42%] lg:max-w-[640px] lg:border-l lg:border-t-0" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
     <div className="flex border-b bg-background text-xs">
@@ -40,7 +41,7 @@ export function ComparisonSidebar(p: Props) {
     </div>
     <div ref={content} style={{ maxHeight: panelHeight }} className="min-h-80 overflow-y-auto overscroll-contain" data-testid="comparison-sidebar-scroll">
       {p.panel === "reference" ? <ReferencePanel {...p} scrollContainer={content} /> : p.selected ? <div className="p-3">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={p.onCloseNote}><ArrowLeft size={14} />모든 기록</button><div className="flex items-center gap-1">{relatedHidden && <button className="rounded px-2 py-1 text-[11px] text-sky-600 hover:bg-muted" title="이 글에 연결된 그래프 중 일부가 숨겨져 있습니다." onClick={() => p.onRestore(p.selected!.context!, p.selected!)}>관련 그래프 보기</button>}<button className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted" onClick={() => p.onView(p.selected!)}><Focus size={13} />이 기간 보기</button></div></div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={p.onCloseNote}><ArrowLeft size={14} />모든 기록</button><div className="flex items-center gap-1">{relatedHidden && <button className="rounded px-2 py-1 text-[11px] text-sky-600 hover:bg-muted" title="이 글의 그래프 또는 축 설정으로 돌아갑니다." onClick={() => p.onRestore(p.selected!.context!, p.selected!)}>관련 그래프 보기</button>}<button className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted" onClick={() => p.onView(p.selected!)}><Focus size={13} />이 기간 보기</button></div></div>
         <InsightDocument key={p.selected.id + String(p.canEdit)} {...p} note={p.selected} />
       </div> : <div className="p-4">
         <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="인사이트 검색" placeholder="제목, 내용, 날짜 검색" className={field + " pl-9 text-xs"} value={search} onChange={e => setSearch(e.target.value)} /></div>

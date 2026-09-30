@@ -1,13 +1,14 @@
 import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type ComparePoint, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
-import type { CompareSeriesDef, SpreadData } from "@/lib/comparison-series";
+import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
+import type { SpreadData } from "@/lib/comparison-series";
 import { frameMeasurement } from "@/lib/capitalism-layout";
 import { nearbyObservation, hoverLayout } from "@/lib/comparison-hover";
 
 import { Star } from "lucide-react";
 import { ComparisonTimeNavigation } from "./ComparisonTimeNavigation";
-export interface ChartSeries { def: CompareSeriesDef; points: ComparePoint[] }
+import type { AxisSeries, ComparisonAxis } from "@/lib/comparison-axes";
+export type ChartSeries = AxisSeries;
 export type ChartTool = "move" | "date" | "period";
 type Domain = [number, number];
 type HistoryEvent = { id: string; date: string; title: string };
@@ -16,10 +17,10 @@ const fmt = (v: number) => v.toLocaleString("ko", { maximumFractionDigits: 2 });
 export const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 
-export const CompareChart = memo(function CompareChart({ series, range, extent, indexed, onRange, phases, events, onEvents, simplifyMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary }: {
+export const CompareChart = memo(function CompareChart({ series, range, extent, axes, onRange, phases, events, onEvents, simplifyMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary }: {
   summary?: ReactNode;
   spread: SpreadData | null; onRemoveSpread: () => void;
-  series: ChartSeries[]; range: Domain; extent: Domain; indexed: boolean; onRange: (value: Domain) => void;
+  series: ChartSeries[]; range: Domain; extent: Domain; axes: ComparisonAxis[]; onRange: (value: Domain) => void;
   phases: TrendSection[]; events: HistoryEvent[]; onEvents: (ids: string[]) => void; simplifyMonths: number;
   notes: SavedInsight[]; selectedNote: string | null; onNote: (id: string) => void;
   onCreate: (date: string, endDate: string | null) => void; tool: ChartTool; onCancelTool: () => void; resetAxes: number; layoutKey: string;
@@ -43,9 +44,16 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const drag = useRef<{ px: number; py: number; time: number; range: Domain; part: string; domain?: Domain; key?: string; tool: ChartTool } | null>(null);
   const clip = useId().replaceAll(":", ""), [from, to] = range;
-  const identity = (indexed ? "index:" : "raw:") + series.map(s => s.def.id).join(",");
+  const identity = axes.map(a => a.key).join(",") + series.map(s => s.def.id + ":" + s.axis).join(",");
+  const previousAxes = useRef<Record<string, string>>({});
   useEffect(() => { setPointer(null); setCursor(null); }, [from, to, identity, resetAxes, width, chartHeight, tool, simplifyMonths]);
-  useEffect(() => { setDomains({}); }, [resetAxes, identity]);
+  useEffect(() => { setDomains({}); }, [resetAxes]);
+  useEffect(() => {
+    const signatures = Object.fromEntries(axes.map(a => [a.key, series.filter(s => s.axis === a.key).map(s => s.def.id).join(",")]));
+    const previous = previousAxes.current;
+    setDomains(current => Object.fromEntries(Object.entries(current).filter(([key]) => signatures[key] !== undefined && previous[key] === signatures[key])));
+    previousAxes.current = signatures;
+  }, [identity]);
   useEffect(() => { setGroupIds([]); }, [from, to]);
   useEffect(() => { drag.current = null; setPreview(null); }, [tool]);
   useEffect(() => {
@@ -68,33 +76,39 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     const segments = lineSegments(points, 1);
     return { points, lo, hi, y, segments, paths: segments.map(g => g.map((p, i) => (i ? "L" : "M") + x(p.time) + "," + y(p.value)).join(" ")) };
   }, [spread, from, to, width, axisBottom, spreadTop]);
-  const shapes = useMemo(() => {
+  const geometry = useMemo(() => {
     const visible = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= from && p.time <= to) }));
-    const values = indexed ? visible.flatMap(s => s.points.map(p => p.value)) : [];
-    return visible.map(s => {
-      const vs = indexed ? values : s.points.map(p => p.value), key = indexed ? "index" : s.def.id;
-      let lo = vs.length ? Math.min(...vs) : 0, hi = vs.length ? Math.max(...vs) : 1;
+    const axisShapes = axes.map(axis => {
+      const values = visible.filter(s => s.axis === axis.key).flatMap(s => s.points.map(p => p.value));
+      let lo = values.length ? Math.min(...values) : 0, hi = values.length ? Math.max(...values) : 1;
+      if (!axis.normalized) { lo = Math.min(0, lo); hi = Math.max(0, hi); }
       const pad = (hi - lo) * .08 || Math.abs(hi) * .05 || 1; lo -= pad; hi += pad;
-      if (domains[key]) [lo, hi] = domains[key];
+      if (domains[axis.key]) [lo, hi] = domains[axis.key];
       const y = (v: number) => plotBottom - (v - lo) / (hi - lo) * plotHeight;
-      return { ...s, lo, hi, key, y, paths: lineSegments(s.points, s.def.cadence).map(original => {
+      return { ...axis, lo, hi, y };
+    });
+    const shapes = visible.map(s => {
+      const axis = axisShapes.find(a => a.key === s.axis)!;
+      return { ...s, ...axis, paths: lineSegments(s.points, s.def.cadence).map(original => {
         const points = simplifyExtrema(original, simplifyMonths);
-        return { original, points, d: points.map((p, i) => (i ? "L" : "M") + x(p.time).toFixed(2) + "," + y(p.value).toFixed(2)).join(" ") };
+        return { original, points, d: points.map((p, i) => (i ? "L" : "M") + x(p.time).toFixed(2) + "," + axis.y(p.value).toFixed(2)).join(" ") };
       }) };
     });
-  }, [series, from, to, width, plotBottom, indexed, simplifyMonths, domains]);
+    return { shapes, axisShapes };
+  }, [series, axes, from, to, width, plotBottom, simplifyMonths, domains]);
+  const { shapes, axisShapes } = geometry;
   const nearby = useMemo(() => {
     if (!pointer) return [];
     if (pointer.y >= plotTop && pointer.y <= plotBottom) return shapes.flatMap(s => {
       const hit = nearbyObservation(s.paths.map(g => ({ points: g.original, rendered: g.points })), pointer, x, s.y);
-      return hit && hit.y >= plotTop && hit.y <= plotBottom ? [{ ...hit, id: s.def.id, label: s.def.label, color: s.def.color, unit: s.def.unit, indexed }] : [];
+      return hit && hit.y >= plotTop && hit.y <= plotBottom ? [{ ...hit, id: s.def.id, label: s.def.label, color: s.def.color, unit: s.def.unit, indexed: s.normalized }] : [];
     });
     if (spread && spreadShape && pointer.y >= spreadTop && pointer.y <= axisBottom) {
       const hit = nearbyObservation(spreadShape.segments.map(points => ({ points, rendered: points })), pointer, x, spreadShape.y);
       if (hit) return [{ ...hit, id: "spread", label: spread.label, color: "#8b5cf6", unit: "%p", indexed: false }];
     }
     return [];
-  }, [pointer, shapes, spread, spreadShape, from, to, width, plotBottom, spreadTop, axisBottom, indexed]);
+  }, [pointer, shapes, spread, spreadShape, from, to, width, plotBottom, spreadTop, axisBottom]);
   const tooltipLayout = hoverLayout(nearby.length, viewport);
   const badges = useMemo(() => {
     const groups: { px: number; items: SavedInsight[] }[] = [];
@@ -126,7 +140,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     setPointer(null);
     e.preventDefault();
     const { px, py } = coordinates(e.clientX, e.clientY);
-    const side = py <= plotBottom ? (px < left ? shapes[0] : px > right && !indexed ? shapes[1] : undefined) : undefined;
+    const side = py <= plotBottom ? (px < left ? axisShapes.find(a => a.side === "left") : px > right ? axisShapes.find(a => a.side === "right") : undefined) : undefined;
     const factor = Math.exp(clamp(e.deltaY, -100, 100) * .003);
     if (side && py >= plotTop && py <= plotBottom) {
       const anchor = side.hi - (py - plotTop) / plotHeight * (side.hi - side.lo);
@@ -151,6 +165,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <div className="flex shrink-0 gap-2"><button aria-label="기간 확대" onClick={() => zoom(.7)} className="rounded border px-2">＋</button><button aria-label="기간 축소" onClick={() => zoom(1.4)} className="rounded border px-2">－</button><button className="rounded border px-2" onClick={() => setDomains({})}>세로축 자동</button></div>
     </div>
     <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground" data-testid="compare-values"><span className="w-20 shrink-0 whitespace-nowrap tabular-nums">{cursorMonth ?? "커서로 값 비교"}</span><span className="min-w-0 flex-1">선 가까이에 마우스를 올리면 주변 지표의 값을 함께 볼 수 있습니다.</span></div>
+    <div className="grid grid-cols-2 gap-x-6 px-4 py-1 text-[10px] text-muted-foreground">{axes.map(a => <span key={a.key} data-testid={"axis-label-" + a.side} className={a.side === "right" ? "col-start-2 text-right" : "col-start-1"}>{a.side === "left" ? "← 왼쪽" : "오른쪽 →"} · {a.label}</span>)}</div>
     </div>
     <div className="relative" onPointerMove={e => {
         const { px, py } = coordinates(e.clientX, e.clientY);
@@ -178,7 +193,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         setGroupIds([]);
         const { px, py } = coordinates(e.clientX, e.clientY);
         if (py < plotTop) return;
-        const side = py <= plotBottom ? (px < left ? shapes[0] : px > right && !indexed ? shapes[1] : undefined) : undefined;
+        const side = py <= plotBottom ? (px < left ? axisShapes.find(a => a.side === "left") : px > right ? axisShapes.find(a => a.side === "right") : undefined) : undefined;
         const part = side ? "value" : py > axisBottom ? "time" : px >= left && px <= right ? "plot" : "none";
         if (part === "none") return;
         e.currentTarget.focus(); e.currentTarget.setPointerCapture(e.pointerId);
@@ -189,22 +204,21 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <defs><clipPath id={clip}><rect x={left} y={plotTop} width={span} height={plotHeight} /></clipPath><clipPath id={clip + "-spread"}><rect x={left} y={spreadTop} width={span} height={Math.max(0, axisBottom - spreadTop)} /></clipPath></defs>
       <rect x={left} y={plotTop} width={span} height={plotHeight} fill="transparent" style={{ cursor: tool === "move" ? "grab" : "crosshair" }} />
       <rect x={0} y={plotTop} width={left} height={plotHeight} fill="transparent" style={{ cursor: "ns-resize" }} />
-      <rect x={right} y={plotTop} width={width - right} height={plotHeight} fill="transparent" style={{ cursor: indexed ? "default" : "ns-resize" }} />
+      <rect x={right} y={plotTop} width={width - right} height={plotHeight} fill="transparent" style={{ cursor: axisShapes.some(a => a.side === "right") ? "ns-resize" : "default" }} />
       <rect x={left} y={axisBottom} width={span} height={35} fill="transparent" style={{ cursor: "ew-resize" }} />
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none" data-testid="trend-sections">{phases.filter(p => p.to >= from && p.from <= to).map(p => {
         const a = Math.max(left, x(p.from)), b = Math.min(right, x(p.to)), color = p.direction === "up" ? "#10b981" : p.direction === "down" ? "#f43f5e" : "#94a3b8";
         return <g key={p.from}><rect x={a} y={plotTop} width={Math.max(0, b - a)} height={plotHeight} fill={color} opacity={.075} /><rect x={a} y={plotTop} width={Math.max(0, b - a)} height={3} fill={color} opacity={.45} /></g>;
       })}</g>
       {ticks.map(t => <g key={t.time} pointerEvents="none"><line x1={x(t.time)} x2={x(t.time)} y1={plotTop} y2={axisBottom} stroke="currentColor" opacity={.07} /><text x={x(t.time)} y={axisBottom + 23} textAnchor="middle" fontSize={10} fill="currentColor" opacity={.65}>{t.label}</text></g>)}
-      {Array.from({ length: 5 }, (_, i) => <g key={i} pointerEvents="none"><line x1={left} x2={right} y1={plotBottom - i / 4 * plotHeight} y2={plotBottom - i / 4 * plotHeight} stroke="currentColor" opacity={.07} />{shapes.slice(0, indexed ? 1 : 2).map((s, side) => <text key={s.def.id} x={side ? right + 7 : left - 7} y={plotBottom - i / 4 * plotHeight + 4} textAnchor={side ? "start" : "end"} fontSize={10} fill={indexed ? "currentColor" : s.def.color}>{fmt(s.lo + (s.hi - s.lo) * i / 4)}</text>)}</g>)}
-      <text x={left} y={plotTop - 10} fontSize={10} fill="currentColor" opacity={.55}>{indexed ? "기준월=100" : (shapes[0]?.def.label ?? "") + " · " + (shapes[0]?.def.unit ?? "")}</text>
-      {!indexed && shapes[1] && <text x={right} y={plotTop - 10} textAnchor="end" fontSize={10} fill={shapes[1].def.color}>{shapes[1].def.label} · {shapes[1].def.unit}</text>}
+      {Array.from({ length: 5 }, (_, i) => <g key={i} pointerEvents="none"><line x1={left} x2={right} y1={plotBottom - i / 4 * plotHeight} y2={plotBottom - i / 4 * plotHeight} stroke="currentColor" opacity={.07} />{axisShapes.map(a => <text key={a.key} data-testid={"axis-tick-" + a.side} x={a.side === "right" ? right + 7 : left - 7} y={plotBottom - i / 4 * plotHeight + 4} textAnchor={a.side === "right" ? "start" : "end"} fontSize={10} fill="currentColor">{fmt(a.lo + (a.hi - a.lo) * i / 4)}</text>)}</g>)}
+      {axisShapes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0 && Array.from({ length: 5 }, (_, i) => Math.abs(a.y(0) - (plotBottom - i / 4 * plotHeight))).every(gap => gap > 14)).map(a => <text key={a.key} x={a.side === "right" ? right + 7 : left - 7} y={a.y(0) + 4} textAnchor={a.side === "right" ? "start" : "end"} fontSize={10} fill="currentColor" pointerEvents="none">0</text>)}
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none">
         {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.06} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
-        {/* 원래 값 모드에서 0 을 지나는 계열(증가율·수지·격차)은 그 계열 축의 0 에 점선 기준선 — 부호(수출/수입 사이클, 흑자/적자)를 읽기 위해 */}
-        {!indexed && shapes.filter(s => s.points.length && s.lo < 0 && s.hi > 0).map(s => <line key={"zero-" + s.def.id} data-testid={"compare-zero-" + s.def.id} x1={left} x2={right} y1={s.y(0)} y2={s.y(0)} stroke={s.def.color} strokeDasharray="4 4" opacity={.55} />)}
-        {shapes.map(s => <g key={s.def.id} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
+        {/* 실제 값 축마다 0선을 한 번 그려 흑자/적자와 증가율의 부호를 표시합니다. */}
+        {axisShapes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0).map(a => <line key={"zero-" + a.key} data-testid={"compare-zero-" + a.side} x1={left} x2={right} y1={a.y(0)} y2={a.y(0)} stroke="currentColor" strokeDasharray="4 4" opacity={.4} />)}
+        {shapes.map(s => <g key={s.def.id} data-axis={s.side} data-axis-key={s.key} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
       </g>
       {!shapes.some(s => s.points.length) && <text x={width / 2} y={plotTop + plotHeight / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={.6}>이 구간에 표시할 관측값이 없습니다.</text>}
       {spread && spreadShape && <g data-testid="spread-chart">

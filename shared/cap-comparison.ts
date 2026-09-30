@@ -18,9 +18,17 @@ export type PlacedNode = Placement & { id: string };
 export const RATE_SPREAD_IDS = ["fedfunds", "tb3ms", "gs10"] as const;
 export const spreadSchema = z.object({ a: z.enum(RATE_SPREAD_IDS), b: z.enum(RATE_SPREAD_IDS) }).strict().refine(s => s.a !== s.b, "서로 다른 금리를 선택하세요.");
 export type SpreadSpec = z.infer<typeof spreadSchema>;
+export const comparisonViewSchema = z.object({
+  mode: z.enum(["mixed", "index", "raw"]),
+  base: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  assignments: z.record(z.string().regex(/^[a-z0-9_]{1,60}$/), z.enum(["left", "right"])),
+  rightUnit: z.string().max(100).nullable(),
+}).strict();
+export type ComparisonView = z.infer<typeof comparisonViewSchema>;
 export const insightContextSchema = z.object({
   ids: z.array(z.string().regex(/^[a-z0-9_]{1,60}$/)).refine(ids => new Set(ids).size === ids.length, "중복 지표"),
   spread: spreadSchema.nullable(),
+  view: comparisonViewSchema.optional(),
 }).strict();
 export type InsightContext = z.infer<typeof insightContextSchema>;
 // Time anchors remain independent; context remembers which graphs the prose references.
