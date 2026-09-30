@@ -7,6 +7,7 @@ import { scenarios } from "@shared/credit/scenarios";
 import { readingGroups, readingNotes, groupReading, indicatorReading, formatCredit, type CreditOutcome } from "@shared/credit/reading";
 
 import { creditReview } from "@shared/credit/review";
+import { ReviewText } from "../ReviewText";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -35,16 +36,16 @@ export type CreditReadingState = ReturnType<typeof useCreditReading>;
 
 export function CreditSummary({ state }: { state: CreditReadingState }) {
   const { query, outcome, asOf } = state;
-  if (query.isLoading) return <div className="px-5 pb-5 text-xs text-[#5F5C54]">신용 자료 조회 중</div>;
-  if (query.isError || query.data?.error || query.data?.configChanged) return <div className="px-5 pb-5 text-xs text-[#5F5C54]" role="status">신용 자료 {query.data?.configChanged ? "설정 변경 · 재집계 대기" : "조회 오류 · 판단 불가"} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">다시 불러오기</button></div>;
+  if (query.isLoading) return <div className="text-xs text-[#918D83]">신용 자료 조회 중</div>;
+  if (query.isError || query.data?.error || query.data?.configChanged) return <div className="text-xs text-[#918D83]" role="status">신용 자료 {query.data?.configChanged ? "설정 변경 · 재집계 대기" : "조회 오류 · 판단 불가"} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">다시 불러오기</button></div>;
   const review = creditReview(outcome);
-  return <section aria-label="신용 상태 리뷰" data-credit-summary={asOf} className="mt-5 border-t border-[#D9D5CA] pt-5">
+  return <section aria-label="신용 상태 리뷰" data-credit-summary={asOf} className="min-w-0">
     {review.stories.length ? review.stories.map(story => <div key={story.id} className="mb-3 rounded-xl border border-[#DCC5AA] bg-[#FAF5EB] p-5 text-sm leading-[1.85] text-[#684525]">
       <a href={`#${story.id}`} onClick={e => { e.preventDefault(); jump(story.id); }} className="font-semibold text-base">{story.headline}</a>
-      {story.evidence.map((e, n) => <p key={n} className="mt-2">{e.text} <span className="text-xs text-[#796C5B]">({e.date})</span></p>)}
-      <p className="mt-2">{story.meaning}</p>
-    </div>) : <p className="text-[15px] leading-[1.85]">{review.normal}</p>}
-    {!review.stories.length && review.incompleteIssuance && <p className="mt-2 text-xs text-[#5F5C54]">등급별 회사채 발행량은 자료 부족으로 판단에서 제외했습니다.</p>}
+      {story.evidence.map((e, n) => <p key={n} className="mt-2">{e.text}<br /><span className="text-xs text-[#918D83]">({e.date})</span></p>)}
+      <ReviewText className="mt-2" text={story.meaning} />
+    </div>) : <ReviewText className="text-[15px] leading-[1.85]" text={review.normal} />}
+    {!review.stories.length && review.incompleteIssuance && <p className="mt-2 text-xs text-[#918D83]">등급별 회사채 발행량은 자료 부족으로 판단에서 제외했습니다.</p>}
   </section>;
 }
 
