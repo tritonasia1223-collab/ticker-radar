@@ -6,8 +6,7 @@ export function SeriesSourceHistory({ seriesKey }: { seriesKey: string }) {
   return <div className="mt-2 space-y-2 text-[11px] leading-5 text-muted-foreground" data-testid={`series-sources-${seriesKey}`}>
     {periods.map(s => <div key={s.from}>
       <span className="mr-2 font-medium tabular-nums text-foreground">{sourcePeriodLabel(s)}</span>
-      <a href={s.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{s.source}</a>
-      {!s.source.includes(s.id) && <span className="ml-1">({s.id})</span>}
+      <a href={s.url} target="_blank" rel="noreferrer" title={s.id} className="underline underline-offset-2">{s.source.replace(`(${s.id})`, "").replace(`(NBER ${s.id})`, "").replace(`(${s.id}, 단종)`, "")}</a>
       <p>{s.note}</p>
     </div>)}
   </div>;
