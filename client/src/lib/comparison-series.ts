@@ -1,10 +1,21 @@
-import { PANELS, CATEGORIES } from "./capitalism-config";
+import { PANELS } from "./capitalism-config";
 import { monthlyPoints, spreadPoints, spreadSchema, RATE_SPREAD_IDS, type SpreadSpec, type SpreadPoint, type Observation } from "../../../shared/cap-comparison";
 import { historyNote } from "./capitalism-history";
 
 // Comparison-only catalog: keep the economic-history panels and source data intact.
 const excludedIds = new Set(["sp500", "mktcap", "monbase", "walcl", "wresbal", "rrp", "tb3ms", "gs10", "fedfunds", "unrate"]);
-export const COMPARE_CATEGORIES = { macro: CATEGORIES.macro, market: CATEGORIES.market, money: CATEGORIES.money };
+export const COMPARE_CATEGORIES = {
+  dollar: { label: "달러·환율", color: "#0ea5e9" },
+  money: { label: "금리·통화", color: "#0d9488" },
+  assets: { label: "자산 가격", color: "#d4af37" },
+  economy: { label: "경제·무역", color: "#8b5cf6" },
+};
+const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
+  dollar: ["dxy", "reer", "usd_purchasing_power", "fx_krw", "fx_jpy", "fx_eur"],
+  money: ["real_tb3ms", "m2"],
+  assets: ["gold", "oil", "nasdaq"],
+  economy: ["gdp_growth", "inflation", "debt_gdp", "trade_bal", "trade"],
+};
 
 const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
@@ -28,6 +39,11 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
 ];
 // 과거 확장 구간이 있는 지표는 출처 목록 설명에 구간을 덧붙인다(수록 기간은 데이터에서 자동으로 첫 관측일이 된다).
 for (const s of COMPARE_SERIES) { const h = historyNote(s.id); if (h) s.note = `${s.note} · ${h}`; }
+for (const [category, seriesIds] of Object.entries(categoryIds)) {
+  for (const s of COMPARE_SERIES) if (seriesIds.includes(s.id)) s.category = category;
+}
+const pickerOrder = Object.values(categoryIds).flat();
+COMPARE_SERIES.sort((a, b) => pickerOrder.indexOf(a.id) - pickerOrder.indexOf(b.id));
 
 export const availableSpreadIds = RATE_SPREAD_IDS.filter(id => COMPARE_SERIES.some(s => s.id === id));
 export function activeSpread(value: unknown): SpreadSpec | null {

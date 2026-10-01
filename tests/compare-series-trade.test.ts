@@ -19,10 +19,10 @@ describe("그래프 비교 — 유로/달러·미국 무역수지", () => {
       expect(seriesLabel(id)).toContain("비교에서 제외됨");
     }
     expect(viewingSeriesIds([...excluded, "nasdaq", "real_tb3ms", "usd_purchasing_power"])).toEqual(["nasdaq", "real_tb3ms", "usd_purchasing_power"]);
-    expect(COMPARE_SERIES.filter(s => s.category === "market").map(s => s.id)).toEqual(["nasdaq"]);
-    expect(Object.keys(COMPARE_CATEGORIES)).toEqual(["macro", "market", "money"]);
+    expect(COMPARE_SERIES.filter(s => s.category === "assets").map(s => s.id)).toEqual(["gold", "oil", "nasdaq"]);
+    expect(Object.keys(COMPARE_CATEGORIES)).toEqual(["dollar", "money", "assets", "economy"]);
     expect(def("real_tb3ms").category).toBe("money");
-    expect(def("usd_purchasing_power").category).toBe("money");
+    expect(def("usd_purchasing_power").category).toBe("dollar");
     expect(withRealInterestRate(series).real_tb3ms).toEqual(differenceSeries(series.tb3ms, series.inflation, 2));
     expect(activeSpread({ a: "gs10", b: "tb3ms" })).toBeNull();
     expect(makeSpread({ a: "gs10", b: "tb3ms" }, series)).toBeNull();
@@ -46,11 +46,11 @@ describe("그래프 비교 — 유로/달러·미국 무역수지", () => {
     expect(differenceSeries([], b, 2)).toEqual([]);
   });
 
-  it("유로/달러와 미국 무역수지가 '통화·대외' 범주의 월간 비교 지표로 등록돼 있다", () => {
+  it("유로/달러와 미국 무역수지가 관련 분류의 월간 비교 지표로 등록돼 있다", () => {
     for (const id of ["fx_eur", "trade_bal"]) {
       const d = def(id);
       expect(d, id).toBeDefined();
-      expect(d.category).toBe("money"); expect(d.cadence).toBe(1);
+      expect(d.category).toBe(id === "fx_eur" ? "dollar" : "economy"); expect(d.cadence).toBe(1);
       expect(d.url).toMatch(/^https:\/\/fred\.stlouisfed\.org\/series\/(EXUSEU|BOPGSTB)$/);
       expect(d.note.length).toBeGreaterThan(10);
     }

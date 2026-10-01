@@ -7,13 +7,14 @@ import { CompareChartExperiment as CompareChart, iso, type ChartTool } from "@/c
 import { alignmentSchema, type Alignment } from "../../../shared/comparison-alignment";
 import { buildAlignedComparison, defaultAlignment, baselineLabel } from "@/lib/comparison-experiment";
 import { ComparisonInsightContext } from "@/components/ComparisonInsightContext";
+import { ComparisonIndicatorPicker } from "@/components/ComparisonIndicatorPicker";
 import { SeriesSourceHistory } from "@/components/SeriesSourceHistory";
 import { sourcePeriods } from "@/lib/capitalism-history";
 import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread, activeSeriesIds, viewingSeriesIds, activeSpread, availableSpreadIds } from "@/lib/comparison-series";
+import { COMPARE_SERIES, makeSpread, activeSeriesIds, viewingSeriesIds, activeSpread, availableSpreadIds } from "@/lib/comparison-series";
 import { automaticComparisonView } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
@@ -155,14 +156,7 @@ export default function GraphCompareExperiment() {
       <div className="order-last flex w-full flex-wrap gap-x-3 gap-y-1 text-[11px] sm:order-none sm:w-auto sm:flex-1">{prefs.ids.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <span key={id} className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}<span className="text-muted-foreground">· {baselineLabel(comparison.alignment.calibrations[id])}</span></span>; })}{!prefs.ids.length && <span className="text-muted-foreground">비교할 지표를 체크하세요</span>}</div>
       <button className={buttonClass + (options ? " bg-accent" : "")} aria-expanded={options} onClick={() => setOptions(!options)}><Settings2 size={14} />표시 설정</button>
     </div>
-    {indicators && <section id="comparison-indicators" aria-label="표시 지표 선택" className="absolute left-3 right-3 top-full z-30 mt-1 max-h-[65vh] overflow-auto rounded-lg border bg-background p-4 shadow-xl">
-      <div className="mb-3 flex flex-wrap items-center gap-2"><span className="text-xs font-medium">표시할 지표 선택</span><button type="button" className={buttonClass} disabled={!prefs.ids.length} onClick={() => setPrefs(p => ({ ...p, ids: [], view: automaticComparisonView([], p.view) }))}>전체 선택 해제</button></div>
-      <div className="grid gap-x-6 gap-y-3 xl:grid-cols-2 2xl:grid-cols-3">{Object.entries(COMPARE_CATEGORIES).map(([key, category]) => <fieldset key={key} className="min-w-0"><legend className="mb-1.5 text-[10px] font-semibold" style={{ color: category.color }}>{category.label}</legend><div className="flex flex-wrap gap-x-3 gap-y-2">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
-        const checked = prefs.ids.includes(s.id);
-        return <label key={s.id} title={s.note} className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] hover:text-sky-600"><input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 accent-sky-500" checked={checked} onChange={e => { const on = e.target.checked; setPrefs(p => { const ids = on ? p.ids.includes(s.id) ? p.ids : [...p.ids, s.id] : p.ids.filter(id => id !== s.id); return { ...p, ids, view: automaticComparisonView(ids, p.view) }; }); }} /><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</label>;
-      })}</div></fieldset>)}</div>
-      <p className="mt-3 text-[10px] text-muted-foreground">각 지표의 기준과 변동폭을 맞춰 비교합니다. 모든 지표를 같은 화면에 표시할 수 있습니다.</p>
-    </section>}
+    {indicators && <ComparisonIndicatorPicker ids={prefs.ids} onClose={() => setIndicators(false)} onClear={() => setPrefs(p => ({ ...p, ids: [], view: automaticComparisonView([], p.view) }))} onToggle={(id, on) => setPrefs(p => { const ids = on ? p.ids.includes(id) ? p.ids : [...p.ids, id] : p.ids.filter(v => v !== id); return { ...p, ids, view: automaticComparisonView(ids, p.view) }; })} />}
     </div>
     {options && <section className="space-y-3 border-b bg-muted/20 px-4 py-3 text-xs" aria-label="차트 표시 설정">
       <div className="flex flex-wrap items-center gap-4">

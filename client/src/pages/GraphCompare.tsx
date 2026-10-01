@@ -4,13 +4,14 @@ import { useLocation } from "wouter";
 import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookOpen, PanelRightClose, PanelRightOpen, Settings2, StickyNote, RotateCcw, ArrowLeftRight } from "lucide-react";
 import { CompareChart, iso, type ChartTool } from "@/components/CompareChart";
 import { ComparisonInsightContext } from "@/components/ComparisonInsightContext";
+import { ComparisonIndicatorPicker } from "@/components/ComparisonIndicatorPicker";
 import { SeriesSourceHistory } from "@/components/SeriesSourceHistory";
 import { sourcePeriods } from "@/lib/capitalism-history";
 import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread, activeSeriesIds, viewingSeriesIds, activeSpread, availableSpreadIds } from "@/lib/comparison-series";
+import { COMPARE_SERIES, makeSpread, activeSeriesIds, viewingSeriesIds, activeSpread, availableSpreadIds } from "@/lib/comparison-series";
 import { assignedAxis, automaticComparisonView, buildComparisonAxes } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
@@ -148,14 +149,7 @@ export default function GraphCompare() {
       <div className="order-last flex w-full flex-wrap gap-x-3 gap-y-1 text-[11px] sm:order-none sm:w-auto sm:flex-1">{prefs.ids.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <span key={id} className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}{prefs.view.mode === "mixed" && <span className="text-muted-foreground">· {assignedAxis(id, prefs.view) === "left" ? "좌" : "우"}{comparison.pending.includes(id) ? " 대기" : ""}</span>}</span>; })}{!prefs.ids.length && <span className="text-muted-foreground">비교할 지표를 체크하세요</span>}</div>
       <button className={buttonClass + (options ? " bg-accent" : "")} aria-expanded={options} onClick={() => setOptions(!options)}><Settings2 size={14} />표시 설정</button>
     </div>
-    {indicators && <section id="comparison-indicators" aria-label="표시 지표 선택" className="absolute left-3 right-3 top-full z-30 mt-1 max-h-[65vh] overflow-auto rounded-lg border bg-background p-4 shadow-xl">
-      <div className="mb-3 flex flex-wrap items-center gap-2"><span className="text-xs font-medium">표시할 지표 선택</span><button type="button" className={buttonClass} disabled={!prefs.ids.length} onClick={() => setPrefs(p => ({ ...p, ids: [], view: automaticComparisonView([], p.view) }))}>전체 선택 해제</button></div>
-      <div className="grid gap-x-6 gap-y-3 xl:grid-cols-2 2xl:grid-cols-3">{Object.entries(COMPARE_CATEGORIES).map(([key, category]) => <fieldset key={key} className="min-w-0"><legend className="mb-1.5 text-[10px] font-semibold" style={{ color: category.color }}>{category.label}</legend><div className="flex flex-wrap gap-x-3 gap-y-2">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
-        const checked = prefs.ids.includes(s.id);
-        return <label key={s.id} title={s.note} className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] hover:text-sky-600"><input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 accent-sky-500" checked={checked} onChange={e => { const on = e.target.checked; setPrefs(p => { const ids = on ? p.ids.includes(s.id) ? p.ids : [...p.ids, s.id] : p.ids.filter(id => id !== s.id); return { ...p, ids, view: automaticComparisonView(ids, p.view) }; }); }} /><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</label>;
-      })}</div></fieldset>)}</div>
-      <p className="mt-3 text-[10px] text-muted-foreground">{prefs.view.mode === "mixed" ? "왼쪽: 가격·환율·규모를 기준월=100으로 비교 · 오른쪽: 금리·비율·수지의 실제 값. 같은 단위는 한 축에 함께 표시합니다." : prefs.view.mode === "index" ? "개수 제한 없이 같은 기준월로 비교" : "최대 2개를 좌우 축으로 비교 · 선택 순서대로 왼쪽 / 오른쪽 축"}</p>
-    </section>}
+    {indicators && <ComparisonIndicatorPicker ids={prefs.ids} onClose={() => setIndicators(false)} onClear={() => setPrefs(p => ({ ...p, ids: [], view: automaticComparisonView([], p.view) }))} onToggle={(id, on) => setPrefs(p => { const ids = on ? p.ids.includes(id) ? p.ids : [...p.ids, id] : p.ids.filter(v => v !== id); return { ...p, ids, view: automaticComparisonView(ids, p.view) }; })} />}
     </div>
     {options && <section className="space-y-3 border-b bg-muted/20 px-4 py-3 text-xs" aria-label="차트 표시 설정">
       <div className="flex flex-wrap items-center gap-4">{prefs.view.mode !== "raw" && <label>기준월 <input aria-label="기준월" type="month" className={inputClass} value={prefs.view.base} onChange={e => { if (validDate(e.target.value + "-01")) setPrefs(p => ({ ...p, view: { ...p.view, base: e.target.value } })); }} /></label>}
