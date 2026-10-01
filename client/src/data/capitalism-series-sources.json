@@ -192,5 +192,22 @@
         "factor": null
       }
     ]
+  },
+  "reer": {
+    "modernFrom": "1994-01-01",
+    "segments": [
+      {
+        "from": "1973-01-01",
+        "to": "1993-12-01",
+        "source": "연준 실질 광의 달러지수",
+        "short": "Fed Broad · 연결값",
+        "id": "TWEXBPA",
+        "url": "https://fred.stlouisfed.org/series/TWEXBPA",
+        "note": "1994년 1월 BIS/Fed 비율로 과거 구간만 조정. 두 기관의 바스켓·가중치는 다름.",
+        "method": "rebase",
+        "proxy": false,
+        "factor": 0.9703956009316498
+      }
+    ]
   }
 }

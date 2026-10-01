@@ -51,9 +51,9 @@ describe("과거 확장 — 저장된 데이터와 출처 메타데이터의 정
   const sources = JSON.parse(readFileSync("client/src/data/capitalism-series-sources.json", "utf8")) as Record<string, { modernFrom: string; segments: { from: string; to: string; source: string; method: string }[] }>;
 
   it("화면 출처 구간이 실제 관측값을 정확히 한 번씩 덮으며 전환 월은 존재한다", () => {
-    for (const key of [...Object.keys(sources), "dollar"]) {
+    for (const key of [...Object.keys(sources), "dxy", "cpi_level"]) {
       const periods = sourcePeriods(key), dates = series[key].map(([d]) => d);
-      expect(periods.length, key).toBeGreaterThan(1);
+      expect(periods.length, key).toBeGreaterThan(0);
       for (const s of periods) {
         expect(dates.includes(s.from), `${key}: ${s.from}`).toBe(true);
         if (s.to) expect(dates.includes(s.to), `${key}: ${s.to}`).toBe(true);
@@ -62,8 +62,8 @@ describe("과거 확장 — 저장된 데이터와 출처 메타데이터의 정
       }
       for (const d of dates) expect(periods.filter(s => s.from <= d && (!s.to || d <= s.to)).length, `${key}: ${d}`).toBe(1);
     }
-    expect(sourcePeriods("dollar").map(s => [s.from, s.to, s.id])).toEqual([
-      ["1973-01-01", "2019-12-01", "TWEXMMTH"], ["2020-01-01", undefined, "NBUSBIS"],
+    expect(sourcePeriods("reer").map(s => [s.from, s.to, s.id])).toEqual([
+      ["1973-01-01", "1993-12-01", "TWEXBPA"], ["1994-01-01", undefined, "RBUSBIS"],
     ]);
     expect(sourcePeriods("debt_gdp").map(s => s.id)).toEqual(["debt_outstanding ÷ GDPA", "GFDGDPA188S", "GFDEGDQ188S"]);
     expect(sourcePeriods("gold")[1].from).toBe("1960-01-01");

@@ -1,0 +1,98 @@
+{
+  "checkedAt": "2026-10-01T01:53:58.626Z",
+  "sources": {
+    "cpi": "CPIAUCNS",
+    "dxy": "Yahoo DX-Y.NYB · INDEX · daily close → completed month-end",
+    "fed": "TWEXBPA",
+    "bis": "RBUSBIS"
+  },
+  "anchor": "1994-01-01",
+  "factor": 0.9703956009316498,
+  "overlap": {
+    "factor": 0.9728393719034574,
+    "overlap": 12,
+    "spread": 1.0067120141823134
+  },
+  "anchorValues": {
+    "fed": 91.3648,
+    "bis": 88.66
+  },
+  "raw": {
+    "cpi": {
+      "first": [
+        "1913-01-01",
+        9.8
+      ],
+      "last": [
+        "2026-08-01",
+        334.98
+      ],
+      "count": 1363,
+      "sha256": "0c15270e3fa5e0240ef58d1490978e55ad24c079733c586736ee85eb923471cb"
+    },
+    "dxy": {
+      "first": [
+        "1973-03-01",
+        101.17
+      ],
+      "last": [
+        "2026-09-01",
+        101.515
+      ],
+      "count": 643,
+      "sha256": "be6ecb9dddf09839b1725f25fd19f549a6e5af8ec0d23a5ca3366a69964d26cd"
+    },
+    "fed": {
+      "first": [
+        "1973-01-01",
+        107.6163
+      ],
+      "last": [
+        "2019-12-01",
+        101.4637
+      ],
+      "count": 564,
+      "sha256": "3d5a29f8159b6f8ed04b50801b1f53dc6a2ef403ccb697d470308ccdfd659f9d"
+    },
+    "bis": {
+      "first": [
+        "1994-01-01",
+        88.66
+      ],
+      "last": [
+        "2026-07-01",
+        108.25
+      ],
+      "count": 391,
+      "sha256": "d8122f29f8087e1f8e63500e1a77ed35d72b6ec9e03c8b22ddf4027bf18f21b6"
+    }
+  },
+  "removedDollarSha256": "10cb69b25d1af31e9e1b54cd2411ccbc62d285ac7c171ddf81fa5d58c07eb213",
+  "preserved": {
+    "tb3ms": "fc0e3b9a8a25a2cecf9b33c8dd914b124c283d6bcee68c929f97487f527ff45a",
+    "gs10": "820a72869f615cd4908bddca20060ea3ffc120df1801fe9a94efee30d1a52348",
+    "fedfunds": "706933c325aee6b16e72d96d84a0901631715ea096e7cacb15db5d402dcd60e4",
+    "gdp_growth": "770187d209c2010ceb4f82fdfb4fb4e927ce33af55e3c94eef9fc3379e4e7625",
+    "debt_gdp": "5dfc0ae202811e55c154e67abb5ff51b189c6d847e58c0115b4809493cea6628",
+    "unrate": "9cbebe1fffcf981a7964aecd42c11f630b7efae52fa16b4968e40727cd51a237",
+    "inflation": "66cf03d3a4d6475bcf4bcc0657173abdca0f7d6edbb0ff7a654f9d178d1acec4",
+    "trade": "d828864b236aa9d5b106da5b75f26383de6d02f6284d24d2a385b75c071a22c3",
+    "monbase": "2cb4fee3344010ff307c27a29a3562666aba932dedd5042d1eda86c554344e81",
+    "m2": "9b1e26ff40fbe4686751455d5e7da901a14ba513bdc7e0269bd5cf13e735914c",
+    "walcl": "505ac169cf481dd2835e9149140189c439341d68df903a4cc04b05e9a3fb8821",
+    "wresbal": "c486ac866ff48ae3d3c219ded0169231e342265452f6b0244d188cbe1a581e03",
+    "rrp": "eeec65a0a054477cd05113c1a9359b1da992ecb47f22c6ab4a6713a95666c3c9",
+    "nasdaq": "04dd8411961db5a09a935261355fce37297b954c435a7c0735da4e382a4f191a",
+    "sp500": "97f550940557e65292f562e3d34ca3a2b8e7f874fec9cdef5dc2260ac49f2b38",
+    "mktcap": "5e7608a8cae9cf38035d105ee681b487938fadc9738a052e211269985139165b",
+    "oil": "75a4ce30fa7cc9fa386abc255138035ae4789cc7772e81d0cf1304bfbc3b294c",
+    "gold": "e53d5421341920224da81406b7af54d30df945da111f7abadbb85980ceb9ca13",
+    "fx_krw": "a98d5e4598d1b00622cc2c13206b437b30d0748965cb19b1c87170ac5b74c91b",
+    "fx_jpy": "b07529a5a207883f9ab1546943ade346a2adc2f265b7ac307b393588ec9a0ed4",
+    "fx_eur": "a621a09cce30383d82016335ce5c276a22bf8bb3340f7cf02e76698d56620e9a",
+    "trade_bal": "9f795fbc45bd90dcdd87d050fd163e7dc2131e9ad136297f2f3a850c89750214",
+    "exports_yoy": "1d9697c0ed18d07e2b74030e5b12aa7e1d6deafb985b9b671d79d94b7325ee00",
+    "imports_yoy": "b227393255d45a5eb2ba9707f4d3cf09d206c333eb00581c50fdb43626d928da",
+    "trade_cycle": "7585492e78e1e953316eab5237ee7a7af67311eeac98c72714e9b960e7a01f4b"
+  }
+}

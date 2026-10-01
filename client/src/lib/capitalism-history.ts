@@ -15,6 +15,7 @@ export interface SourcePeriod {
 const fred = (id: string) => `https://fred.stlouisfed.org/series/${id}`;
 // These dates describe the periods used in our saved chart, not the start of the provider's full dataset.
 const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
+  reer: [{ source: "BIS 실질 광의 실효환율", id: "RBUSBIS", url: fred("RBUSBIS"), note: "2020=100. 상대국 물가를 반영한 실질 대외가치." }],
   inflation: [{ source: "미국 CPI 전년비 · 계절조정", id: "CPIAUCSL", url: fred("CPIAUCSL"), note: "이전 구간과 계절조정 방식이 다릅니다." }],
   gdp_growth: [{ source: "미국 실질 GDP 성장률 · 분기 전기 대비 연율", id: "A191RL1Q225SBEA", url: fred("A191RL1Q225SBEA"), note: "이전 구간은 연간 성장률입니다." }],
   unrate: [{ source: "미국 실업률 · 월간 계절조정", id: "UNRATE", url: fred("UNRATE"), note: "1947년은 자료가 없습니다." }],
@@ -26,9 +27,11 @@ const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
 };
 
 const SPECIAL: Record<string, SourcePeriod[]> = {
-  dollar: [
-    { from: "1973-01-01", to: "2019-12-01", source: "연준 주요통화 명목 달러지수", id: "TWEXMMTH", url: fred("TWEXMMTH"), note: "월평균 원자료." },
-    { from: "2020-01-01", source: "BIS 광의 명목 달러지수", id: "NBUSBIS", url: fred("NBUSBIS"), note: "BIS 기반 조정값. 전체 계열은 ICE DXY가 아닙니다." },
+  cpi_level: [
+    { from: "1913-01-01", source: "미국 소비자물가지수 · 비계절조정", id: "CPIAUCNS", url: fred("CPIAUCNS"), note: "1982~1984=100. 상승하면 고정된 달러의 국내 구매력은 하락." },
+  ],
+  dxy: [
+    { from: "1973-03-01", source: "ICE 달러지수 · Yahoo 제공", id: "DX-Y.NYB", url: "https://finance.yahoo.com/quote/DX-Y.NYB/history/", note: "주요 6개 통화 대비 명목가치 · 일간 종가의 월말 값." },
   ],
   debt_gdp: [
     { from: "1939-01-01", to: "1965-01-01", source: "OMB 총연방부채 / GDP · 연간", id: "GFDGDPA188S", url: fred("GFDGDPA188S"), note: "구간별 부채 정의·주기가 다릅니다." },
@@ -49,7 +52,7 @@ export function historyOf(seriesKey: string): SeriesHistory | null {
 
 export function sourcePeriods(seriesKey: string): SourcePeriod[] {
   const h = historyOf(seriesKey);
-  if (seriesKey === "dollar" || seriesKey === "gold") return SPECIAL[seriesKey];
+  if (["cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
   if (!h) return [];
   const earlier = h.segments.map(s => ({ from: s.from, to: s.to, source: s.source, id: s.id, url: s.url,
     note: seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));

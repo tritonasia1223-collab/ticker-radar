@@ -23,6 +23,7 @@ export const CATEGORIES: Record<string, { label: string; color: string }> = {
 export const PANELS: PanelDef[] = [
   { id: "gdp_growth", label: "실질 GDP 성장률", unit: "%", series: "gdp_growth", cat: "macro", color: "#5dd6a0", on: true, start: "1947", zeroLine: true, kind: "area" },
   { id: "inflation", label: "인플레이션 (CPI YoY)", unit: "%", series: "inflation", cat: "macro", color: "#e0c267", on: true, start: "1948", zeroLine: true, kind: "line" },
+  { id: "cpi_level", label: "미국 소비자물가지수 (CPI 수준)", unit: "idx", series: "cpi_level", cat: "macro", color: "#0d9488", on: false, start: "1913", kind: "line" },
   { id: "sp500", label: "미국 주가지수 (S&P500 추종)", unit: "idx", series: "sp500", cat: "market", color: "#0ea5e9", on: false, start: "1957", kind: "line" },
   { id: "nasdaq", label: "나스닥 종합", unit: "p", series: "nasdaq", cat: "market", color: "#38bdf8", on: false, start: "1971", kind: "line" },
   { id: "mktcap", label: "미국 시총 (기업 주식)", unit: "$B", series: "mktcap", cat: "market", color: "#2563eb", on: true, start: "1945", kind: "area" },
@@ -31,7 +32,8 @@ export const PANELS: PanelDef[] = [
   { id: "tb3ms", label: "단기금리 (3M T-Bill)", unit: "%", series: "tb3ms", cat: "rates", color: "#ef8a8a", on: false, start: "1934", kind: "line" },
   { id: "gs10", label: "장기금리 (10Y 국채)", unit: "%", series: "gs10", cat: "rates", color: "#d96a6a", on: false, start: "1953", kind: "line" },
   { id: "fedfunds", label: "연준 정책금리", unit: "%", series: "fedfunds", cat: "rates", color: "#f0a0a0", on: true, start: "1954", kind: "line" },
-  { id: "dollar", label: "달러지수", unit: "idx", series: "dollar", cat: "money", color: "#f0b366", on: true, start: "1973", kind: "line" },
+  { id: "dxy", label: "달러지수(DXY, 명목)", unit: "idx", series: "dxy", cat: "money", color: "#f0b366", on: true, start: "1973", kind: "line" },
+  { id: "reer", label: "실질실효환율(REER, 장기 접합)", unit: "idx", series: "reer", cat: "money", color: "#6366f1", on: false, start: "1973", kind: "line" },
   { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "#cc7a33", on: false, start: "1946", kind: "line" },
   { id: "gold", label: "금값 (oz당)", unit: "$/oz", series: "gold", cat: "money", color: "#d4af37", on: false, start: "1944", kind: "line" },
   { id: "trade", label: "무역수지 (순수출)", unit: "$B", series: "trade", cat: "money", color: "#e0a050", on: false, start: "1947", zeroLine: true, kind: "area" },

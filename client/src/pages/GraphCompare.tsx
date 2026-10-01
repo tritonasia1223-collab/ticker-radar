@@ -10,7 +10,7 @@ import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread } from "@/lib/comparison-series";
+import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread, activeSeriesIds } from "@/lib/comparison-series";
 import { assignedAxis, automaticComparisonView, buildComparisonAxes } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
@@ -25,7 +25,7 @@ const inputClass = "rounded-md border border-border bg-background px-2 py-1.5 te
 const buttonClass = "inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed";
 const plain = (text: string) => parseRich(text).map(s => s.text).join("").trim();
 type Preferences = { ids: string[]; view: ComparisonView; from: number; to: number; smooth: boolean; months: number; phases: boolean; reference: string; history: boolean; badges: boolean; spread: SpreadSpec | null };
-const defaults: Preferences = { ids: ["dollar", "fx_krw", "fx_jpy"], view: { mode: "mixed", base: "2000-01", assignments: {}, rightUnit: null }, from: Date.UTC(1990, 0, 1), to: Date.now(), smooth: false, months: 12, phases: false, reference: "dollar", history: false, badges: true, spread: null };
+const defaults: Preferences = { ids: ["dxy", "reer", "cpi_level"], view: { mode: "mixed", base: "2000-01", assignments: {}, rightUnit: null }, from: Date.UTC(1990, 0, 1), to: Date.now(), smooth: false, months: 12, phases: false, reference: "dxy", history: false, badges: true, spread: null };
 function readPreferences(): Preferences {
   try {
     const current = localStorage.getItem("comparison-view-v3") ?? localStorage.getItem("comparison-view-v2");
@@ -33,9 +33,9 @@ function readPreferences(): Preferences {
     const parsedView = comparisonViewSchema.safeParse(v?.view);
     const base = parsedView.success ? parsedView.data.base : v?.base;
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
-      const ids = [...new Set<string>(v.ids.filter((id: string) => COMPARE_SERIES.some(s => s.id === id)))];
+      const ids = activeSeriesIds(v.ids);
       const view = automaticComparisonView(ids, parsedView.success ? parsedView.data : undefined, base);
-      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
+      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dxy", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -128,7 +128,7 @@ export default function GraphCompare() {
     setPrefs(p => ({ ...p, badges: true })); openNote(id); setTool("move");
   };
   const restoreContext = (context: InsightContext, note: SavedInsight) => {
-    const ids = context.ids.filter(id => COMPARE_SERIES.some(s => s.id === id));
+    const ids = activeSeriesIds(context.ids);
     const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25);
     setPrefs(p => ({ ...p, ids, view: automaticComparisonView(ids, context.view, p.view.base), spread: context.spread, from: start - pad, to: end + pad, badges: true }));
     setResetAxes(v => v + 1);

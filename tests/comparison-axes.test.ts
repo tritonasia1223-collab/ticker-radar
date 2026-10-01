@@ -13,20 +13,20 @@ const build = (ids: string[], overrides: Partial<ComparisonView> = {}) => buildC
 
 describe("mixed comparison axes", () => {
   it("automatically migrates old views and follows the last selected right-side unit", () => {
-    const ids = ["dollar", "fx_eur", "trade_bal", "gs10"];
+    const ids = ["dxy", "fx_eur", "trade_bal", "gs10"];
     const automatic = automaticComparisonView(ids, { ...view, mode: "raw", assignments: { fx_eur: "right" }, rightUnit: "trade-balance" });
     expect(automatic).toEqual({ ...view, rightUnit: "%" });
     expect(buildComparisonAxes(raw(ids), automatic).pending).toEqual(["trade_bal"]);
     expect(automaticComparisonView(ids.slice(0, -1), automatic).rightUnit).toBe("trade-balance");
     expect(automaticComparisonView([], automatic).rightUnit).toBeNull();
-    expect(automaticComparisonView(["dollar", "gs10", "trade_bal"], automatic).rightUnit).toBe("trade-balance");
+    expect(automaticComparisonView(["dxy", "gs10", "trade_bal"], automatic).rightUnit).toBe("trade-balance");
   });
   it("assigns prices and amounts left; rates, ratios and signed flows right", () => {
-    for (const id of ["dollar", "fx_eur", "fx_krw", "fx_jpy", "sp500", "nasdaq", "gold", "oil", "m2", "walcl", "rrp", "mktcap"]) expect(defaultAxis(id)).toBe("left");
+    for (const id of ["dxy", "fx_eur", "fx_krw", "fx_jpy", "sp500", "nasdaq", "gold", "oil", "m2", "walcl", "rrp", "mktcap"]) expect(defaultAxis(id)).toBe("left");
     for (const id of ["fedfunds", "gs10", "tb3ms", "gdp_growth", "inflation", "unrate", "debt_gdp", "trade", "trade_bal", "trade_cycle", "exports_yoy", "imports_yoy"]) expect(defaultAxis(id)).toBe("right");
   });
   it("overlays four indexed currencies and a negative trade balance without losing selections", () => {
-    const ids = ["dollar", "fx_krw", "fx_jpy", "fx_eur", "trade_bal"];
+    const ids = ["dxy", "fx_krw", "fx_jpy", "fx_eur", "trade_bal"];
     const result = build(ids);
     expect(result.series.map(s => s.def.id)).toEqual(ids);
     expect(result.axes.map(a => a.side)).toEqual(["left", "right"]);
@@ -34,7 +34,7 @@ describe("mixed comparison axes", () => {
     expect(result.series.at(-1)!.points.every(p => p.value === p.raw && p.raw < 0)).toBe(true);
   });
   it("fixes the 1990 base/EUR/real-net-export combination and preserves a three-series legacy context", () => {
-    for (const ids of [["fx_eur", "trade"], ["dollar", "fx_eur", "trade_bal"]]) {
+    for (const ids of [["fx_eur", "trade"], ["dxy", "fx_eur", "trade_bal"]]) {
       const result = build(ids, { base: "1990-01" });
       expect(result.series).toHaveLength(ids.length);
       expect(result.series.every(s => s.points.length > 0)).toBe(true);
@@ -42,18 +42,18 @@ describe("mixed comparison axes", () => {
     }
   });
   it("shares one actual-value scale between multiple rates and retains their raw values", () => {
-    const result = build(["dollar", "gs10", "tb3ms", "fedfunds"]);
+    const result = build(["dxy", "gs10", "tb3ms", "fedfunds"]);
     expect(result.groups).toHaveLength(1);
     expect(result.series.slice(1).map(s => s.axis)).toEqual(["right:%", "right:%", "right:%"]);
     expect(result.series.slice(1).every(s => s.points.every(p => p.value === p.raw))).toBe(true);
   });
   it("separates nominal/monthly, real/annualized, % and percentage-point units", () => {
-    const ids = ["dollar", "trade_bal", "trade", "gs10", "trade_cycle"];
+    const ids = ["dxy", "trade_bal", "trade", "gs10", "trade_cycle"];
     const result = build(ids, { rightUnit: "trade-balance" });
     expect(result.groups).toHaveLength(4);
     expect(result.pending).toEqual(["trade", "gs10", "trade_cycle"]);
     const switched = build(ids, { rightUnit: "%" });
-    expect(switched.series.map(s => s.def.id)).toEqual(["dollar", "gs10"]);
+    expect(switched.series.map(s => s.def.id)).toEqual(["dxy", "gs10"]);
     expect(switched.groups).toEqual(result.groups);
     expect(switched.series[0].points).toEqual(result.series[0].points);
   });
@@ -64,30 +64,30 @@ describe("mixed comparison axes", () => {
     expect(result.rightUnit).toBe(rawUnitKey(COMPARE_SERIES.find(s => s.id === "fx_eur")!));
   });
   it("leaves valid series visible if a manually indexed series cannot be rebased", () => {
-    const result = build(["dollar", "trade_bal"], { assignments: { trade_bal: "left" } });
-    expect(result.series.map(s => s.def.id)).toEqual(["dollar"]);
+    const result = build(["dxy", "trade_bal"], { assignments: { trade_bal: "left" } });
+    expect(result.series.map(s => s.def.id)).toEqual(["dxy"]);
     expect(result.unavailable).toEqual(["trade_bal"]);
-    expect(build(["dollar", "trade_bal"], { base: "2100-01" }).series.map(s => s.def.id)).toEqual(["trade_bal"]);
+    expect(build(["dxy", "trade_bal"], { base: "2100-01" }).series.map(s => s.def.id)).toEqual(["trade_bal"]);
   });
   it("keeps raw and all-index modes available", () => {
     const rawResult = build(["trade", "trade_bal"], { mode: "raw" });
     expect(rawResult.axes.every(a => !a.normalized)).toBe(true);
     expect(rawResult.series.every(s => s.points.every(p => p.value === p.raw))).toBe(true);
-    expect(build(["dollar", "fx_eur"], { mode: "index" }).axes).toHaveLength(1);
+    expect(build(["dxy", "fx_eur"], { mode: "index" }).axes).toHaveLength(1);
   });
   it("stores axis settings atomically in insight context and accepts legacy notes", () => {
-    const note = { title: "비교", date: "2005-01-01", endDate: null, text: "본문", caption: "", sortOrder: 1, context: { ids: ["dollar", "trade_bal"], spread: null } };
+    const note = { title: "비교", date: "2005-01-01", endDate: null, text: "본문", caption: "", sortOrder: 1, context: { ids: ["dxy", "trade_bal"], spread: null } };
     expect(comparisonInsightSchema.parse(note)).toEqual(note);
     const linked = comparisonInsightSchema.parse({ ...note, context: { ...note.context, view } });
     const changes = diff(note, linked);
     expect(validateEdit({ id: crypto.randomUUID(), session: crypto.randomUUID(), resource: "note:mixed", editor: "검증", changes }).changes).toEqual(changes);
     expect(merge({ ...note, text: "다른 본문" }, changes).doc).toEqual({ ...linked, text: "다른 본문" });
-    expect(comparisonInsightSchema.safeParse({ ...linked, context: { ...linked.context, view: { ...view, assignments: { dollar: "middle" } } } }).success).toBe(false);
+    expect(comparisonInsightSchema.safeParse({ ...linked, context: { ...linked.context, view: { ...view, assignments: { dxy: "middle" } } } }).success).toBe(false);
   });
   it("detects changed axis settings for note restoration, ignoring unrelated assignments", () => {
-    expect(sameComparisonView(view, { ...view, assignments: { gs10: "left" } }, ["dollar"])).toBe(true);
-    expect(sameComparisonView(view, { ...view, assignments: { dollar: "right" } }, ["dollar"])).toBe(false);
-    expect(sameComparisonView(view, { ...view, base: "2010-01" }, ["dollar"])).toBe(false);
-    expect(sameComparisonView(undefined, view, ["dollar"])).toBe(true);
+    expect(sameComparisonView(view, { ...view, assignments: { gs10: "left" } }, ["dxy"])).toBe(true);
+    expect(sameComparisonView(view, { ...view, assignments: { dxy: "right" } }, ["dxy"])).toBe(false);
+    expect(sameComparisonView(view, { ...view, base: "2010-01" }, ["dxy"])).toBe(false);
+    expect(sameComparisonView(undefined, view, ["dxy"])).toBe(true);
   });
 });

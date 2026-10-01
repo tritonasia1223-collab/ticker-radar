@@ -9,10 +9,11 @@
 //   재현 실패 시 그 시리즈는 SKIP(경고) — 잘못된 FRED id/변환이 데이터를 오염시키는 것을 차단.
 // ── 특수 처리 ──────────────────────────────────────────────────────────────────
 //   inflation : CPIAUCSL(SA) 의 12개월 YoY(%) 파생. 최근값은 CPI 개정 전 vintage라 미세차 → 검증 면제, append.
-//   dollar    : 1973~2019 는 주요통화 명목지수(단종), 이후 BIS 명목광의(NBUSBIS)로 스티치.
-//               겹침 구간 비율의 중앙값으로 신규 포인트를 리베이스 접합 → 이음매 제거.
+//   dxy       : 실제 DX-Y.NYB 지수 일간 종가 → 완료된 월의 마지막 종가.
+//   reer      : 1994년 이후 BIS 원자료만 추가. 1973~1993 연결값은 보존.
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, renameSync } from "fs";
 import { closedMonthEnds, annualChange, mergeObservations, differenceSeries, type Point } from "../shared/capitalism-refresh.js";
+import { fetchDxy } from "./lib/dollar-sources.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -29,7 +30,7 @@ interface SeriesDef {
   scale?: number;       // 값 배율(예: 백만$→십억$ = 1/1000)
   decimals: number;
   transform?: "yoy";    // yoy = 12개월 전 대비 % 변화(월별 시리즈 전용)
-  stitch?: boolean;     // 접합 시리즈(겹침 비율로 신규 리베이스). dollar 전용.
+  provider?: "dxy";     // Yahoo의 실제 ICE DXY 지수만 허용.
   noVerify?: boolean;   // 겹침 검증 면제(파생/접합처럼 재현이 목적이 아닌 시리즈)
 }
 
@@ -54,7 +55,9 @@ const SERIES: SeriesDef[] = [
   { key: "trade", fredId: "NETEXC", freq: "asis", decimals: 1 },   // 실질 순수출($B, 분기)
   { key: "m2", fredId: "M2SL", freq: "asis", decimals: 1 },        // M2($B, 월)
   { key: "monbase", fredId: "BOGMBASE", freq: "asis", decimals: 1 }, // 본원통화($B, 월)
-  { key: "dollar", fredId: "NBUSBIS", freq: "asis", decimals: 2, stitch: true, noVerify: true }, // 달러지수(접합)
+  { key: "dxy", provider: "dxy", freq: "asis", decimals: 3 },
+  { key: "reer", fredId: "RBUSBIS", freq: "asis", decimals: 3 },
+  { key: "cpi_level", fredId: "CPIAUCNS", freq: "asis", decimals: 3 },
   { key: "oil", fredId: "WTISPLC", freq: "asis", decimals: 2 },    // WTI($/bbl, 월)
   { key: "gold", url: "https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv", freq: "asis", fromDate: "1944-01-01", decimals: 2 },
   // ── 주식시장 ──
@@ -104,11 +107,12 @@ async function fetchCsv(s: SeriesDef): Promise<Point[]> {
 }
 
 async function buildFetched(s: SeriesDef): Promise<Point[]> {
+  if (s.provider === "dxy") return fetchDxy();
   const raw = await fetchCsv(s);
   let pts = s.freq === "monthly" ? closedMonthEnds(raw) : raw;
   if (s.transform === "yoy") pts = annualChange(pts, s.decimals);
   if (s.fromDate) pts = pts.filter(([d]) => d >= s.fromDate!);
-  if (s.key.startsWith("fx_")) pts = pts.filter(([d]) => d.slice(0, 7) < new Date().toISOString().slice(0, 7));
+  if (s.key.startsWith("fx_") || ["cpi_level", "reer"].includes(s.key)) pts = pts.filter(([d]) => d.slice(0, 7) < new Date().toISOString().slice(0, 7));
   const scale = s.scale ?? 1;
   if (scale !== 1 || s.transform !== "yoy") pts = pts.map(([d, v]) => [d, Number((v * scale).toFixed(s.decimals))] as Point);
   return pts.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
@@ -159,21 +163,7 @@ async function main() {
     }
 
     const lastStored = stored.length ? stored[stored.length - 1][0] : "";
-    let tail = fetched.filter(([d]) => d > lastStored);
-
-    // dollar: 겹침 비율 중앙값으로 신규 포인트 리베이스(이음매 제거).
-    if (s.stitch && stored.length) {
-      const sMap = new Map(stored);
-      const ratios = fetched
-        .filter(([d]) => sMap.has(d)).slice(-12)
-        .map(([d, v]) => (v !== 0 ? sMap.get(d)! / v : NaN))
-        .filter(Number.isFinite).sort((a, b) => a - b);
-      const factor = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 1;
-      tail = tail.map(([d, v]) => [d, Number((v * factor).toFixed(s.decimals))] as Point);
-      process.stdout.write(`[splice×${factor.toFixed(4)}] `);
-    }
-
-    const merged = mergeObservations(stored, s.stitch ? tail : fetched, repair && s.freq === "monthly");
+    const merged = mergeObservations(stored, fetched, repair && s.freq === "monthly");
     json[s.key] = merged.points;
     added += merged.added; corrected += merged.corrected.length;
     report.series.push({ key:s.key, status:"ok", previous:lastStored, latest:merged.points.at(-1)?.[0], added:merged.added,
