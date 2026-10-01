@@ -27,6 +27,11 @@ const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
 };
 
 const SPECIAL: Record<string, SourcePeriod[]> = {
+  real_tb3ms: [
+    { from: "1914-01-01", to: "1933-12-01", source: "상업어음 금리(대용) − CPI 전년비", id: "M13002US35620M156NNBR − CPIAUCNS YoY", url: "https://fred.stlouisfed.org/graph/?id=M13002US35620M156NNBR,CPIAUCNS", note: "T-bill 이전 대용값 · 비계절조정 CPI · 직접 계산." },
+    { from: "1934-01-01", to: "1947-12-01", source: "3개월 T-bill − CPI 전년비(비계절조정)", id: "TB3MS − CPIAUCNS YoY", url: "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCNS", note: "동월 금리 − 물가상승률 · 직접 계산." },
+    { from: "1948-01-01", source: "3개월 T-bill − CPI 전년비(계절조정)", id: "TB3MS − CPIAUCSL YoY", url: "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL", note: "동월 금리 − 물가상승률 · 실질금리 근사치." },
+  ],
   usd_purchasing_power: [
     { from: "1913-01-01", source: "미국 CPI 기반 달러 구매력", id: "CPIAUCNS", url: fred("CPIAUCNS"), note: "CPI 역수 · 1982~1984=100. 하락하면 미국 내 구매력 감소." },
   ],
@@ -49,13 +54,19 @@ const SPECIAL: Record<string, SourcePeriod[]> = {
 const MAP = SOURCES as Record<string, SeriesHistory>;
 
 export function historyOf(seriesKey: string): SeriesHistory | null {
+  if (seriesKey === "real_tb3ms") return {
+    modernFrom: "1948-01-01",
+    segments: SPECIAL.real_tb3ms.slice(0, 2).map((s, i) => ({ ...s, to: s.to!,
+      short: i === 0 ? "상업어음 대용 − CPI 전년비" : "T-bill − 비계절조정 CPI 전년비",
+      method: "append", proxy: i === 0, factor: null })),
+  };
   const h = MAP[seriesKey];
   return h && h.segments.length ? h : null;
 }
 
 export function sourcePeriods(seriesKey: string): SourcePeriod[] {
   const h = historyOf(seriesKey);
-  if (["usd_purchasing_power", "cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
+  if (["real_tb3ms", "usd_purchasing_power", "cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
   if (!h) return [];
   const earlier = h.segments.map(s => ({ from: s.from, to: s.to, source: s.source, id: s.id, url: s.url,
     note: seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));

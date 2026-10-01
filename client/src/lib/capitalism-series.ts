@@ -6,6 +6,7 @@
 import seriesUrl from "@/data/capitalism-series.json?url";
 import { useQuery } from "@tanstack/react-query";
 import { withPurchasingPower } from "../../../shared/dollar-indicators";
+import { withRealInterestRate } from "../../../shared/real-interest-rate";
 
 export type SeriesMap = Record<string, [string, number][]>;
 
@@ -15,7 +16,7 @@ export function useCapSeries() {
     queryFn: async ({ signal }) => {
       const response = await fetch(seriesUrl, { signal });
       if (!response.ok) throw new Error(`시계열 로드 실패: ${response.status}`);
-      return withPurchasingPower(await response.json() as SeriesMap);
+      return withRealInterestRate(withPurchasingPower(await response.json() as SeriesMap));
     },
     staleTime: Infinity, // 정적 데이터 — 세션 내 재요청 안 함
     gcTime: Infinity,

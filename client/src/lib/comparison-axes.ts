@@ -6,7 +6,7 @@ export interface ComparisonAxis { side: AxisSide; key: string; label: string; no
 export interface AxisSeries { def: CompareSeriesDef; points: ComparePoint[]; axis: string }
 export interface RawComparisonSeries { def: CompareSeriesDef; points: ComparePoint[] }
 
-const actualValueIds = new Set(["gdp_growth", "inflation", "unrate", "debt_gdp", "fedfunds", "tb3ms", "gs10", "trade", "trade_bal", "trade_cycle", "exports_yoy", "imports_yoy"]);
+const actualValueIds = new Set(["gdp_growth", "inflation", "unrate", "debt_gdp", "fedfunds", "tb3ms", "real_tb3ms", "gs10", "trade", "trade_bal", "trade_cycle", "exports_yoy", "imports_yoy"]);
 export const defaultAxis = (id: string): AxisSide => actualValueIds.has(id) ? "right" : "left";
 export const assignedAxis = (id: string, view: ComparisonView): AxisSide => view.assignments[id] ?? defaultAxis(id);
 export function sameComparisonView(a: ComparisonView | undefined, b: ComparisonView | undefined, ids: string[]) {

@@ -30,6 +30,7 @@ export const PANELS: PanelDef[] = [
   { id: "unrate", label: "실업률", unit: "%", series: "unrate", cat: "macro", color: "#8fb98f", on: false, start: "1948", kind: "line" },
   { id: "debt_gdp", label: "GDP 대비 정부부채", unit: "%", series: "debt_gdp", cat: "macro", color: "#7fae7f", on: true, start: "1939", kind: "area" },
   { id: "tb3ms", label: "단기금리 (3M T-Bill)", unit: "%", series: "tb3ms", cat: "rates", color: "#ef8a8a", on: false, start: "1934", kind: "line" },
+  { id: "real_tb3ms", label: "실질금리 (명목금리 − 물가)", unit: "%", series: "real_tb3ms", cat: "rates", color: "#b45309", on: false, start: "1914", zeroLine: true, kind: "line" },
   { id: "gs10", label: "장기금리 (10Y 국채)", unit: "%", series: "gs10", cat: "rates", color: "#d96a6a", on: false, start: "1953", kind: "line" },
   { id: "fedfunds", label: "연준 정책금리", unit: "%", series: "fedfunds", cat: "rates", color: "#f0a0a0", on: true, start: "1954", kind: "line" },
   { id: "dxy", label: "달러지수(DXY, 명목)", unit: "idx", series: "dxy", cat: "money", color: "#f0b366", on: true, start: "1973", kind: "line" },

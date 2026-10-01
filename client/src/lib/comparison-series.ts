@@ -13,10 +13,11 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
     note: p.id === "dxy" ? "주요 6개 통화 대비 명목 달러가치 · 실제 DXY 월말 종가 · 1973-03부터"
       : p.id === "reer" ? "상대국 물가를 반영한 실질 대외가치 · Fed/BIS 장기 연결"
       : p.id === "usd_purchasing_power" ? "미국 CPI 역수 · 하락=미국 내 달러 구매력 감소 · 기준월 대비 구매력 비교"
+      : p.id === "real_tb3ms" ? "3개월 T-bill 금리 − 동월 CPI 전년비 · 직접 계산한 실질금리 근사치"
       : p.id === "inflation" ? "CPI 수준이 아닌 전년 동월 대비 변화율(%)" : p.id === "trade" ? "분기 실질 순수출 · 계절조정 연율"
       : ["nasdaq", "walcl", "wresbal", "rrp"].includes(p.id) ? "일·주간 자료의 각 월 마지막 관측값"
       : ["gdp_growth", "debt_gdp", "mktcap"].includes(p.id) ? "분기 자료 (일부 초기 구간은 연간 자료)" : "월간 자료 · 기존 경제사 계열",
-    url: p.id === "dxy" ? "https://finance.yahoo.com/quote/DX-Y.NYB/history/" : p.id === "gold" ? "https://datahub.io/core/gold-prices" : `https://fred.stlouisfed.org/series/${ids[p.id]}` })),
+    url: p.id === "real_tb3ms" ? "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL" : p.id === "dxy" ? "https://finance.yahoo.com/quote/DX-Y.NYB/history/" : p.id === "gold" ? "https://datahub.io/core/gold-prices" : `https://fred.stlouisfed.org/series/${ids[p.id]}` })),
   { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
   { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
   { id: "fx_eur", label: "유로/달러 환율", unit: "달러 / 1유로", color: "#38bdf8", cadence: 1, category: "money", note: "월평균 · 시장 관행(EUR/USD)대로 1유로당 달러 · 상승=유로 강세/달러 약세(원·엔 환율과 방향 반대) · 1999년 유로 도입 이후 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXUSEU" },
