@@ -7,10 +7,10 @@ export const COMPARE_CATEGORIES = CATEGORIES;
 const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", dollar: "NBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
-  ...PANELS.map(p => ({ id: p.series, label: p.id === "dollar" ? "달러지수 (접합 계열)" : p.id === "trade" ? "실질 순수출" : p.id === "sp500" ? "미국 주가지수 (OECD)" : p.label,
+  ...PANELS.map(p => ({ id: p.series, label: p.id === "trade" ? "실질 순수출" : p.id === "sp500" ? "미국 주가지수 (OECD)" : p.label,
     unit: p.id === "trade" ? "십억 2017달러·연율" : p.unit, color: p.color, category: p.cat,
     cadence: ["gdp_growth", "debt_gdp", "mktcap", "trade"].includes(p.id) ? 3 : 1,
-    note: p.id === "dollar" ? "주요통화 명목지수와 BIS 광의 명목지수의 접합값. 공식 DXY가 아닙니다. 상승=달러 강세."
+    note: p.id === "dollar" ? "연준 주요통화 지수와 BIS 광의 지수를 기간별로 사용합니다. 상승=달러 강세. 공식 ICE DXY가 아닙니다."
       : p.id === "inflation" ? "CPI 수준이 아닌 전년 동월 대비 변화율(%)" : p.id === "trade" ? "분기 실질 순수출 · 계절조정 연율"
       : ["nasdaq", "walcl", "wresbal", "rrp"].includes(p.id) ? "일·주간 자료의 각 월 마지막 관측값"
       : ["gdp_growth", "debt_gdp", "mktcap"].includes(p.id) ? "분기 자료 (일부 초기 구간은 연간 자료)" : "월간 자료 · 기존 경제사 계열",

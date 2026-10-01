@@ -9,7 +9,7 @@
         "short": "비계절조정 CPI",
         "id": "CPIAUCNS",
         "url": "https://fred.stlouisfed.org/series/CPIAUCNS",
-        "note": "1913년부터 있는 비계절조정 지수의 전년비. 계절 요인은 전년비에서 상쇄되므로 1948년 이후의 계절조정 전년비와 같은 뜻이다.",
+        "note": "비계절조정 CPI의 전년 동월 대비 변화율. 1948년부터 쓰는 계절조정 CPI 전년비와 조정 방식이 달라 값이 같지는 않을 수 있다.",
         "method": "append",
         "proxy": false,
         "factor": null
@@ -152,7 +152,7 @@
         "short": "다우존스(접합)",
         "id": "M1109BUSM293NNBR",
         "url": "https://fred.stlouisfed.org/series/M1109BUSM293NNBR",
-        "note": "S&P·OECD 지수(1957~) 이전 구간을 다우존스 산업지수로 접합(1957~1958 겹침 비율). 지수 구성이 다르다.",
+        "note": "OECD 미국 주가지수(우리 수록 구간 1957년부터) 이전을 다우존스 산업지수로 연결했다. 1957~1958년 겹침 비율로 배율을 조정했으며 구성 종목이 다르다.",
         "method": "rebase",
         "proxy": false,
         "factor": 0.005212
@@ -182,11 +182,11 @@
       {
         "from": "1833-01-01",
         "to": "1943-12-01",
-        "source": "datahub 금값(공정가격 구간)",
-        "short": "공정가격",
+        "source": "DataHub 역사적 금 가격(연평균 반복)",
+        "short": "연평균 반복",
         "id": "datahub gold-prices",
         "url": "https://datahub.io/core/gold-prices",
-        "note": "1968년 이전은 시장가가 아닌 공식 고정가격(1834~1933 $20.67, 1934~1971 $35)이다.",
+        "note": "1833~1959년은 원 제공자가 연평균을 각 월에 반복 수록한 구간이다. 1944년은 초기 저장 범위의 시작일이며 월간 원자료로 바뀌는 시점은 아니다.",
         "method": "append",
         "proxy": false,
         "factor": null

@@ -81,7 +81,7 @@ async function fetchTreasuryDebt(): Promise<Point[]> {
 // 같은 키의 구간이 여럿이면 현행에 가까운 구간부터(prepend 는 저장 첫 관측일 이전만 받으므로).
 const HISTORY: HistoryDef[] = [
   { key: "inflation", source: "CPI 비계절조정(CPIAUCNS)의 12개월 전년비", short: "비계절조정 CPI", id: "CPIAUCNS", url: fredUrl("CPIAUCNS"), from: "1914-01-01", method: "append", decimals: 2,
-    note: "1913년부터 있는 비계절조정 지수의 전년비. 계절 요인은 전년비에서 상쇄되므로 1948년 이후의 계절조정 전년비와 같은 뜻이다.", fetch: async () => annualChange(await fred("CPIAUCNS"), 2) },
+    note: "비계절조정 CPI의 전년 동월 대비 변화율. 1948년부터 쓰는 계절조정 CPI 전년비와 조정 방식이 달라 값이 같지는 않을 수 있다.", fetch: async () => annualChange(await fred("CPIAUCNS"), 2) },
   // 분기 자료가 1947-04 부터라 연간값은 1946년까지만(1947년 연간값을 넣으면 같은 해에 연간·분기가 섞인다).
   { key: "gdp_growth", source: "연간 실질 GDP 성장률(A191RL1A225NBEA)", short: "연간 성장률", id: "A191RL1A225NBEA", url: fredUrl("A191RL1A225NBEA"), from: "1930-01-01", until: "1947-01-01", method: "append", decimals: 1,
     note: "1947년 이전은 분기 자료가 없어 연간 성장률(전년 대비 %)을 쓴다. 분기 연율보다 완만하게 보인다.", fetch: () => fred("A191RL1A225NBEA") },
@@ -98,15 +98,15 @@ const HISTORY: HistoryDef[] = [
   { key: "monbase", source: "세인트루이스 조정 본원통화(AMBSL, 단종)", short: "조정 본원통화(접합)", id: "AMBSL", url: fredUrl("AMBSL"), from: "1918-01-01", method: "rebase", decimals: 1,
     note: "정의가 달라 1959년 접합점의 겹침 비율로 리베이스했다. 1959년 이전은 증감률만 의미가 있다.", fetch: () => fred("AMBSL") },
   { key: "sp500", source: "다우존스 산업지수(NBER M1109BUSM293NNBR)", short: "다우존스(접합)", id: "M1109BUSM293NNBR", url: fredUrl("M1109BUSM293NNBR"), from: "1914-12-01", method: "rebase", decimals: 2,
-    note: "S&P·OECD 지수(1957~) 이전 구간을 다우존스 산업지수로 접합(1957~1958 겹침 비율). 지수 구성이 다르다.", fetch: () => fred("M1109BUSM293NNBR") },
+    note: "OECD 미국 주가지수(우리 수록 구간 1957년부터) 이전을 다우존스 산업지수로 연결했다. 1957~1958년 겹침 비율로 배율을 조정했으며 구성 종목이 다르다.", fetch: () => fred("M1109BUSM293NNBR") },
   // 옛 12종목 지수(A)와 20종목 지수(B)는 겹치는 1914-12~1916-09 사이에 비율이 0.69~0.80 으로 벌어진다(전시 종목 차이).
   // 접합점에 가까운 12개월만 본다(그 안의 분산 1.12 — 공통 허용치 1.15 이내). 1914년 이전 구간의 수준에는 ±6% 안팎의 불확실성이 있다(출처 설명에 명시).
   { key: "sp500", source: "다우존스 산업지수 12종목(NBER M1109AUSM293NNBR)", short: "다우존스(접합)", id: "M1109AUSM293NNBR", url: fredUrl("M1109AUSM293NNBR"), from: "1897-01-01", until: "1914-12-01", method: "rebase", decimals: 2, maxOverlap: 12,
     note: "1914년 이전 구간. 1914-12~1915-11 겹침 비율로 뒤 구간(20종목 지수)에 접합했으며 두 지수의 비율이 그 안에서 최대 12% 벌어지므로 이 구간의 수준은 ±6% 안팎 불확실하다.", fetch: () => fred("M1109AUSM293NNBR") },
   { key: "debt_gdp", source: "재무부 총공공부채(FiscalData) ÷ 명목 GDP(GDPA)", short: "재무부 부채/GDP(대용)", id: "debt_outstanding ÷ GDPA", url: "https://fiscaldata.treasury.gov/datasets/historical-debt-outstanding/", from: "1929-01-01", method: "append", decimals: 2, proxy: true,
     note: "회계연도 말(6월) 총공공부채를 역년 명목 GDP 로 나눈 값. 1939년부터의 OMB 총연방부채(정부보증채 포함)와 정의가 달라 1939년에 약 8%p 단절이 있다.", fetch: async () => ratioSeries(await fetchTreasuryDebt(), await fred("GDPA"), 2) },
-  { key: "gold", source: "datahub 금값(공정가격 구간)", short: "공정가격", id: "datahub gold-prices", url: "https://datahub.io/core/gold-prices", from: "1833-01-01", method: "append", decimals: 2,
-    note: "1968년 이전은 시장가가 아닌 공식 고정가격(1834~1933 $20.67, 1934~1971 $35)이다.", fetch: () => fetchCsv("https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv") },
+  { key: "gold", source: "DataHub 역사적 금 가격(연평균 반복)", short: "연평균 반복", id: "datahub gold-prices", url: "https://datahub.io/core/gold-prices", from: "1833-01-01", method: "append", decimals: 2,
+    note: "1833~1959년은 원 제공자가 연평균을 각 월에 반복 수록한 구간이다. 1944년은 초기 저장 범위의 시작일이며 월간 원자료로 바뀌는 시점은 아니다.", fetch: () => fetchCsv("https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv") },
 ];
 
 const MIN_OVERLAP = 12, MAX_SPREAD = 1.15;

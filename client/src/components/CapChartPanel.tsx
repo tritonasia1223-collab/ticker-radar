@@ -10,6 +10,7 @@ import { Maximize2, X } from "lucide-react";
 import type { PanelDef } from "@/lib/capitalism-config";
 import { fracYearToLabel, krwConversion, USD_KRW } from "@/lib/capitalism-config";
 import { historyOf, type HistorySegment } from "@/lib/capitalism-history";
+import { SeriesSourceHistory } from "./SeriesSourceHistory";
 
 // 축 눈금용 한국어 축약 표기(만/억 등). 원화 큰 값도 40px 폭에 들어가게.
 const tickFmt = (v: number) => new Intl.NumberFormat("ko", { notation: "compact", maximumFractionDigits: 1 }).format(v);
@@ -261,11 +262,7 @@ export function CapChartPanel({
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                {historyOf(panel.series) ? (
-                  <p className="mb-2 text-[11px] leading-snug text-muted-foreground" data-testid={`panel-history-${panel.id}`}>
-                    {historyOf(panel.series)!.segments.map((s) => `${s.from.slice(0, 4)}~${s.to.slice(0, 4)} ${s.source}${s.proxy ? " · 대용" : s.method === "rebase" ? " · 접합" : ""}`).join(" / ")} / {historyOf(panel.series)!.modernFrom.slice(0, 4)}~ 현행 시리즈. 점선 = 옛 출처 구간.
-                  </p>
-                ) : null}
+                <div className="mb-3 max-h-44 overflow-y-auto" data-testid={`panel-history-${panel.id}`}><SeriesSourceHistory seriesKey={panel.series} /></div>
                 {/* 전체 데이터 구간 + Y축도 전체 기준 고정. 현재 슬라이더 시점은 점선으로 위치 표시. */}
                 <PanelChart
                   panel={panel} series={series}
