@@ -1,14 +1,16 @@
 import { PANELS, CATEGORIES } from "./capitalism-config";
-import { monthlyPoints, spreadPoints, type SpreadSpec, type SpreadPoint, type Observation } from "../../../shared/cap-comparison";
+import { monthlyPoints, spreadPoints, spreadSchema, RATE_SPREAD_IDS, type SpreadSpec, type SpreadPoint, type Observation } from "../../../shared/cap-comparison";
 import { historyNote } from "./capitalism-history";
 
-export const COMPARE_CATEGORIES = CATEGORIES;
+// Comparison-only catalog: keep the economic-history panels and source data intact.
+const excludedIds = new Set(["sp500", "mktcap", "monbase", "walcl", "wresbal", "rrp", "tb3ms", "gs10", "fedfunds", "unrate"]);
+export const COMPARE_CATEGORIES = { macro: CATEGORIES.macro, market: CATEGORIES.market, money: CATEGORIES.money };
 
 const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
-  ...PANELS.map(p => ({ id: p.series, label: p.id === "trade" ? "실질 순수출" : p.id === "sp500" ? "미국 주가지수 (OECD)" : p.label,
-    unit: p.id === "trade" ? "십억 2017달러·연율" : p.unit, color: p.color, category: p.cat,
+  ...PANELS.filter(p => !excludedIds.has(p.id)).map(p => ({ id: p.series, label: p.id === "trade" ? "실질 순수출" : p.label,
+    unit: p.id === "trade" ? "십억 2017달러·연율" : p.unit, color: p.color, category: ["real_tb3ms", "usd_purchasing_power"].includes(p.id) ? "money" : p.cat,
     cadence: ["gdp_growth", "debt_gdp", "mktcap", "trade"].includes(p.id) ? 3 : 1,
     note: p.id === "dxy" ? "주요 6개 통화 대비 명목 달러가치 · 실제 DXY 월말 종가 · 1973-03부터"
       : p.id === "reer" ? "상대국 물가를 반영한 실질 대외가치 · Fed/BIS 장기 연결"
@@ -27,6 +29,11 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
 // 과거 확장 구간이 있는 지표는 출처 목록 설명에 구간을 덧붙인다(수록 기간은 데이터에서 자동으로 첫 관측일이 된다).
 for (const s of COMPARE_SERIES) { const h = historyNote(s.id); if (h) s.note = `${s.note} · ${h}`; }
 
+export const availableSpreadIds = RATE_SPREAD_IDS.filter(id => COMPARE_SERIES.some(s => s.id === id));
+export function activeSpread(value: unknown): SpreadSpec | null {
+  const parsed = spreadSchema.safeParse(value);
+  return parsed.success && availableSpreadIds.includes(parsed.data.a) && availableSpreadIds.includes(parsed.data.b) ? parsed.data : null;
+}
 
 export interface SpreadData { spec: SpreadSpec; label: string; aLabel: string; bLabel: string; points: SpreadPoint[] }
 export function makeSpread(spec: SpreadSpec | null | undefined, data: Record<string, Observation[]> | undefined): SpreadData | null {
@@ -42,7 +49,7 @@ export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === 
 
 // Preserve saved note identities; never relabel the retired composite as DXY or REER.
 const retiredTradeLabels: Record<string, string> = { trade_cycle: "수출−수입 증가율 격차", exports_yoy: "미국 수출 증가율", imports_yoy: "미국 수입 증가율" };
-export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (retiredTradeLabels[id] ? retiredTradeLabels[id] + "(삭제됨)" : id === "dollar" ? "기존 달러지수(삭제됨)" : id === "cpi_level" ? "CPI 수준(이전 지표)" : id);
+export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (excludedIds.has(id) ? (PANELS.find(p => p.id === id)?.label ?? id) + "(비교에서 제외됨)" : retiredTradeLabels[id] ? retiredTradeLabels[id] + "(삭제됨)" : id === "dollar" ? "기존 달러지수(삭제됨)" : id === "cpi_level" ? "CPI 수준(이전 지표)" : id);
 export const activeSeriesIds = (ids: string[]) => [...new Set(ids.filter(id => COMPARE_SERIES.some(s => s.id === id)))];
 
 // Migrate viewing preferences only; saved prose retains its original series identity.

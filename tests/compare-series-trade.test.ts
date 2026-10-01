@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { COMPARE_SERIES, deltaUnit, activeSeriesIds, viewingSeriesIds, seriesLabel } from "../client/src/lib/comparison-series";
+import { COMPARE_SERIES, COMPARE_CATEGORIES, deltaUnit, activeSeriesIds, viewingSeriesIds, seriesLabel, activeSpread, makeSpread } from "../client/src/lib/comparison-series";
+import { PANELS } from "../client/src/lib/capitalism-config";
+import { withRealInterestRate } from "../shared/real-interest-rate";
 import { annualChange, differenceSeries, type Point } from "../shared/capitalism-refresh";
 import { monthlyPoints, commonBase } from "../shared/cap-comparison";
 
@@ -8,6 +10,23 @@ const series = JSON.parse(readFileSync("client/src/data/capitalism-series.json",
 const def = (id: string) => COMPARE_SERIES.find((s) => s.id === id)!;
 
 describe("그래프 비교 — 유로/달러·미국 무역수지", () => {
+  it("비교 목록을 정리해도 경제사 원자료와 실질금리 계산은 유지된다", () => {
+    const excluded = ["sp500", "mktcap", "monbase", "walcl", "wresbal", "rrp", "tb3ms", "gs10", "fedfunds", "unrate"];
+    for (const id of excluded) {
+      expect(def(id)).toBeUndefined();
+      expect(PANELS.some(p => p.id === id)).toBe(true);
+      expect(series[id].length).toBeGreaterThan(0);
+      expect(seriesLabel(id)).toContain("비교에서 제외됨");
+    }
+    expect(viewingSeriesIds([...excluded, "nasdaq", "real_tb3ms", "usd_purchasing_power"])).toEqual(["nasdaq", "real_tb3ms", "usd_purchasing_power"]);
+    expect(COMPARE_SERIES.filter(s => s.category === "market").map(s => s.id)).toEqual(["nasdaq"]);
+    expect(Object.keys(COMPARE_CATEGORIES)).toEqual(["macro", "market", "money"]);
+    expect(def("real_tb3ms").category).toBe("money");
+    expect(def("usd_purchasing_power").category).toBe("money");
+    expect(withRealInterestRate(series).real_tb3ms).toEqual(differenceSeries(series.tb3ms, series.inflation, 2));
+    expect(activeSpread({ a: "gs10", b: "tb3ms" })).toBeNull();
+    expect(makeSpread({ a: "gs10", b: "tb3ms" }, series)).toBeNull();
+  });
   it("삭제된 증가율은 선택·복원에서 제외하고 과거 인사이트의 이름은 보존한다", () => {
     const retired = ["trade_cycle", "exports_yoy", "imports_yoy"];
     for (const id of retired) {

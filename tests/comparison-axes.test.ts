@@ -4,26 +4,27 @@ import { automaticComparisonView, buildComparisonAxes, defaultAxis, rawUnitKey, 
 import { COMPARE_SERIES } from "../client/src/lib/comparison-series";
 import { comparisonInsightSchema, monthlyPoints, type ComparisonView, type Observation } from "../shared/cap-comparison";
 import { diff, merge } from "../shared/cap-collaboration";
+import { withRealInterestRate } from "../shared/real-interest-rate";
 import { validateEdit } from "../server/cap-collaboration";
 
-const data = JSON.parse(readFileSync("client/src/data/capitalism-series.json", "utf8")) as Record<string, Observation[]>;
+const data = withRealInterestRate(JSON.parse(readFileSync("client/src/data/capitalism-series.json", "utf8")) as Record<string, Observation[]>);
 const view: ComparisonView = { mode: "mixed", base: "2000-01", assignments: {}, rightUnit: null };
 const raw = (ids: string[]) => ids.map(id => ({ def: COMPARE_SERIES.find(s => s.id === id)!, points: monthlyPoints(data[id]) }));
 const build = (ids: string[], overrides: Partial<ComparisonView> = {}) => buildComparisonAxes(raw(ids), { ...view, ...overrides });
 
 describe("mixed comparison axes", () => {
   it("automatically migrates old views and follows the last selected right-side unit", () => {
-    const ids = ["dxy", "fx_eur", "trade_bal", "gs10"];
+    const ids = ["dxy", "fx_eur", "trade_bal", "real_tb3ms"];
     const automatic = automaticComparisonView(ids, { ...view, mode: "raw", assignments: { fx_eur: "right" }, rightUnit: "trade-balance" });
     expect(automatic).toEqual({ ...view, rightUnit: "%" });
     expect(buildComparisonAxes(raw(ids), automatic).pending).toEqual(["trade_bal"]);
     expect(automaticComparisonView(ids.slice(0, -1), automatic).rightUnit).toBe("trade-balance");
     expect(automaticComparisonView([], automatic).rightUnit).toBeNull();
-    expect(automaticComparisonView(["dxy", "gs10", "trade_bal"], automatic).rightUnit).toBe("trade-balance");
+    expect(automaticComparisonView(["dxy", "real_tb3ms", "trade_bal"], automatic).rightUnit).toBe("trade-balance");
   });
   it("assigns prices and amounts left; rates, ratios and signed flows right", () => {
-    for (const id of ["dxy", "fx_eur", "fx_krw", "fx_jpy", "sp500", "nasdaq", "gold", "oil", "m2", "walcl", "rrp", "mktcap"]) expect(defaultAxis(id)).toBe("left");
-    for (const id of ["fedfunds", "gs10", "tb3ms", "gdp_growth", "inflation", "unrate", "debt_gdp", "trade", "trade_bal"]) expect(defaultAxis(id)).toBe("right");
+    for (const id of ["dxy", "fx_eur", "fx_krw", "fx_jpy", "nasdaq", "gold", "oil", "m2"]) expect(defaultAxis(id)).toBe("left");
+    for (const id of ["real_tb3ms", "gdp_growth", "inflation", "debt_gdp", "trade", "trade_bal"]) expect(defaultAxis(id)).toBe("right");
   });
   it("overlays four indexed currencies and a negative trade balance without losing selections", () => {
     const ids = ["dxy", "fx_krw", "fx_jpy", "fx_eur", "trade_bal"];
@@ -41,26 +42,26 @@ describe("mixed comparison axes", () => {
       expect(result.unavailable).toEqual([]);
     }
   });
-  it("shares one actual-value scale between multiple rates and retains their raw values", () => {
-    const result = build(["dxy", "gs10", "tb3ms", "fedfunds"]);
+  it("shares one actual-value scale between rates and growth rates and retains their raw values", () => {
+    const result = build(["dxy", "real_tb3ms", "inflation", "gdp_growth"]);
     expect(result.groups).toHaveLength(1);
     expect(result.series.slice(1).map(s => s.axis)).toEqual(["right:%", "right:%", "right:%"]);
     expect(result.series.slice(1).every(s => s.points.every(p => p.value === p.raw))).toBe(true);
   });
   it("separates nominal/monthly, real/annualized and rate units", () => {
-    const ids = ["dxy", "trade_bal", "trade", "gs10"];
+    const ids = ["dxy", "trade_bal", "trade", "real_tb3ms"];
     const result = build(ids, { rightUnit: "trade-balance" });
     expect(result.groups).toHaveLength(3);
-    expect(result.pending).toEqual(["trade", "gs10"]);
+    expect(result.pending).toEqual(["trade", "real_tb3ms"]);
     const switched = build(ids, { rightUnit: "%" });
-    expect(switched.series.map(s => s.def.id)).toEqual(["dxy", "gs10"]);
+    expect(switched.series.map(s => s.def.id)).toEqual(["dxy", "real_tb3ms"]);
     expect(switched.groups).toEqual(result.groups);
     expect(switched.series[0].points).toEqual(result.series[0].points);
   });
   it("supports manual axis assignments and falls back when the active unit was removed", () => {
-    const result = build(["fx_eur", "gs10"], { assignments: { fx_eur: "right", gs10: "left" }, rightUnit: "trade-balance" });
+    const result = build(["fx_eur", "real_tb3ms"], { assignments: { fx_eur: "right", real_tb3ms: "left" }, rightUnit: "trade-balance" });
     expect(result.series.find(s => s.def.id === "fx_eur")!.axis).toBe("right:달러 / 1유로");
-    expect(result.series.find(s => s.def.id === "gs10")!.axis).toBe("index");
+    expect(result.series.find(s => s.def.id === "real_tb3ms")!.axis).toBe("index");
     expect(result.rightUnit).toBe(rawUnitKey(COMPARE_SERIES.find(s => s.id === "fx_eur")!));
   });
   it("leaves valid series visible if a manually indexed series cannot be rebased", () => {
@@ -85,7 +86,7 @@ describe("mixed comparison axes", () => {
     expect(comparisonInsightSchema.safeParse({ ...linked, context: { ...linked.context, view: { ...view, assignments: { dxy: "middle" } } } }).success).toBe(false);
   });
   it("detects changed axis settings for note restoration, ignoring unrelated assignments", () => {
-    expect(sameComparisonView(view, { ...view, assignments: { gs10: "left" } }, ["dxy"])).toBe(true);
+    expect(sameComparisonView(view, { ...view, assignments: { real_tb3ms: "left" } }, ["dxy"])).toBe(true);
     expect(sameComparisonView(view, { ...view, assignments: { dxy: "right" } }, ["dxy"])).toBe(false);
     expect(sameComparisonView(view, { ...view, base: "2010-01" }, ["dxy"])).toBe(false);
     expect(sameComparisonView(undefined, view, ["dxy"])).toBe(true);

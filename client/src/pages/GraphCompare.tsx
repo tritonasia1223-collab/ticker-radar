@@ -10,14 +10,14 @@ import { ComparisonSidebar } from "@/components/ComparisonSidebar";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
-import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread, activeSeriesIds, viewingSeriesIds } from "@/lib/comparison-series";
+import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread, activeSeriesIds, viewingSeriesIds, activeSpread, availableSpreadIds } from "@/lib/comparison-series";
 import { assignedAxis, automaticComparisonView, buildComparisonAxes } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import type { Resource } from "../../../shared/cap-collaboration";
-import { monthlyPoints, trendSections, placementSchema, comparisonInsightSchema, validDate, spreadSchema, comparisonViewSchema, type ComparisonView, type SpreadSpec, type InsightContext, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
+import { monthlyPoints, trendSections, placementSchema, comparisonInsightSchema, validDate, comparisonViewSchema, type ComparisonView, type SpreadSpec, type InsightContext, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
 
 const EMPTY_FLOWS: FlowDTO[] = [];
 const DAY = 86400000;
@@ -35,7 +35,7 @@ function readPreferences(): Preferences {
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
       const ids = viewingSeriesIds(v.ids);
       const view = automaticComparisonView(ids, parsedView.success ? parsedView.data : undefined, base);
-      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "cpi_level" ? "usd_purchasing_power" : typeof v.reference === "string" ? v.reference : "dxy", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
+      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "cpi_level" ? "usd_purchasing_power" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -130,7 +130,7 @@ export default function GraphCompare() {
   const restoreContext = (context: InsightContext, note: SavedInsight) => {
     const ids = activeSeriesIds(context.ids);
     const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25);
-    setPrefs(p => ({ ...p, ids, view: automaticComparisonView(ids, context.view, p.view.base), spread: context.spread, from: start - pad, to: end + pad, badges: true }));
+    setPrefs(p => ({ ...p, ids, view: automaticComparisonView(ids, context.view, p.view.base), spread: activeSpread(context.spread), from: start - pad, to: end + pad, badges: true }));
     setResetAxes(v => v + 1);
   };
   const showReferences = (ids: string[] = []) => { setContextIds(ids); setPanel("reference"); setSidebar(true); };
@@ -176,11 +176,11 @@ export default function GraphCompare() {
           {([{ id: "move", label: "선택·이동", icon: MousePointer2 }, { id: "date", label: "날짜에 인사이트 기록", icon: CalendarPlus }, { id: "period", label: "기간을 드래그해 기록", icon: ScanLine }] as const).map(t => <button key={t.id} title={t.label} aria-label={t.label} aria-pressed={tool === t.id} disabled={t.id !== "move" && !canEdit} className={"rounded-lg p-2 disabled:opacity-30 " + (tool === t.id ? "bg-sky-500/15 text-sky-600" : "hover:bg-muted")} onClick={() => setTool(t.id)}><t.icon size={18} /></button>)}
           <div className="my-1 w-6 border-t" /><button title="인사이트 목록" aria-label="인사이트 목록" className="rounded-lg p-2 hover:bg-muted" onClick={() => { setSelected(null); setPanel("insights"); setSidebar(true); }}><StickyNote size={18} /></button>
           <button title="경제사 참고" aria-label="경제사 참고" className="rounded-lg p-2 hover:bg-muted" onClick={() => showReferences()}><BookOpen size={18} /></button>
-          <button title="스프레드 계산" aria-label="스프레드 계산" aria-expanded={spreadOptions} className={"rounded-lg p-2 hover:bg-muted " + (prefs.spread ? "text-violet-500" : "")} onClick={() => setSpreadOptions(v => !v)}><ArrowLeftRight size={18} /></button>
+          {availableSpreadIds.length >= 2 && <button title="스프레드 계산" aria-label="스프레드 계산" aria-expanded={spreadOptions} className={"rounded-lg p-2 hover:bg-muted " + (prefs.spread ? "text-violet-500" : "")} onClick={() => setSpreadOptions(v => !v)}><ArrowLeftRight size={18} /></button>}
           <button title="전체 기간·세로축 자동 맞춤" aria-label="전체 기간·세로축 자동 맞춤" className="rounded-lg p-2 hover:bg-muted" onClick={() => { setRange(extent); setResetAxes(v => v + 1); }}><RotateCcw size={17} /></button>
         </nav>
         <div className="min-w-0 flex-1 overflow-x-auto">
-          {spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
+          {availableSpreadIds.length >= 2 && spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
           {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart summary={chosen?.endDate && <ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} />} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={prefs.badges ? notes : []} selectedNote={prefs.badges ? selected : null} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
         </div>
       </div>
