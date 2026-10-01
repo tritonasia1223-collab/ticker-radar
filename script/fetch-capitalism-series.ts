@@ -12,7 +12,7 @@
 //   dxy       : 실제 DX-Y.NYB 지수 일간 종가 → 완료된 월의 마지막 종가.
 //   reer      : 1994년 이후 BIS 원자료만 추가. 1973~1993 연결값은 보존.
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, renameSync } from "fs";
-import { closedMonthEnds, annualChange, mergeObservations, differenceSeries, type Point } from "../shared/capitalism-refresh.js";
+import { closedMonthEnds, annualChange, mergeObservations, type Point } from "../shared/capitalism-refresh.js";
 import { fetchDxy } from "./lib/dollar-sources.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -40,8 +40,6 @@ const SERIES: SeriesDef[] = [
   { key: "fx_eur", fredId: "EXUSEU", freq: "asis", decimals: 4 }, // 유로/달러(1유로당 달러, 월평균, 1999~) — 원·엔과 방향 반대
   // ── 미국 대외거래(그래프 비교 전용) — 국제수지 기준 상품·서비스, 월간 ──
   { key: "trade_bal", fredId: "BOPGSTB", freq: "asis", scale: 1 / 1000, decimals: 1 },                 // 무역수지($B, 음수=적자)
-  { key: "exports_yoy", fredId: "BOPTEXP", freq: "asis", decimals: 2, transform: "yoy", noVerify: true }, // 수출 전년 동월 대비(%)
-  { key: "imports_yoy", fredId: "BOPTIMP", freq: "asis", decimals: 2, transform: "yoy", noVerify: true }, // 수입 전년 동월 대비(%)
   // ── 금리 ──
   { key: "tb3ms", fredId: "TB3MS", freq: "asis", decimals: 2 },
   { key: "gs10", fredId: "GS10", freq: "asis", decimals: 2 },
@@ -68,11 +66,6 @@ const SERIES: SeriesDef[] = [
   { key: "walcl", fredId: "WALCL", freq: "asis", scale: 1 / 1000, decimals: 1 },     // 총자산($B, 주간)
   { key: "wresbal", fredId: "WRESBAL", freq: "asis", scale: 1 / 1000, decimals: 1 }, // 지급준비금($B, 주간)
   { key: "rrp", fredId: "RRPONTSYD", freq: "asis", decimals: 1 },                    // ON RRP($B, 일간)
-];
-
-// 파생 시리즈(a − b). 원 시리즈 수집 뒤에 계산한다.
-const DERIVED: { key: string; a: string; b: string; decimals: number }[] = [
-  { key: "trade_cycle", a: "exports_yoy", b: "imports_yoy", decimals: 2 }, // 수출−수입 증가율 격차(%p): +면 수출 사이클, −면 수입 사이클
 ];
 
 async function fetchCsv(s: SeriesDef): Promise<Point[]> {
@@ -140,7 +133,7 @@ async function main() {
   // --only a,b : 지정한 키만 수집·병합한다(새 시리즈를 채울 때 다른 시리즈를 건드리지 않으려고). 없으면 전부.
   const onlyArg = process.argv.indexOf("--only");
   const only = onlyArg >= 0 ? new Set((process.argv[onlyArg + 1] ?? "").split(",").map((k) => k.trim()).filter(Boolean)) : null;
-  if (only) { const unknown = [...only].filter((k) => !SERIES.some((s) => s.key === k) && !DERIVED.some((d) => d.key === k)); if (!only.size || unknown.length) throw new Error(`--only 에 알 수 없는 키: ${unknown.join(", ") || "(비어 있음)"}`); }
+  if (only) { const unknown = [...only].filter((k) => !SERIES.some((s) => s.key === k)); if (!only.size || unknown.length) throw new Error(`--only 에 알 수 없는 키: ${unknown.join(", ") || "(비어 있음)"}`); }
   const reportDir = join(__dirname, "cap-export");
   mkdirSync(reportDir, { recursive: true });
   copyFileSync(OUT, join(reportDir, `capitalism-series-before-${Date.now()}.json`));
@@ -169,18 +162,6 @@ async function main() {
     report.series.push({ key:s.key, status:"ok", previous:lastStored, latest:merged.points.at(-1)?.[0], added:merged.added,
       corrected:merged.corrected.map(([date,value]) => ({ date, before:stored.find(([d]) => d===date)?.[1], after:value })) });
     console.log(`+${merged.added}, corrected ${merged.corrected.length} → ${merged.points.at(-1)?.[0]}`);
-  }
-  // 파생 시리즈: 저장된(이미 병합된) 원 시리즈에서 계산해 같은 append-only 규칙으로 붙인다.
-  for (const d of DERIVED) {
-    if (only && !only.has(d.key)) continue;
-    const a = json[d.a], b = json[d.b];
-    process.stdout.write(`  ${d.key.padEnd(11)} `);
-    if (!a?.length || !b?.length) { console.log(`원 시리즈(${d.a}, ${d.b}) 없음 — SKIP`); report.series.push({ key: d.key, status: "error", error: "missing sources" }); skipped++; continue; }
-    const stored = json[d.key] ?? [];
-    const merged = mergeObservations(stored, differenceSeries(a, b, d.decimals));
-    json[d.key] = merged.points; added += merged.added;
-    report.series.push({ key: d.key, status: "ok", previous: stored.at(-1)?.[0] ?? "", latest: merged.points.at(-1)?.[0], added: merged.added, corrected: [] });
-    console.log(`+${merged.added} (= ${d.a} − ${d.b}) → ${merged.points.at(-1)?.[0]}`);
   }
   writeFileSync(OUT + ".tmp", JSON.stringify(json));
   renameSync(OUT + ".tmp", OUT);

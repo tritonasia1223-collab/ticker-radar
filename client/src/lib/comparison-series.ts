@@ -21,11 +21,8 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
   { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
   { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
   { id: "fx_eur", label: "유로/달러 환율", unit: "달러 / 1유로", color: "#38bdf8", cadence: 1, category: "money", note: "월평균 · 시장 관행(EUR/USD)대로 1유로당 달러 · 상승=유로 강세/달러 약세(원·엔 환율과 방향 반대) · 1999년 유로 도입 이후 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXUSEU" },
-  // 미국 대외거래 — 수지 수준과, 수지를 움직이는 쪽이 수출인지 수입인지 보는 증가율 두 개.
+  // 미국 대외거래 — 명목 상품·서비스 무역수지.
   { id: "trade_bal", label: "미국 무역수지", unit: "$B", color: "#fb923c", cadence: 1, category: "money", note: "상품·서비스 무역수지(국제수지 기준) · 월간 · 계절조정 · 음수=적자 · 기준월=100 비교에는 맞지 않으니 원래 값으로 보세요", url: "https://fred.stlouisfed.org/series/BOPGSTB" },
-  { id: "trade_cycle", label: "수출−수입 증가율 격차", unit: "%p", color: "#facc15", cadence: 1, category: "money", note: "수출 증가율 − 수입 증가율(전년 동월 대비, %p) · 0 위=수출이 더 빨리 느는 수출 사이클(수지 개선 방향), 0 아래=수입이 더 빨리 느는 수입 사이클 · 0 을 오가는 값이라 원래 값으로 보세요", url: "https://fred.stlouisfed.org/series/BOPTEXP" },
-  { id: "exports_yoy", label: "미국 수출 증가율", unit: "%", color: "#34d399", cadence: 1, category: "money", note: "상품·서비스 수출의 전년 동월 대비 변화율(%) · 수입 증가율과 함께 켜면 수출 사이클인지 수입 사이클인지 보입니다", url: "https://fred.stlouisfed.org/series/BOPTEXP" },
-  { id: "imports_yoy", label: "미국 수입 증가율", unit: "%", color: "#f87171", cadence: 1, category: "money", note: "상품·서비스 수입의 전년 동월 대비 변화율(%) · 수출 증가율보다 높으면 수입이 수지를 끌어내리는 국면", url: "https://fred.stlouisfed.org/series/BOPTIMP" },
 ];
 // 과거 확장 구간이 있는 지표는 출처 목록 설명에 구간을 덧붙인다(수록 기간은 데이터에서 자동으로 첫 관측일이 된다).
 for (const s of COMPARE_SERIES) { const h = historyNote(s.id); if (h) s.note = `${s.note} · ${h}`; }
@@ -44,7 +41,8 @@ export const signedLabel = (value: number) => (value > 0 ? "+" : "") + numberLab
 export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === "idx" || unit === "p" ? "pt" : unit === "원 / 1달러" ? "원" : unit === "엔 / 1달러" ? "엔" : unit === "달러 / 1유로" ? "달러" : unit; }
 
 // Preserve saved note identities; never relabel the retired composite as DXY or REER.
-export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (id === "dollar" ? "기존 달러지수(삭제됨)" : id === "cpi_level" ? "CPI 수준(이전 지표)" : id);
+const retiredTradeLabels: Record<string, string> = { trade_cycle: "수출−수입 증가율 격차", exports_yoy: "미국 수출 증가율", imports_yoy: "미국 수입 증가율" };
+export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (retiredTradeLabels[id] ? retiredTradeLabels[id] + "(삭제됨)" : id === "dollar" ? "기존 달러지수(삭제됨)" : id === "cpi_level" ? "CPI 수준(이전 지표)" : id);
 export const activeSeriesIds = (ids: string[]) => [...new Set(ids.filter(id => COMPARE_SERIES.some(s => s.id === id)))];
 
 // Migrate viewing preferences only; saved prose retains its original series identity.

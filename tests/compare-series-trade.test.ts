@@ -1,20 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { COMPARE_SERIES, deltaUnit } from "../client/src/lib/comparison-series";
+import { COMPARE_SERIES, deltaUnit, activeSeriesIds, viewingSeriesIds, seriesLabel } from "../client/src/lib/comparison-series";
 import { annualChange, differenceSeries, type Point } from "../shared/capitalism-refresh";
 import { monthlyPoints, commonBase } from "../shared/cap-comparison";
 
 const series = JSON.parse(readFileSync("client/src/data/capitalism-series.json", "utf8")) as Record<string, Point[]>;
 const def = (id: string) => COMPARE_SERIES.find((s) => s.id === id)!;
 
-describe("그래프 비교 — 유로/달러·미국 무역수지·수출입 증가율", () => {
-  it("수출−수입 증가율 격차(trade_cycle)는 두 증가율의 차와 정확히 같고 0 을 오간다", () => {
-    const d = def("trade_cycle");
-    expect(d.unit).toBe("%p"); expect(d.category).toBe("money"); expect(deltaUnit(d.unit)).toBe("%p");
-    expect(d.note).toContain("수출 사이클"); expect(d.note).toContain("수입 사이클");
-    expect(series.trade_cycle).toEqual(differenceSeries(series.exports_yoy, series.imports_yoy, 2));
-    expect(series.trade_cycle[0][0]).toBe("1993-01-01");
-    expect(series.trade_cycle.some(([, v]) => v > 0)).toBe(true); expect(series.trade_cycle.some(([, v]) => v < 0)).toBe(true);
+describe("그래프 비교 — 유로/달러·미국 무역수지", () => {
+  it("삭제된 증가율은 선택·복원에서 제외하고 과거 인사이트의 이름은 보존한다", () => {
+    const retired = ["trade_cycle", "exports_yoy", "imports_yoy"];
+    for (const id of retired) {
+      expect(def(id)).toBeUndefined(); expect(series[id]).toBeUndefined();
+      expect(seriesLabel(id)).toContain("삭제됨");
+    }
+    expect(activeSeriesIds(["trade_bal", ...retired, "trade"])).toEqual(["trade_bal", "trade"]);
+    expect(viewingSeriesIds(retired)).toEqual([]);
+    expect(def("trade").unit).toBe("십억 2017달러·연율");
+    expect(series.trade.length).toBeGreaterThan(0);
   });
 
   it("differenceSeries: 공통 날짜만, 결측은 빼고, 자릿수 반올림", () => {
@@ -24,17 +27,17 @@ describe("그래프 비교 — 유로/달러·미국 무역수지·수출입 증
     expect(differenceSeries([], b, 2)).toEqual([]);
   });
 
-  it("네 지표가 '통화·대외' 범주의 월간 비교 지표로 등록돼 있다", () => {
-    for (const id of ["fx_eur", "trade_bal", "exports_yoy", "imports_yoy"]) {
+  it("유로/달러와 미국 무역수지가 '통화·대외' 범주의 월간 비교 지표로 등록돼 있다", () => {
+    for (const id of ["fx_eur", "trade_bal"]) {
       const d = def(id);
       expect(d, id).toBeDefined();
       expect(d.category).toBe("money"); expect(d.cadence).toBe(1);
-      expect(d.url).toMatch(/^https:\/\/fred\.stlouisfed\.org\/series\/(EXUSEU|BOPGSTB|BOPTEXP|BOPTIMP)$/);
+      expect(d.url).toMatch(/^https:\/\/fred\.stlouisfed\.org\/series\/(EXUSEU|BOPGSTB)$/);
       expect(d.note.length).toBeGreaterThan(10);
     }
     expect(def("fx_eur").unit).toBe("달러 / 1유로"); expect(def("fx_eur").note).toContain("유로 강세");
     expect(def("trade_bal").unit).toBe("$B"); expect(def("trade_bal").note).toContain("음수=적자");
-    expect(def("exports_yoy").unit).toBe("%"); expect(def("imports_yoy").unit).toBe("%");
+
     expect(new Set(COMPARE_SERIES.map((s) => s.id)).size).toBe(COMPARE_SERIES.length); // id 중복 없음
     expect(new Set(COMPARE_SERIES.map((s) => s.color)).size).toBeGreaterThanOrEqual(COMPARE_SERIES.length - 2); // 새 색이 기존 색과 거의 겹치지 않음
   });
@@ -42,12 +45,12 @@ describe("그래프 비교 — 유로/달러·미국 무역수지·수출입 증
   it("증감 단위: 유로/달러는 달러, 무역수지는 $B, 증가율은 %p", () => {
     expect(deltaUnit(def("fx_eur").unit)).toBe("달러");
     expect(deltaUnit(def("trade_bal").unit)).toBe("$B");
-    expect(deltaUnit(def("exports_yoy").unit)).toBe("%p");
+    expect(deltaUnit("%")).toBe("%p");
     expect(deltaUnit("원 / 1달러")).toBe("원"); expect(deltaUnit("엔 / 1달러")).toBe("엔"); // 기존 그대로
   });
 
   it("저장된 데이터: 첫 관측일·자릿수·월간 연속·유한값", () => {
-    const first: Record<string, string> = { fx_eur: "1999-01-01", trade_bal: "1992-01-01", exports_yoy: "1993-01-01", imports_yoy: "1993-01-01" };
+    const first: Record<string, string> = { fx_eur: "1999-01-01", trade_bal: "1992-01-01" };
     for (const [id, date] of Object.entries(first)) {
       const pts = series[id];
       expect(pts, id).toBeDefined(); expect(pts[0][0]).toBe(date);
@@ -60,7 +63,6 @@ describe("그래프 비교 — 유로/달러·미국 무역수지·수출입 증
     }
     for (const [, v] of series.fx_eur) { expect(v).toBeGreaterThan(0.7); expect(v).toBeLessThan(1.8); expect(Number(v.toFixed(4))).toBe(v); }
     for (const [, v] of series.trade_bal) { expect(Number(v.toFixed(1))).toBe(v); expect(Math.abs(v)).toBeLessThan(400); } // 십억달러 단위(백만달러가 아님)
-    for (const id of ["exports_yoy", "imports_yoy"]) for (const [, v] of series[id]) { expect(Number(v.toFixed(2))).toBe(v); expect(Math.abs(v)).toBeLessThan(80); }
     expect(series.trade_bal.at(-1)![1]).toBeLessThan(0); // 최근은 적자
   });
 

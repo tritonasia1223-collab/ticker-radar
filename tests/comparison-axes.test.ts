@@ -23,7 +23,7 @@ describe("mixed comparison axes", () => {
   });
   it("assigns prices and amounts left; rates, ratios and signed flows right", () => {
     for (const id of ["dxy", "fx_eur", "fx_krw", "fx_jpy", "sp500", "nasdaq", "gold", "oil", "m2", "walcl", "rrp", "mktcap"]) expect(defaultAxis(id)).toBe("left");
-    for (const id of ["fedfunds", "gs10", "tb3ms", "gdp_growth", "inflation", "unrate", "debt_gdp", "trade", "trade_bal", "trade_cycle", "exports_yoy", "imports_yoy"]) expect(defaultAxis(id)).toBe("right");
+    for (const id of ["fedfunds", "gs10", "tb3ms", "gdp_growth", "inflation", "unrate", "debt_gdp", "trade", "trade_bal"]) expect(defaultAxis(id)).toBe("right");
   });
   it("overlays four indexed currencies and a negative trade balance without losing selections", () => {
     const ids = ["dxy", "fx_krw", "fx_jpy", "fx_eur", "trade_bal"];
@@ -47,11 +47,11 @@ describe("mixed comparison axes", () => {
     expect(result.series.slice(1).map(s => s.axis)).toEqual(["right:%", "right:%", "right:%"]);
     expect(result.series.slice(1).every(s => s.points.every(p => p.value === p.raw))).toBe(true);
   });
-  it("separates nominal/monthly, real/annualized, % and percentage-point units", () => {
-    const ids = ["dxy", "trade_bal", "trade", "gs10", "trade_cycle"];
+  it("separates nominal/monthly, real/annualized and rate units", () => {
+    const ids = ["dxy", "trade_bal", "trade", "gs10"];
     const result = build(ids, { rightUnit: "trade-balance" });
-    expect(result.groups).toHaveLength(4);
-    expect(result.pending).toEqual(["trade", "gs10", "trade_cycle"]);
+    expect(result.groups).toHaveLength(3);
+    expect(result.pending).toEqual(["trade", "gs10"]);
     const switched = build(ids, { rightUnit: "%" });
     expect(switched.series.map(s => s.def.id)).toEqual(["dxy", "gs10"]);
     expect(switched.groups).toEqual(result.groups);
