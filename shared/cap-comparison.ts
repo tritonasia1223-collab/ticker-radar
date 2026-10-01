@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { alignmentSchema } from "./comparison-alignment";
 
 export const PLOT_PREFIX = "comparison_node:";
 export const NOTE_PREFIX = "comparison_insight:";
@@ -29,6 +30,7 @@ export const insightContextSchema = z.object({
   ids: z.array(z.string().regex(/^[a-z0-9_]{1,60}$/)).refine(ids => new Set(ids).size === ids.length, "중복 지표"),
   spread: spreadSchema.nullable(),
   view: comparisonViewSchema.optional(),
+  alignment: alignmentSchema.optional(),
 }).strict();
 export type InsightContext = z.infer<typeof insightContextSchema>;
 // Time anchors remain independent; context remembers which graphs the prose references.
