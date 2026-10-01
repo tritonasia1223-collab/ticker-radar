@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildComparisonAxes, defaultAxis, rawUnitKey, sameComparisonView } from "../client/src/lib/comparison-axes";
+import { automaticComparisonView, buildComparisonAxes, defaultAxis, rawUnitKey, sameComparisonView } from "../client/src/lib/comparison-axes";
 import { COMPARE_SERIES } from "../client/src/lib/comparison-series";
 import { comparisonInsightSchema, monthlyPoints, type ComparisonView, type Observation } from "../shared/cap-comparison";
 import { diff, merge } from "../shared/cap-collaboration";
@@ -12,6 +12,15 @@ const raw = (ids: string[]) => ids.map(id => ({ def: COMPARE_SERIES.find(s => s.
 const build = (ids: string[], overrides: Partial<ComparisonView> = {}) => buildComparisonAxes(raw(ids), { ...view, ...overrides });
 
 describe("mixed comparison axes", () => {
+  it("automatically migrates old views and follows the last selected right-side unit", () => {
+    const ids = ["dollar", "fx_eur", "trade_bal", "gs10"];
+    const automatic = automaticComparisonView(ids, { ...view, mode: "raw", assignments: { fx_eur: "right" }, rightUnit: "trade-balance" });
+    expect(automatic).toEqual({ ...view, rightUnit: "%" });
+    expect(buildComparisonAxes(raw(ids), automatic).pending).toEqual(["trade_bal"]);
+    expect(automaticComparisonView(ids.slice(0, -1), automatic).rightUnit).toBe("trade-balance");
+    expect(automaticComparisonView([], automatic).rightUnit).toBeNull();
+    expect(automaticComparisonView(["dollar", "gs10", "trade_bal"], automatic).rightUnit).toBe("trade-balance");
+  });
   it("assigns prices and amounts left; rates, ratios and signed flows right", () => {
     for (const id of ["dollar", "fx_eur", "fx_krw", "fx_jpy", "sp500", "nasdaq", "gold", "oil", "m2", "walcl", "rrp", "mktcap"]) expect(defaultAxis(id)).toBe("left");
     for (const id of ["fedfunds", "gs10", "tb3ms", "gdp_growth", "inflation", "unrate", "debt_gdp", "trade", "trade_bal", "trade_cycle", "exports_yoy", "imports_yoy"]) expect(defaultAxis(id)).toBe("right");

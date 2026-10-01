@@ -1,5 +1,5 @@
 import { commonBase, rebase, type ComparePoint, type ComparisonView } from "../../../shared/cap-comparison";
-import type { CompareSeriesDef } from "./comparison-series";
+import { COMPARE_SERIES, type CompareSeriesDef } from "./comparison-series";
 
 export type AxisSide = "left" | "right";
 export interface ComparisonAxis { side: AxisSide; key: string; label: string; normalized: boolean }
@@ -19,6 +19,11 @@ export function sameComparisonView(a: ComparisonView | undefined, b: ComparisonV
 // Real/nominal and annualized/monthly trade values must never share a raw scale.
 export const rawUnitKey = (def: CompareSeriesDef) => def.id === "trade" ? "real-net-exports" : def.id === "trade_bal" ? "trade-balance" : def.unit;
 export const rawUnitLabel = (key: string) => key === "real-net-exports" ? "실질 순수출 · 십억 2017달러/연율" : key === "trade-balance" ? "무역수지 · 십억 달러/월" : key === "%" ? "% · 금리·비율·증가율" : key === "%p" ? "%p · 증가율 격차" : key;
+
+export function automaticComparisonView(ids: string[], view?: ComparisonView, fallbackBase = "2000-01"): ComparisonView {
+  const lastRight = ids.map(id => COMPARE_SERIES.find(s => s.id === id)).filter(s => s && defaultAxis(s.id) === "right").at(-1);
+  return { mode: "mixed", base: view?.base ?? fallbackBase, assignments: {}, rightUnit: lastRight ? rawUnitKey(lastRight) : null };
+}
 
 export function buildComparisonAxes(raw: RawComparisonSeries[], view: ComparisonView) {
   const axes: ComparisonAxis[] = [], series: AxisSeries[] = [];

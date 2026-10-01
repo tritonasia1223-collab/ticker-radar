@@ -4,7 +4,7 @@ import { CapRichText } from "./CapRichText";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
-import { sameComparisonView } from "@/lib/comparison-axes";
+import { automaticComparisonView, sameComparisonView } from "@/lib/comparison-axes";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 import { comparisonInsightSchema, nearestDatedReference, type ComparisonInsight, type SavedInsight, type PlacedNode, type InsightContext, type Observation } from "../../../shared/cap-comparison";
@@ -32,7 +32,7 @@ export function ComparisonSidebar(p: Props) {
     return () => window.removeEventListener("resize", measure);
   }, [p.layoutKey]);
   useLayoutEffect(() => { if (p.panel === "insights" && content.current) content.current.scrollTop = 0; }, [p.panel, p.selected?.id]);
-  const relatedHidden = p.selected?.context && (!sameComparisonView(p.selected.context.view, p.currentContext.view, p.selected.context.ids) || p.selected.context.ids.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
+  const relatedHidden = p.selected?.context && (!sameComparisonView(p.selected.context.view ? automaticComparisonView(p.selected.context.ids, p.selected.context.view) : undefined, p.currentContext.view, p.selected.context.ids) || p.selected.context.ids.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
   const filtered = p.notes.filter(n => (n.title + " " + n.text + " " + n.date).toLowerCase().includes(search.toLowerCase()));
   return <aside className="w-full min-w-0 shrink-0 border-t bg-muted/15 lg:w-[42%] lg:max-w-[640px] lg:border-l lg:border-t-0" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
     <div className="flex border-b bg-background text-xs">

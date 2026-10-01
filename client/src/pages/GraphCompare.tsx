@@ -9,7 +9,7 @@ import { CapCollaboration } from "@/components/CapCollaboration";
 import { useEditMode } from "@/components/EditModeProvider";
 import { useCapSeries } from "@/lib/capitalism-series";
 import { COMPARE_SERIES, COMPARE_CATEGORIES, makeSpread } from "@/lib/comparison-series";
-import { assignedAxis, buildComparisonAxes, rawUnitKey } from "@/lib/comparison-axes";
+import { assignedAxis, automaticComparisonView, buildComparisonAxes } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
 import { parseRich } from "@/lib/capitalism-richtext";
@@ -31,8 +31,9 @@ function readPreferences(): Preferences {
     const parsedView = comparisonViewSchema.safeParse(v?.view);
     const base = parsedView.success ? parsedView.data.base : v?.base;
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
-      const view = parsedView.success ? { ...parsedView.data, assignments: {} } : { ...defaults.view, base };
-      return { ...defaults, ids: [...new Set<string>(v.ids.filter((id: string) => COMPARE_SERIES.some(s => s.id === id)))].slice(0, view.mode === "raw" ? 2 : undefined), view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
+      const ids = [...new Set<string>(v.ids.filter((id: string) => COMPARE_SERIES.some(s => s.id === id)))];
+      const view = automaticComparisonView(ids, parsedView.success ? parsedView.data : undefined, base);
+      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: typeof v.reference === "string" ? v.reference : "dollar", spread: spreadSchema.safeParse(v.spread).success ? spreadSchema.parse(v.spread) : null };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -127,7 +128,7 @@ export default function GraphCompare() {
   const restoreContext = (context: InsightContext, note: SavedInsight) => {
     const ids = context.ids.filter(id => COMPARE_SERIES.some(s => s.id === id));
     const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25);
-    setPrefs(p => ({ ...p, ids, view: context.view ?? { ...defaults.view, base: p.view.base }, spread: context.spread, from: start - pad, to: end + pad, badges: true }));
+    setPrefs(p => ({ ...p, ids, view: automaticComparisonView(ids, context.view, p.view.base), spread: context.spread, from: start - pad, to: end + pad, badges: true }));
     setResetAxes(v => v + 1);
   };
   const showReferences = (ids: string[] = []) => { setContextIds(ids); setPanel("reference"); setSidebar(true); };
@@ -141,16 +142,15 @@ export default function GraphCompare() {
     {!!errors.length && <div role="alert" className="border-b bg-amber-500/10 px-4 py-2 text-xs">일부 자료를 불러오지 못했습니다. <button className="underline" onClick={() => errors.forEach(q => void q.refetch())}>다시 불러오기</button></div>}
     <div ref={indicatorPanel} className="relative">
     <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-      <button className={buttonClass} aria-expanded={indicators} aria-controls="comparison-indicators" onClick={() => setIndicators(!indicators)}><Layers size={14} />표시 지표 {prefs.ids.length}{prefs.view.mode === "raw" ? "/2" : "개"}<ChevronDown size={13} className={indicators ? "rotate-180" : ""} /></button>
+      <button className={buttonClass} aria-expanded={indicators} aria-controls="comparison-indicators" onClick={() => setIndicators(!indicators)}><Layers size={14} />표시 지표 {prefs.ids.length}개<ChevronDown size={13} className={indicators ? "rotate-180" : ""} /></button>
       <div className="order-last flex w-full flex-wrap gap-x-3 gap-y-1 text-[11px] sm:order-none sm:w-auto sm:flex-1">{prefs.ids.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <span key={id} className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}{prefs.view.mode === "mixed" && <span className="text-muted-foreground">· {assignedAxis(id, prefs.view) === "left" ? "좌" : "우"}{comparison.pending.includes(id) ? " 대기" : ""}</span>}</span>; })}{!prefs.ids.length && <span className="text-muted-foreground">비교할 지표를 체크하세요</span>}</div>
-      <select aria-label="표시 방식" className={inputClass} value={prefs.view.mode} onChange={e => { const mode = e.target.value as ComparisonView["mode"]; setPrefs(p => ({ ...p, view: { ...p.view, mode }, ids: mode === "raw" ? p.ids.slice(0, 2) : p.ids })); }}><option value="mixed">좌 기준월=100 · 우 실제 값</option><option value="index">모두 기준월=100</option><option value="raw">원래 값 · 좌우 2개</option></select>
       <button className={buttonClass + (options ? " bg-accent" : "")} aria-expanded={options} onClick={() => setOptions(!options)}><Settings2 size={14} />표시 설정</button>
     </div>
     {indicators && <section id="comparison-indicators" aria-label="표시 지표 선택" className="absolute left-3 right-3 top-full z-30 mt-1 max-h-[65vh] overflow-auto rounded-lg border bg-background p-4 shadow-xl">
-      <div className="mb-3 flex items-center justify-between gap-3"><span className="text-xs font-medium">표시할 지표 선택</span><button type="button" className={buttonClass} disabled={!prefs.ids.length} onClick={() => setPrefs(p => ({ ...p, ids: [] }))}>전체 선택 해제</button></div>
+      <div className="mb-3 flex flex-wrap items-center gap-2"><span className="text-xs font-medium">표시할 지표 선택</span><button type="button" className={buttonClass} disabled={!prefs.ids.length} onClick={() => setPrefs(p => ({ ...p, ids: [], view: automaticComparisonView([], p.view) }))}>전체 선택 해제</button></div>
       <div className="grid gap-x-6 gap-y-3 xl:grid-cols-2 2xl:grid-cols-3">{Object.entries(COMPARE_CATEGORIES).map(([key, category]) => <fieldset key={key} className="min-w-0"><legend className="mb-1.5 text-[10px] font-semibold" style={{ color: category.color }}>{category.label}</legend><div className="flex flex-wrap gap-x-3 gap-y-2">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
-        const checked = prefs.ids.includes(s.id), disabled = !checked && prefs.view.mode === "raw" && prefs.ids.length >= 2;
-        return <div key={s.id} className="inline-flex items-center gap-1"><label title={disabled ? "선택한 지표를 하나 해제하면 켤 수 있습니다." : s.note} className={"inline-flex items-center gap-1.5 text-[11px] " + (disabled ? "cursor-not-allowed text-muted-foreground/50" : "cursor-pointer hover:text-sky-600")}><input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 accent-sky-500" checked={checked} disabled={disabled} onChange={e => { const on = e.target.checked; setPrefs(p => ({ ...p, view: on && p.view.mode === "mixed" && assignedAxis(s.id, p.view) === "right" ? { ...p.view, rightUnit: rawUnitKey(s) } : p.view, ids: on ? p.ids.includes(s.id) || (p.view.mode === "raw" && p.ids.length >= 2) ? p.ids : [...p.ids, s.id] : p.ids.filter(id => id !== s.id) })); }} /><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</label></div>;
+        const checked = prefs.ids.includes(s.id);
+        return <label key={s.id} title={s.note} className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] hover:text-sky-600"><input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 accent-sky-500" checked={checked} onChange={e => { const on = e.target.checked; setPrefs(p => { const ids = on ? p.ids.includes(s.id) ? p.ids : [...p.ids, s.id] : p.ids.filter(id => id !== s.id); return { ...p, ids, view: automaticComparisonView(ids, p.view) }; }); }} /><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</label>;
       })}</div></fieldset>)}</div>
       <p className="mt-3 text-[10px] text-muted-foreground">{prefs.view.mode === "mixed" ? "왼쪽: 가격·환율·규모를 기준월=100으로 비교 · 오른쪽: 금리·비율·수지의 실제 값. 같은 단위는 한 축에 함께 표시합니다." : prefs.view.mode === "index" ? "개수 제한 없이 같은 기준월로 비교" : "최대 2개를 좌우 축으로 비교 · 선택 순서대로 왼쪽 / 오른쪽 축"}</p>
     </section>}
@@ -166,7 +166,7 @@ export default function GraphCompare() {
       {prefs.smooth && <p className="text-muted-foreground">구간별 실제 고점·저점을 연결합니다. 원래 값·기준월·세로축은 유지되며 생략된 월도 커서로 확인할 수 있습니다.</p>}
       {prefs.phases && <p className="text-muted-foreground">상승·하강은 기준 지표의 12개월 평균을 6개월 전과 비교한 경향입니다. ±1% 이내는 앞선 방향을 유지합니다.</p>}
     </section>}
-    {prefs.view.mode === "mixed" && comparison.groups.length > 0 && <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-[11px]" data-testid="right-axis-groups"><span className="font-medium">오른쪽 실제 값</span>{comparison.groups.length > 1 ? <select aria-label="오른쪽 축 단위" className={inputClass} value={comparison.rightUnit ?? ""} onChange={e => setPrefs(p => ({ ...p, view: { ...p.view, rightUnit: e.target.value } }))}>{comparison.groups.map(g => <option key={g.key} value={g.key}>{g.label} · {g.ids.length}개</option>)}</select> : <span>{comparison.groups[0].label}</span>}{comparison.pending.length > 0 && <span className="text-muted-foreground" data-testid="right-axis-pending">단위가 다른 {comparison.pending.map(id => COMPARE_SERIES.find(s => s.id === id)!.label).join(", ")}은(는) 대기 중입니다. 위 단위를 바꾸면 표시됩니다. 체크는 유지됩니다.</span>}</div>}
+    {comparison.pending.length > 0 && <p className="border-b px-4 py-1.5 text-[11px] text-muted-foreground" data-testid="right-axis-pending">오른쪽은 마지막에 선택한 지표의 단위로 표시합니다. {comparison.pending.map(id => COMPARE_SERIES.find(s => s.id === id)!.label).join(", ")} · 단위가 달라 대기 중. 다시 켜면 해당 단위로 전환됩니다.</p>}
     {prefs.view.mode !== "raw" && ((base && (options || base !== prefs.view.base)) || comparison.unavailable.length > 0) && <div className="border-b px-4 py-1.5 text-[11px] text-muted-foreground" data-testid="axis-base-notice">{base && <span>왼쪽 기준월 {base} = 100{base !== prefs.view.base ? " · 요청월 이후 첫 공통 양수 월" : ""}. </span>}{comparison.unavailable.length > 0 && <span>{comparison.unavailable.map(id => COMPARE_SERIES.find(s => s.id === id)!.label).join(", ")}은(는) 공통 양수 기준값이 없어 왼쪽에 표시할 수 없습니다. 기준월을 바꾸거나 오른쪽 실제 값을 이용하세요. {prefs.view.mode === "index" && <button className="ml-1 underline" onClick={() => setPrefs(p => ({ ...p, view: { ...p.view, mode: "mixed", assignments: {} } }))}>좌우 자동 배정으로 보기</button>}</span>}</div>}
     <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
       <div className="flex min-w-0 flex-1">
