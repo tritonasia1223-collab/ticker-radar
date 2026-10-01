@@ -1,7 +1,13 @@
-import { calibrate, alignedValue, type Alignment, type Calibration } from "../../../shared/comparison-alignment";
+import { calibrate, alignedValue, alignmentSchema, type Alignment, type Calibration } from "../../../shared/comparison-alignment";
 import type { RawComparisonSeries, AxisSeries, ComparisonAxis } from "./comparison-axes";
 
-export const defaultAlignment: Alignment = { method: "median-iqr-asinh-v1", from: "2000-01", to: "2025-12", calibrations: {} };
+export const defaultAlignment: Alignment = { method: "median-iqr-asinh-v1", from: null, to: null, calibrations: {} };
+// Only migrate viewing preferences; saved insights retain their original context.
+export function viewingAlignment(value: unknown, version: unknown): Alignment {
+  const parsed = alignmentSchema.safeParse(value);
+  if (!parsed.success || (version !== 2 && parsed.data.from === "2000-01" && parsed.data.to === "2025-12")) return defaultAlignment;
+  return parsed.data;
+}
 export function buildAlignedComparison(raw: RawComparisonSeries[], alignment: Alignment) {
   const calibrations: Record<string, Calibration> = {}, series: AxisSeries[] = [], unavailable: string[] = [];
   for (const s of raw) {

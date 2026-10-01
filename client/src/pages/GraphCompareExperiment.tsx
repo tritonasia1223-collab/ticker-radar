@@ -4,8 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookOpen, PanelRightClose, PanelRightOpen, Settings2, StickyNote, RotateCcw, ArrowLeftRight } from "lucide-react";
 import { CompareChartExperiment as CompareChart, iso, type ChartTool } from "@/components/CompareChartExperiment";
-import { alignmentSchema, type Alignment } from "../../../shared/comparison-alignment";
-import { buildAlignedComparison, defaultAlignment, baselineLabel } from "@/lib/comparison-experiment";
+import { type Alignment } from "../../../shared/comparison-alignment";
+import { buildAlignedComparison, defaultAlignment, viewingAlignment, baselineLabel } from "@/lib/comparison-experiment";
 import { ComparisonInsightContext } from "@/components/ComparisonInsightContext";
 import { ComparisonIndicatorPicker } from "@/components/ComparisonIndicatorPicker";
 import { SeriesSourceHistory } from "@/components/SeriesSourceHistory";
@@ -39,7 +39,7 @@ function readPreferences(): Preferences {
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
       const ids = viewingSeriesIds(v.ids);
       const view = automaticComparisonView(ids, parsedView.success ? parsedView.data : undefined, base);
-      return { ...defaults, alignment: alignmentSchema.safeParse(v.alignment).success ? alignmentSchema.parse(v.alignment) : defaultAlignment, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 6, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "cpi_level" ? "usd_purchasing_power" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
+      return { ...defaults, alignment: viewingAlignment(v.alignment, v.alignmentPreferencesVersion), ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 6, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "cpi_level" ? "usd_purchasing_power" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -55,6 +55,8 @@ export default function GraphCompareExperiment() {
   const seriesQuery = useCapSeries();
   const flows = flowQuery.data ?? EMPTY_FLOWS;
   const [prefs, setPrefs] = useState(readPreferences);
+  const [periodOptions, setPeriodOptions] = useState(false);
+  const customPeriod = periodOptions || !!prefs.alignment.from || !!prefs.alignment.to;
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [panel, setPanel] = useState<"insights" | "reference">("insights");
@@ -80,7 +82,7 @@ export default function GraphCompareExperiment() {
   }, [noteQuery.isSuccess, noteQuery.data]);
   useEffect(() => { boardQuery.data?.forEach(r => collaboration.seed(r)); }, [boardQuery.data]);
   useEffect(() => { if (flowQuery.isSuccess) seedCollaboration(flows, []); }, [flowQuery.isSuccess, flows]);
-  useEffect(() => { try { localStorage.setItem("comparison-experiment-v1", JSON.stringify(prefs)); } catch { /* Optional preferences. */ } }, [prefs]);
+  useEffect(() => { try { localStorage.setItem("comparison-experiment-v1", JSON.stringify({ ...prefs, alignmentPreferencesVersion: 2 })); } catch { /* Optional preferences. */ } }, [prefs]);
   useEffect(() => { if (!editable) setTool("move"); }, [editable]);
   const notes = useMemo<SavedInsight[]>(() => {
     const keys = new Set([...(noteQuery.data ?? []).map(r => r.key), ...collaboration.confirmed.keys(), ...collaboration.drafts.keys()]);
@@ -173,8 +175,12 @@ export default function GraphCompareExperiment() {
         {[false, true].map(smooth => <button key={String(smooth)} aria-pressed={prefs.smooth === smooth} className={"rounded px-2.5 py-1 " + (prefs.smooth === smooth ? "bg-sky-500/15 font-medium text-sky-600" : "text-muted-foreground hover:bg-accent")} onClick={() => setPrefs(p => ({ ...p, smooth }))}>{smooth ? "부드럽게" : "원본"}</button>)}
       </div>
       {prefs.smooth && <label className="flex items-center gap-1.5">강도 <select aria-label="곡선 부드러움" className={inputClass} value={prefs.months} onChange={e => setPrefs(p => ({ ...p, months: Number(e.target.value) }))}>{[[3, "약하게"], [6, "보통"], [12, "강하게"], [24, "아주 강하게"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
-      <label className="flex items-center gap-1.5">참고 기간 <input aria-label="참고 기간 시작" type="month" className={inputClass} value={prefs.alignment.from} onChange={e => { const from = e.target.value; if (validDate(from + "-01") && from <= prefs.alignment.to) setPrefs(p => ({ ...p, alignment: { ...p.alignment, from, calibrations: {} } })); }} /></label>
-      <span className="text-muted-foreground">~</span><input aria-label="참고 기간 종료" type="month" className={inputClass} value={prefs.alignment.to} onChange={e => { const to = e.target.value; if (validDate(to + "-01") && to >= prefs.alignment.from) setPrefs(p => ({ ...p, alignment: { ...p.alignment, to, calibrations: {} } })); }} />
+      <label className="flex items-center gap-1.5"><input type="checkbox" checked={customPeriod} onChange={e => { setPeriodOptions(e.target.checked); if (!e.target.checked) setPrefs(p => ({ ...p, alignment: defaultAlignment })); }} />참고 기간 지정</label>
+      {customPeriod ? <div className="flex flex-wrap items-center gap-1.5">
+        <input aria-label="참고 기간 시작" type="month" className={inputClass} value={prefs.alignment.from ?? ""} max={prefs.alignment.to ?? undefined} onChange={e => { const from = e.target.value || null; if (!from || (validDate(from + "-01") && (!prefs.alignment.to || from <= prefs.alignment.to))) setPrefs(p => ({ ...p, alignment: { ...p.alignment, from, calibrations: {} } })); }} />
+        <span className="text-muted-foreground">~</span><input aria-label="참고 기간 종료" type="month" className={inputClass} value={prefs.alignment.to ?? ""} min={prefs.alignment.from ?? undefined} onChange={e => { const to = e.target.value || null; if (!to || (validDate(to + "-01") && (!prefs.alignment.from || to >= prefs.alignment.from))) setPrefs(p => ({ ...p, alignment: { ...p.alignment, to, calibrations: {} } })); }} />
+        <span className="text-[11px] text-muted-foreground">비워두면 제한 없음</span>
+      </div> : <span className="text-muted-foreground">전체 자료 기준</span>}
       <span className="text-[11px] text-muted-foreground">확대·이동해도 기준 유지 · 커서는 실제 값</span>
       {prefs.smooth && <span className="w-full text-[11px] text-muted-foreground">기준선 통과 위치는 원본과 동일 · 점은 월 관측 사이 추정 포함 · 표시 곡선만 평활화</span>}
     </section>
@@ -195,6 +201,6 @@ export default function GraphCompareExperiment() {
       </div>
       {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={currentContext} onRestore={restoreContext} layoutKey={[indicators, options, prefs.view.mode].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => { const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25); setRange([Math.max(extent[0], start - pad), Math.min(extent[1], end + pad)]); }} flows={flows} nodes={nodes} referencesLoading={flowQuery.isLoading || boardQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
     </div>
-    <details className="border-t px-4 py-2 text-[11px] text-muted-foreground"><summary className="cursor-pointer">지표 출처 · 수록 기간 · 비교 기준</summary><p className="my-2">월 단위 비교 · 일·주간 자료는 월 마지막 관측값, 월평균·분기 자료는 원래 발표값을 사용합니다. 결측은 채우지 않습니다. DXY·REER는 100, 성장률·물가상승률·실질금리·수지는 0, 그 외는 참고 기간 중앙값을 중앙선에 맞춥니다. 중앙값은 적정 가치가 아닙니다. 세로 배율은 참고 기간 중간 50% 범위(IQR)로 조정하며, 0이면 10~90% 범위, 전체 범위 순서로 적용합니다. 큰 변동은 asinh 함수로 완만하게 압축합니다. 같은 높이는 같은 금액이나 변화율을 뜻하지 않습니다.</p>{rawSeries.map(s => <div key={s.def.id} className="border-t py-2"><a href={s.def.url} target="_blank" rel="noreferrer" className="underline">{s.def.label}</a> · {s.def.unit} · {s.points[0]?.date ?? "자료 없음"} ~ {s.points.at(-1)?.date ?? ""}{comparison.alignment.calibrations[s.def.id] && <p className="my-1" data-testid={"calibration-" + s.def.id}>{baselineLabel(comparison.alignment.calibrations[s.def.id])} · 배율 기준 {comparison.alignment.calibrations[s.def.id].scale.toLocaleString("ko", { maximumFractionDigits: 3 })} {s.def.unit} · 실제 참고 구간 {comparison.alignment.calibrations[s.def.id].from} ~ {comparison.alignment.calibrations[s.def.id].to} · {comparison.alignment.calibrations[s.def.id].samples}개 관측</p>}{sourcePeriods(s.def.id).length ? <SeriesSourceHistory seriesKey={s.def.id} /> : <p>{s.def.note}</p>}</div>)}</details>
+    <details className="border-t px-4 py-2 text-[11px] text-muted-foreground"><summary className="cursor-pointer">지표 출처 · 수록 기간 · 비교 기준</summary><p className="my-2">기간 미지정 시 지표별 전체 수록 자료를 사용합니다. 월 단위 비교 · 일·주간 자료는 월 마지막 관측값, 월평균·분기 자료는 원래 발표값을 사용합니다. 결측은 채우지 않습니다. DXY·REER는 100, 성장률·물가상승률·실질금리·수지는 0, 그 외는 참고 기간 중앙값을 중앙선에 맞춥니다. 중앙값은 적정 가치가 아닙니다. 세로 배율은 참고 기간 중간 50% 범위(IQR)로 조정하며, 0이면 10~90% 범위, 전체 범위 순서로 적용합니다. 큰 변동은 asinh 함수로 완만하게 압축합니다. 같은 높이는 같은 금액이나 변화율을 뜻하지 않습니다.</p>{rawSeries.map(s => <div key={s.def.id} className="border-t py-2"><a href={s.def.url} target="_blank" rel="noreferrer" className="underline">{s.def.label}</a> · {s.def.unit} · {s.points[0]?.date ?? "자료 없음"} ~ {s.points.at(-1)?.date ?? ""}{comparison.alignment.calibrations[s.def.id] && <p className="my-1" data-testid={"calibration-" + s.def.id}>{baselineLabel(comparison.alignment.calibrations[s.def.id])} · 배율 기준 {comparison.alignment.calibrations[s.def.id].scale.toLocaleString("ko", { maximumFractionDigits: 3 })} {s.def.unit} · 실제 참고 구간 {comparison.alignment.calibrations[s.def.id].from} ~ {comparison.alignment.calibrations[s.def.id].to} · {comparison.alignment.calibrations[s.def.id].samples}개 관측</p>}{sourcePeriods(s.def.id).length ? <SeriesSourceHistory seriesKey={s.def.id} /> : <p>{s.def.note}</p>}</div>)}</details>
   </div>;
 }

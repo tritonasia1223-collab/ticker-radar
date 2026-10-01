@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { calibrate, alignedValue, alignmentSchema } from "../shared/comparison-alignment";
 import { monthlyPoints, comparisonInsightSchema } from "../shared/cap-comparison";
-import { buildAlignedComparison, defaultAlignment } from "../client/src/lib/comparison-experiment";
+import { buildAlignedComparison, defaultAlignment, viewingAlignment } from "../client/src/lib/comparison-experiment";
 import { COMPARE_SERIES } from "../client/src/lib/comparison-series";
 import { withPurchasingPower } from "../shared/dollar-indicators";
 import { withRealInterestRate } from "../shared/real-interest-rate";
@@ -15,6 +15,23 @@ const data = withRealInterestRate(withPurchasingPower(JSON.parse(readFileSync("c
 const raw = COMPARE_SERIES.map(def => ({ def, points: monthlyPoints(data[def.id] ?? []) }));
 
 describe("isolated baseline comparison", () => {
+  it("defaults to all available history and only restricts explicitly supplied bounds", () => {
+    expect(defaultAlignment.from).toBeNull(); expect(defaultAlignment.to).toBeNull();
+    const result = buildAlignedComparison(raw, defaultAlignment);
+    for (const s of raw) {
+      const c = result.alignment.calibrations[s.def.id];
+      expect(c.from).toBe(s.points[0].month);
+      expect(c.to).toBe(s.points.at(-1)!.month);
+      expect(c.samples).toBe(s.points.length);
+    }
+    expect(calibrate("gold", points(values), null, "2000-12")?.samples).toBe(12);
+    expect(calibrate("gold", points(values), "2001-01", null)?.samples).toBe(12);
+    const old = { ...defaultAlignment, from: "2000-01", to: "2025-12" };
+    expect(viewingAlignment(old, undefined)).toEqual(defaultAlignment);
+    expect(viewingAlignment(old, 2)).toEqual(old);
+    expect(viewingAlignment({ ...old, from: "1990-01" }, undefined).from).toBe("1990-01");
+    expect(alignmentSchema.parse(old)).toEqual(old); // Saved note contexts are not migrated.
+  });
   it("aligns meaningful anchors, preserves signs and the underlying observations", () => {
     for (const [id, center] of [["dxy", 100], ["reer", 100], ["gdp_growth", 0], ["real_tb3ms", 0], ["trade_bal", 0], ["trade", 0]] as const) {
       const c = calibrate(id, points(values), "2000-01", "2001-12")!;
@@ -62,7 +79,7 @@ describe("isolated baseline comparison", () => {
     expect(validateEdit({ id: crypto.randomUUID(), session: crypto.randomUUID(), resource: "note:experiment", editor: "test", changes }).changes).toEqual(changes);
     expect(merge(note, changes).doc).toEqual(next);
     expect(comparisonInsightSchema.parse(note)).toEqual(note);
-    expect(alignmentSchema.safeParse({ ...alignment, from: "2026-01" }).success).toBe(false);
+    expect(alignmentSchema.safeParse({ ...alignment, from: "2026-01", to: "2025-12" }).success).toBe(false);
     expect(alignmentSchema.safeParse({ ...alignment, calibrations: { gold: { ...alignment.calibrations.gold, scale: 0 } } }).success).toBe(false);
   });
 });
