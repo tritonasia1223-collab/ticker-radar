@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { alignmentSchema } from "./comparison-alignment";
+import { alignmentSchema } from "./comparison-alignment.js";
 
 export const PLOT_PREFIX = "comparison_node:";
 export const NOTE_PREFIX = "comparison_insight:";
