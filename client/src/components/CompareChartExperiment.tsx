@@ -1,7 +1,8 @@
 // Independent rendering for the baseline experiment; keep the original chart untouched.
 import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
+import { lineSegments, moveRange, zoomRange, calendarTicks, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
+import { smoothComparison, type Crossing } from "@/lib/comparison-smoothing";
 import type { SpreadData } from "@/lib/comparison-series";
 import { frameMeasurement } from "@/lib/capitalism-layout";
 import { nearbyObservation, hoverLayout } from "@/lib/comparison-hover";
@@ -18,11 +19,11 @@ const fmt = (v: number) => v.toLocaleString("ko", { maximumFractionDigits: 2 });
 export const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 
-export const CompareChartExperiment = memo(function CompareChartExperiment({ series, range, extent, axes, onRange, phases, events, onEvents, simplifyMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary }: {
+export const CompareChartExperiment = memo(function CompareChartExperiment({ series, range, extent, axes, onRange, phases, events, onEvents, smoothingMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary }: {
   summary?: ReactNode;
   spread: SpreadData | null; onRemoveSpread: () => void;
   series: ChartSeries[]; range: Domain; extent: Domain; axes: ComparisonAxis[]; onRange: (value: Domain) => void;
-  phases: TrendSection[]; events: HistoryEvent[]; onEvents: (ids: string[]) => void; simplifyMonths: number;
+  phases: TrendSection[]; events: HistoryEvent[]; onEvents: (ids: string[]) => void; smoothingMonths: number;
   notes: SavedInsight[]; selectedNote: string | null; onNote: (id: string) => void;
   onCreate: (date: string, endDate: string | null) => void; tool: ChartTool; onCancelTool: () => void; resetAxes: number; layoutKey: string;
 }) {
@@ -47,7 +48,7 @@ export const CompareChartExperiment = memo(function CompareChartExperiment({ ser
   const clip = useId().replaceAll(":", ""), [from, to] = range;
   const identity = axes.map(a => a.key).join(",") + series.map(s => s.def.id + ":" + s.axis).join(",");
   const previousAxes = useRef<Record<string, string>>({});
-  useEffect(() => { setPointer(null); setCursor(null); }, [from, to, identity, resetAxes, width, chartHeight, tool, simplifyMonths]);
+  useEffect(() => { setPointer(null); setCursor(null); }, [from, to, identity, resetAxes, width, chartHeight, tool, smoothingMonths]);
   useEffect(() => { setDomains({}); }, [resetAxes]);
   useEffect(() => {
     const signatures = Object.fromEntries(axes.map(a => [a.key, series.filter(s => s.axis === a.key).map(s => s.def.id).join(",")]));
@@ -77,8 +78,11 @@ export const CompareChartExperiment = memo(function CompareChartExperiment({ ser
     const segments = lineSegments(points, 1);
     return { points, lo, hi, y, segments, paths: segments.map(g => g.map((p, i) => (i ? "L" : "M") + x(p.time) + "," + y(p.value)).join(" ")) };
   }, [spread, from, to, width, axisBottom, spreadTop]);
+  const renderedSeries = useMemo(() => series.map(s => ({ ...s, segments: smoothingMonths
+    ? smoothComparison(s.points, s.def.cadence, smoothingMonths)
+    : lineSegments(s.points, s.def.cadence).map(original => ({ original, rendered: original, crossings: [] as Crossing[] })) })), [series, smoothingMonths]);
   const geometry = useMemo(() => {
-    const visible = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= from && p.time <= to) }));
+    const visible = renderedSeries.map(s => ({ ...s, points: s.points.filter(p => p.time >= from && p.time <= to) }));
     const axisShapes = axes.map(axis => {
       const values = series.filter(s => s.axis === axis.key).flatMap(s => s.points.map(p => p.value));
       let lo = values.length ? Math.min(...values) : 0, hi = values.length ? Math.max(...values) : 1;
@@ -91,13 +95,13 @@ export const CompareChartExperiment = memo(function CompareChartExperiment({ ser
     });
     const shapes = visible.map(s => {
       const axis = axisShapes.find(a => a.key === s.axis)!;
-      return { ...s, ...axis, paths: lineSegments(s.points, s.def.cadence).map(original => {
-        const points = simplifyExtrema(original, simplifyMonths);
-        return { original, points, d: points.map((p, i) => (i ? "L" : "M") + x(p.time).toFixed(2) + "," + axis.y(p.value).toFixed(2)).join(" ") };
-      }) };
+      return { ...s, ...axis, paths: s.segments.map(({ original, rendered, crossings }) => {
+        const points = rendered.filter((p, i) => (rendered[i + 1]?.time ?? p.time) >= from && (rendered[i - 1]?.time ?? p.time) <= to);
+        return { original, points, crossings: crossings.filter(p => p.time >= from && p.time <= to), d: points.map((p, i) => (i ? "L" : "M") + x(p.time).toFixed(2) + "," + axis.y(p.value).toFixed(2)).join(" ") };
+      }).filter(g => g.points.length) };
     });
     return { shapes, axisShapes };
-  }, [series, axes, from, to, width, plotBottom, simplifyMonths, domains]);
+  }, [series, renderedSeries, axes, from, to, width, plotBottom, domains]);
   const { shapes, axisShapes } = geometry;
   const nearby = useMemo(() => {
     if (!pointer) return [];
@@ -218,9 +222,9 @@ export const CompareChartExperiment = memo(function CompareChartExperiment({ ser
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none">
         {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.06} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
-        {/* 실제 값 축마다 0선을 한 번 그려 흑자/적자와 증가율의 부호를 표시합니다. */}
+        {/* All aligned series share this zero baseline. */}
         {axisShapes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0).map(a => <line key={"zero-" + a.key} data-testid="experiment-baseline" x1={left} x2={right} y1={a.y(0)} y2={a.y(0)} stroke="#ef233c" strokeWidth={2} />)}
-        {shapes.map(s => <g key={s.def.id} data-axis={s.side} data-axis-key={s.key} data-domain-min={s.lo} data-domain-max={s.hi} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
+        {shapes.map(s => <g key={s.def.id} data-axis={s.side} data-axis-key={s.key} data-domain-min={s.lo} data-domain-max={s.hi} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}{s.paths.flatMap(g => g.crossings).map(p => <circle key={p.time} data-testid="baseline-crossing" data-time={p.time} cx={x(p.time)} cy={s.y(0)} r={3} fill={s.def.color} stroke="#fff" strokeWidth={1} />)}</g>)}
       </g>
       {!shapes.some(s => s.points.length) && <text x={width / 2} y={plotTop + plotHeight / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={.6}>이 구간에 표시할 관측값이 없습니다.</text>}
       {spread && spreadShape && <g data-testid="spread-chart">
