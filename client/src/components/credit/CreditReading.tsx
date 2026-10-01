@@ -4,13 +4,14 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Refe
 import { indicators, config, type Indicator } from "@shared/credit/schema";
 import { analyze, DAY, type IndicatorAnalysis } from "@shared/credit/signals";
 import { scenarios } from "@shared/credit/scenarios";
-import { readingGroups, readingNotes, groupReading, indicatorReading, formatCredit, type CreditOutcome } from "@shared/credit/reading";
+import { readingGroups, readingNotes, groupReading, indicatorReading, formatCredit, distributionAdjusted, type CreditOutcome } from "@shared/credit/reading";
 
 import { creditReview } from "@shared/credit/review";
 import { ReviewText } from "../ReviewText";
 import { RateComparisonChart } from "./RateComparisonChart";
 import { rateNarrative } from "@shared/credit/rate-comparison";
 import { bondReading } from "@shared/credit/bond-reading";
+import { CreditTrendNote } from "./CreditTrendNote";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -65,6 +66,7 @@ function ReadingChart(props: { spec: Indicator; result: IndicatorAnalysis; state
     <h3 style={{ fontFamily: serif, fontSize: 20, lineHeight: 1.55, margin: "8px 0" }}>{note.question}</h3>
     <ReviewText text={rateNarrative(result, weeks)} className="text-sm font-semibold leading-[1.8] mb-4" />
     <RateComparisonChart id={spec.id} kind={spec.chart.marketYield ? "oas" : "difference"} rates={result.comparisonLines ?? []} spread={result.lines[0]} asOf={state.asOf} years={state.years} weeks={weeks} />
+    {spec.signal_keys.includes("ccc_gap_trend") && <div className="mt-3"><CreditTrendNote signals={state.outcome.signals} /></div>}
     <div className="py-4 space-y-2">
       <p style={paragraph}>{note.reading}</p><p style={paragraph}>{note.together}</p>
       <details style={caption}><summary className="cursor-pointer">관측 범위·갱신 주기·판정 근거</summary><div className="pt-2 space-y-2">
@@ -81,6 +83,7 @@ function OriginalReadingChart({ spec, result, state, weeks }: { spec: Indicator;
   const [selected, setSelected] = useState(result.lines[0]?.key);
   const focus = result.lines.find(l => l.key === selected) ?? result.lines[0];
   const [indexed, setIndexed] = useState(!!spec.chart.indexed);
+  const adjusted = distributionAdjusted(spec);
   const note = readingNotes[spec.id];
   const interpretation = indicatorReading(spec, focus, weeks, state.outcome);
   const all = !!spec.chart.indexed || spec.chart.kind === "pnav";
@@ -112,12 +115,12 @@ function OriginalReadingChart({ spec, result, state, weeks }: { spec: Indicator;
       {result.lines.map((l, n) => <button type="button" key={l.key} aria-pressed={focus.key === l.key} onClick={() => setSelected(l.key)} style={{ fontSize: 12, padding: "6px 10px", border: `1px solid ${focus.key === l.key ? ink : border}`, borderRadius: 20, background: focus.key === l.key ? "#E8E5DC" : "transparent", color: ink }}><span style={{ color: colors[n % colors.length] }}>● </span>{l.label}{!l.latest ? " · 자료 없음" : ""}</button>)}
     </div>}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 mb-4">
-      <div><strong style={{ fontSize: 22 }}>{formatCredit(focus.latest?.value, focus.unit)}</strong><div style={caption}>{focus.latest ? `${focus.latest.date} 관측 · 선택일보다 ${focus.ageDays ?? "—"}일 전` : "선택 시점의 관측 없음"}</div></div>
+      <div>{adjusted && <div style={caption}>분배금·분할 수정가격</div>}<strong style={{ fontSize: 22 }}>{formatCredit(focus.latest?.value, focus.unit)}</strong><div style={caption}>{focus.latest ? `${focus.latest.date} 관측 · 선택일보다 ${focus.ageDays ?? "—"}일 전` : "선택 시점의 관측 없음"}</div></div>
       <div><span style={{ fontSize: 15, fontWeight: 600 }}>{interpretation.label} {c && !c.unchangedRelease ? formatCredit(c.value, deltaUnit, true) : c?.unchangedRelease ? "새 관측 없음" : "비교 자료 부족"}</span><div style={caption}>{c ? `${c.from} → ${c.to}` : "이전 관측을 확보해야 변화량을 계산할 수 있습니다."}</div></div>
     </div>
     {(focus.stale || errors.length > 0 || result.status !== "ok") && <p style={{ ...caption, marginBottom: 12 }} role="note">{!focus.latest ? "자료가 없어 판단에 사용하지 않습니다." : !interpretation.known ? "갱신 지연 또는 수집 오류가 있어 이 계열은 조건 판정에서 제외합니다." : "일부 계열이 없거나 확인이 필요합니다. 표시된 계열만으로 전체를 대표하지 않습니다."}</p>}
     <div style={{ background: "#FFF", border: `1px solid ${border}`, borderRadius: 12, padding: "16px 8px" }}>
-      <div className="flex flex-wrap justify-between gap-2 px-3 mb-3" style={caption}><span>{indexed ? "각 계열 첫 관측 = 100" : `단위: ${({ billions: "십억 달러", percent: "%", pp: "%p", ratio: "배", usd: "달러" } as Record<string, string>)[spec.chart.unit] ?? spec.chart.unit}`} · {state.asOf}까지 {state.years}년</span>{spec.chart.indexed && <button type="button" className="underline" onClick={() => setIndexed(v => !v)}>{indexed ? "실제 잔액·가격 보기" : "기준 100으로 비교"}</button>}</div>
+      <div className="flex flex-wrap justify-between gap-2 px-3 mb-3" style={caption}><span>{adjusted ? indexed ? "분배금 반영 성과 · 각 계열 첫 관측 = 100" : "분배금·분할 수정가격 · 달러" : indexed ? "각 계열 첫 관측 = 100" : `단위: ${({ billions: "십억 달러", percent: "%", pp: "%p", ratio: "배", usd: "달러" } as Record<string, string>)[spec.chart.unit] ?? spec.chart.unit}`} · {state.asOf}까지 {state.years}년</span>{spec.chart.indexed && <button type="button" className="underline" onClick={() => setIndexed(v => !v)}>{adjusted ? indexed ? "수정가격 보기" : "분배금 반영 성과 보기" : indexed ? "실제 잔액·가격 보기" : "기준 100으로 비교"}</button>}</div>
       {chart.length ? <div style={{ height: 220 }}><ResponsiveContainer width="100%" height="100%"><LineChart data={chart} margin={{ left: 4, right: 20, top: 12, bottom: 0 }}>
         <CartesianGrid vertical={false} stroke="#E8E5DC" />
         <XAxis dataKey="date" minTickGap={50} tickFormatter={d => String(d).slice(2, 7)} tick={{ fontSize: 11, fill: muted }} tickLine={false} axisLine={false} />
@@ -129,10 +132,11 @@ function OriginalReadingChart({ spec, result, state, weeks }: { spec: Indicator;
         {typeof nowMarker === "number" && focus.latest && <ReferenceDot x={focus.latest.date} y={nowMarker} r={4} fill={ink} stroke="#FFF" />}
       </LineChart></ResponsiveContainer></div> : <div style={{ padding: 35, textAlign: "center", ...caption }}>이 기간에 표시할 자료가 없습니다.</div>}
       <div style={{ ...caption, padding: "6px 12px 0" }}>● 최신 관측 · ○ 비교 관측{all ? " · 선택한 계열을 진하게 표시" : ""}{slow ? " · 새 관측 사이의 수평선은 추가 발표를 뜻하지 않습니다" : ""}</div>
+      {adjusted && <p style={{ ...caption, padding: "8px 12px 0" }}>{note.reading}</p>}
     </div>
     <div style={{ padding: "16px 0 24px", display: "flex", flexDirection: "column", gap: 10 }}>
       <p style={paragraph}><b>관측 해석.</b> {interpretation.meaning}</p>
-      <p style={paragraph}><b>지표 의미.</b> {note.reading}</p>
+      {!adjusted && <p style={paragraph}><b>지표 의미.</b> {note.reading}</p>}
       <p style={paragraph}><b>관련 신호.</b> {note.together}</p>
       {interpretation.matched.length > 0 && <p style={caption}>선택일의 조건 판정: {interpretation.matched.join(" · ")} · A안 공통 규칙</p>}
       <details style={caption}><summary style={{ cursor: "pointer" }}>관측 범위·갱신 주기·판정 근거</summary>

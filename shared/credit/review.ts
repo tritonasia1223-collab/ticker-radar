@@ -9,6 +9,8 @@ const metricOrder = ["delta4", "change4", "priceChange4", "previousDelta", "issu
 const plainNames: Record<string, string> = { hy_oas: "신용등급이 낮은 회사채의 추가 금리", ig_oas: "우량 회사채의 추가 금리", ccc_oas: "최하위 신용등급 회사채의 추가 금리", cp_spread: "기업어음(CP)의 국채 대비 추가 금리", h8_ci_loans: "은행 기업대출 잔액", sloos_ci_standards: "은행 대출기준 순강화 비율", sloos_ci_demand: "기업 대출수요 순강화 비율", cp_outstanding: "기업어음(CP) 잔액" };
 
 function evidenceText(e: Evidence) {
+  if (e.metric === "gapConsecutiveWeeks") return { text: `CCC와 HY의 스프레드 격차가 ${e.value}주 연속 확대됐습니다.`, date: `${e.from} → ${e.date}` };
+  if (e.metric === "gapChange" || e.metric === "primaryTrendChange") return { text: `${e.metric === "gapChange" ? "같은 기간 격차" : "CCC 스프레드 자체"}는 ${formatCredit(e.value, "pp", true)} 변했습니다.`, date: `${e.from} → ${e.date}` };
   const unit = indicators.find(i => i.id === e.indicator)?.chart.unit ?? "";
   const percentage = ["change4", "priceChange4", "change13", "annual13", "issuanceYoy", "percentile", "speedPercentile", "speed13Percentile"].includes(e.metric);
   const valueUnit = percentage ? "percent" : ["delta4", "previousDelta"].includes(e.metric) && unit === "percent" ? "pp" : unit;
@@ -57,8 +59,8 @@ export function creditReview(outcome: CreditOutcome) {
       add(warning.id, keys, yes("cp_jump") ? "기업어음의 국채 대비 금리차가 확대됐습니다." : "기업어음(CP) 조달 잔액이 줄었습니다.",
         yes("cp_jump") && yes("cp_fall") ? "CP 금리차 확대와 잔액 감소가 겹쳐 단기 시장 조달이 위축됐을 가능성이 있습니다." : "단기 자금시장의 주의 신호입니다. 조달 비용과 잔액의 관측 대상이 달라, 한 지표만으로 시장이 막혔다고 단정할 수는 없습니다.");
     } else {
-      add(warning.id, keys, "취약 기업·사모대출 관련 지표에서 주의 신호가 나타났습니다.",
-        "아래 수치는 취약한 차주 또는 상장 BDC·대출 ETF에서 관측된 변화입니다. 사모대출 시장 전체의 손실이나 부도를 직접 측정한 값은 아닙니다.");
+      add(warning.id, keys, yes("ccc_gap_trend") ? "취약 기업의 추가 금리 부담이 점차 커지고 있습니다." : "취약 기업·사모대출 관련 지표에서 주의 신호가 나타났습니다.",
+        yes("ccc_gap_trend") ? "CCC와 HY의 스프레드 격차가 여러 주 연속 벌어지고 CCC 스프레드 자체도 상승했습니다. 급변이 없어도 취약 기업의 상대적인 부담이 누적되는 신호입니다. 사모대출 전체의 부실을 확정하는 것은 아닙니다." : "아래 수치는 취약한 차주 또는 상장 BDC·대출 ETF에서 관측된 변화입니다. 사모대출 시장 전체의 손실이나 부도를 직접 측정한 값은 아닙니다.");
     }
   }
   const bankKnown = readingGroups[0].watch.filter(k => k !== "ndfi_growth").every(k => outcome.signals[k]?.status === false);

@@ -385,7 +385,8 @@
             }
           },
           "signal_keys": [
-            "ccc_wide"
+            "ccc_wide",
+            "ccc_gap_trend"
           ],
           "refresh": {
             "publication": "미국 영업일 기준 일간 · 제공처 반영 시차 있음",
@@ -679,7 +680,7 @@
         },
         {
           "id": "leveraged_loans",
-          "name": "레버리지론 가격·CLO 스프레드",
+          "name": "레버리지론 ETF · 분배금 반영 성과",
           "priority": 9,
           "essential": false,
           "category": "사모대출",
@@ -694,10 +695,10 @@
             "validation": "official_page_verified"
           },
           "frequency": "daily",
-          "measures": "사모대출과 차주층·구조가 가장 비슷한 공개 대출시장",
+          "measures": "BKLN·SRLN의 분배금·분할 수정가격으로 본 성과 · 원가격·CLO 스프레드 아님",
           "role": "사모대출 여건의 근접 대리지표",
           "stress_direction": "lower_price_is_stress",
-          "interpretation": "유료 데이터가 없으면 BKLN·SRLN ETF 가격으로 대체",
+          "interpretation": "분배금 재투자 효과가 반영된 성과입니다. 분배금 누적으로 상승할 수 있어, 우상향만으로 대출 가격이나 신용 여건이 개선됐다고 볼 수 없습니다.",
           "chart": {
             "kind": "group",
             "unit": "usd",
@@ -714,7 +715,7 @@
             ]
           },
           "caveats": [
-            "레버리지론 ETF의 분배금·분할 수정 가격 대리지표입니다. CLO 스프레드나 원대출 가격을 직접 측정하지 않습니다."
+            "분배금·분할 수정가격의 변화율을 이용한 성과 대리지표입니다. 항상 상승한다는 뜻은 아니며, 거래 원가격·CLO 스프레드·원대출 가격을 직접 측정하지 않습니다."
           ],
           "signal_keys": [
             "etf_drop"
@@ -769,7 +770,8 @@
         }
       ],
       "blockers": [
-        "loan_emergency_warning"
+        "loan_emergency_warning",
+        "ccc_gap_trend"
       ]
     },
     {
@@ -865,7 +867,7 @@
       "bank": "안정",
       "public_markets": "HY 안정, CCC만 확대",
       "private_credit": "BDC 할인 확대, PIK 증가",
-      "interpretation": "공개시장에 안 보이는 중견기업 쪽 부실 누적. 은행의 비은행 대출이 크면 전이 위험",
+      "interpretation": "취약 기업의 추가 금리 부담과 BDC 관련 악화 신호가 함께 나타남. 사모대출 전체의 부실을 직접 확정하는 것은 아님",
       "rules": [
         {
           "signal": "bank_neutral",
@@ -878,7 +880,7 @@
           "required": true
         },
         {
-          "signal": "ccc_wide",
+          "signal": "ccc_pressure",
           "weight": 1,
           "required": true
         },
@@ -1649,6 +1651,23 @@
       "op": "gte",
       "value": 1.5
     },
+    "ccc_gap_trend": {
+      "weeklyGapTrend": {
+        "indicator": "ccc_oas",
+        "referenceIndicator": "hy_oas",
+        "weeks": 6,
+        "minWeeklyIncrease": 0.01,
+        "minTotalIncrease": 0.25,
+        "maxLagDays": 4,
+        "requirePrimaryRise": true
+      }
+    },
+    "ccc_pressure": {
+      "any": [
+        { "signal": "ccc_wide" },
+        { "signal": "ccc_gap_trend" }
+      ]
+    },
     "ccc_stable": {
       "all": [
         {
@@ -1905,6 +1924,8 @@
     "hy_stable": "HY 프리미엄 안정",
     "hy_calm": "HY 안정·축소",
     "ccc_wide": "CCC 프리미엄 확대",
+    "ccc_gap_trend": "CCC–HY 격차의 지속 확대",
+    "ccc_pressure": "취약 기업의 급변 또는 추세 악화",
     "ccc_stable": "CCC 프리미엄 안정",
     "ccc_calm": "CCC 안정·축소",
     "ig_wide": "IG 프리미엄 확대",
@@ -1944,6 +1965,7 @@
       "signals": [
         "hy_wide",
         "ig_wide",
+        "ccc_gap_trend",
         "cp_jump",
         "issuance_collapse"
       ],

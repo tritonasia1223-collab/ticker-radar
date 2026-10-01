@@ -8,10 +8,12 @@ export type Point = z.infer<typeof pointSchema>;
 export const sourceSchema = z.object({ key: z.string(), label: z.string(), provider: z.enum(["fred", "yahoo", "sec", "manual", "xlsx", "sec_credit"]), frequency, unit: z.string(), seriesId: z.string().optional(), ticker: z.string().optional(), cik: z.string().optional(), namespace: z.string().optional(), tag: z.string().optional(), factUnit: z.string().optional(), adjusted: z.boolean().optional(), basis: z.string().optional(), metric: z.string().optional(), url: z.string().optional(), manualAllowed: z.boolean().optional(), workbook: z.object({ downloadUrl: z.string().url(), sheet: z.string(), column: z.string(), units: z.string(), security: z.string(), updateSheet: z.string() }).optional(), credit: z.object({ method: z.enum(["tagged", "table", "earnings"]), costTag: z.string().optional(), fairValueTag: z.string().optional(), pikTags: z.array(z.string()), pikAccruedTag: z.string().optional(), denominatorTag: z.string(), maxFilings: z.number().int().positive(), backfillFilings: z.number().int().positive().optional() }).optional() });
 export type Source = z.infer<typeof sourceSchema>;
 type Predicate = { indicator: string; metric: string; op: "gte" | "lte" | "absLt" | "absLte"; value: number; line?: string; minimum?: number; subtractLine?: string };
-export type Rule = { all: Rule[] } | { any: Rule[] } | { not: Rule } | { signal: string } | { perLine: { indicator: string; minimum: number; conditions: Omit<Predicate, "indicator">[] } } | Predicate;
+export interface WeeklyGapTrend { indicator: string; referenceIndicator: string; weeks: number; minWeeklyIncrease: number; minTotalIncrease: number; maxLagDays: number; requirePrimaryRise: boolean }
+export type Rule = { all: Rule[] } | { any: Rule[] } | { not: Rule } | { signal: string } | { weeklyGapTrend: WeeklyGapTrend } | { perLine: { indicator: string; minimum: number; conditions: Omit<Predicate, "indicator">[] } } | Predicate;
 const predicateFields = { metric: z.string(), op: z.enum(["gte", "lte", "absLt", "absLte"]), value: z.number().finite(), line: z.string().optional(), minimum: z.number().int().positive().optional(), subtractLine: z.string().optional() } as const;
 const ruleSchema: z.ZodType<Rule> = z.lazy(() => z.union([
   z.object({ all: z.array(ruleSchema).min(1) }), z.object({ any: z.array(ruleSchema).min(1) }), z.object({ not: ruleSchema }), z.object({ signal: z.string() }),
+  z.object({ weeklyGapTrend: z.object({ indicator: z.string(), referenceIndicator: z.string(), weeks: z.number().int().min(2).max(52), minWeeklyIncrease: z.number().positive(), minTotalIncrease: z.number().positive(), maxLagDays: z.number().int().min(0).max(4), requirePrimaryRise: z.boolean() }) }),
   z.object({ indicator: z.string(), ...predicateFields }),
   z.object({ perLine: z.object({ indicator: z.string(), minimum: z.number().int().positive(), conditions: z.array(z.object(predicateFields)).min(1) }) }),
 ]));
@@ -29,6 +31,12 @@ function validateRule(rule: Rule, visited = new Set<string>()) {
   else if ("all" in rule) rule.all.forEach(r => validateRule(r, visited));
   else if ("any" in rule) rule.any.forEach(r => validateRule(r, visited));
   else if ("not" in rule) validateRule(rule.not, visited);
+  else if ("weeklyGapTrend" in rule) {
+    for (const id of [rule.weeklyGapTrend.indicator, rule.weeklyGapTrend.referenceIndicator]) {
+      const indicator = indicators.find(i => i.id === id);
+      if (!indicator || indicator.frequency !== "daily" || indicator.chart.unit !== "pp" || indicator.chart.lines.length !== 1) throw new Error("주간 격차 추세 참조 오류: " + id);
+    }
+  }
   else if (!indicators.some(i => i.id === ("perLine" in rule ? rule.perLine.indicator : rule.indicator))) throw new Error("신용 지표 참조 오류");
 }
 Object.values(config.signals).forEach(r => validateRule(r));

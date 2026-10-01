@@ -1,11 +1,13 @@
 import { config, type Rule } from "./schema.js";
 import type { IndicatorAnalysis } from "./signals.js";
+import { weeklyGapTrend } from "./trends.js";
 
 export type Verdict = true | false | null;
 export interface Evidence { indicator: string; line: string; metric: string; value: number | null; expected: string; date: string | null; from?: string; status: Verdict; reason?: string }
 export interface Evaluation { status: Verdict; evidence: Evidence[] }
 export function evaluate(rule: Rule, data: IndicatorAnalysis[]): Evaluation {
   if ("signal" in rule) return evaluate(config.signals[rule.signal], data);
+  if ("weeklyGapTrend" in rule) return weeklyGapTrend(rule.weeklyGapTrend, data);
   if ("not" in rule) { const r = evaluate(rule.not, data); return { ...r, status: r.status === null ? null : !r.status }; }
   if ("perLine" in rule) {
     const group = rule.perLine; const row = data.find(i => i.id === group.indicator);

@@ -8,7 +8,7 @@ export const readingGroups = [
   { id: "credit-bank", title: "은행 대출", question: "은행은 돈을 빌려주고 있나?", ids: ["sloos_ci_standards", "sloos_ci_demand", "h8_ci_loans", "h8_large_vs_small_banks", "h8_loans_to_nondepository"], watch: ["bank_tight", "loan_slow", "demand_weak", "small_bank_divergence", "ndfi_growth", "loan_emergency_warning"], calm: ["bank_ease", "loan_growth"] },
   { id: "credit-bonds", title: "회사채 조달", question: "회사채 시장이 자금을 공급하고 있나?", ids: ["ig_oas", "hy_oas", "corporate_bond_issuance"], watch: ["ig_wide", "hy_wide", "issuance_collapse"], calm: ["ig_stable", "hy_stable", "issuance_active"] },
   { id: "credit-short", title: "단기 자금", question: "당장 쓸 돈을 구하기 어려워졌나?", ids: ["cp_spread", "cp_outstanding"], watch: ["cp_jump", "cp_fall", "loan_emergency_warning"], calm: [] },
-  { id: "credit-fragile", title: "취약 기업·사모대출", question: "취약한 곳에서 먼저 문제가 생기나?", ids: ["ccc_oas", "bdc_price_to_nav", "bdc_credit_quality", "leveraged_loans"], watch: ["ccc_wide", "bdc_discount", "bdc_crash", "defaults_up", "pik_up", "etf_drop"], calm: ["ccc_stable", "bdc_stable"] },
+  { id: "credit-fragile", title: "취약 기업·사모대출", question: "취약한 곳에서 먼저 문제가 생기나?", ids: ["ccc_oas", "bdc_price_to_nav", "bdc_credit_quality", "leveraged_loans"], watch: ["ccc_wide", "ccc_gap_trend", "bdc_discount", "bdc_crash", "defaults_up", "pik_up", "etf_drop"], calm: ["ccc_stable", "bdc_stable"] },
 ];
 
 export const readingNotes: Record<string, { question: string; reading: string; together: string }> = {
@@ -25,7 +25,7 @@ export const readingNotes: Record<string, { question: string; reading: string; t
   ccc_oas: { question: "가장 약한 차주부터 어려워지나?", reading: "CCC 이하 시장금리와 OAS를 구분해 봅니다. HY 평균 OAS가 안정적인데 CCC OAS만 확대되면 취약한 차주에 긴장이 집중됐을 가능성이 있습니다.", together: "HY·IG까지 확대되면 긴장 범위가 더 넓습니다. BDC 가격 하락과 부실 증가는 사모대출 쪽의 추가 신호입니다." },
   bdc_price_to_nav: { question: "시장은 대출자산의 장부가를 어떻게 평가하나?", reading: "주가를 주당 순자산가치(NAV)로 나눈 값입니다. 1배 미만이면 장부가 대비 할인입니다. 할인은 자산 우려 외에도 금리·배당·회사별 특성에 영향을 받습니다.", together: "주가는 일간, NAV는 분기 자료입니다. 분기말 NAV를 연결한 과거 분석이며 당시 알려진 정보만의 재현은 아닙니다. 부실·PIK 공시는 대출자산의 상태를 보여줍니다." },
   bdc_credit_quality: { question: "가격의 우려가 실제 부실에도 나타나나?", reading: "부실(non-accrual)은 정상적으로 이자를 인식하지 않는 대출의 비중입니다. PIK는 현금 대신 원금 등에 더해 받는 이자·배당으로, 비중 상승의 배경을 확인해야 합니다.", together: "공정가치·원가 기준과 회사별 PIK 정의가 다릅니다. 회사·기준이 같은 분기끼리 비교해야 하며, PIK 증가 자체가 부도를 뜻하지는 않습니다." },
-  leveraged_loans: { question: "레버리지론 관련 가격도 약해졌나?", reading: "BKLN·SRLN ETF의 분배금·분할 수정 가격을 사용한 대용 지표입니다. 레버리지론 원대출 가격이나 CLO 스프레드의 직접 측정값은 아닙니다.", together: "CCC·HY 스프레드 확대와 ETF 가격 하락이 겹치면 신용 부담의 근거가 강해집니다. ETF 가격에는 자금 유출입과 유동성의 영향도 섞입니다." },
+  leveraged_loans: { question: "대출 ETF의 분배금 반영 성과는 어떤가?", reading: "분배금 재투자 효과가 반영된 성과입니다. 분배금 누적으로 상승할 수 있어, 우상향만으로 대출 가격이나 신용 여건이 개선됐다고 볼 수 없습니다.", together: "분배금을 반영하고도 성과가 하락하면 가격 약세를 추가로 확인할 필요가 있습니다. CCC·HY 스프레드와 함께 보며, CLO 스프레드나 원대출 가격의 직접 측정값은 아닙니다." },
 };
 
 export function groupReading(group: typeof readingGroups[number], outcome: CreditOutcome) {
@@ -35,10 +35,23 @@ export function groupReading(group: typeof readingGroups[number], outcome: Credi
   const status = matched.length ? "확인할 신호" : missing.length ? "판단 유보" : calm ? "안정 근거" : group.calm.length ? "혼합 신호" : "급변 조건 미충족";
   const confirmed = [...new Set([...matched, ...group.ids.flatMap(id => indicators.find(i => i.id === id)!.signal_keys)])].filter(k => outcome.signals[k]?.status === true);
   const evidence = confirmed.map(k => config.signalLabels[k]);
-  const opening = evidence.length ? `${evidence.join(" · ")} 조건이 관측됐습니다.` : matched.length === 0 && missing.length === 0 ? `${group.watch.map(k => config.signalLabels[k]).join(" · ")} 조건은 관측되지 않았습니다.` : "확인된 조건만으로 방향을 정하기 어렵습니다.";
+  const opening = group.id === "credit-fragile" && outcome.signals.ccc_gap_trend?.status === true ? `${creditTrendReading(outcome)}${matched.some(k => k !== "ccc_gap_trend") ? ` 함께 확인된 신호: ${matched.filter(k => k !== "ccc_gap_trend").map(k => config.signalLabels[k]).join(" · ")}.` : ""}` : evidence.length ? `${evidence.join(" · ")} 조건이 관측됐습니다.` : matched.length === 0 && missing.length === 0 ? group.id === "credit-fragile" ? "설정한 급변·추세 주의 조건은 충족하지 않았습니다. 완만한 변화까지 없다는 뜻은 아닙니다." : `${group.watch.map(k => config.signalLabels[k]).join(" · ")} 조건은 관측되지 않았습니다.` : "확인된 조건만으로 방향을 정하기 어렵습니다.";
   const missingLabels = [...new Set(missing.map(k => k.startsWith("issuance_") ? "등급별 회사채 발행량" : config.signalLabels[k]))];
   const text = `${opening}${missing.length ? ` 다만 ${missingLabels.join(" · ")} 판단에 필요한 자료가 부족합니다.` : ""}`;
   return { status, text, matched, missing };
+}
+
+export function creditTrendReading(outcome: CreditOutcome) {
+  const trend = outcome.signals.ccc_gap_trend;
+  if (trend?.status !== true) return "";
+  const weeks = trend.evidence.find(e => e.metric === "gapConsecutiveWeeks")?.value;
+  const delta = trend.evidence.find(e => e.metric === "gapChange")?.value;
+  return `취약 기업의 추가 금리 부담이 점차 커지고 있습니다. CCC와 HY의 스프레드 격차가 ${weeks ?? "여러"}주 연속 확대${delta == null ? "됐습니다" : `됐고, 누적으로 ${formatCredit(delta, "pp")} 벌어졌습니다`}.`;
+}
+
+// 수정가격을 거래 원가격으로 안내하지 않는다. 원천 정의는 JSON에서 읽는다.
+export function distributionAdjusted(spec: Indicator) {
+  return spec.chart.kind === "group" && spec.chart.lines.every(line => config.sources.find(source => source.key === line.key)?.adjusted === true);
 }
 
 /** 경고는 확인된 주의 조건만. 비은행 대출 증가 자체는 부실 신호가 아니다. */
@@ -89,7 +102,7 @@ export function indicatorReading(spec: Indicator, line: LineAnalysis, weeks: 4 |
     else if (spec.id === "cp_outstanding") meaning = `CP 시장 잔액은 ${up ? "늘었습니다" : "줄었습니다"}. ${up ? "조달 잔액 증가가 확인되지만 기업별 접근성이 모두 같다는 뜻은 아닙니다" : "자금 공급의 위축인지 수요 감소인지는 CP 금리·금리차와 은행 대출을 함께 봐야 합니다"}.`;
     else if (spec.id === "h8_loans_to_nondepository") meaning = `은행의 비은행 금융회사 대출 잔액이 ${up ? "늘어 연결 규모가 커졌습니다" : "줄었습니다"}. 이 수치 자체가 사모대출의 부실 규모를 뜻하지는 않습니다.`;
     else if (spec.id === "h8_large_vs_small_banks") meaning = `선택한 계열의 잔액은 ${up ? "늘었습니다" : "줄었습니다"}. 대형·소형은행 간 방향 차이는 규모별 자금 사정이 다를 가능성을 나타냅니다.`;
-    else if (spec.id === "leveraged_loans") meaning = `선택한 ETF의 수정 가격이 ${up ? "올랐습니다" : "내렸습니다"}. 공개 대출시장의 대용 신호이며 CLO 스프레드 자체의 변화는 아닙니다.`;
+    else if (spec.id === "leveraged_loans") meaning = `분배금·분할 수정가격 기준으로 선택한 ETF의 성과가 ${up ? "상승" : "하락"}했습니다. ${up ? "분배금 누적도 포함되므로 대출 가격 상승을 뜻하지는 않습니다." : "분배금을 반영하고도 하락한 것으로, 대출시장 가격 약세를 추가로 확인할 필요가 있습니다."}`;
   }
   return { ...comparison, headline, known, matched, meaning };
 }

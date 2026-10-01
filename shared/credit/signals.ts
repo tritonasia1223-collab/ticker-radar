@@ -34,6 +34,7 @@ export function change(points: Point[], weeks: number, frequency: string, refere
   return { value: to.value - from.value, pct: from.value > 0 ? (to.value / from.value - 1) * 100 : null, from: from.date, to: to.date, unchangedRelease: from.date === to.date };
 }
 export interface LineAnalysis {
+  asOf?: string;
   key: string; label: string; points: Point[]; unit: string; latest: Point | null; changes: Record<string, Change | null>; metrics: Record<string, number | null>;
   stale: boolean; ageDays: number | null; navAgeDays?: number | null; collectionOverdue?: boolean; sampleStart: string | null; sampleEnd: string | null; sampleCount: number; tenYearPercentile: number | null;
   errors: string[]; notes: string[]; sources: { url?: string; label: string; transport: string; checkedAt?: string }[];
@@ -77,7 +78,7 @@ function analyzeLine(i: Indicator, key: string, label: string, input: Point[], s
     stressPercentile: p === null ? null : i.stress_direction === "higher_is_stress" ? p : ["lower_is_stress", "lower_price_is_stress"].includes(i.stress_direction) ? 100 - p : null,
   };
   const full = enough && points.length > 0 && points[0].date <= iso(Date.parse(cutoff) + config.settings.toleranceDays[i.frequency] * DAY);
-  return { key, label, points, unit: i.chart.unit, latest, changes, metrics, stale, ageDays, navAgeDays, collectionOverdue, sampleStart: sample[0]?.date ?? null, sampleEnd: sample.at(-1)?.date ?? null, sampleCount: sample.length, tenYearPercentile: full ? p : null, errors: series.flatMap(s => s.error ? [s.error] : []), notes: [...new Set(series.flatMap(s => s.notes))], sources: series.map(s => { const src = config.sources.find(x => x.key === s.key); return { url: latest?.sourceUrl ?? src?.url, label: src?.label ?? s.key, transport: s.transport, checkedAt: s.checkedAt }; }) };
+  return { asOf, key, label, points, unit: i.chart.unit, latest, changes, metrics, stale, ageDays, navAgeDays, collectionOverdue, sampleStart: sample[0]?.date ?? null, sampleEnd: sample.at(-1)?.date ?? null, sampleCount: sample.length, tenYearPercentile: full ? p : null, errors: series.flatMap(s => s.error ? [s.error] : []), notes: [...new Set(series.flatMap(s => s.notes))], sources: series.map(s => { const src = config.sources.find(x => x.key === s.key); return { url: latest?.sourceUrl ?? src?.url, label: src?.label ?? s.key, transport: s.transport, checkedAt: s.checkedAt }; }) };
 }
 export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString().slice(0, 10), basis: TimeBasis = "publication"): IndicatorAnalysis[] {
   const byKey = new Map(snapshot?.series.map(s => [s.key, s]) ?? []);

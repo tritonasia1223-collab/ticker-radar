@@ -7,12 +7,14 @@ import { analyze, DAY, type IndicatorAnalysis, type LineAnalysis } from "@shared
 import { scenarios } from "@shared/credit/scenarios";
 import { RateComparisonChart } from "./RateComparisonChart";
 import { rateNarrative } from "@shared/credit/rate-comparison";
+import { distributionAdjusted } from "@shared/credit/reading";
+import { CreditTrendNote } from "./CreditTrendNote";
 
 type Response = { asOf: string; collectedAt: string | null; configChanged?: boolean; error?: string | null; indicators: IndicatorAnalysis[]; scenarios: ReturnType<typeof scenarios> };
 const colors = ["#6366f1", "#0d9488", "#d97706", "#db2777", "#7c3aed", "#0284c7", "#65a30d", "#ea580c", "#64748b"];
 const frequencies: Record<string, string> = { daily: "일간", weekly: "주간", monthly: "월간", quarterly: "분기" };
 const units: Record<string, string> = { billions: "십억 달러", percent: "%", pp: "%p", ratio: "배", usd: "달러" };
-const metricLabels: Record<string, string> = { latest: "수준", delta4: "4주 절대변화", change4: "4주 변화율(%)", change13: "13주 변화율(%)", annual13: "13주 연율화(%)", previousDelta: "직전 관측 대비", percentile: "확보 기간 백분위(%)", speedPercentile: "4주 증가율 백분위(%)", speed13Percentile: "13주 증가율 백분위(%)", issuanceYoy: "3개월 발행합 전년비(%)", priceChange4: "4주 수정주가 변화율(%)" };
+const metricLabels: Record<string, string> = { gapConsecutiveWeeks: "격차 연속 확대(주)", gapChange: "격차 누적 변화(%p)", primaryTrendChange: "CCC 자체 변화(%p)", latest: "수준", delta4: "4주 절대변화", change4: "4주 변화율(%)", change13: "13주 변화율(%)", annual13: "13주 연율화(%)", previousDelta: "직전 관측 대비", percentile: "확보 기간 백분위(%)", speedPercentile: "4주 증가율 백분위(%)", speed13Percentile: "13주 증가율 백분위(%)", issuanceYoy: "3개월 발행합 전년비(%)", priceChange4: "4주 수정주가 변화율(%)" };
 const ruleLabel = (s: string) => s.replace("absLte", "절댓값 ≤").replace("absLt", "절댓값 <").replace("gte", "≥").replace("lte", "≤");
 const num = (v: number | null | undefined, digits = 2) => v == null || !Number.isFinite(v) ? "—" : v.toLocaleString("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const signed = (v: number | null | undefined, digits = 2) => v == null ? "—" : `${v > 0 ? "+" : ""}${num(v, digits)}`;
@@ -34,6 +36,7 @@ function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; year
     <h3 className="font-semibold text-sm">{spec.name}</h3>
     <p className="text-xs leading-relaxed text-muted-foreground">{rateNarrative(result, 4)}</p>
     <RateComparisonChart id={spec.id} kind={spec.chart.marketYield ? "oas" : "difference"} rates={result.comparisonLines ?? []} spread={result.lines[0]} asOf={asOf} years={years} />
+    {spec.signal_keys.includes("ccc_gap_trend") && <CreditTrendNote signals={props.signals} />}
     <p className="text-xs leading-relaxed text-muted-foreground">{spec.interpretation}</p>
     <details className="text-[11px] text-muted-foreground"><summary className="cursor-pointer">갱신 주기·관측 범위·판정 근거</summary><div className="pt-2 space-y-2">
       <p>{spec.refresh?.publication} · {spec.refresh?.collection}</p>
@@ -47,6 +50,7 @@ function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; year
 
 function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"] }) {
   const [indexed, setIndexed] = useState(!!spec.chart.indexed);
+  const adjusted = distributionAdjusted(spec);
   const [selected, setSelected] = useState(spec.chart.lines[0]?.key);
   const focus = result.lines.find(l => l.key === selected) ?? result.lines[0];
   const start = new Date(Date.parse(asOf) - years * 365.25 * DAY).toISOString().slice(0, 10);
@@ -70,6 +74,7 @@ function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: I
     {spec.refresh && <div className="rounded-lg bg-muted/40 px-3 py-2 text-[10px] leading-relaxed text-muted-foreground"><div>발표 주기: {spec.refresh.publication}</div><div>{spec.refresh.collection}</div><div>최근 원천 확인: {focus.sources.filter(s => s.checkedAt).map(s => new Date(s.checkedAt!).toLocaleString("ko-KR")).filter((v, n, all) => all.indexOf(v) === n).join(" · ") || "아직 확인 전"}</div>{focus.stale && focus.latest && <div className="text-amber-700 dark:text-amber-400">{focus.collectionOverdue ? "수집 확인이 3일 넘게 지연되었습니다." : "관측·공시가 예상 갱신 간격을 넘었습니다."}</div>}</div>}
     <div>
       {result.lines.length > 1 && <div className="flex flex-wrap gap-1 mb-2" aria-label={`${spec.name} 표시 계열`}>{result.lines.map((l, n) => <button type="button" key={l.key} onClick={() => setSelected(l.key)} aria-pressed={focus.key === l.key} className={`text-[10px] px-2 py-1 rounded-md border ${focus.key === l.key ? "border-foreground/30 bg-muted" : "border-transparent text-muted-foreground"}`}><span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: colors[n % colors.length] }} />{l.label}</button>)}</div>}
+      {adjusted && <p className="text-xs text-muted-foreground">분배금·분할 수정가격</p>}
       <div className="flex items-end gap-3 flex-wrap"><strong className="text-2xl tracking-tight tabular-nums font-semibold">{value(focus.latest?.value, focus.unit)}</strong><span className="text-[11px] text-muted-foreground pb-1">{focus.latest ? `${focus.latest.date} 관측 · 선택일 기준 ${focus.ageDays}일 전` : "유효 관측을 기다리는 중"}</span></div>
       {focus.latest?.publishedAt && <p className="text-[10px] text-muted-foreground mt-1">공시 {focus.latest.publishedAt}{focus.latest.publishedAt > asOf ? " · 선택일 이후 공시된 관측 자료" : ""}{focus.navAgeDays != null ? ` · NAV 기준 ${focus.latest.basis} · NAV 관측 후 ${focus.navAgeDays}일` : ""}</p>}
     </div>
@@ -78,7 +83,7 @@ function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: I
     </div>
     {slow && <p className="text-[10px] text-muted-foreground -mt-2">주간 변화는 선택일과 관측 시점을 기준으로 비교합니다. 직전 관측 대비 {signed(focus.metrics.previousDelta)} {focus.unit === "percent" ? "%p" : units[focus.unit]}</p>}
     <div>
-      <div className="flex justify-between items-center mb-2"><span className="text-[10px] text-muted-foreground">{indexed ? "표시 기간 첫 관측 = 100" : units[spec.chart.unit]} · 선택일 이전 {years}년</span>{spec.chart.indexed && <button type="button" className="text-[10px] rounded border px-2 py-1" onClick={() => setIndexed(v => !v)}>{indexed ? "실제 값 보기" : "기준 100 보기"}</button>}</div>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-2"><span className="text-[10px] text-muted-foreground">{adjusted ? indexed ? "분배금 반영 성과 · 첫 관측 = 100" : "분배금·분할 수정가격 · 달러" : indexed ? "표시 기간 첫 관측 = 100" : units[spec.chart.unit]} · 선택일 이전 {years}년</span>{spec.chart.indexed && <button type="button" className="text-[10px] rounded border px-2 py-1" onClick={() => setIndexed(v => !v)}>{adjusted ? indexed ? "수정가격 보기" : "분배금 반영 성과 보기" : indexed ? "실제 값 보기" : "기준 100 보기"}</button>}</div>
       <div className="h-[190px] min-w-0">
         {available ? <ResponsiveContainer width="100%" height="100%"><LineChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 4" />
