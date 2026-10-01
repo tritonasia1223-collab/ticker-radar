@@ -23,7 +23,7 @@ export const CATEGORIES: Record<string, { label: string; color: string }> = {
 export const PANELS: PanelDef[] = [
   { id: "gdp_growth", label: "실질 GDP 성장률", unit: "%", series: "gdp_growth", cat: "macro", color: "#5dd6a0", on: true, start: "1947", zeroLine: true, kind: "area" },
   { id: "inflation", label: "인플레이션 (CPI YoY)", unit: "%", series: "inflation", cat: "macro", color: "#e0c267", on: true, start: "1948", zeroLine: true, kind: "line" },
-  { id: "cpi_level", label: "미국 소비자물가지수 (CPI 수준)", unit: "idx", series: "cpi_level", cat: "macro", color: "#0d9488", on: false, start: "1913", kind: "line" },
+  { id: "usd_purchasing_power", label: "달러 구매력(미국 내, CPI 역수)", unit: "idx", series: "usd_purchasing_power", cat: "macro", color: "#0d9488", on: false, start: "1913", kind: "line" },
   { id: "sp500", label: "미국 주가지수 (S&P500 추종)", unit: "idx", series: "sp500", cat: "market", color: "#0ea5e9", on: false, start: "1957", kind: "line" },
   { id: "nasdaq", label: "나스닥 종합", unit: "p", series: "nasdaq", cat: "market", color: "#38bdf8", on: false, start: "1971", kind: "line" },
   { id: "mktcap", label: "미국 시총 (기업 주식)", unit: "$B", series: "mktcap", cat: "market", color: "#2563eb", on: true, start: "1945", kind: "area" },

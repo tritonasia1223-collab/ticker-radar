@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { dxyMonthEnds, longReer } from "../shared/dollar-indicators";
+import { dxyMonthEnds, longReer, withPurchasingPower } from "../shared/dollar-indicators";
 import { mergeObservations, type Point } from "../shared/capitalism-refresh";
-import { COMPARE_SERIES, activeSeriesIds, seriesLabel } from "../client/src/lib/comparison-series";
+import { COMPARE_SERIES, activeSeriesIds, viewingSeriesIds, seriesLabel } from "../client/src/lib/comparison-series";
 import { sourcePeriods } from "../client/src/lib/capitalism-history";
 import { buildComparisonAxes } from "../client/src/lib/comparison-axes";
 import { monthlyPoints } from "../shared/cap-comparison";
 
-const data = JSON.parse(readFileSync("client/src/data/capitalism-series.json", "utf8")) as Record<string, Point[]>;
+const data = withPurchasingPower(JSON.parse(readFileSync("client/src/data/capitalism-series.json", "utf8")) as Record<string, Point[]>);
 const sources = JSON.parse(readFileSync("client/src/data/capitalism-series-sources.json", "utf8"));
 const chart = (dates: string[], close: (number | null)[], symbol = "DX-Y.NYB", instrumentType = "INDEX") => ({ chart: { result: [{ meta: { symbol, instrumentType, exchangeTimezoneName: "America/New_York" }, timestamp: dates.map(d => Date.parse(d) / 1000), indicators: { quote: [{ close }] } }] } });
 
@@ -28,10 +28,24 @@ describe("dollar indicator replacement", () => {
     expect(() => longReer(fed, bis.slice(1))).toThrow();
     expect(mergeObservations(result.points, [...bis, ["1995-01-01", 130]]).points.slice(0, 252)).toEqual(result.points.slice(0, 252));
   });
+  it("turns a 25% price rise into a 20% purchasing-power loss and follows the chosen base", () => {
+    const source: Record<string, Point[]> = { cpi_level: [["2000-01-01", 100], ["2000-02-01", 125], ["2000-03-01", 0], ["2000-04-01", -1], ["2000-05-01", NaN]] };
+    const derived = withPurchasingPower(source);
+    expect(derived.usd_purchasing_power).toEqual([["2000-01-01", 100], ["2000-02-01", 80]]);
+    expect(derived.cpi_level).toBe(source.cpi_level);
+    expect(source.usd_purchasing_power).toBeUndefined();
+    expect(withPurchasingPower({}).usd_purchasing_power).toEqual([]);
+    const raw = [{ def: COMPARE_SERIES.find(s => s.id === "usd_purchasing_power")!, points: monthlyPoints(derived.usd_purchasing_power) }];
+    const rebased = buildComparisonAxes(raw, { mode: "mixed", base: "2000-02", assignments: {}, rightUnit: null });
+    expect(rebased.series[0].points.map(p => p.value)).toEqual([125, 100]);
+    expect(viewingSeriesIds(["cpi_level", "usd_purchasing_power", "dxy"])).toEqual(["usd_purchasing_power", "dxy"]);
+    expect(activeSeriesIds(["cpi_level"])).toEqual([]); // Do not reinterpret saved notes.
+    expect(sourcePeriods("usd_purchasing_power")[0].id).toBe("CPIAUCNS");
+  });
   it("keeps three distinct identities, sources, historical coverage and indexable axes", () => {
     expect(data.dollar).toBeUndefined();
     expect(COMPARE_SERIES.some(s => s.id === "dollar")).toBe(false);
-    expect(activeSeriesIds(["dollar", "dxy", "dxy", "cpi_level", "reer"])).toEqual(["dxy", "cpi_level", "reer"]);
+    expect(activeSeriesIds(["dollar", "dxy", "dxy", "cpi_level", "reer"])).toEqual(["dxy", "reer"]);
     expect(seriesLabel("dollar")).toBe("기존 달러지수(삭제됨)");
     expect(seriesLabel("dxy")).toContain("명목");
     expect(seriesLabel("reer")).toContain("실질");
@@ -44,7 +58,7 @@ describe("dollar indicator replacement", () => {
     expect(ratio).toBeCloseTo(88.66 / 91.3648, 12);
     expect(data.reer[0][1]).toBe(Number((107.6163 * ratio).toFixed(3)));
     expect(new Map(data.reer).get("1994-01-01")).toBe(88.66);
-    const raw = ["cpi_level", "dxy", "reer"].map(id => ({ def: COMPARE_SERIES.find(s => s.id === id)!, points: monthlyPoints(data[id]) }));
+    const raw = ["usd_purchasing_power", "dxy", "reer"].map(id => ({ def: COMPARE_SERIES.find(s => s.id === id)!, points: monthlyPoints(data[id]) }));
     const comparison = buildComparisonAxes(raw, { mode: "mixed", base: "1973-01", assignments: {}, rightUnit: null });
     expect(comparison.base).toBe("1973-03");
     expect(comparison.unavailable).toEqual([]);

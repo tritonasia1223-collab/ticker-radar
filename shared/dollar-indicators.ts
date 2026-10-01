@@ -1,5 +1,13 @@
 import { closedMonthEnds, prependHistory, rebaseFactor, type Point } from "./capitalism-refresh";
 
+// CPIAUCNS is 1982–84=100. Its inverse, on the same 100 base, is 10000/CPI.
+// Re-indexing this to a chosen month gives CPI(base)/CPI(t)*100.
+// Derive at load time so every CPI refresh is reflected without a second stored series.
+export function withPurchasingPower(data: Record<string, Point[]>): Record<string, Point[]> {
+  return { ...data, usd_purchasing_power: (data.cpi_level ?? []).flatMap(([date, value]) =>
+    Number.isFinite(value) && value > 0 ? [[date, 10000 / value] as Point] : []) };
+}
+
 // Never substitute a futures contract, an ETF, or a trade-weighted index for DXY.
 export function dxyMonthEnds(payload: any, now = new Date()): Point[] {
   const r = payload?.chart?.result?.[0];

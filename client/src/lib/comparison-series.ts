@@ -4,7 +4,7 @@ import { historyNote } from "./capitalism-history";
 
 export const COMPARE_CATEGORIES = CATEGORIES;
 
-const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", cpi_level: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
+const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
   ...PANELS.map(p => ({ id: p.series, label: p.id === "trade" ? "실질 순수출" : p.id === "sp500" ? "미국 주가지수 (OECD)" : p.label,
@@ -12,7 +12,7 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
     cadence: ["gdp_growth", "debt_gdp", "mktcap", "trade"].includes(p.id) ? 3 : 1,
     note: p.id === "dxy" ? "주요 6개 통화 대비 명목 달러가치 · 실제 DXY 월말 종가 · 1973-03부터"
       : p.id === "reer" ? "상대국 물가를 반영한 실질 대외가치 · Fed/BIS 장기 연결"
-      : p.id === "cpi_level" ? "미국 소비자물가 수준 · 상승할수록 고정된 달러의 국내 구매력 하락 · CPI 전년비와 별개"
+      : p.id === "usd_purchasing_power" ? "미국 CPI 역수 · 하락=미국 내 달러 구매력 감소 · 기준월 대비 구매력 비교"
       : p.id === "inflation" ? "CPI 수준이 아닌 전년 동월 대비 변화율(%)" : p.id === "trade" ? "분기 실질 순수출 · 계절조정 연율"
       : ["nasdaq", "walcl", "wresbal", "rrp"].includes(p.id) ? "일·주간 자료의 각 월 마지막 관측값"
       : ["gdp_growth", "debt_gdp", "mktcap"].includes(p.id) ? "분기 자료 (일부 초기 구간은 연간 자료)" : "월간 자료 · 기존 경제사 계열",
@@ -43,5 +43,8 @@ export const signedLabel = (value: number) => (value > 0 ? "+" : "") + numberLab
 export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === "idx" || unit === "p" ? "pt" : unit === "원 / 1달러" ? "원" : unit === "엔 / 1달러" ? "엔" : unit === "달러 / 1유로" ? "달러" : unit; }
 
 // Preserve saved note identities; never relabel the retired composite as DXY or REER.
-export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (id === "dollar" ? "기존 달러지수(삭제됨)" : id);
+export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (id === "dollar" ? "기존 달러지수(삭제됨)" : id === "cpi_level" ? "CPI 수준(이전 지표)" : id);
 export const activeSeriesIds = (ids: string[]) => [...new Set(ids.filter(id => COMPARE_SERIES.some(s => s.id === id)))];
+
+// Migrate viewing preferences only; saved prose retains its original series identity.
+export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id => id === "cpi_level" ? "usd_purchasing_power" : id));

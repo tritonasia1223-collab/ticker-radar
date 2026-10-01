@@ -27,6 +27,9 @@ const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
 };
 
 const SPECIAL: Record<string, SourcePeriod[]> = {
+  usd_purchasing_power: [
+    { from: "1913-01-01", source: "미국 CPI 기반 달러 구매력", id: "CPIAUCNS", url: fred("CPIAUCNS"), note: "CPI 역수 · 1982~1984=100. 하락하면 미국 내 구매력 감소." },
+  ],
   cpi_level: [
     { from: "1913-01-01", source: "미국 소비자물가지수 · 비계절조정", id: "CPIAUCNS", url: fred("CPIAUCNS"), note: "1982~1984=100. 상승하면 고정된 달러의 국내 구매력은 하락." },
   ],
@@ -52,7 +55,7 @@ export function historyOf(seriesKey: string): SeriesHistory | null {
 
 export function sourcePeriods(seriesKey: string): SourcePeriod[] {
   const h = historyOf(seriesKey);
-  if (["cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
+  if (["usd_purchasing_power", "cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
   if (!h) return [];
   const earlier = h.segments.map(s => ({ from: s.from, to: s.to, source: s.source, id: s.id, url: s.url,
     note: seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));

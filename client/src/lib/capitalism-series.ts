@@ -5,6 +5,7 @@
 //     바뀌면 해시 유지→재다운로드 없음), react-query 로 감싸 세션 1회만 fetch 하고 여러 컴포넌트가 공유.
 import seriesUrl from "@/data/capitalism-series.json?url";
 import { useQuery } from "@tanstack/react-query";
+import { withPurchasingPower } from "../../../shared/dollar-indicators";
 
 export type SeriesMap = Record<string, [string, number][]>;
 
@@ -14,7 +15,7 @@ export function useCapSeries() {
     queryFn: async ({ signal }) => {
       const response = await fetch(seriesUrl, { signal });
       if (!response.ok) throw new Error(`시계열 로드 실패: ${response.status}`);
-      return response.json() as Promise<SeriesMap>;
+      return withPurchasingPower(await response.json() as SeriesMap);
     },
     staleTime: Infinity, // 정적 데이터 — 세션 내 재요청 안 함
     gcTime: Infinity,
