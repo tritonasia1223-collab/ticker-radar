@@ -1,8 +1,7 @@
 {
-  "checkedAt": "2026-09-09T06:49:48.949Z",
-  "macroOutcome": "success",
-  "worldOutcome": "success",
-  "macroSha256": "b04c3becc94f8274dad65abe7554e787568929af031acdede616c671c2161b2b",
-  "rtoSha256": "d5269ded582f5c5603855b3a5292185e026136d3506328ae7bdea14e988e07ce",
-  "manualFxAddedAt": "2026-09-14T01:40:27.169Z"
+  "checkedAt": "2026-10-03T03:13:24.554Z",
+  "macroOutcome": "failure",
+  "worldOutcome": "failure",
+  "macroSha256": "c78eefa1c084fd557cf7727674772f0897aeee4b703cf4445863088c94b5d950",
+  "rtoSha256": "d5269ded582f5c5603855b3a5292185e026136d3506328ae7bdea14e988e07ce"
 }

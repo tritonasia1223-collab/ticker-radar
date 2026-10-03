@@ -1,6 +1,6 @@
 # 세계 현황판 월간 검토 목록
 
-확인: 2026-09-09T06:49:42.176Z
+확인: 2026-10-03T03:13:16.507Z
 
 공식 출처 목록의 새 링크를 수집한 검토 후보입니다. 사실 확인이나 사이트 반영 완료를 뜻하지 않습니다. 첫 실행은 기존 게시물도 포함한 기준 목록을 만듭니다.
 
@@ -8,20 +8,20 @@
 
 | 출처 | 조회 결과 | 새 후보 | 마지막 성공 |
 |---|---|---|---|
-| [UCDP 정식 GED 버전](https://ucdp.uu.se/downloads/) | ok | 0 | 2026-09-09T06:49:42.176Z |
+| [UCDP 정식 GED 버전](https://ucdp.uu.se/downloads/) | ok | 0 | 2026-10-03T03:13:16.507Z |
 | [Lloyd’s List 항만 연간판](https://www.lloydslist.com/one-hundred-ports-archive) | 공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요. | — | 없음 |
-| [Galaxy / Helios](https://www.galaxy.com/newsroom/) | ok | 0 | 2026-09-09T06:49:42.176Z |
+| [Galaxy / Helios](https://www.galaxy.com/newsroom/) | ok | 0 | 2026-10-03T03:13:16.507Z |
 | [Micron 팹](https://investors.micron.com/news/) | 공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요. | — | 없음 |
 | [Constellation 원전·계약](https://www.constellationenergy.com/news.html) | 최신 뉴스 목록이 브라우저에서 동적으로 생성됨. 원문 목록 수동 확인 필요. | — | 없음 |
-| [Microsoft 데이터센터](https://blogs.microsoft.com/) | ok | 0 | 2026-09-09T06:49:42.176Z |
-| [Meta 데이터센터·전력](https://about.fb.com/news/) | ok | 0 | 2026-09-09T06:49:42.176Z |
-| [Google 데이터센터·전력](https://blog.google/innovation-and-ai/infrastructure-and-cloud/global-network/) | ok | 0 | 2026-09-09T06:49:42.176Z |
-| [Crusoe / Stargate](https://www.crusoe.ai/resources/newsroom) | ok | 0 | 2026-09-09T06:49:42.176Z |
+| [Microsoft 데이터센터](https://blogs.microsoft.com/) | ok | 0 | 2026-10-03T03:13:16.507Z |
+| [Meta 데이터센터·전력](https://about.fb.com/news/) | ok | 0 | 2026-10-03T03:13:16.507Z |
+| [Google 데이터센터·전력](https://blog.google/innovation-and-ai/infrastructure-and-cloud/global-network/) | ok | 0 | 2026-10-03T03:13:16.507Z |
+| [Crusoe / Stargate](https://www.crusoe.ai/resources/newsroom) | ok | 2 | 2026-10-03T03:13:16.507Z |
 | [TSMC 팹](https://pr.tsmc.com/english/latest-news) | 공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요. | — | 없음 |
-| [Samsung Taylor](https://news.samsung.com/us/category/product/product-semiconductor/) | ok | 0 | 2026-09-09T06:49:42.176Z |
-| [Amkor 패키징](https://ir.amkor.com/press-releases) | ok | 0 | 2026-09-09T06:49:42.176Z |
-| [NRC 원전 공지](https://www.nrc.gov/reading-rm/doc-collections/news/2026/index) | ok | 0 | 2026-09-09T06:49:42.176Z |
-| [Entergy 데이터센터 전력](https://www.entergy.com/news/releases) | ok | 0 | 2026-09-09T06:49:42.176Z |
+| [Samsung Taylor](https://news.samsung.com/us/category/product/product-semiconductor/) | ok | 0 | 2026-10-03T03:13:16.507Z |
+| [Amkor 패키징](https://ir.amkor.com/press-releases) | ok | 0 | 2026-10-03T03:13:16.507Z |
+| [NRC 원전 공지](https://www.nrc.gov/reading-rm/doc-collections/news/2026/index) | Error: No article links: manual check / selector update needed | — | 2026-09-09T06:49:42.176Z |
+| [Entergy 데이터센터 전력](https://www.entergy.com/news/releases) | ok | 0 | 2026-10-03T03:13:16.507Z |
 | [UNCTAD 해운 자료](https://unctad.org/topic/transport-and-trade-logistics/review-of-maritime-transport) | 공개 목록이 HTTP 403으로 자동 조회를 거부함. 브라우저에서 원문 확인 필요. | — | 없음 |
 
 ## 검토 대기
@@ -55,7 +55,7 @@
 
 - [Our largest solar and battery storage project ever Google will both invest in and purchase energy and storage from Steel River Energy Center in Mississippi County, Arkansas.](https://blog.google/innovation-and-ai/infrastructure-and-cloud/global-network/steel-river-arkansas/)
 
-### Crusoe / Stargate (9건)
+### Crusoe / Stargate (11건)
 
 - [bergen engines signs approx 750mw u s power agreement with crusoe for ai data centers](https://www.crusoe.ai/resources/newsroom/bergen-engines-signs-approx-750mw-u-s-power-agreement-with-crusoe-for-ai-data-centers)
 - [crusoe and aalo atomics form strategic partnership with goal of deploying first nuclear powered ai factory](https://www.crusoe.ai/resources/newsroom/crusoe-and-aalo-atomics-form-strategic-partnership-with-goal-of-deploying-first-nuclear-powered-ai-factory)
@@ -66,6 +66,8 @@
 - [crusoe supports governor abbotts data center audits and responsible growth standards in texas](https://www.crusoe.ai/resources/newsroom/crusoe-supports-governor-abbotts-data-center-audits-and-responsible-growth-standards-in-texas)
 - [crusoes contracted ai infrastructure capacity approaches 5 gigawatts across data centers and cloud](https://www.crusoe.ai/resources/newsroom/crusoes-contracted-ai-infrastructure-capacity-approaches-5-gigawatts-across-data-centers-and-cloud)
 - [form energy crusoe announce agreement for 12 gigawatt hours of iron air batteries for ai data centers](https://www.crusoe.ai/resources/newsroom/form-energy-crusoe-announce-agreement-for-12-gigawatt-hours-of-iron-air-batteries-for-ai-data-centers)
+- [crusoe developing data center campus in armstrong county texas](https://www.crusoe.ai/resources/newsroom/crusoe-developing-data-center-campus-in-armstrong-county-texas)
+- [crusoe opens second tulsa factory ai infrastructure](https://www.crusoe.ai/resources/newsroom/crusoe-opens-second-tulsa-factory-ai-infrastructure)
 
 ### Samsung Taylor (2건)
 
