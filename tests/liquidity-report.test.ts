@@ -115,7 +115,7 @@ describe('선택 기간에 맞춘 유동성의 양', () => {
   it('TGA에서 회수하고 역레포에 쌓는 혼합 방향도 구분한다', () => {
     const prev = { ...sel, total: sel.total + 10000, tga: sel.tga + 30000, rrp: sel.rrp - 5000 };
     const text = liquidityQuantity(sel, prev, 4);
-    expect(text).toContain('TGA)에서 300억 달러가 회수');
+    expect(text).toContain('TGA에서 300억 달러가 회수');
     expect(text).toContain('역레포에 50억 달러가 더 쌓');
     expect(text).toContain('순유동성은 150억 달러 늘었습니다');
   });

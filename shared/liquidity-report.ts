@@ -41,7 +41,7 @@ export function liquidityQuantity(sel: ReadWeek, prev: ReadWeek | null, weeks: 4
   const balance = flat(reserves) ? `지급준비금은 ${weeks}주간 거의 변하지 않아 ${money(sel.reserves)}입니다.` : `지급준비금은 ${weeks}주간 ${money(reserves)} ${reserves > 0 ? "늘어" : "줄어"} ${money(sel.reserves)}가 됐습니다.`;
   const assetText = flat(assets) ? "연준 자산은 거의 변하지 않았고" : `연준 자산은 ${money(assets)} ${assets > 0 ? net < 0 ? "늘었지만" : "늘었고" : net > 0 ? "줄었지만" : "줄었고"}`;
   const holding = (name: string, v: number) => flat(v) ? `${name} 잔액은 거의 변하지 않았습니다.` : v > 0 ? `${name}에 ${money(v)}가 더 쌓였습니다.` : `${name}에서 ${money(v)}가 회수됐습니다.`;
-  const sources = tga >= 50 && rrp >= 50 ? `재무부 현금 계좌(TGA)에 ${money(tga)}, 역레포에 ${money(rrp)}가 더 쌓이면서` : `${holding("재무부 현금 계좌(TGA)", tga)} ${holding("역레포", rrp)} 그 결과`;
+  const sources = tga >= 50 && rrp >= 50 ? `TGA에 ${money(tga)}, 역레포에 ${money(rrp)}가 더 쌓이면서` : `${holding("TGA", tga)} ${holding("역레포", rrp)} 그 결과`;
   return `유동성의 양: ${balance} ${assetText}, ${sources} 순유동성은 ${flat(net) ? "거의 변하지 않았습니다" : `${money(net)} ${direction(net)}`}.`;
 }
 export interface ReportInput {
