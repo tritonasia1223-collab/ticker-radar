@@ -3,7 +3,7 @@
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
-import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Sankey, Layer } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
@@ -65,12 +65,14 @@ function Expander({ label, open, onToggle, children, transparent = false }: { la
 // 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 스티키·본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
 // 라벨이 본문 폭을 잡아먹지 않고, 본문은 남는 폭의 가운데에 선다. lg 미만에서는 라벨이 본문 위로 올라간다.
 const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(190px,1fr)_minmax(0,900px)_minmax(0,1fr)] xl:grid-cols-[minmax(220px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
-const STICKY_TOP = 132; // 비교 버튼이 두 줄로 배치될 때도 요약 앵커와 본문 제목이 가려지지 않게 한다.
+const STICKY_TOP = "var(--liquidity-sticky-top, 84px)";
 function Row({ id, as = "section", aside, children }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode }) {
   const Tag = as;
   return (
     <Tag id={id} className={ROW_GRID} style={{ scrollMarginTop: STICKY_TOP }}>
-      <div className="border-t border-[#1A1A18] pt-7 lg:border-t-0 lg:sticky lg:self-start lg:justify-self-end lg:w-[190px] xl:w-[220px]" style={{ top: STICKY_TOP }}>{aside}</div>
+      <div className="border-t border-[#1A1A18] pt-7 lg:border-t-0 lg:justify-self-end lg:w-[190px] xl:w-[220px]">
+        <div className="lg:sticky" style={{ top: STICKY_TOP }}>{aside}</div>
+      </div>
       <div className="lg:pt-7 lg:border-t lg:border-[#1A1A18]" style={{ minWidth: 0, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
     </Tag>
   );
@@ -278,6 +280,19 @@ function ReadSankeyLink(props: any) {
 }
 
 export default function LiquidityRead() {
+  const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(64);
+  useLayoutEffect(() => {
+    if (!headerNode) return;
+    const sticky = window.matchMedia("(min-width: 768px)");
+    const measure = () => setHeaderHeight(sticky.matches ? Math.ceil(headerNode.getBoundingClientRect().height) : 0);
+    // 버튼 줄바꿈·화면 폭·글꼴 로딩으로 달라지는 상단 바의 실제 높이를 따른다.
+    const observer = new ResizeObserver(measure);
+    observer.observe(headerNode);
+    sticky.addEventListener("change", measure);
+    measure();
+    return () => { observer.disconnect(); sticky.removeEventListener("change", measure); };
+  }, [headerNode]);
   useEffect(() => { // 이 페이지 스코프의 글꼴만 추가로 로드
     if (document.querySelector(`link[href="${FONT_HREF}"]`)) return;
     const l = document.createElement("link"); l.rel = "stylesheet"; l.href = FONT_HREF; document.head.appendChild(l);
@@ -378,11 +393,11 @@ export default function LiquidityRead() {
   const chapters = liquidityChapters(how, from, to, who, st, cmp);
 
   return (
-    <div style={{ background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" }}>
+    <div style={{ "--liquidity-sticky-top": `${headerHeight + 20}px`, background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
       <div className="px-4 md:px-10" style={{ maxWidth: 1280 + 80, margin: "0 auto", paddingTop: 24, paddingBottom: 96 }}>
 
         {/* 머리띠 — md 이상에서 스크롤을 따라오는 스티키. 배경을 깔아 본문이 비치지 않게 한다. */}
-        <header className="md:sticky md:top-0 z-20 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
+        <header ref={setHeaderNode} className="md:sticky md:top-0 z-20 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
           <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
@@ -400,10 +415,10 @@ export default function LiquidityRead() {
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID}>
-        <div className="lg:sticky lg:self-start lg:justify-self-end lg:w-[190px] xl:w-[220px] lg:pt-6" style={{ top: STICKY_TOP }}>
+        <div className="lg:justify-self-end lg:w-[190px] xl:w-[220px] lg:pt-6"><div className="lg:sticky" style={{ top: STICKY_TOP }}>
           <h2 className="text-base font-semibold">개요</h2>
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
-        </div>
+        </div></div>
         <div style={{ minWidth: 0 }}>
         <LiquidityDashboard how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} stress={st} riskHeadline={credit.query.isLoading ? "신용 자료를 확인하고 있습니다." : credit.query.isError || credit.query.data?.error || credit.query.data?.configChanged ? "선택 시점의 신용 상태를 확인하지 못했습니다." : bondReading(credit.data, credit.outcome).overview} alerts={<CreditSummary state={credit} weeks={cmp} />} />
         </div></div>

@@ -68,7 +68,7 @@ function ReadingChart(props: { spec: Indicator; result: IndicatorAnalysis; state
   const { spec, result, state, weeks } = props;
   if (!spec.chart.marketYield && spec.chart.kind !== "spread") return <OriginalReadingChart {...props} />;
   const note = readingNotes[spec.id];
-  return <article data-credit-reading={spec.id} id={`read-${spec.id}`} style={{ borderTop: `1px solid ${border}`, paddingTop: 24, scrollMarginTop: 132 }}>
+  return <article data-credit-reading={spec.id} id={`read-${spec.id}`} style={{ borderTop: `1px solid ${border}`, paddingTop: 24, scrollMarginTop: "var(--liquidity-sticky-top, 84px)" }}>
     <div style={caption}>{spec.name} · {periods[spec.frequency]}</div>
     <h3 style={{ fontFamily: serif, fontSize: 20, lineHeight: 1.55, margin: "8px 0" }}>{note.question}</h3>
     <ReviewText text={rateNarrative(result, weeks)} className="text-sm font-semibold leading-[1.8] mb-4" />
@@ -113,7 +113,7 @@ function OriginalReadingChart({ spec, result, state, weeks }: { spec: Indicator;
   const focusIndex = all ? result.lines.indexOf(focus) : 0;
   const marker = (date?: string) => date ? chart.find(p => p.date === date)?.[`v${focusIndex}`] : undefined;
   const nowMarker = marker(focus.latest?.date), oldMarker = marker(c?.from);
-  return <article data-credit-reading={spec.id} style={{ borderTop: `1px solid ${border}`, paddingTop: 24, scrollMarginTop: 132 }} id={`read-${spec.id}`}>
+  return <article data-credit-reading={spec.id} style={{ borderTop: `1px solid ${border}`, paddingTop: 24, scrollMarginTop: "var(--liquidity-sticky-top, 84px)" }} id={`read-${spec.id}`}>
     <div style={caption}>{spec.name} · {periods[spec.frequency]}</div>
     <h3 style={{ fontFamily: serif, fontSize: 20, lineHeight: 1.55, margin: "8px 0" }}>{note.question}</h3>
     <p style={{ ...paragraph, fontWeight: 600 }}>{interpretation.headline}</p>
