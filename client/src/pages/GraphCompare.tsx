@@ -36,7 +36,7 @@ function readPreferences(): Preferences {
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
       const ids = viewingSeriesIds(v.ids);
       const view = automaticComparisonView(ids, parsedView.success ? parsedView.data : undefined, base);
-      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "cpi_level" ? "usd_purchasing_power" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
+      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "inflation" ? "cpi_level" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;

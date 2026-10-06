@@ -3,7 +3,7 @@ import { monthlyPoints, spreadPoints, spreadSchema, RATE_SPREAD_IDS, type Spread
 import { historyNote } from "./capitalism-history";
 
 // Comparison-only catalog: keep the economic-history panels and source data intact.
-const excludedIds = new Set(["sp500", "mktcap", "monbase", "walcl", "wresbal", "rrp", "tb3ms", "gs10", "fedfunds", "unrate"]);
+const excludedIds = new Set(["sp500", "mktcap", "monbase", "walcl", "wresbal", "rrp", "tb3ms", "gs10", "fedfunds", "unrate", "inflation"]);
 export const COMPARE_CATEGORIES = {
   dollar: { label: "달러·환율", color: "#0ea5e9" },
   money: { label: "금리·통화", color: "#0d9488" },
@@ -14,12 +14,13 @@ const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
   dollar: ["dxy", "reer", "usd_purchasing_power", "fx_krw", "fx_jpy", "fx_eur"],
   money: ["real_tb3ms", "m2"],
   assets: ["gold", "oil", "nasdaq"],
-  economy: ["gdp_growth", "inflation", "debt_gdp", "trade_bal", "trade"],
+  economy: ["gdp_growth", "cpi_level", "debt_gdp", "trade_bal", "trade"],
 };
 
 const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
+  { id: "cpi_level", label: "미국 소비자물가 수준(CPI)", unit: "idx", color: "#e0c267", cadence: 1, category: "economy", note: "CPIAUCNS · 월간 · 비계절조정 · 1982~1984=100 · 전년비가 아닌 물가 수준", url: "https://fred.stlouisfed.org/series/CPIAUCNS" },
   ...PANELS.filter(p => !excludedIds.has(p.id)).map(p => ({ id: p.series, label: p.id === "trade" ? "실질 순수출" : p.label,
     unit: p.id === "trade" ? "십억 2017달러·연율" : p.unit, color: p.color, category: ["real_tb3ms", "usd_purchasing_power"].includes(p.id) ? "money" : p.cat,
     cadence: ["gdp_growth", "debt_gdp", "mktcap", "trade"].includes(p.id) ? 3 : 1,
@@ -65,8 +66,8 @@ export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === 
 
 // Preserve saved note identities; never relabel the retired composite as DXY or REER.
 const retiredTradeLabels: Record<string, string> = { trade_cycle: "수출−수입 증가율 격차", exports_yoy: "미국 수출 증가율", imports_yoy: "미국 수입 증가율" };
-export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (excludedIds.has(id) ? (PANELS.find(p => p.id === id)?.label ?? id) + "(비교에서 제외됨)" : retiredTradeLabels[id] ? retiredTradeLabels[id] + "(삭제됨)" : id === "dollar" ? "기존 달러지수(삭제됨)" : id === "cpi_level" ? "CPI 수준(이전 지표)" : id);
+export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (excludedIds.has(id) ? (PANELS.find(p => p.id === id)?.label ?? id) + "(비교에서 제외됨)" : retiredTradeLabels[id] ? retiredTradeLabels[id] + "(삭제됨)" : id === "dollar" ? "기존 달러지수(삭제됨)" : id);
 export const activeSeriesIds = (ids: string[]) => [...new Set(ids.filter(id => COMPARE_SERIES.some(s => s.id === id)))];
 
 // Migrate viewing preferences only; saved prose retains its original series identity.
-export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id => id === "cpi_level" ? "usd_purchasing_power" : id));
+export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id => id === "inflation" ? "cpi_level" : id));

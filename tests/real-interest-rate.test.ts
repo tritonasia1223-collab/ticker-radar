@@ -45,8 +45,8 @@ describe("derived real interest rate", () => {
     expect(historyOf("real_tb3ms")?.segments.map(s => s.proxy)).toEqual([true, false]);
   });
 
-  it("uses the requested label and plots actual signed rates alongside inflation", () => {
-    const ids = ["dxy", "inflation", "real_tb3ms"];
+  it("plots actual signed rates separately from the indexed CPI level", () => {
+    const ids = ["dxy", "cpi_level", "real_tb3ms"];
     const rawSeries = ids.map(id => ({ def: COMPARE_SERIES.find(s => s.id === id)!, points: monthlyPoints(data[id]) }));
     const result = buildComparisonAxes(rawSeries, automaticComparisonView(ids));
     const real = result.series.find(s => s.def.id === "real_tb3ms")!;
@@ -56,6 +56,6 @@ describe("derived real interest rate", () => {
     expect(real.points).toEqual(rawSeries.at(-1)!.points);
     expect(real.points.some(p => p.value < 0)).toBe(true);
     expect(result.pending).toEqual([]);
-    expect(result.series.find(s => s.def.id === "inflation")?.axis).toBe(real.axis);
+    expect(result.series.find(s => s.def.id === "cpi_level")?.axis).toBe("index");
   });
 });

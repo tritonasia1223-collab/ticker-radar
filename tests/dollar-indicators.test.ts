@@ -38,14 +38,14 @@ describe("dollar indicator replacement", () => {
     const raw = [{ def: COMPARE_SERIES.find(s => s.id === "usd_purchasing_power")!, points: monthlyPoints(derived.usd_purchasing_power) }];
     const rebased = buildComparisonAxes(raw, { mode: "mixed", base: "2000-02", assignments: {}, rightUnit: null });
     expect(rebased.series[0].points.map(p => p.value)).toEqual([125, 100]);
-    expect(viewingSeriesIds(["cpi_level", "usd_purchasing_power", "dxy"])).toEqual(["usd_purchasing_power", "dxy"]);
-    expect(activeSeriesIds(["cpi_level"])).toEqual([]); // Do not reinterpret saved notes.
+    expect(viewingSeriesIds(["inflation", "cpi_level", "usd_purchasing_power", "dxy"])).toEqual(["cpi_level", "usd_purchasing_power", "dxy"]);
+    expect(activeSeriesIds(["inflation", "cpi_level"])).toEqual(["cpi_level"]); // Saved YoY notes are not reinterpreted as levels.
     expect(sourcePeriods("usd_purchasing_power")[0].id).toBe("CPIAUCNS");
   });
   it("keeps three distinct identities, sources, historical coverage and indexable axes", () => {
     expect(data.dollar).toBeUndefined();
     expect(COMPARE_SERIES.some(s => s.id === "dollar")).toBe(false);
-    expect(activeSeriesIds(["dollar", "dxy", "dxy", "cpi_level", "reer"])).toEqual(["dxy", "reer"]);
+    expect(activeSeriesIds(["dollar", "dxy", "dxy", "cpi_level", "reer"])).toEqual(["dxy", "cpi_level", "reer"]);
     expect(seriesLabel("dollar")).toBe("기존 달러지수(삭제됨)");
     expect(seriesLabel("dxy")).toContain("명목");
     expect(seriesLabel("reer")).toContain("실질");

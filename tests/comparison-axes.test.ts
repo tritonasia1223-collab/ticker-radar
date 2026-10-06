@@ -23,7 +23,7 @@ describe("mixed comparison axes", () => {
     expect(automaticComparisonView(["dxy", "real_tb3ms", "trade_bal"], automatic).rightUnit).toBe("trade-balance");
   });
   it("assigns prices and amounts left; rates, ratios and signed flows right", () => {
-    for (const id of ["dxy", "fx_eur", "fx_krw", "fx_jpy", "nasdaq", "gold", "oil", "m2"]) expect(defaultAxis(id)).toBe("left");
+    for (const id of ["dxy", "cpi_level", "fx_eur", "fx_krw", "fx_jpy", "nasdaq", "gold", "oil", "m2"]) expect(defaultAxis(id)).toBe("left");
     for (const id of ["real_tb3ms", "gdp_growth", "inflation", "debt_gdp", "trade", "trade_bal"]) expect(defaultAxis(id)).toBe("right");
   });
   it("overlays four indexed currencies and a negative trade balance without losing selections", () => {
@@ -43,7 +43,7 @@ describe("mixed comparison axes", () => {
     }
   });
   it("shares one actual-value scale between rates and growth rates and retains their raw values", () => {
-    const result = build(["dxy", "real_tb3ms", "inflation", "gdp_growth"]);
+    const result = build(["dxy", "real_tb3ms", "debt_gdp", "gdp_growth"]);
     expect(result.groups).toHaveLength(1);
     expect(result.series.slice(1).map(s => s.axis)).toEqual(["right:%", "right:%", "right:%"]);
     expect(result.series.slice(1).every(s => s.points.every(p => p.value === p.raw))).toBe(true);
