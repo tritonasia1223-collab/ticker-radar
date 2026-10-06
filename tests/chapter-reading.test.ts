@@ -17,6 +17,36 @@ function fixture() {
   return {data, outcome, set};
 }
 describe("챕터의 관측 기반 종합 답변", () => {
+  it("은행 해설은 실제 비교일과 직전 분기 응답 방향을 쓰고 정의·분석을 구분한다", () => {
+    const f = fixture();
+    const loans = f.set("h8_ci_loans", 2952.9144, -2.256);
+    loans.changes[4]!.from = "2026-09-02";
+    for (const [id, previous, latest] of [["sloos_ci_standards", 8.1, 0], ["sloos_ci_demand", 4.8, 16.1]] as const) {
+      const l = f.set(id, latest, 0); l.latest = { date: "2026-07-01", value: latest };
+      l.points = [{ date: "2026-04-01", value: previous }, l.latest];
+      l.changes[4]!.unchangedRelease = true;
+    }
+    const p = creditChapter("credit-bank", f.data, f.outcome, 4).paragraphs!;
+    const text = p.map(p => p.text).join(" ");
+    expect(text).toContain("2조 9,552억 달러에서 2조 9,529억 달러로 23억 달러 줄었습니다");
+    expect(text).toContain("2026-09-02 → 2026-09-23");
+    expect(text).toContain("강화하는 흐름은 이전 조사보다 약해졌습니다");
+    expect(text).toContain("수요는 이전 조사보다 강해진");
+    expect(text).not.toMatch(/순비율|8\.1%|16\.1%|4주간|문턱|대출 규제/);
+    expect(p[0].kind).toBe("explanation");
+    expect(p.some(p => p.kind === "conclusion")).toBe(true);
+    // 조사 분기가 빠졌다면 '이전 조사보다'라는 변화 해석을 만들지 않는다.
+    f.data.find(i => i.id === "sloos_ci_standards")!.lines[0].points[0].date = "2025-10-01";
+    expect(creditChapter("credit-bank", f.data, f.outcome, 4).paragraphs!.map(p => p.text).join(" ")).not.toContain("강화하는 흐름은 이전 조사보다 약해졌습니다");
+  });
+  it("은행 보고서는 비상 경고를 우선하고 오래된 자료로 낙관적인 결론을 내리지 않는다", () => {
+    const f = fixture(); f.set("h8_ci_loans", 2800, 100); f.set("sloos_ci_standards", -5, 0); f.set("sloos_ci_demand", 5, 0);
+    f.outcome.signals.loan_emergency_warning.status = true;
+    expect(creditChapter("credit-bank", f.data, f.outcome, 4).paragraphs!.find(p => p.kind === "conclusion")!.text).toContain("급히 인출");
+    f.outcome.signals.loan_emergency_warning.status = false;
+    f.data.find(i => i.id === "sloos_ci_standards")!.lines[0].stale = true;
+    expect(creditChapter("credit-bank", f.data, f.outcome, 4).paragraphs!.find(p => p.kind === "conclusion")!.text).toContain("자료가 부족");
+  });
   it("엄격한 확장 조건에 못 미쳐도 잔액 증가와 높은 대출 문턱을 함께 답한다", () => {
     const f = fixture(); f.set("h8_ci_loans", 2800, 5); f.set("sloos_ci_standards", 4, -2); f.set("sloos_ci_demand", 3, 0);
     const r = creditChapter("credit-bank", f.data, f.outcome, 4);

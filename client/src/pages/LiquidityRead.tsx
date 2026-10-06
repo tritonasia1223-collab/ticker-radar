@@ -18,6 +18,7 @@ import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
 import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioReading, creditChapterForState } from "@/components/credit/CreditReading";
 import { liquidityChapters } from "@shared/liquidity-chapters";
+import type { ChapterParagraph } from "@shared/credit/chapter-reading";
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
@@ -64,28 +65,73 @@ function Expander({ label, open, onToggle, children, transparent = false }: { la
 }
 // 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 스티키·본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
 // 라벨이 본문 폭을 잡아먹지 않고, 본문은 남는 폭의 가운데에 선다. lg 미만에서는 라벨이 본문 위로 올라간다.
-const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(190px,1fr)_minmax(0,900px)_minmax(0,1fr)] xl:grid-cols-[minmax(220px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
+const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,900px)_minmax(0,1fr)] xl:grid-cols-[minmax(280px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
 const STICKY_TOP = "var(--liquidity-sticky-top, 84px)";
+function StickyChapter({ children }: { children: ReactNode }) {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!node) return;
+    const measure = () => setHeight(Math.ceil(node.getBoundingClientRect().height));
+    const observer = new ResizeObserver(measure);
+    observer.observe(node); measure();
+    return () => observer.disconnect();
+  }, [node]);
+  // 화면보다 긴 해설은 먼저 자연스럽게 스크롤한 뒤 끝부분이 보이는 위치에 고정한다.
+  return <div ref={setNode} className="lg:sticky" style={{ top: `min(${STICKY_TOP}, calc(100dvh - ${height}px - 20px))` }}>{children}</div>;
+}
 function Row({ id, as = "section", aside, children }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode }) {
   const Tag = as;
   return (
     <Tag id={id} className={ROW_GRID} style={{ scrollMarginTop: STICKY_TOP }}>
-      <div className="border-t border-[#1A1A18] pt-7 lg:border-t-0 lg:justify-self-end lg:w-[190px] xl:w-[220px]">
-        <div className="lg:sticky" style={{ top: STICKY_TOP }}>{aside}</div>
+      <div className="border-t border-[#1A1A18] pt-7 lg:border-t-0 lg:justify-self-end lg:w-[260px] xl:w-[280px]">
+        <StickyChapter>{aside}</StickyChapter>
       </div>
       <div className="lg:pt-7 lg:border-t lg:border-[#1A1A18]" style={{ minWidth: 0, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
     </Tag>
   );
 }
-function Section({ id, num, title, answer, children }: { id: string; num: string; title: string; answer: string; children: ReactNode }) {
+function OpinionText({ paragraph }: { paragraph: ChapterParagraph }) {
+  if (paragraph.kind === "explanation") return <>{paragraph.text}</>;
+  // 증감 방향만 색으로 표시한다. 증가가 항상 개선이라는 의미는 아니다.
+  // 부정·가정 문장(커지지 않았습니다, 줄었다는 이유만으로 등)은 자동 강조하지 않는다.
+  const money = String.raw`(?:\d[\d,.]*(?:조(?:\s*\d[\d,.]*억)?|억)\s*달러\s+)?`;
+  const rules = [
+    { pattern: new RegExp(`${money}(?:늘었습니다|높아졌습니다|커졌습니다|강해졌습니다|강해진 것으로 나타났습니다|커지고 있습니다)|기업대출 급증|추가 금리는 급등|강화했다고|늘었다고`, "g"), color: C.release },
+    { pattern: new RegExp(`${money}(?:줄었습니다|낮아졌습니다|약해졌습니다)|기업어음 조달은 줄고|대출 ETF도 약해져|완화했다고|줄었다고`, "g"), color: C.absorb },
+  ];
+  const spans: { start: number; end: number; color?: string; strong: boolean }[] = [];
+  for (const rule of rules) for (const match of paragraph.text.matchAll(rule.pattern)) {
+    spans.push({ start: match.index!, end: match.index! + match[0].length, color: rule.color, strong: /\d.*달러/.test(match[0]) });
+  }
+  // 문단 전체를 굵게 하지 않고, 결론의 핵심 구절 하나만 강조한다.
+  if (paragraph.kind === "conclusion") {
+    const key = ["위축됐다고 보기는 어렵습니다", "위축됐을 가능성이 있습니다", "자금 조달이 이어지고 있습니다", "자금 조달 확대로 읽기 어렵습니다", "공급과 수요의 움직임이 엇갈립니다", "소형은행에서는 예금과 대출이 함께 약해지는 신호", "이자 부담이 큽니다", "신규 차입이나 차환에는 부담", "주의 신호가 나타납니다", "다른 조달 경로로 부담이 번지는지"].find(text => paragraph.text.includes(text));
+    if (key) { const start = paragraph.text.indexOf(key); spans.push({ start, end: start + key.length, strong: true }); }
+  }
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  for (const span of spans.sort((a, b) => a.start - b.start || b.end - a.end)) {
+    if (span.start < cursor) continue;
+    parts.push(paragraph.text.slice(cursor, span.start));
+    const text = paragraph.text.slice(span.start, span.end);
+    parts.push(span.strong ? <strong key={span.start} style={{ color: span.color, fontWeight: 600 }}>{text}</strong> : <span key={span.start} style={{ color: span.color }}>{text}</span>);
+    cursor = span.end;
+  }
+  parts.push(paragraph.text.slice(cursor));
+  return <>{parts}</>;
+}
+function Section({ id, num, title, question, answer, paragraphs, children }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; children: ReactNode }) {
+  const opinion = paragraphs ?? answer?.split(/(?<=[.!?])\s+/).filter(Boolean).map(text => ({ kind: "analysis" as const, text }));
   return (
     <Row id={id} aside={
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{num}</div>
         <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
-        <div data-testid={`chapter-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, lineHeight: 1.85, color: C.body, marginTop: 6, wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word" }}>
-          {answer.split(/(?<=[.!?])\s+/).filter(Boolean).map((sentence, n) => <p key={n} style={{ margin: 0 }}>{sentence}</p>)}
-        </div>
+        <Cap>{question}</Cap>
+        {!!opinion?.length && <div aria-label={`${title} 종합 의견`} data-testid={`chapter-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#ECEAE3", borderRadius: 10, padding: "18px 16px", marginTop: 12, wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word" }}>
+          {opinion.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
+        </div>}
       </div>
     }>{children}</Row>
   );
@@ -415,7 +461,7 @@ export default function LiquidityRead() {
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID}>
-        <div className="lg:justify-self-end lg:w-[190px] xl:w-[220px] lg:pt-6"><div className="lg:sticky" style={{ top: STICKY_TOP }}>
+        <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] lg:pt-6"><div className="lg:sticky" style={{ top: STICKY_TOP }}>
           <h2 className="text-base font-semibold">개요</h2>
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
         </div></div>
@@ -424,7 +470,7 @@ export default function LiquidityRead() {
         </div></div>
 
         {/* 01 얼마나 */}
-        <Section id="s1" num="01" title="얼마나" answer={chapters.s1}>
+        <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나">
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2>순유동성과 M2</H2>
 
@@ -475,7 +521,7 @@ export default function LiquidityRead() {
         </Section>
 
         {/* 02 어디서 */}
-        <Section id="s2" num="02" title="어디서" answer={chapters.s2}>
+        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나">
           {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "풀린" : "흡수된"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
             <ContribBars N={cmp} centered rows={[
@@ -513,7 +559,7 @@ export default function LiquidityRead() {
         </Section>
 
         {/* 03 어디로 */}
-        <Section id="s3" num="03" title="어디로" answer={chapters.s3}>
+        <Section id="s3" num="03" title="어디로" question="늘어난 돈이 어디에 쌓였나">
           {!to || !S3 ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2><Parts parts={S3.headline} /></H2>
             {to.sameSign ? (
@@ -550,7 +596,7 @@ export default function LiquidityRead() {
         </Section>
 
         {/* 04 누가 샀나 */}
-        <Section id="s4" num="04" title="누가 샀나" answer={chapters.s4}>
+        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나">
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
@@ -604,7 +650,7 @@ export default function LiquidityRead() {
         </Row>
 
         {/* 05 탈은 없나 */}
-        <Section id="s5" num="05" title="탈은 없나" answer={context.isLoading ? "자금시장 자료를 확인하고 있습니다." : context.isError ? "자금시장 자료를 불러오지 못했습니다." : chapters.s5}>
+        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" answer={context.isLoading ? "자금시장 자료를 확인하고 있습니다." : context.isError ? "자금시장 자료를 불러오지 못했습니다." : chapters.s5}>
           <H2>{S5.headline.join(" ")}</H2>
           <div style={{ display: "flex", flexDirection: "column", borderBottom: `1px solid ${C.line}` }}>{st.rows.map((r) => <GaugeRow key={r.key} r={r} />)}</div>
           <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} />
@@ -612,10 +658,10 @@ export default function LiquidityRead() {
           {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
         </Section>
 
-        {readingGroups.map((group, n) => <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} answer={creditChapterForState(group.id, credit, cmp).text}>
+        {readingGroups.map((group, n) => { const chapter = creditChapterForState(group.id, credit, cmp); return <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question} answer={chapter.text} paragraphs={chapter.paragraphs}>
           <CreditReadingGroup group={group} state={credit} weeks={cmp} />
-        </Section>)}
-        <Section id="credit-scenarios" num="10" title="함께 읽으면" answer={creditChapterForState("credit-scenarios", credit, cmp).text}>
+        </Section>; })}
+        <Section id="credit-scenarios" num="10" title="함께 읽으면" question="어떤 신용 국면에 가까운가" answer={creditChapterForState("credit-scenarios", credit, cmp).text}>
           <CreditScenarioReading state={credit} />
           <Cap>과거 조회: 관측일 기준 · 사후 공시·수정치 포함. 신용 조건 판정: 고정된 4주·13주 규칙. 그래프 비교: 상단 선택 기간.</Cap>
         </Section>
