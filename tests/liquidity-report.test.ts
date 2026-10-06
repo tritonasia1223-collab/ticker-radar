@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { analyze, type LineAnalysis } from "../shared/credit/signals";
 import { scenarios, creditSignals } from "../shared/credit/scenarios";
 import { creditChapter } from "../shared/credit/chapter-reading";
-import { liquidityReport, type ReportInput } from "../shared/liquidity-report";
+import { liquidityReport, liquidityQuantity, economySummary, type ReportInput } from "../shared/liquidity-report";
 import { ownershipInsights } from "../shared/treasury-ownership";
 import ownership from "../shared/treasury-ownership-data.json";
 
@@ -98,5 +98,54 @@ describe('시나리오 판정 폐기', () => {
     const chapter = creditChapter('credit-watchpoints', data, current, 4);
     expect(JSON.stringify(chapter)).not.toMatch(/시나리오|적합도|후보/);
     expect(chapter.paragraphs?.some(p => p.text.includes('다음에는'))).toBe(true);
+  });
+});
+
+describe('선택 기간에 맞춘 유동성의 양', () => {
+  const sel = { ...macro().sel, total: 6743026, tga: 984044, rrp: 361880, reserves: 2881691 };
+  it('4주와 13주의 비교값을 각각 문장에 반영한다', () => {
+    const one = { ...sel, date: '2026-09-02', total: sel.total - 5827, tga: sel.tga - 39682, rrp: sel.rrp - 4141, reserves: sel.reserves + 47594 };
+    const quarter = { ...sel, date: '2026-07-01', total: sel.total - 18467, tga: sel.tga - 176687, rrp: sel.rrp - 23445, reserves: sel.reserves + 195328 };
+    const a = liquidityQuantity(sel, one, 4), b = liquidityQuantity(sel, quarter, 13);
+    expect(a).toContain('4주간 476억 달러 줄어 2조 8,817억 달러');
+    expect(a).toContain('58억 달러 늘었지만'); expect(a).toContain('380억 달러 줄었습니다');
+    expect(b).toContain('13주간 1,953억 달러 줄어');
+    expect(b).toContain('1,767억 달러'); expect(b).toContain('1,817억 달러 줄었습니다');
+  });
+  it('TGA에서 회수하고 역레포에 쌓는 혼합 방향도 구분한다', () => {
+    const prev = { ...sel, total: sel.total + 10000, tga: sel.tga + 30000, rrp: sel.rrp - 5000 };
+    const text = liquidityQuantity(sel, prev, 4);
+    expect(text).toContain('TGA)에서 300억 달러가 회수');
+    expect(text).toContain('역레포에 50억 달러가 더 쌓');
+    expect(text).toContain('순유동성은 150억 달러 늘었습니다');
+  });
+  it('비교값이 없으면 현재 잔액을 변화량으로 쓰지 않는다', () => {
+    expect(liquidityQuantity(sel, null, 13)).toContain('13주 구간의 비교 자료가 부족');
+  });
+});
+describe('경기 지표 요약', () => {
+  const context = {
+    gdp: [{date:'2025-04-01',value:100}, {date:'2026-04-01',value:106.3}, {date:'2026-07-01',value:999}],
+    unrate: [{date:'2026-08-01',value:4.2}, {date:'2026-10-01',value:99}],
+    cpi: [{date:'2025-08-01',value:100}, {date:'2026-08-01',value:103}],
+    m2: [{date:'2025-08-01',value:100}, {date:'2026-08-01',value:105.7}],
+  };
+  it('완결 GDP 분기와 월간 지표의 동일 월 전년비를 표시하고 M2를 분리한다', () => {
+    const result=economySummary(context,'2026-09-23');
+    expect(result.economy).toContain('경기 지표: 명목 GDP는 전년 대비 6.3%');
+    expect(result.economy).toContain('2026년 2분기');
+    expect(result.economy).toContain('실업률은 4.2%');
+    expect(result.economy).toContain('CPI(소비자물가)는 전년 대비 3.0%');
+    expect(result.economy).not.toContain('M2');
+    expect(result.m2).toContain('5.7%');
+  });
+  it('CPI 결측을 PCE나 0%로 대체하지 않는다', () => {
+    const result=economySummary({...context,cpi:[],pcepilfe:[{date:'2026-08-01',value:3}]},'2026-09-23');
+    expect(result.economy).toContain('CPI(소비자물가) 전년비는 비교 자료가 부족');
+  });
+  it('선택일보다 오래된 지표를 최신값으로 제시하지 않는다', () => {
+    const result=economySummary(context,'2027-06-01');
+    expect(result.economy).toContain('실업률은 자료가 부족');
+    expect(result.m2).toBe('');
   });
 });

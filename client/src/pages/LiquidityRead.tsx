@@ -18,7 +18,7 @@ import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
 import { useCreditReading, CreditSummary, CreditReadingGroup, CreditWatchpoints, creditChapterForState } from "@/components/credit/CreditReading";
 import { liquidityChapters } from "@shared/liquidity-chapters";
-import { liquidityReport } from "@shared/liquidity-report";
+import { liquidityReport, liquidityQuantity, economySummary } from "@shared/liquidity-report";
 import type { ChapterParagraph } from "@shared/credit/chapter-reading";
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
@@ -137,10 +137,10 @@ function Section({ id, num, title, question, answer, paragraphs, children }: { i
     }>{children}</Row>
   );
 }
-function ReportOriginalSummary() {
+function ReportOriginalSummary({ quantity, economy }: { quantity: string; economy: string }) {
   const introduction = "9월 말 미국 유동성은 양은 줄고 가격은 뛴 국면입니다. 순유동성은 4주간 380억 달러 줄어 5조 3,971억 달러가 됐고, 10년 실질금리는 2.93%로 2008년 11월 이후 가장 높습니다.";
-  const items = ["유동성의 양: 지급준비금이 2조 8,817억 달러로 최근 3년 하위 3% 구간입니다. 연준 자산은 1년간 1,559억 달러 늘었지만, 재무부 현금 계좌(TGA)가 1,647억 달러 불어나며 그 돈을 흡수했습니다.","돈의 가격: 연준이 지급준비금에 주는 이자율(IORB)이 9월 17일 3.65%에서 3.90%로 올랐습니다. 2023년 7월 이후 첫 인상이고, 4주 사이 HY 회사채 시장금리가 0.98%p 뛰었습니다.","통화와 경기: M2는 전년 대비 5.7%, 명목 GDP는 6.3% 늘었고 실업률은 4.2%입니다. 돈과 경기가 식지 않은 상태에서 금리가 오른 것입니다.","신용: 은행 대출과 우량 회사채는 멀쩡하고, 가장 약한 고리만 벌어지고 있습니다. CCC 이하 등급의 가산금리는 11.79%p로 3년 최고인데, HY 전체는 3.12%p로 3년 중간 수준입니다.","국채 수급: 9월 4주간 국채 순발행은 20억 달러 감소로 사실상 0입니다. 단기채를 1,391억 달러 줄이고 중장기채를 1,371억 달러 늘리는 만기 교체가 있었습니다."];
-  return <div data-testid="market-analysis" className="mb-9 text-[15px] leading-[1.85] text-[#3B3934]">
+  const items = [quantity,"금리 환경 전반: 시장금리의 하한선 역할을 하는 IORB(지급준비금 이자율)가 9월 17일 3.9%로 인상됐습니다. 2023년 7월 이후 첫 인상이고, 4주 사이 HY 회사채 시장금리가 0.98%p 뛰었습니다.",economy,"대출 시장: 은행 대출과 우량 회사채(IG)는 멀쩡하고, 가장 약한 고리만 벌어지고 있습니다. 위험 등급인 HY 중에서도 CCC 이하 등급의 가산금리가 11.79%p로 3년 최고 수준입니다.","국채 수급: 9월 4주간 단기채 잔액은 1,391억 달러 줄고, 중장기채 잔액은 1,371억 달러 늘었습니다. 두 증감이 상쇄되면서 전체 국채 잔액은 순액으로 20억 달러 줄어, 총량에는 거의 변화가 없었습니다."];
+  return <div data-testid="market-analysis" className="mb-9 rounded-2xl bg-[#EAEDE7] p-5 sm:p-7 text-[15px] leading-[1.85] text-[#3B3934]">
     <h2 className="mb-4 text-xl font-semibold" style={{ fontFamily: SERIF }}>핵심 요약</h2>
     <p className="mb-3">{introduction}</p>
     <ul className="list-disc space-y-2 pl-5">
@@ -150,7 +150,7 @@ function ReportOriginalSummary() {
 }
 function ReportBody({ paragraphs, overview = false }: { paragraphs: ChapterParagraph[]; overview?: boolean }) {
   if (!paragraphs.length) return null;
-  return <div data-testid={overview ? "market-analysis" : "section-analysis"} className={overview ? "mb-9 space-y-5" : "space-y-3"}>
+  return <div data-testid={overview ? "market-analysis" : "section-analysis"} className={overview ? "mb-9 space-y-5 rounded-2xl bg-[#EAEDE7] p-5 sm:p-7" : "space-y-3"}>
     {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, marginTop: n ? overview ? 18 : 12 : 0, fontSize: p.kind === "explanation" ? 12 : overview && n === 0 ? 24 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#918D83" : C.body, fontFamily: overview && n === 0 ? SERIF : undefined, fontWeight: overview && n === 0 ? 600 : 400 }}><OpinionText paragraph={p} /></p>)}
   </div>;
 }
@@ -456,6 +456,7 @@ export default function LiquidityRead() {
   const reserveRatio = sel ? reservesGdp(sel.reserves, sel.date, ctx.gdp ?? []) : null;
   const chapters = liquidityChapters(how, from, to, who, st, cmp);
   const creditAvailable = !credit.query.isLoading && !credit.query.isError && !credit.query.data?.error && !credit.query.data?.configChanged;
+  const macroSummary = economySummary(ctx, selDate);
   const report = liquidityReport({ asOf: selDate, weeks: cmp, history: weeks, sel: selW, prev, context: ctx, how, from, to, who, stress: st, flow: debt.data?.flow ?? null, credit: creditAvailable ? credit.data : [] });
 
   return (
@@ -486,7 +487,7 @@ export default function LiquidityRead() {
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
         </div></div>
         <div style={{ minWidth: 0 }}>
-        {selDate === "2026-09-30" && cmp === 4 ? <ReportOriginalSummary /> : <ReportBody paragraphs={report.overview} overview />}
+        {selDate === "2026-09-30" ? <ReportOriginalSummary quantity={liquidityQuantity(selW, prev, cmp) + macroSummary.m2} economy={macroSummary.economy} /> : <ReportBody paragraphs={[report.overview[0], { kind: "analysis", text: liquidityQuantity(selW, prev, cmp) + macroSummary.m2 }, { kind: "analysis", text: macroSummary.economy }, ...report.overview.slice(1)]} overview />}
         <LiquidityDashboard showRiskReview={false} how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} stress={st} riskHeadline={credit.query.isLoading ? "신용 자료를 확인하고 있습니다." : credit.query.isError || credit.query.data?.error || credit.query.data?.configChanged ? "선택 시점의 신용 상태를 확인하지 못했습니다." : bondReading(credit.data, credit.outcome).overview} alerts={<CreditSummary state={credit} weeks={cmp} />} />
         </div></div>
 

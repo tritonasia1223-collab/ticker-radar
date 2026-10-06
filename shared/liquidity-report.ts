@@ -11,6 +11,39 @@ const DAY=86400000;
 const finite=Number.isFinite;
 const amount=(v:number)=>`${fmt.amount(Math.abs(v))} 달러`;
 const direction=(v:number)=>v>0?'늘었습니다':v<0?'줄었습니다':'변하지 않았습니다';
+export function economySummary(context: LiquidityContext['series'], asOf: string) {
+  const points = (key: keyof LiquidityContext['series']) => (context[key] ?? []).filter(p => p.date <= asOf && finite(p.value)).sort((a,b) => a.date.localeCompare(b.date));
+  const quarterEnd = (date: string) => new Date(Date.UTC(Number(date.slice(0,4)), Number(date.slice(5,7)) + 2, 0)).toISOString().slice(0,10);
+  const gdp = points('gdp').filter(p => quarterEnd(p.date) <= asOf);
+  const latest = (p: Obs[], age: number, end = (d: string) => d) => p.length && Date.parse(asOf)-Date.parse(end(p.at(-1)!.date)) <= age*DAY ? p.at(-1)! : null;
+  const yearChange = (p: Obs[], now: Obs | null) => {
+    const before = now && p.find(v => v.date === `${Number(now.date.slice(0,4))-1}${now.date.slice(4)}`);
+    return now && before && before.value > 0 ? (now.value / before.value - 1) * 100 : null;
+  };
+  const gdpNow = latest(gdp, 183, quarterEnd), gdpYoy = yearChange(gdp, gdpNow);
+  const un = latest(points('unrate'), 70), cpi = points('cpi'), cpiNow = latest(cpi, 70), cpiYoy = yearChange(cpi, cpiNow);
+  const m2 = points('m2'), m2Now = latest(m2, 70), m2Yoy = yearChange(m2, m2Now);
+  const month = (date: string) => `${date.slice(0,4)}년 ${Number(date.slice(5,7))}월`;
+  const gdpText = gdpYoy != null && gdpNow ? `명목 GDP는 전년 대비 ${Math.abs(gdpYoy).toFixed(1)}% ${direction(gdpYoy)} (${gdpNow.date.slice(0,4)}년 ${Math.floor((Number(gdpNow.date.slice(5,7))-1)/3)+1}분기).` : '명목 GDP 전년비는 비교 자료가 부족합니다.';
+  const unText = un ? `실업률은 ${un.value.toFixed(1)}%입니다 (${month(un.date)}).` : '실업률은 자료가 부족합니다.';
+  const cpiText = cpiYoy != null && cpiNow ? `CPI(소비자물가)는 전년 대비 ${Math.abs(cpiYoy).toFixed(1)}% ${cpiYoy >= 0 ? '상승' : '하락'}했습니다 (${month(cpiNow.date)}).` : 'CPI(소비자물가) 전년비는 비교 자료가 부족합니다.';
+  return { economy: `경기 지표: ${gdpText} ${unText} ${cpiText}`, m2: m2Yoy != null && m2Now ? ` M2는 전년 대비 ${Math.abs(m2Yoy).toFixed(1)}% ${direction(m2Yoy)} (${month(m2Now.date)}).` : '' };
+}
+export function liquidityQuantity(sel: ReadWeek, prev: ReadWeek | null, weeks: 4 | 13): string {
+  if (!prev || [sel, prev].some(w => [w.total, w.tga, w.rrp, w.reserves].some(v => !finite(v)))) return `유동성의 양: 선택한 ${weeks}주 구간의 비교 자료가 부족합니다.`;
+  const money = (v: number) => {
+    const eok = Math.round(Math.abs(v) / 100), jo = Math.floor(eok / 10000), rest = eok % 10000;
+    return `${jo ? `${jo}조 ` : ""}${rest || !jo ? `${rest.toLocaleString("ko-KR")}억 ` : ""}달러`;
+  };
+  const assets = sel.total - prev.total, tga = sel.tga - prev.tga, rrp = sel.rrp - prev.rrp;
+  const reserves = sel.reserves - prev.reserves, net = assets - tga - rrp;
+  const flat = (v: number) => Math.round(Math.abs(v) / 100) === 0;
+  const balance = flat(reserves) ? `지급준비금은 ${weeks}주간 거의 변하지 않아 ${money(sel.reserves)}입니다.` : `지급준비금은 ${weeks}주간 ${money(reserves)} ${reserves > 0 ? "늘어" : "줄어"} ${money(sel.reserves)}가 됐습니다.`;
+  const assetText = flat(assets) ? "연준 자산은 거의 변하지 않았고" : `연준 자산은 ${money(assets)} ${assets > 0 ? net < 0 ? "늘었지만" : "늘었고" : net > 0 ? "줄었지만" : "줄었고"}`;
+  const holding = (name: string, v: number) => flat(v) ? `${name} 잔액은 거의 변하지 않았습니다.` : v > 0 ? `${name}에 ${money(v)}가 더 쌓였습니다.` : `${name}에서 ${money(v)}가 회수됐습니다.`;
+  const sources = tga >= 50 && rrp >= 50 ? `재무부 현금 계좌(TGA)에 ${money(tga)}, 역레포에 ${money(rrp)}가 더 쌓이면서` : `${holding("재무부 현금 계좌(TGA)", tga)} ${holding("역레포", rrp)} 그 결과`;
+  return `유동성의 양: ${balance} ${assetText}, ${sources} 순유동성은 ${flat(net) ? "거의 변하지 않았습니다" : `${money(net)} ${direction(net)}`}.`;
+}
 export interface ReportInput {
   asOf:string; weeks:4|13; history:ReadWeek[]; sel:ReadWeek; prev:ReadWeek|null;
   context:LiquidityContext['series']; how:HowMuch|null; from:WhereFrom|null; to:WhereTo|null;

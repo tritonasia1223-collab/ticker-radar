@@ -235,7 +235,7 @@ export const loansBand = (musd: number) => band(musd, LOANS_CAUTION, LOANS_ALERT
 export const nfciBand = (v: number) => band(v, 0, 0.5);
 
 // ── API 페이로드 ──
-export type ContextKey = "gdp" | "m2" | "m2Currency" | "m2Demand" | "m2Liquid" | "m2Time" | "m2Retail" | "m2Retirement" | "m2RetirementDeposits" | "deposits" | "sofr" | "iorb" | "nfci" | "hy" | "dfii10" | "dtwexbgs" | "indpro" | "unrate" | "pcepilfe";
+export type ContextKey = "gdp" | "m2" | "m2Currency" | "m2Demand" | "m2Liquid" | "m2Time" | "m2Retail" | "m2Retirement" | "m2RetirementDeposits" | "deposits" | "sofr" | "iorb" | "nfci" | "hy" | "dfii10" | "dtwexbgs" | "indpro" | "unrate" | "cpi" | "pcepilfe";
 export interface LiquidityContext {
   fetchedAt: string;
   series: Partial<Record<ContextKey, Obs[]>>;   // 금액 시리즈(m2·deposits)는 musd, 나머지는 원단위(%·지수)

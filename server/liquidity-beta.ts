@@ -32,6 +32,7 @@ export const CONTEXT_SERIES: ContextSpec[] = [
   { key: "dtwexbgs", id: "DTWEXBGS",       unit: "index",    years: 35 },  // 일간, 광의 달러지수
   { key: "indpro",   id: "INDPRO",         unit: "index",    years: 35 },  // 월간
   { key: "unrate",   id: "UNRATE",         unit: "percent",  years: 35 },  // 월간
+  { key: "cpi",      id: "CPIAUCNS",       unit: "index",    years: 35 },  // 월간, 전체 CPI 비계절조정 · 전년비 계산
   { key: "pcepilfe", id: "PCEPILFE",       unit: "index",    years: 35 },  // 월간, 근원 PCE 지수
 ];
 
