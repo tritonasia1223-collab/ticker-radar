@@ -2,6 +2,7 @@
 // 선택 구간에 표식을 적용한다. 내부적으로 contentEditable + data-mark span 사용,
 // 외부로는 [[키|텍스트]] 마커 문자열을 주고받는다(value/onChange).
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useImperativeHandle, forwardRef, type ClipboardEvent } from "react";
+import { cn } from "@/lib/utils";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
   parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, type RichSeg,
@@ -222,6 +223,8 @@ export interface CapRichEditorHandle {
 }
 export interface CapRichEditorProps {
   value: string;
+  ariaLabel?: string;
+  className?: string;
   onChange: (v: string) => void;
   placeholder?: string;
   rows?: number;
@@ -234,7 +237,7 @@ export interface CapRichEditorProps {
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, linkTargets, align = "center",
+  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const committed = useRef(value);
@@ -888,8 +891,9 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         contentEditable
         suppressContentEditableWarning
         role="textbox"
+        aria-label={ariaLabel}
         aria-multiline="true"
-        className={`w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words ${align === "left" ? "text-left" : "text-center"}`}
+        className={cn(`w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words ${align === "left" ? "text-left" : "text-center"}`, className)}
         style={{ minHeight: `${rows * 1.4 + 1}rem` }}
         onKeyDown={handleKeyDown}
         onPaste={onPaste}

@@ -2,6 +2,7 @@ import { activeSeriesIds } from "@/lib/comparison-series";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown } from "lucide-react";
 import { CapRichText } from "./CapRichText";
+import { CapRichEditor } from "./CapRichEditor";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
@@ -35,7 +36,7 @@ export function ComparisonSidebar(p: Props) {
   useLayoutEffect(() => { if (p.panel === "insights" && content.current) content.current.scrollTop = 0; }, [p.panel, p.selected?.id]);
   const relatedIds = activeSeriesIds(p.selected?.context?.ids ?? []);
   const relatedHidden = p.selected?.context && (!!relatedIds.length || !!p.selected.context.spread) && ((p.currentContext.alignment && JSON.stringify(p.selected.context.alignment) !== JSON.stringify(p.currentContext.alignment)) || !sameComparisonView(p.selected.context.view ? automaticComparisonView(relatedIds, p.selected.context.view) : undefined, p.currentContext.view, relatedIds) || relatedIds.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
-  const filtered = p.notes.filter(n => (n.title + " " + n.text + " " + n.date).toLowerCase().includes(search.toLowerCase()));
+  const filtered = p.notes.filter(n => (n.title + " " + plain(n.text) + " " + n.date).toLowerCase().includes(search.toLowerCase()));
   return <aside className="w-full min-w-0 shrink-0 border-t bg-muted/15 lg:w-[42%] lg:max-w-[640px] lg:border-l lg:border-t-0" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
     <div className="flex border-b bg-background text-xs">
       <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "insights" ? "border-red-400 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("insights")}><Star size={14} className="fill-red-400 text-red-400" />인사이트 <span className="tabular-nums text-muted-foreground">{p.notes.length}</span></button>
@@ -48,7 +49,7 @@ export function ComparisonSidebar(p: Props) {
       </div> : <div className="p-4">
         <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="인사이트 검색" placeholder="제목, 내용, 날짜 검색" className={field + " pl-9 text-xs"} value={search} onChange={e => setSearch(e.target.value)} /></div>
         {p.loading ? <p className="py-8 text-center text-xs text-muted-foreground">인사이트 불러오는 중…</p> : !p.notes.length ? <div className="rounded-xl border border-dashed px-5 py-8 text-center"><Star size={25} className="mx-auto mb-3 text-red-400" /><h2 className="text-sm font-medium">발견한 흐름을 남겨보세요</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">날짜나 기간에 생각을 기록하세요.<br />어떤 지표를 보더라도 기록은 그 시간에 남습니다.</p>{p.canEdit && <button className={button + " mt-4"} onClick={p.onAdd}><Plus size={13} />첫 인사이트 작성</button>}</div> : <div className="space-y-2">
-          {filtered.map(n => <button key={n.id} className="block w-full rounded-lg border bg-background p-3 text-left transition-colors hover:border-red-400/50" data-testid={"insight-list-" + n.id} onClick={() => p.onSelect(n.id)}><p className="mb-1.5 text-[11px] tabular-nums text-muted-foreground">{n.date}{n.endDate && " ~ " + n.endDate}</p><h3 className="flex items-start gap-1.5 break-words text-sm font-semibold"><Star size={14} className="mt-0.5 shrink-0 fill-red-400 text-red-400" />{n.title}</h3><p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-[22px] text-muted-foreground">{n.text || "내용을 작성해 주세요."}</p></button>)}
+          {filtered.map(n => <button key={n.id} className="block w-full rounded-lg border bg-background p-3 text-left transition-colors hover:border-red-400/50" data-testid={"insight-list-" + n.id} onClick={() => p.onSelect(n.id)}><p className="mb-1.5 text-[11px] tabular-nums text-muted-foreground">{n.date}{n.endDate && " ~ " + n.endDate}</p><h3 className="flex items-start gap-1.5 break-words text-sm font-semibold"><Star size={14} className="mt-0.5 shrink-0 fill-red-400 text-red-400" />{n.title}</h3><p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-[22px] text-muted-foreground">{plain(n.text) || "내용을 작성해 주세요."}</p></button>)}
           {!filtered.length && <p className="py-6 text-center text-xs text-muted-foreground">검색 결과가 없습니다.</p>}
         </div>}
       </div>}
@@ -59,13 +60,6 @@ export function ComparisonSidebar(p: Props) {
 function InsightDocument(p: Props & { note: SavedInsight }) {
   const { note } = p, key = "note:" + note.id, scope = useCapEditScope(key);
   const [error, setError] = useState(""), [settings, setSettings] = useState(false), [dates, setDates] = useState(false), [confirmDelete, setConfirmDelete] = useState(false);
-  const prose = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = prose.current; if (!el) return;
-    const resize = () => { el.style.height = "0px"; el.style.height = Math.max(280, el.scrollHeight) + "px"; };
-    resize(); const ro = new ResizeObserver(() => { if (el.clientWidth !== lastWidth) { lastWidth = el.clientWidth; resize(); } });
-    let lastWidth = el.clientWidth; ro.observe(el); return () => ro.disconnect();
-  }, [note.text, p.canEdit]);
   const save = (patch: Partial<ComparisonInsight>) => {
     const current = collaboration.get(key); if (!current) return false;
     const result = comparisonInsightSchema.safeParse({ ...current, ...patch });
@@ -89,7 +83,7 @@ function InsightDocument(p: Props & { note: SavedInsight }) {
     </div>}
     {error && <p role="alert" className="my-2 text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
     <div className="flex items-start gap-1.5 border-b pb-2"><Star size={15} className="mt-1 shrink-0 fill-red-400 text-red-400" />{p.canEdit ? <BufferedInput label="제목" compact value={note.title} maxLength={160} save={value => save({ title: value })} /> : <h2 className="break-words text-sm font-semibold leading-6">{note.title}</h2>}</div>
-    {p.canEdit ? <textarea ref={prose} aria-label="인사이트 본문" className="mt-3 block w-full resize-none overflow-hidden rounded-sm bg-transparent p-0 text-sm font-normal leading-[22px] text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-sky-500/20" placeholder="이 시기에 발견한 흐름과 생각을 적어보세요." maxLength={100000} value={note.text} onChange={e => save({ text: e.target.value })} /> : <div className="mt-3 min-h-[280px] whitespace-pre-wrap break-words text-sm leading-[22px]">{note.text || "아직 작성된 내용이 없습니다."}</div>}
+    {p.canEdit ? <div className="mt-3"><CapRichEditor ariaLabel="인사이트 본문" value={note.text} onChange={text => { save({ text }); }} onBlur={text => { save({ text }); }} commitOnUnmount rows={12} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="이 시기에 발견한 흐름과 생각을 적어보세요. 글자를 드래그하면 색·하이라이트를 넣을 수 있습니다." /></div> : <CapRichText text={note.text || "아직 작성된 내용이 없습니다."} onJump={p.onJump} className="mt-3 block min-h-[280px] break-words text-sm leading-[22px]" />}
   </article>;
 }
 
