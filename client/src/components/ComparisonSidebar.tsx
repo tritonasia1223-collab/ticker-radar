@@ -36,7 +36,8 @@ export function ComparisonSidebar(p: Props) {
   useLayoutEffect(() => { if (p.panel === "insights" && content.current) content.current.scrollTop = 0; }, [p.panel, p.selected?.id]);
   const relatedIds = activeSeriesIds(p.selected?.context?.ids ?? []);
   const relatedHidden = p.selected?.context && (!!relatedIds.length || !!p.selected.context.spread) && ((p.currentContext.alignment && JSON.stringify(p.selected.context.alignment) !== JSON.stringify(p.currentContext.alignment)) || !sameComparisonView(p.selected.context.view ? automaticComparisonView(relatedIds, p.selected.context.view) : undefined, p.currentContext.view, relatedIds) || relatedIds.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
-  const filtered = p.notes.filter(n => (n.title + " " + plain(n.text) + " " + n.date).toLowerCase().includes(search.toLowerCase()));
+  const filtered = p.notes.filter(n => (n.title + " " + plain(n.text) + " " + n.date).toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.sortOrder - a.sortOrder || a.id.localeCompare(b.id));
   return <aside className="w-full min-w-0 shrink-0 border-t bg-muted/15 lg:w-[42%] lg:max-w-[640px] lg:border-l lg:border-t-0" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
     <div className="flex border-b bg-background text-xs">
       <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "insights" ? "border-red-400 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("insights")}><Star size={14} className="fill-red-400 text-red-400" />인사이트 <span className="tabular-nums text-muted-foreground">{p.notes.length}</span></button>
