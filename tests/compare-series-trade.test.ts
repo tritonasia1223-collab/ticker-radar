@@ -69,19 +69,19 @@ describe("그래프 비교 — 유로/달러·미국 무역수지", () => {
   });
 
   it("저장된 데이터: 첫 관측일·자릿수·월간 연속·유한값", () => {
-    const first: Record<string, string> = { fx_eur: "1999-01-01", trade_bal: "1992-01-01" };
+    const first: Record<string, string> = { fx_eur: "1999-01-01", trade_bal: "1960-01-01" };
     for (const [id, date] of Object.entries(first)) {
       const pts = series[id];
       expect(pts, id).toBeDefined(); expect(pts[0][0]).toBe(date);
       for (let i = 1; i < pts.length; i++) {
         expect(pts[i - 1][0] < pts[i][0], `${id} 순서`).toBe(true);
         const a = new Date(pts[i - 1][0]), b = new Date(pts[i][0]);
-        expect((b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth(), `${id} ${pts[i][0]} 월간 연속`).toBe(1);
+        expect((b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth(), `${id} ${pts[i][0]} 관측 주기`).toBe(id === "trade_bal" && pts[i - 1][0] < "1992-01-01" ? 12 : 1);
       }
       for (const [d, v] of pts) { expect(/^\d{4}-\d{2}-01$/.test(d)).toBe(true); expect(Number.isFinite(v)).toBe(true); }
     }
     for (const [, v] of series.fx_eur) { expect(v).toBeGreaterThan(0.7); expect(v).toBeLessThan(1.8); expect(Number(v.toFixed(4))).toBe(v); }
-    for (const [, v] of series.trade_bal) { expect(Number(v.toFixed(1))).toBe(v); expect(Math.abs(v)).toBeLessThan(400); } // 십억달러 단위(백만달러가 아님)
+    for (const [, v] of series.trade_bal) { expect(Number(v.toFixed(3))).toBe(v); expect(Math.abs(v)).toBeLessThan(400); } // 십억달러 단위(백만달러가 아님)
     expect(series.trade_bal.at(-1)![1]).toBeLessThan(0); // 최근은 적자
   });
 

@@ -209,5 +209,51 @@
         "factor": 0.9703956009316498
       }
     ]
+  },
+  "trade_bal": {
+    "modernFrom": "1992-01-01",
+    "segments": [
+      {
+        "from": "1960-01-01",
+        "to": "1991-01-01",
+        "source": "BEA 상품·서비스 무역수지 · 연간÷12",
+        "short": "연간·월평균 환산",
+        "id": "BEA BOP annual ÷ 12",
+        "url": "https://www.bea.gov/sites/default/files/2026-09/trad0726-time-series.xlsx",
+        "note": "명목·국제수지 기준. 연간 합계÷12÷1000으로 십억 달러/월 환산. 연간 1개 관측이며 월별 움직임은 알 수 없습니다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
+  },
+  "trade": {
+    "modernFrom": "1970-01-01",
+    "segments": [
+      {
+        "from": "1929-01-01",
+        "to": "1946-01-01",
+        "source": "BEA 실질 수출−수입 · 연간",
+        "short": "연간·계산값",
+        "id": "EXPGSCA − IMPGSCA",
+        "url": "https://fred.stlouisfed.org/graph/?id=EXPGSCA,IMPGSCA",
+        "note": "2017년 연쇄가격·십억 달러. 공식 수출−수입으로 직접 계산. 연간 1개 관측.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      },
+      {
+        "from": "1947-01-01",
+        "to": "1969-10-01",
+        "source": "BEA 실질 수출−수입 · 분기 연율",
+        "short": "분기·계산값",
+        "id": "EXPGSC1 − IMPGSC1",
+        "url": "https://fred.stlouisfed.org/graph/?id=EXPGSC1,IMPGSC1",
+        "note": "2017년 연쇄가격·십억 달러·계절조정 연율. 공식 수출−수입으로 직접 계산. 명목 순수출을 섞었던 기존 값을 교정했습니다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
   }
 }

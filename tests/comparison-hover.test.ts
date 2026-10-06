@@ -26,7 +26,8 @@ describe("nearby chart observations", () => {
   it("aligns steep lines and isolated observations with the cursor time", () => {
     expect(nearbyObservation([segment([p(0, 0), p(100, 100)])], { x: 50, y: 55 }, identity, identity)).toMatchObject({ x: 50, y: 50, distance: 5 });
     expect(nearbyObservation([segment([p(20, 20)])], { x: 20, y: 30 }, identity, identity)?.point.raw).toBe(200);
-    expect(nearbyObservation([segment([p(20, 20)])], { x: 30, y: 20 }, identity, identity)).toBeNull();
+    expect(nearbyObservation([segment([p(20, 20)])], { x: 30, y: 20 }, identity, identity)).toMatchObject({ x: 20, y: 20 });
+    expect(nearbyObservation([segment([p(20, 20)])], { x: 40, y: 20 }, identity, identity)).toBeNull();
   });
   it("does not invent a line across missing data", () => {
     const segments = [segment([p(0, 50), p(20, 50)]), segment([p(80, 50), p(100, 50)])];

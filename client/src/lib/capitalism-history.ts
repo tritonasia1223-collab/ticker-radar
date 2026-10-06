@@ -15,6 +15,8 @@ export interface SourcePeriod {
 const fred = (id: string) => `https://fred.stlouisfed.org/series/${id}`;
 // These dates describe the periods used in our saved chart, not the start of the provider's full dataset.
 const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
+  trade_bal: [{ source: "BEA 상품·서비스 무역수지 · 월간", id: "BOPGSTB", url: fred("BOPGSTB"), note: "명목·국제수지 기준·계절조정. 십억 달러/월. 음수=적자." }],
+  trade: [{ source: "BEA 실질 순수출 · 분기 연율", id: "NETEXC", url: fred("NETEXC"), note: "2017년 연쇄가격·십억 달러·계절조정 연율. 양수·음수는 당시 명목 무역흑자·적자와 다를 수 있습니다." }],
   reer: [{ source: "BIS 실질 광의 실효환율", id: "RBUSBIS", url: fred("RBUSBIS"), note: "2020=100. 상대국 물가를 반영한 실질 대외가치." }],
   inflation: [{ source: "미국 CPI 전년비 · 계절조정", id: "CPIAUCSL", url: fred("CPIAUCSL"), note: "이전 구간과 계절조정 방식이 다릅니다." }],
   gdp_growth: [{ source: "미국 실질 GDP 성장률 · 분기 전기 대비 연율", id: "A191RL1Q225SBEA", url: fred("A191RL1Q225SBEA"), note: "이전 구간은 연간 성장률입니다." }],
@@ -69,7 +71,7 @@ export function sourcePeriods(seriesKey: string): SourcePeriod[] {
   if (["real_tb3ms", "usd_purchasing_power", "cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
   if (!h) return [];
   const earlier = h.segments.map(s => ({ from: s.from, to: s.to, source: s.source, id: s.id, url: s.url,
-    note: seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));
+    note: ["trade", "trade_bal"].includes(seriesKey) ? s.note : seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));
   const current = SPECIAL[seriesKey] ?? CURRENT[seriesKey]?.map(s => ({ ...s, from: h.modernFrom })) ?? [];
   return [...earlier, ...current];
 }

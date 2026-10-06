@@ -1,0 +1,49 @@
+{
+  "checkedAt": "2026-10-06T08:40:25.960Z",
+  "sources": [
+    {
+      "url": "https://www.bea.gov/data/intl-trade-investment/international-trade-goods-and-services",
+      "sha256": "1e57e1500275d34d9f3dcef97f85137d9feec378b113db53de9f9264210d4e66"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=EXPGSCA",
+      "sha256": "24f75cb6138479bf259d74a6a6f88509d958998ec4dbfc9b32b4d8bdc5b7af76"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=IMPGSCA",
+      "sha256": "3e265d80a1475b1296f7aea92c1c1ef1b3c484ed437dc10687500afa96d31da7"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=IMPGSC1",
+      "sha256": "febf0baea67ceaa56c01b94be228ef81b2406b88cf7a76226609994510be7c70"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BOPGSTB",
+      "sha256": "6babb2869041fc39d0d64289bb0e11efb03474f91df0081a41871dc5faefec87"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NETEXC",
+      "sha256": "c8b4bee3f72248af2e567fe2a1edc8b057d41d78f1c0905d1d19a042be6675fc"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=EXPGSC1",
+      "sha256": "9e51bcc65534b2942d973d29add990db0831665f6258c45808c6829ccec9724c"
+    },
+    {
+      "url": "https://www.bea.gov/sites/default/files/2026-09/trad0726-time-series.xlsx",
+      "sha256": "eb3561049af4add1916e923a6c87df399ef25bad6c30cc6ae73db993e3dbbffd"
+    }
+  ],
+  "nominalAnnualVsMonthly": {
+    "observations": 34,
+    "maxDifferenceBillions": 0.005000000000002558
+  },
+  "monthlyVsWorkbook": {
+    "observations": 415,
+    "maxDifferenceBillions": 0
+  },
+  "realCalculatedVsOfficial": {
+    "observations": 226,
+    "maxDifferenceBillions": 0.00100000000009004
+  }
+}

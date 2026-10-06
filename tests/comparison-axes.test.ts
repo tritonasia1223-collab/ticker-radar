@@ -32,7 +32,9 @@ describe("mixed comparison axes", () => {
     expect(result.series.map(s => s.def.id)).toEqual(ids);
     expect(result.axes.map(a => a.side)).toEqual(["left", "right"]);
     expect(result.series.filter(s => s.axis === "index").every(s => s.points.find(p => p.month === result.base)!.value === 100)).toBe(true);
-    expect(result.series.at(-1)!.points.every(p => p.value === p.raw && p.raw < 0)).toBe(true);
+    expect(result.series.at(-1)!.points.every(p => p.value === p.raw)).toBe(true);
+    expect(result.series.at(-1)!.points.some(p => p.raw < 0)).toBe(true);
+    expect(result.series.at(-1)!.points.some(p => p.raw > 0)).toBe(true);
   });
   it("fixes the 1990 base/EUR/real-net-export combination and preserves a three-series legacy context", () => {
     for (const ids of [["fx_eur", "trade"], ["dxy", "fx_eur", "trade_bal"]]) {

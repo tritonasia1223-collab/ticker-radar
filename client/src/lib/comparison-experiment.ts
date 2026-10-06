@@ -11,7 +11,11 @@ export function viewingAlignment(value: unknown, version: unknown): Alignment {
 export function buildAlignedComparison(raw: RawComparisonSeries[], alignment: Alignment) {
   const calibrations: Record<string, Calibration> = {}, series: AxisSeries[] = [], unavailable: string[] = [];
   for (const s of raw) {
-    const c = alignment.calibrations[s.def.id] ?? calibrate(s.def.id, s.points, alignment.from, alignment.to);
+    const revision = ["trade", "trade_bal"].includes(s.def.id) ? "trade-history-2026-10-06" : undefined;
+    const saved = alignment.calibrations[s.def.id];
+    const valid = saved && (!revision || saved.dataRevision === revision);
+    const fresh = valid ? saved : calibrate(s.def.id, s.points, alignment.from, alignment.to);
+    const c = fresh && revision ? { ...fresh, dataRevision: revision } : fresh;
     if (!c) { unavailable.push(s.def.id); continue; }
     calibrations[s.def.id] = c;
     series.push({ def: s.def, axis: "aligned", points: s.points.map(p => ({ ...p, value: alignedValue(p.raw, c) })) });

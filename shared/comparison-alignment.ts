@@ -5,6 +5,7 @@ export const calibrationSchema = z.object({
   center: z.number().finite(), scale: z.number().finite().positive(),
   kind: z.enum(["zero", "index", "median"]),
   from: month, to: month, samples: z.number().int().min(12),
+  dataRevision: z.string().max(60).optional(),
 }).strict();
 export const alignmentSchema = z.object({
   method: z.literal("median-iqr-asinh-v1"), from: month.nullable(), to: month.nullable(),

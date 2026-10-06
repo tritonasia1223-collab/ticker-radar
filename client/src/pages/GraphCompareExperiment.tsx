@@ -105,7 +105,7 @@ export default function GraphCompareExperiment() {
   const comparison = useMemo(() => buildAlignedComparison(rawSeries, prefs.alignment), [rawSeries, prefs.alignment]);
   const { series, axes } = comparison;
   useEffect(() => {
-    if (!seriesQuery.data || !Object.keys(comparison.alignment.calibrations).some(id => !prefs.alignment.calibrations[id])) return;
+    if (!seriesQuery.data || !Object.keys(comparison.alignment.calibrations).some(id => !prefs.alignment.calibrations[id] || prefs.alignment.calibrations[id].dataRevision !== comparison.alignment.calibrations[id].dataRevision)) return;
     setPrefs(p => ({ ...p, alignment: { ...p.alignment, calibrations: { ...p.alignment.calibrations, ...comparison.alignment.calibrations } } }));
   }, [comparison.alignment, seriesQuery.data, prefs.alignment]);
   const currentContext: InsightContext = { ids: series.map(s => s.def.id), spread: prefs.spread, alignment: comparison.alignment };

@@ -1,3 +1,4 @@
+import { tradeObservationLabel } from "../../../shared/trade-history";
 import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
@@ -251,7 +252,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     </svg>
     {pointer && !!nearby.length && createPortal(<div role="tooltip" aria-label="커서 주변 지표 값" data-testid="compare-hover" className="pointer-events-none fixed z-50 grid grid-flow-col gap-x-4 overflow-hidden rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md" style={{ width: tooltipLayout.width, height: tooltipLayout.height, gridTemplateColumns: `repeat(${tooltipLayout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${tooltipLayout.rows}, 24px)`, left: clamp(pointer.clientX + 16 + tooltipLayout.width <= viewport.width - 8 ? pointer.clientX + 16 : pointer.clientX - tooltipLayout.width - 16, 8, viewport.width - tooltipLayout.width - 8), top: clamp(pointer.clientY - 12, 8, viewport.height - tooltipLayout.height - 8) }}>
       {nearby.map(hit => <div key={hit.id} data-testid={"hover-value-" + hit.id} className="flex min-w-0 items-center gap-2">
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="truncate">{hit.label}</span><span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)}</span>
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="min-w-0 truncate">{hit.label}{tradeObservationLabel(hit.id, hit.point.date) && <small className="ml-1 text-[9px] text-muted-foreground">{tradeObservationLabel(hit.id, hit.point.date)}</small>}</span><span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)}</span>
       </div>)}
     </div>, document.body)}
     </div>

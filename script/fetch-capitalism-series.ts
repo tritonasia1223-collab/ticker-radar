@@ -7,6 +7,7 @@
 //   → 오래된 역사(예: gold 1944·debt_gdp 1939), 과거 vintage(개정 전) 값이 절대 바뀌지 않음.
 //   각 시리즈는 병합 전에 '겹침 구간(마지막 N개)'을 재현하는지 자동 검증(overlap ✓/≠)하고,
 //   재현 실패 시 그 시리즈는 SKIP(경고) — 잘못된 FRED id/변환이 데이터를 오염시키는 것을 차단.
+//   trade / trade_bal: 공식 개정판을 대조한 뒤 전체 재구성(append-only 예외).
 // ── 특수 처리 ──────────────────────────────────────────────────────────────────
 //   inflation : CPIAUCSL(SA) 의 12개월 YoY(%) 파생. 최근값은 CPI 개정 전 vintage라 미세차 → 검증 면제, append.
 //   dxy       : 실제 DX-Y.NYB 지수 일간 종가 → 완료된 월의 마지막 종가.
@@ -14,6 +15,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, renameSync } from "fs";
 import { closedMonthEnds, annualChange, mergeObservations, type Point } from "../shared/capitalism-refresh.js";
 import { fetchDxy } from "./lib/dollar-sources.js";
+import { fetchTradeHistory } from "./lib/trade-sources.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -137,9 +139,24 @@ async function main() {
   const reportDir = join(__dirname, "cap-export");
   mkdirSync(reportDir, { recursive: true });
   copyFileSync(OUT, join(reportDir, `capitalism-series-before-${Date.now()}.json`));
+  let tradeResult: ReturnType<typeof fetchTradeHistory> | undefined;
+  const sourcesPath = join(__dirname, "../client/src/data/capitalism-series-sources.json");
+  const sources = JSON.parse(readFileSync(sourcesPath, "utf8"));
+  let tradeUpdated = false;
   for (const s of SERIES) {
     if (only && !only.has(s.key)) continue;
     process.stdout.write(`  ${s.key.padEnd(11)} `);
+    // These two official, revised datasets must stay on a single release basis.
+    // Rebuild rather than keeping stale observations under the append-only policy.
+    if (s.key === "trade" || s.key === "trade_bal") {
+      try {
+        const rebuilt = await (tradeResult ??= fetchTradeHistory());
+        json[s.key] = rebuilt[s.key]; sources[s.key] = rebuilt.history[s.key]; tradeUpdated = true;
+        report.series.push({ key: s.key, status: "ok", policy: "verified official rebuild", observations: json[s.key].length, audit: rebuilt.audit });
+        console.log(`검증 후 재구성 ${json[s.key].length}개 → ${json[s.key].at(-1)?.[0]}`);
+      } catch (e) { skipped++; report.series.push({ key: s.key, status: "error", error: String(e) }); console.log(`ERR ${String(e)} — SKIP`); }
+      continue;
+    }
     let fetched: Point[];
     try { fetched = await buildFetched(s); }
     catch (e) { console.log(`ERR ${(e as Error).message} — SKIP`); report.series.push({key:s.key,status:"error",error:String(e)}); skipped++; continue; }
@@ -165,6 +182,10 @@ async function main() {
   }
   writeFileSync(OUT + ".tmp", JSON.stringify(json));
   renameSync(OUT + ".tmp", OUT);
+  if (tradeUpdated) {
+    writeFileSync(sourcesPath, JSON.stringify(sources, null, 2) + "\n");
+    writeFileSync(join(__dirname, "../client/src/data/trade-series-audit.json"), JSON.stringify((await tradeResult!).audit, null, 2) + "\n");
+  }
   writeFileSync(join(reportDir, "capitalism-refresh-latest.json"), JSON.stringify({ ...report, added, corrected, skipped }, null, 2));
   if (skipped) process.exitCode = 1;
   console.log(`\n✅ 병합 완료 → 신규 ${added}개 포인트 추가, ${skipped}개 시리즈 SKIP (총 ${Object.keys(json).length}개 시리즈)`);

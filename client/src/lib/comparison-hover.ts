@@ -15,6 +15,13 @@ export function hoverLayout(count: number, viewport: { width: number; height: nu
 export function nearbyObservation(segments: HoverSegment[], pointer: { x: number; y: number }, x: (time: number) => number, y: (value: number) => number, radius = HOVER_RADIUS) {
   let best: { distance: number; x: number; y: number; points: ComparePoint[] } | null = null;
   for (const segment of segments) {
+    // An annual observation is a dot, not a line spanning an invented year of data.
+    if (segment.rendered.length === 1) {
+      const p = segment.rendered[0], px = x(p.time), py = y(p.value);
+      const distance = Math.hypot(pointer.x - px, pointer.y - py);
+      if (distance <= radius && (!best || distance < best.distance)) best = { distance, x: px, y: py, points: segment.points };
+      continue;
+    }
     for (let i = 0; i < segment.rendered.length; i++) {
       const a = segment.rendered[i], b = segment.rendered[i + 1] ?? a;
       const ax = x(a.time), ay = y(a.value), bx = x(b.time), dy = y(b.value) - ay;
