@@ -142,14 +142,8 @@ export function enrichCreditReport(id: string, base: ChapterReading, data: Indic
     paragraphs.push(para(c&&h&&comparable(c,h)&&c.value>h.value&&c.value>0&&prices.some(l=>delta(l,weeks)!.value<0)?"취약 기업의 프리미엄과 BDC 시장 평가가 함께 나빠지는 조합입니다. 다음 분기 공시에서도 악화가 이어지는지, HY 전체로 부담이 번지는지가 중요합니다.":"취약 기업의 가격, BDC 시장 평가, 실제 부실 공시의 방향을 구분해 봐야 합니다. 일부 지표만으로 사모대출 전체의 위기를 확정하지 않습니다.","conclusion"));
     return report();
   }
-  if(id==='credit-scenarios') {
-    paragraphs.push(para(outcome.closest.length?`현재 필수 조건을 충족한 시나리오는 ${outcome.closest.join('·')}입니다. 이를 하나의 확정된 전망으로 읽기보다, 어떤 근거가 유지되는지 확인해야 합니다.`:"현재는 기존 시나리오 중 필수 조건을 모두 충족한 조합이 없습니다. 그렇다고 관측된 변화까지 없는 것은 아닙니다.","conclusion"));
-    const stable=outcome.signals.hy_stable,wide=outcome.signals.hy_wide;
-    if(stable?.status===false&&wide?.status===false)paragraphs.push(para("HY 프리미엄이 안정 조건과 급확대 조건 사이에 있어 여러 시나리오가 함께 선택되지 않을 수 있습니다. 변화의 방향과 경고 기준 도달 여부를 구분해서 읽어야 합니다."));
-    const unknown=outcome.rows.flatMap(r=>r.evidence.filter(e=>e.status===null).map(e=>e.label));
-    if(unknown.length)paragraphs.push(para(`현재 판정에서 부족한 근거: ${[...new Set(unknown)].join('·')}. 해당 조건을 정상으로 간주하지 않았습니다.`,"explanation"));
+  if(id==='credit-watchpoints') {
     paragraphs.push(para("다음에는 준비금 감소와 단기 금리 압박이 함께 나타나는지, 회사채 발행이 가격 악화 뒤에도 이어지는지, 취약 기업의 우려가 실제 부실 공시로 이어지는지 확인합니다."));
-    paragraphs.push(para("시나리오 규칙은 주로 위험 프리미엄을 사용합니다. 시장금리 수준이 높아져 생기는 차환 부담은 위의 분석에서 별도로 평가합니다. 적합도 점수는 발생 확률이 아닙니다.","explanation"));
     return report();
   }
   return base;
@@ -166,4 +160,3 @@ export function creditWatchpoints(data: IndicatorAnalysis[], outcome: CreditOutc
   points.push({title:'다음 은행 조사와 BDC 공시',text:'SLOOS의 심사 태도·차입 수요가 최근 잔액 변화와 일치하는지, BDC의 부실·PIK 변화가 가격에 나타난 우려를 뒷받침하는지 확인합니다.'});
   return points;
 }
-

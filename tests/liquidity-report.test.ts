@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyze, type LineAnalysis } from "../shared/credit/signals";
-import { scenarios } from "../shared/credit/scenarios";
+import { scenarios, creditSignals } from "../shared/credit/scenarios";
 import { creditChapter } from "../shared/credit/chapter-reading";
 import { liquidityReport, type ReportInput } from "../shared/liquidity-report";
 import { ownershipInsights } from "../shared/treasury-ownership";
@@ -84,5 +84,19 @@ describe('상단·거시 보고서',()=>{
     expect(r.issuers.circle).toContain('2026-06-30');expect(r.issuers.circle).not.toContain('2026-08-31');
     expect(r.owners.join(' ')).toContain('신규 국채를 매입했다는 뜻은 아닙니다');
     expect(ownershipInsights(ownership,'2009-01-01').owners).toEqual([]);
+  });
+});
+
+describe('시나리오 판정 폐기', () => {
+  it('운영 분석은 지표별 신호를 보존하고 시나리오 점수와 후보를 만들지 않는다', () => {
+    const f = fixture(); f.set('ccc_oas', 12, 1); f.set('hy_oas', 3, .2);
+    const data = analyze(null, '2026-09-30', 'observation');
+    const current = creditSignals(data);
+    expect(current.rows).toEqual([]);
+    expect(current.closest).toEqual([]);
+    expect(current.signals).toEqual(scenarios(data).signals);
+    const chapter = creditChapter('credit-watchpoints', data, current, 4);
+    expect(JSON.stringify(chapter)).not.toMatch(/시나리오|적합도|후보/);
+    expect(chapter.paragraphs?.some(p => p.text.includes('다음에는'))).toBe(true);
   });
 });

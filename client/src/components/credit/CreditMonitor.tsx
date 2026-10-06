@@ -4,13 +4,13 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { ArrowDownRight, ArrowUpRight, RefreshCw, Landmark, Network, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { config, type Indicator } from "@shared/credit/schema";
 import { analyze, DAY, type IndicatorAnalysis, type LineAnalysis } from "@shared/credit/signals";
-import { scenarios } from "@shared/credit/scenarios";
+import { creditSignals } from "@shared/credit/scenarios";
 import { RateComparisonChart } from "./RateComparisonChart";
 import { rateNarrative } from "@shared/credit/rate-comparison";
 import { distributionAdjusted } from "@shared/credit/reading";
 import { CreditTrendNote } from "./CreditTrendNote";
 
-type Response = { asOf: string; collectedAt: string | null; configChanged?: boolean; error?: string | null; indicators: IndicatorAnalysis[]; scenarios: ReturnType<typeof scenarios> };
+type Response = { asOf: string; collectedAt: string | null; configChanged?: boolean; error?: string | null; indicators: IndicatorAnalysis[]; scenarios: ReturnType<typeof creditSignals> };
 const colors = ["#6366f1", "#0d9488", "#d97706", "#db2777", "#7c3aed", "#0284c7", "#65a30d", "#ea580c", "#64748b"];
 const frequencies: Record<string, string> = { daily: "일간", weekly: "주간", monthly: "월간", quarterly: "분기" };
 const units: Record<string, string> = { billions: "십억 달러", percent: "%", pp: "%p", ratio: "배", usd: "달러" };
@@ -29,7 +29,7 @@ function delta(line: LineAnalysis, weeks: number) {
 }
 function Pill({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) { return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${muted ? "bg-muted text-muted-foreground" : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"}`}>{children}</span>; }
 
-function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"] }) {
+function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof creditSignals>["signals"] }) {
   const { spec, result, years, asOf } = props;
   if (!spec.chart.marketYield && spec.chart.kind !== "spread") return <OriginalIndicatorCard {...props} />;
   return <article data-credit-indicator={spec.id} className="p-4 md:p-5 space-y-4 min-w-0">
@@ -48,7 +48,7 @@ function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; year
   </article>;
 }
 
-function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"] }) {
+function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof creditSignals>["signals"] }) {
   const [indexed, setIndexed] = useState(!!spec.chart.indexed);
   const adjusted = distributionAdjusted(spec);
   const [selected, setSelected] = useState(spec.chart.lines[0]?.key);
@@ -107,7 +107,7 @@ function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: I
 
 function CreditPath({ path, index, results, years, asOf, signals }: {
   path: typeof config.paths[number]; index: number; results: IndicatorAnalysis[];
-  years: number; asOf: string; signals: ReturnType<typeof scenarios>["signals"];
+  years: number; asOf: string; signals: ReturnType<typeof creditSignals>["signals"];
 }) {
   const [selected, setSelected] = useState(0);
   const spec = path.indicators[selected];
@@ -136,7 +136,7 @@ function CreditPath({ path, index, results, years, asOf, signals }: {
 export default function CreditMonitor({ asOf }: { asOf: string }) {
   const [years, setYears] = useState(3);
   const query = useQuery<Response>({ queryKey: ["/api/liquidity/credit", asOf, years, "observation"], queryFn: async ({ signal }) => { const r = await fetch(`/api/liquidity/credit?asOf=${asOf}&basis=observation&years=${years}`, { signal }); const body = await r.json(); if (!body.indicators) throw new Error("신용 자료 응답 오류"); return body; }, staleTime: 5 * 60 * 1000, retry: 1 });
-  const empty = useMemo(() => analyze(null, asOf, "observation"), [asOf]); const results = query.data?.indicators ?? empty; const outcome = query.data?.scenarios ?? scenarios(empty);
+  const empty = useMemo(() => analyze(null, asOf, "observation"), [asOf]); const results = query.data?.indicators ?? empty; const outcome = query.data?.scenarios ?? creditSignals(empty);
   return <section id="credit-monitor" className="pt-10 pb-8 space-y-7" aria-label="민간 신용 경로 모니터">
     <header className="border-t-2 border-foreground/80 pt-6 space-y-3">
       <div className="flex justify-between items-start gap-3"><div><div className="text-[10px] uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300 font-semibold mb-2">미국 · 민간 신용</div><h2 className="text-xl md:text-2xl font-semibold tracking-tight">돈은 계속 공급되고 있나</h2></div><button type="button" onClick={() => void query.refetch()} disabled={query.isFetching} className="p-2 rounded-lg border text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label="저장된 신용 자료 다시 불러오기"><RefreshCw size={15} className={query.isFetching ? "animate-spin" : ""} /></button></div>
@@ -147,10 +147,8 @@ export default function CreditMonitor({ asOf }: { asOf: string }) {
       {query.data?.configChanged && <p className="text-xs text-amber-700">지표 설정이 변경되었습니다. 다음 수집 시 원자료를 갱신합니다.</p>}
     </header>
     {config.paths.map((path, n) => <CreditPath key={path.path_id} path={path} index={n} results={empty.map(fallback => results.find(result => result.id === fallback.id) ?? fallback)} years={years} asOf={asOf} signals={outcome.signals} />)}
-    <div className="space-y-4 border-t pt-7"><div><h2 className="text-lg font-semibold">지표를 함께 읽으면</h2><p className="text-xs text-muted-foreground mt-1">규칙 기반 적합도 · 발생 확률이 아닙니다. 자료 부족을 정상으로 처리하지 않습니다.</p></div>
+    <div className="space-y-4 border-t pt-7"><div><h2 className="text-lg font-semibold">지표를 함께 읽으면</h2><p className="text-xs text-muted-foreground mt-1">은행·회사채·사모대출의 개별 신호를 확인합니다. 자료 부족은 따로 표시합니다.</p></div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{outcome.summary.map(s => <div key={s.name} className="rounded-xl border p-4"><div className="text-xs text-muted-foreground">{s.name}</div><div className="text-sm font-semibold mt-2">{s.status}</div><p className="text-[11px] leading-relaxed text-muted-foreground mt-2">{s.evidence.join(" · ") || "뚜렷한 긴장 조합이 아직 확인되지 않았습니다."}</p>{s.missing.length > 0 && <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-2">확인 필요: {s.missing.join(" · ")}</p>}</div>)}</div>
-      <p className="text-sm font-medium">{outcome.closest.length ? `가까운 시나리오: ${outcome.closest.join(" · ")}${outcome.closest.length > 1 ? " (혼합)" : ""}` : "대표 시나리오 판단 보류 — 필수 근거 또는 조건이 충분하지 않습니다."}</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{outcome.rows.map(row => <div key={row.id} className={`rounded-xl border p-4 ${row.candidate ? "border-indigo-500/60 bg-indigo-500/5" : "bg-card"}`}><div className="flex justify-between gap-2"><h3 className="font-semibold text-sm">{row.id} · {row.name}</h3><span className="text-sm font-semibold tabular-nums">{num(row.score, 0)}<span className="text-[10px] font-normal text-muted-foreground"> / 100</span></span></div><div className="flex justify-between text-[10px] text-muted-foreground mt-2"><span>{row.candidate ? "조건 충족" : "조건 미충족·확인 대기"}</span><span>자료 충족률 {num(row.coverage * 100, 0)}%</span></div><div className="h-1.5 bg-muted rounded-full mt-2"><div className="h-full bg-indigo-500/60 rounded-full" style={{ width: `${row.score ?? 0}%` }} /></div><details className="mt-3 text-[11px]"><summary className="cursor-pointer text-muted-foreground">일치·반대·부족 근거 보기</summary><div className="space-y-3 pt-3">{row.evidence.map(e => <div key={e.signal}><div className="font-medium flex items-center gap-1">{e.status === true ? <ArrowUpRight size={12} /> : e.status === false ? <ArrowDownRight size={12} /> : "—"}{e.label} · {e.status === true ? "일치" : e.status === false ? "반대" : "자료 부족"}{e.required ? " (필수)" : ""}</div>{e.evidence.map((p, idx) => <p key={idx} className="text-[10px] text-muted-foreground pl-4 mt-0.5">{p.line} · {metricLabels[p.metric] ?? p.metric}: {num(p.value)} (조건 {ruleLabel(p.expected)}) · {p.from ? `${p.from} → ` : ""}{p.date ?? "관측 없음"}{p.reason ? ` · ${p.reason}` : ""}</p>)}</div>)}</div></details></div>)}</div>
     </div>
     <footer className="text-[10px] text-muted-foreground leading-relaxed border-t pt-4">현재 확보한 자료를 관측 시점에 배치한 과거 분석입니다. 선택일 이후의 공시·수정 수치가 포함될 수 있습니다. BDC P/NAV는 해당 주가와 그날까지의 최신 분기말 NAV를 연결합니다. 개별 지표의 출처·주기·대상 범위가 다릅니다. 확보된 관측 기간을 표시하며, 10년 미만의 자료를 10년 백분위로 표시하지 않습니다. 수동 지표는 CSV 입력 전까지 판단 근거에서 제외됩니다.</footer>
   </section>;

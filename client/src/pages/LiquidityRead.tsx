@@ -16,7 +16,7 @@ import { reservesGdp } from "@shared/reserves-gdp";
 import { m2Composition } from "@shared/m2-composition";
 import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
-import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioReading, creditChapterForState } from "@/components/credit/CreditReading";
+import { useCreditReading, CreditSummary, CreditReadingGroup, CreditWatchpoints, creditChapterForState } from "@/components/credit/CreditReading";
 import { liquidityChapters } from "@shared/liquidity-chapters";
 import { liquidityReport } from "@shared/liquidity-report";
 import type { ChapterParagraph } from "@shared/credit/chapter-reading";
@@ -139,7 +139,7 @@ function Section({ id, num, title, question, answer, paragraphs, children }: { i
 }
 function ReportOriginalSummary() {
   const introduction = "9월 말 미국 유동성은 양은 줄고 가격은 뛴 국면입니다. 순유동성은 4주간 380억 달러 줄어 5조 3,971억 달러가 됐고, 10년 실질금리는 2.93%로 2008년 11월 이후 가장 높습니다.";
-  const items = ["유동성의 양: 지급준비금이 2조 8,817억 달러로 최근 3년 하위 3% 구간입니다. 연준 자산은 1년간 1,559억 달러 늘었지만, 재무부 현금 계좌(TGA)가 1,647억 달러 불어나며 그 돈을 흡수했습니다.","돈의 가격: 연준이 지급준비금에 주는 이자율(IORB)이 9월 17일 3.65%에서 3.90%로 올랐습니다. 2023년 7월 이후 첫 인상이고, 4주 사이 HY 회사채 시장금리가 0.98%p 뛰었습니다.","통화와 경기: M2는 전년 대비 5.7%, 명목 GDP는 6.3% 늘었고 실업률은 4.2%입니다. 돈과 경기가 식지 않은 상태에서 금리가 오른 것입니다.","신용: 은행 대출과 우량 회사채는 멀쩡하고, 가장 약한 고리만 벌어지고 있습니다. CCC 이하 등급의 가산금리는 11.79%p로 3년 최고인데, HY 전체는 3.12%p로 3년 중간 수준입니다.","국채 수급: 9월 4주간 국채 순발행은 20억 달러 감소로 사실상 0입니다. 단기채를 1,391억 달러 줄이고 중장기채를 1,371억 달러 늘리는 만기 교체가 있었습니다.","시나리오 판정: 6개 시나리오 중 후보 요건을 채운 것이 없습니다. 지금의 조합은 금리 충격과 취약 차주 악화가 겹친 형태라, 스프레드 중심 규칙에 잘 잡히지 않습니다."];
+  const items = ["유동성의 양: 지급준비금이 2조 8,817억 달러로 최근 3년 하위 3% 구간입니다. 연준 자산은 1년간 1,559억 달러 늘었지만, 재무부 현금 계좌(TGA)가 1,647억 달러 불어나며 그 돈을 흡수했습니다.","돈의 가격: 연준이 지급준비금에 주는 이자율(IORB)이 9월 17일 3.65%에서 3.90%로 올랐습니다. 2023년 7월 이후 첫 인상이고, 4주 사이 HY 회사채 시장금리가 0.98%p 뛰었습니다.","통화와 경기: M2는 전년 대비 5.7%, 명목 GDP는 6.3% 늘었고 실업률은 4.2%입니다. 돈과 경기가 식지 않은 상태에서 금리가 오른 것입니다.","신용: 은행 대출과 우량 회사채는 멀쩡하고, 가장 약한 고리만 벌어지고 있습니다. CCC 이하 등급의 가산금리는 11.79%p로 3년 최고인데, HY 전체는 3.12%p로 3년 중간 수준입니다.","국채 수급: 9월 4주간 국채 순발행은 20억 달러 감소로 사실상 0입니다. 단기채를 1,391억 달러 줄이고 중장기채를 1,371억 달러 늘리는 만기 교체가 있었습니다."];
   return <div data-testid="market-analysis" className="mb-9 text-[15px] leading-[1.85] text-[#3B3934]">
     <h2 className="mb-4 text-xl font-semibold" style={{ fontFamily: SERIF }}>핵심 요약</h2>
     <p className="mb-3">{introduction}</p>
@@ -686,8 +686,8 @@ export default function LiquidityRead() {
         {readingGroups.map((group, n) => { const chapter = creditChapterForState(group.id, credit, cmp); return <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question} answer={chapter.text} paragraphs={chapter.paragraphs}>
           <CreditReadingGroup group={group} state={credit} weeks={cmp} />
         </Section>; })}
-        <Section id="credit-scenarios" num="10" title="함께 읽으면" question="어떤 변화가 현재 판단을 바꿀까" answer={creditChapterForState("credit-scenarios", credit, cmp).text} paragraphs={creditChapterForState("credit-scenarios", credit, cmp).paragraphs}>
-          <CreditScenarioReading state={credit} />
+        <Section id="credit-watchpoints" num="10" title="함께 읽으면" question="어떤 변화가 현재 판단을 바꿀까" answer={creditChapterForState("credit-watchpoints", credit, cmp).text} paragraphs={creditChapterForState("credit-watchpoints", credit, cmp).paragraphs}>
+          <CreditWatchpoints state={credit} />
           <Cap>과거 조회: 관측일 기준 · 사후 공시·수정치 포함. 신용 조건 판정: 고정된 4주·13주 규칙. 그래프 비교: 상단 선택 기간.</Cap>
         </Section>
 

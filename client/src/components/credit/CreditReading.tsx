@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, ReferenceDot, CartesianGrid } from "recharts";
 import { indicators, config, type Indicator } from "@shared/credit/schema";
 import { analyze, DAY, type IndicatorAnalysis } from "@shared/credit/signals";
-import { scenarios } from "@shared/credit/scenarios";
+import { creditSignals } from "@shared/credit/scenarios";
 import { readingGroups, readingNotes, groupReading, indicatorReading, formatCredit, distributionAdjusted, type CreditOutcome } from "@shared/credit/reading";
 
 import { creditReview } from "@shared/credit/review";
@@ -35,7 +35,7 @@ export function useCreditReading(asOf: string) {
     }, staleTime: 5 * 60 * 1000, retry: 1 });
   const fallback = useMemo(() => analyze(null, asOf || "2000-01-01", "observation"), [asOf]);
   const data = query.data?.indicators ?? fallback;
-  const outcome = query.data?.scenarios ?? scenarios(fallback);
+  const outcome = query.data?.scenarios ?? creditSignals(fallback);
   return { query, data, outcome, years, setYears, asOf };
 }
 export type CreditReadingState = ReturnType<typeof useCreditReading>;
@@ -183,24 +183,12 @@ export function CreditReadingGroup({ group, state, weeks }: { group: typeof read
   </>;
 }
 
-export function CreditScenarioReading({ state }: { state: CreditReadingState }) {
+export function CreditWatchpoints({ state }: { state: CreditReadingState }) {
   const { outcome } = state;
   if (state.query.isLoading || state.query.isError || state.query.data?.error || state.query.data?.configChanged) return <p style={caption}>선택 시점의 신용 자료를 확인한 뒤 판단 조건을 표시합니다.</p>;
-  const sorted = [...outcome.rows].sort((a, b) => Number(b.candidate) - Number(a.candidate) || b.rank - a.rank);
-  const shown = sorted.filter(r => outcome.closest.includes(r.id));
-  const rows = shown.length ? shown : sorted.slice(0, 2);
-  const evidence = (row: typeof rows[number], status: boolean | null) => row.evidence.filter(e => e.status === status).map(e => e.label).join(" · ") || "없음";
   return <>
     <h2 style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.5, margin: 0 }}>다음에 확인할 변화</h2>
     <div className="space-y-5" data-testid="credit-watchpoints">{creditWatchpoints(state.data, outcome).map(point => <div key={point.title} className="border-t border-[#D9D5CA] pt-4"><h3 className="text-sm font-semibold mb-2">{point.title}</h3><p style={paragraph}>{point.text}</p>{point.detail && <details className="mt-2 text-xs leading-relaxed text-[#918D83]"><summary className="cursor-pointer">현재 관측·경고 기준</summary><p className="mt-2">{point.detail}</p></details>}</div>)}</div>
-    <details><summary style={{ ...caption, cursor: "pointer" }}>{shown.length ? `현재 시나리오: ${shown.map(r => r.name).join(" · ")}` : "시나리오가 선택되지 않은 이유"}</summary><div className="space-y-5 mt-4">
-    {rows.map(row => <div key={row.id} style={{ borderTop: `1px solid ${border}`, paddingTop: 18 }}>
-      <h3 style={{ fontSize: 17, margin: "0 0 12px" }}>{row.id} · {row.name} <span style={caption}>{row.candidate ? "조건 충족" : "판단 유보"}</span></h3>
-      <p style={{ ...paragraph, marginBottom: 10 }}>이 조건 조합의 해석: {row.interpretation}</p>
-      <p style={paragraph}><b>뒷받침하는 근거:</b> {evidence(row, true)}</p><p style={paragraph}><b>맞지 않는 근거:</b> {evidence(row, false)}</p><p style={paragraph}><b>아직 모르는 부분:</b> {evidence(row, null)}</p>
-    </div>)}
-    </div></details>
-    <details><summary style={{ ...caption, cursor: "pointer" }}>시나리오 A~F 전체 적합도 펼치기</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">{outcome.rows.map(row => <div key={row.id} style={{ border: `1px solid ${border}`, padding: 16, borderRadius: 10 }}><b>{row.id} · {row.name}</b><p style={caption}>적합도 {row.score == null ? "—" : row.score.toFixed(0)} / 100 · 자료 충족률 {(row.coverage * 100).toFixed(0)}% · {row.candidate ? "조건 충족" : "판단 유보"}</p><p style={caption}>일치: {evidence(row, true)}</p><p style={caption}>반대: {evidence(row, false)}</p><p style={caption}>부족: {evidence(row, null)}</p></div>)}</div></details>
-    <p style={caption}>적합도는 발생 확률이 아닙니다. A안과 같은 JSON의 조건·임계값을 사용합니다. 시나리오 E는 단기 자금 시장 지표와 함께 확인해야 하며, 사모대출 해석은 상장 BDC 등 확보한 대용 자료의 범위에 한정됩니다.</p>
+
   </>;
 }

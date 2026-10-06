@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../storage.js";
 import { snapshotSchema, type Snapshot } from "../../shared/credit/schema.js";
 import { analyze } from "../../shared/credit/signals.js";
-import { scenarios } from "../../shared/credit/scenarios.js";
+import { creditSignals } from "../../shared/credit/scenarios.js";
 import { randomUUID } from "node:crypto";
 
 // 이 모듈의 전용 테이블만 추가한다. 공유 DB 전체 스키마 동기화를 하지 않는다.
@@ -37,7 +37,7 @@ export async function saveCreditSnapshot(input: Snapshot) {
       await tx.execute(sql`INSERT INTO credit_observation_versions(run_id, series_key, observation_date, published_at, value) SELECT ${id}, x.series_key, x.observation_date, x.published_at, x.value FROM jsonb_to_recordset(${block}::jsonb) AS x(series_key TEXT, observation_date TEXT, published_at TEXT, value DOUBLE PRECISION) ON CONFLICT DO NOTHING`);
     }
     const asOf = snapshot.collectedAt.slice(0, 10), result = analyze(snapshot, asOf);
-    await tx.execute(sql`INSERT INTO credit_analysis_snapshots(run_id, as_of, config_hash, payload) VALUES (${id}, ${asOf}, ${snapshot.configHash}, ${JSON.stringify(scenarios(result))}::jsonb)`);
+    await tx.execute(sql`INSERT INTO credit_analysis_snapshots(run_id, as_of, config_hash, payload) VALUES (${id}, ${asOf}, ${snapshot.configHash}, ${JSON.stringify(creditSignals(result))}::jsonb)`);
   });
   return id;
 }

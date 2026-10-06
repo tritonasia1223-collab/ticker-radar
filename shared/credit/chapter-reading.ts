@@ -138,11 +138,11 @@ function baseCreditChapter(id: string, data: IndicatorAnalysis[], outcome: Credi
       { kind: "explanation", text: "BDC와 대출 ETF는 사모대출 시장 일부를 간접적으로 보여줍니다. 사모대출 전체의 상태를 뜻하지는 않습니다." },
     ], details: [dates(["ccc_oas", "bdc_credit_quality"]), "취약 기업은 CCC 이하 회사채, 대출투자회사는 상장 BDC 지표로 봅니다. BDC·ETF는 사모대출 전체를 대표하지 않으며, 부실·현금 대신 받는 이자(PIK)는 분기 자료입니다.", "작은 금리 변화도 요약에 반영합니다. 급변·연속 확대 경고는 별도 기준이며, 경고가 없다고 악화가 없는 것은 아닙니다."] .filter(Boolean) };
   }
-  // 시나리오가 확정되지 않아도 확인된 은행·시장 흐름은 답한다.
+  // 확인된 은행·시장 흐름을 함께 설명한다.
   const first = (text: string) => text.split(/(?<=다\.)\s+/)[0];
   const bank = baseCreditChapter("credit-bank", data, outcome, weeks);
   const bonds = baseCreditChapter("credit-bonds", data, outcome, weeks);
-  return { text: `${first(bank.text)} ${first(bonds.text)}`, details: ["시나리오 적합도는 아래에서 따로 확인합니다. 요약은 관측된 흐름이며 특정 시나리오 확정을 뜻하지 않습니다."] };
+  return { text: `${first(bank.text)} ${first(bonds.text)}`, details: [] };
 }
 
 export function creditChapter(id: string, data: IndicatorAnalysis[], outcome: CreditOutcome, weeks: 4 | 13): ChapterReading {
