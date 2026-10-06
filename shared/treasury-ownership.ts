@@ -60,3 +60,30 @@ export function ownershipView(data: OwnershipData, asOf: string) {
       delta: previous ? quarter.groups[g.id] - previous.groups[g.id] : null })),
   };
 }
+
+export function ownershipInsights(data: OwnershipData, asOf: string) {
+  const view = ownershipView(data, asOf);
+  if (!view) return { owners: [] as string[], issuers: {} as Record<string, string> };
+  const { quarter, previous } = view;
+  const owners: string[] = [];
+  const year = data.ownership.find(q => q.date === `${Number(quarter.date.slice(0, 4)) - 1}${quarter.date.slice(4)}`);
+  if (year && quarter.total > 0 && year.total > 0) {
+    const changes = ownershipGroups.map(g => ({ ...g, delta: quarter.groups[g.id] - year.groups[g.id] })).filter(g => Number.isFinite(g.delta)).sort((a,b) => b.delta-a.delta);
+    const lead = changes[0], total = quarter.total-year.total;
+    if (lead && lead.delta>0) owners.push(`지난 1년 보유액이 가장 많이 늘어난 주체는 ${lead.label}입니다.${total>0 ? ` 전체 보유액 순증가분 대비 약 ${(lead.delta/total*100).toFixed(1)}% 규모입니다.` : ''} 보유액에는 평가 변화도 반영되므로 같은 금액의 신규 국채를 매입했다는 뜻은 아닙니다.`);
+    const value = quarter.groups.foreign-year.groups.foreign, share = quarter.groups.foreign/quarter.total-year.groups.foreign/year.total;
+    owners.push(`해외 투자자의 보유액은 1년 전보다 ${value>0?'늘었고':value<0?'줄었고':'같고'}, 전체에서 차지하는 비중은 ${share>0?'높아졌습니다':share<0?'낮아졌습니다':'같습니다'}. 보유액과 비중은 서로 다른 정보입니다.`);
+  }
+  if (previous) {
+    const mmf=quarter.groups.mmf-previous.groups.mmf, bills=quarter.bills-previous.bills;
+    owners.push(`최근 분기 단기채 잔액은 ${bills>0?'늘었고':bills<0?'줄었고':'같고'}, MMF의 국채 보유는 ${mmf>0?'늘었습니다':mmf<0?'줄었습니다':'같습니다'}. 두 변화는 함께 볼 단서지만, MMF 보유 전체를 단기채로 간주하거나 개별 매입 경로를 확정하지는 않습니다.`);
+  }
+  const issuers:Record<string,string>={};
+  for (const item of view.issuers) {
+    const h=item.holding;
+    if (!h) continue;
+    const portfolio=h.portfolio, repo=portfolio?.components.overnight_repo;
+    issuers[item.id]=`${h.date} 기준 국채 보유는 ${item.delta==null?'직전 분기 비교 자료가 없습니다':item.delta>0?'전분기보다 늘었습니다':item.delta<0?'전분기보다 줄었습니다':'전분기와 같습니다'}.${portfolio&&repo!=null&&portfolio.total>0?` 준비자산 중 국채 담보 역레포·익일물은 ${(repo/portfolio.total*100).toFixed(1)}%입니다. 국채 보유와 담보를 받고 현금을 빌려주는 거래를 구분해서 봅니다.`:''}`;
+  }
+  return {owners,issuers};
+}

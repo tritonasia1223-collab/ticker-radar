@@ -1,6 +1,7 @@
 import { useState } from "react";
 import dataset from "@shared/treasury-ownership-data.json";
-import { ownershipView, type OwnershipData, type IssuerHolding } from "@shared/treasury-ownership";
+import { ownershipView, ownershipInsights, type OwnershipData, type IssuerHolding } from "@shared/treasury-ownership";
+import { ReviewText } from "./ReviewText";
 
 const COLORS = { circle: "#477FA3", tether: "#568C82" };
 const NAMES = { circle: "서클", tether: "테더" };
@@ -29,6 +30,7 @@ function ReservePortfolio({ holding, issuer }: { holding: IssuerHolding | null; 
   const percent = (value: number) => value / portfolio.total * 100;
   const display = (value: number) => percent(value) < 0.1 ? "0.1% 미만" : `${percent(value).toFixed(1)}%`;
   return <div data-testid={`portfolio-${issuer}`} className="mt-4 space-y-1 text-[11px] leading-relaxed text-[#918D83]">
+    <p className="mb-2">{NAMES[issuer]} 준비자산 구성</p>
     {assets.map(asset => <p key={asset.id}>{asset.label} <span className="tabular-nums">{display(asset.value)}</span></p>)}
   </div>;
 }
@@ -36,6 +38,7 @@ function ReservePortfolio({ holding, issuer }: { holding: IssuerHolding | null; 
 export function TreasuryOwnership({ asOf }: { asOf: string }) {
   const [detail, setDetail] = useState(false);
   const view = ownershipView(data, asOf);
+  const insights = ownershipInsights(data, asOf);
   if (!view) return <div className="text-sm text-[#5F5C54]">선택한 주차 이전의 국채 보유 자료가 없습니다. 수집 범위: 2010년 이후.</div>;
   const { quarter, rows, issuers, sum, share, billShare } = view;
   const circle = issuers[0].holding?.treasuries ?? 0;
@@ -60,6 +63,7 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         {rows.map(r => <div key={r.id} className="flex items-center gap-1.5 text-[11px] sm:text-xs"><i className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: r.color }} /><span>{r.label}</span><span className="ml-auto text-[#5F5C54] tabular-nums">{r.share.toFixed(1)}%</span></div>)}
       </div>
 
+      <div className="mt-6 space-y-3 text-sm leading-[1.85] text-[#3B3934]" data-testid="ownership-analysis">{insights.owners.map(text => <ReviewText key={text} text={text} />)}</div>
       <div className="mt-6 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
         <span className="font-medium">이 중 스테이블코인은?</span>
         <span className="text-[#5F5C54]">{share !== null ? <>전체 보유액의 약 {pct(share)}</> : "같은 분기의 두 회사 자료 대기"}</span>
@@ -101,6 +105,7 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
               <div className="mt-1 font-semibold text-sm tabular-nums">{holding ? money(holding.treasuries) : "해당 분기 자료 없음"}</div>
               <div className="mt-1 text-[11px] leading-relaxed text-[#5F5C54]">{item.id === "circle" ? "전용 펀드 포함" : "직접 보유"}<br />전분기 {delta(item.delta)}</div>
               <ReservePortfolio holding={holding} issuer={item.id} />
+              {insights.issuers[item.id] && <ReviewText className="mt-4 text-[13px] leading-[1.85] text-[#3B3934]" text={insights.issuers[item.id]} />}
               {item.id === "circle" && <p className="mt-4 text-[11px] leading-relaxed text-[#918D83]">서클의 미국 국채에는 블랙록 Circle Reserve Fund(MMF) 내 국채가 포함됩니다. 역레포는 담보를 받고 빌려준 돈으로, 위 국채 보유액에는 더하지 않습니다. 구성비의 역레포 금액은 대여액이며 담보 국채의 평가액과는 다릅니다.</p>}
             </div>;
           })}

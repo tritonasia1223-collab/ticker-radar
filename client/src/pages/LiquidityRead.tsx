@@ -18,6 +18,7 @@ import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
 import { useCreditReading, CreditSummary, CreditReadingGroup, CreditScenarioReading, creditChapterForState } from "@/components/credit/CreditReading";
 import { liquidityChapters } from "@shared/liquidity-chapters";
+import { liquidityReport } from "@shared/liquidity-report";
 import type { ChapterParagraph } from "@shared/credit/chapter-reading";
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
@@ -97,8 +98,8 @@ function OpinionText({ paragraph }: { paragraph: ChapterParagraph }) {
   // 부정·가정 문장(커지지 않았습니다, 줄었다는 이유만으로 등)은 자동 강조하지 않는다.
   const money = String.raw`(?:\d[\d,.]*(?:조(?:\s*\d[\d,.]*억)?|억)\s*달러\s+)?`;
   const rules = [
-    { pattern: new RegExp(`${money}(?:늘었습니다|높아졌습니다|커졌습니다|강해졌습니다|강해진 것으로 나타났습니다|커지고 있습니다)|기업대출 급증|추가 금리는 급등|강화했다고|늘었다고`, "g"), color: C.release },
-    { pattern: new RegExp(`${money}(?:줄었습니다|낮아졌습니다|약해졌습니다)|기업어음 조달은 줄고|대출 ETF도 약해져|완화했다고|줄었다고`, "g"), color: C.absorb },
+    { pattern: new RegExp(`${money}(?:늘었습니다|올랐습니다|확대됐습니다|높아졌습니다|커졌습니다|강해졌습니다|강해진 것으로 나타났습니다|커지고 있습니다)|기업대출 급증|추가 금리는 급등|강화했다고|늘었다고`, "g"), color: C.release },
+    { pattern: new RegExp(`${money}(?:줄었습니다|내렸습니다|축소됐습니다|낮아졌습니다|약해졌습니다)|기업어음 조달은 줄고|대출 ETF도 약해져|완화했다고|줄었다고`, "g"), color: C.absorb },
   ];
   const spans: { start: number; end: number; color?: string; strong: boolean }[] = [];
   for (const rule of rules) for (const match of paragraph.text.matchAll(rule.pattern)) {
@@ -135,6 +136,12 @@ function Section({ id, num, title, question, answer, paragraphs, children }: { i
       </div>
     }>{children}</Row>
   );
+}
+function ReportBody({ paragraphs, overview = false }: { paragraphs: ChapterParagraph[]; overview?: boolean }) {
+  if (!paragraphs.length) return null;
+  return <div data-testid={overview ? "market-analysis" : "section-analysis"} className={overview ? "mb-9 space-y-5" : "space-y-3"}>
+    {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, marginTop: n ? overview ? 18 : 12 : 0, fontSize: p.kind === "explanation" ? 12 : overview && n === 0 ? 24 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#918D83" : C.body, fontFamily: overview && n === 0 ? SERIF : undefined, fontWeight: overview && n === 0 ? 600 : 400 }}><OpinionText paragraph={p} /></p>)}
+  </div>;
 }
 function H2({ children }: { children: ReactNode }) { return <h2 className="text-[20px] md:text-[24px]" style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>{children}</h2>; }
 interface LiquidityPiePart { label: string; value: number; color: string }
@@ -437,6 +444,8 @@ export default function LiquidityRead() {
   const m2Parts = m2Composition(ctx, m2Now);
   const reserveRatio = sel ? reservesGdp(sel.reserves, sel.date, ctx.gdp ?? []) : null;
   const chapters = liquidityChapters(how, from, to, who, st, cmp);
+  const creditAvailable = !credit.query.isLoading && !credit.query.isError && !credit.query.data?.error && !credit.query.data?.configChanged;
+  const report = liquidityReport({ asOf: selDate, weeks: cmp, history: weeks, sel: selW, prev, context: ctx, how, from, to, who, stress: st, flow: debt.data?.flow ?? null, credit: creditAvailable ? credit.data : [] });
 
   return (
     <div style={{ "--liquidity-sticky-top": `${headerHeight + 20}px`, background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
@@ -466,11 +475,13 @@ export default function LiquidityRead() {
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
         </div></div>
         <div style={{ minWidth: 0 }}>
-        <LiquidityDashboard how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} stress={st} riskHeadline={credit.query.isLoading ? "신용 자료를 확인하고 있습니다." : credit.query.isError || credit.query.data?.error || credit.query.data?.configChanged ? "선택 시점의 신용 상태를 확인하지 못했습니다." : bondReading(credit.data, credit.outcome).overview} alerts={<CreditSummary state={credit} weeks={cmp} />} />
+        <ReportBody paragraphs={report.overview} overview />
+        <LiquidityDashboard showRiskReview={false} how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} stress={st} riskHeadline={credit.query.isLoading ? "신용 자료를 확인하고 있습니다." : credit.query.isError || credit.query.data?.error || credit.query.data?.configChanged ? "선택 시점의 신용 상태를 확인하지 못했습니다." : bondReading(credit.data, credit.outcome).overview} alerts={<CreditSummary state={credit} weeks={cmp} />} />
         </div></div>
 
         {/* 01 얼마나 */}
         <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나">
+          <ReportBody paragraphs={report.sections.s1} />
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2>순유동성과 M2</H2>
 
@@ -522,6 +533,7 @@ export default function LiquidityRead() {
 
         {/* 02 어디서 */}
         <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나">
+          <ReportBody paragraphs={report.sections.s2} />
           {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "풀린" : "흡수된"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
             <ContribBars N={cmp} centered rows={[
@@ -560,6 +572,7 @@ export default function LiquidityRead() {
 
         {/* 03 어디로 */}
         <Section id="s3" num="03" title="어디로" question="늘어난 돈이 어디에 쌓였나">
+          <ReportBody paragraphs={report.sections.s3} />
           {!to || !S3 ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2><Parts parts={S3.headline} /></H2>
             {to.sameSign ? (
@@ -597,6 +610,7 @@ export default function LiquidityRead() {
 
         {/* 04 누가 샀나 */}
         <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나">
+          <ReportBody paragraphs={report.sections.s4} />
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
@@ -650,7 +664,7 @@ export default function LiquidityRead() {
         </Row>
 
         {/* 05 탈은 없나 */}
-        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" answer={context.isLoading ? "자금시장 자료를 확인하고 있습니다." : context.isError ? "자금시장 자료를 불러오지 못했습니다." : chapters.s5}>
+        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={!context.isLoading && !context.isError ? report.sections.s5 : undefined} answer={context.isLoading ? "자금시장 자료를 확인하고 있습니다." : context.isError ? "자금시장 자료를 불러오지 못했습니다." : chapters.s5}>
           <H2>{S5.headline.join(" ")}</H2>
           <div style={{ display: "flex", flexDirection: "column", borderBottom: `1px solid ${C.line}` }}>{st.rows.map((r) => <GaugeRow key={r.key} r={r} />)}</div>
           <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} />
@@ -661,13 +675,14 @@ export default function LiquidityRead() {
         {readingGroups.map((group, n) => { const chapter = creditChapterForState(group.id, credit, cmp); return <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question} answer={chapter.text} paragraphs={chapter.paragraphs}>
           <CreditReadingGroup group={group} state={credit} weeks={cmp} />
         </Section>; })}
-        <Section id="credit-scenarios" num="10" title="함께 읽으면" question="어떤 신용 국면에 가까운가" answer={creditChapterForState("credit-scenarios", credit, cmp).text}>
+        <Section id="credit-scenarios" num="10" title="함께 읽으면" question="어떤 변화가 현재 판단을 바꿀까" answer={creditChapterForState("credit-scenarios", credit, cmp).text} paragraphs={creditChapterForState("credit-scenarios", credit, cmp).paragraphs}>
           <CreditScenarioReading state={credit} />
           <Cap>과거 조회: 관측일 기준 · 사후 공시·수정치 포함. 신용 조건 판정: 고정된 4주·13주 규칙. 그래프 비교: 상단 선택 기간.</Cap>
         </Section>
 
         {/* 배경 */}
         <Row as="footer" aside={<div style={{ display: "flex", flexDirection: "column", gap: 6 }}><span style={{ fontSize: 16, fontWeight: 600 }}>배경</span><Cap>유동성 바깥의 가격과 경기</Cap></div>}>
+          <ReportBody paragraphs={report.sections.background} />
           <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-x-5">
               {bg.map((b) => {

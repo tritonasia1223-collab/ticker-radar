@@ -1,3 +1,4 @@
+import { enrichCreditReport } from "./report.js";
 import type { IndicatorAnalysis, LineAnalysis } from "./signals.js";
 import { bondReading } from "./bond-reading.js";
 import { formatCredit, readingChange, type CreditOutcome } from "./reading.js";
@@ -54,7 +55,7 @@ function bankReport(data: IndicatorAnalysis[], outcome: CreditOutcome, weeks: 4 
 }
 
 // 경고 임계값과 관측된 방향을 구분한다. 경고 미충족을 변화 없음으로 번역하지 않는다.
-export function creditChapter(id: string, data: IndicatorAnalysis[], outcome: CreditOutcome, weeks: 4 | 13): ChapterReading {
+function baseCreditChapter(id: string, data: IndicatorAnalysis[], outcome: CreditOutcome, weeks: 4 | 13): ChapterReading {
   const line = (key: string) => data.find(i => i.id === key)?.lines[0];
   const value = (key: string) => usable(line(key)) ? line(key)!.latest!.value : null;
   const change = (key: string) => {
@@ -139,7 +140,11 @@ export function creditChapter(id: string, data: IndicatorAnalysis[], outcome: Cr
   }
   // 시나리오가 확정되지 않아도 확인된 은행·시장 흐름은 답한다.
   const first = (text: string) => text.split(/(?<=다\.)\s+/)[0];
-  const bank = creditChapter("credit-bank", data, outcome, weeks);
-  const bonds = creditChapter("credit-bonds", data, outcome, weeks);
+  const bank = baseCreditChapter("credit-bank", data, outcome, weeks);
+  const bonds = baseCreditChapter("credit-bonds", data, outcome, weeks);
   return { text: `${first(bank.text)} ${first(bonds.text)}`, details: ["시나리오 적합도는 아래에서 따로 확인합니다. 요약은 관측된 흐름이며 특정 시나리오 확정을 뜻하지 않습니다."] };
+}
+
+export function creditChapter(id: string, data: IndicatorAnalysis[], outcome: CreditOutcome, weeks: 4 | 13): ChapterReading {
+  return enrichCreditReport(id, baseCreditChapter(id, data, outcome, weeks), data, outcome, weeks);
 }

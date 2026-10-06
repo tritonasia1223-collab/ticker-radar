@@ -14,7 +14,7 @@ function ReviewRow({ question, children, dashed = false }: { question: string; c
   </div>;
 }
 
-export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flowError, stress, alerts, riskHeadline }: { how: HowMuch | null; from: WhereFrom | null; to: WhereTo | null; who: WhoBought | null; flow: TreasuryFlow | null; flowLoading: boolean; flowError: string | null; stress: Stress; alerts: ReactNode; riskHeadline: string }) {
+export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flowError, stress, alerts, riskHeadline, showRiskReview = true }: { how: HowMuch | null; from: WhereFrom | null; to: WhereTo | null; who: WhoBought | null; flow: TreasuryFlow | null; flowLoading: boolean; flowError: string | null; stress: Stress; alerts: ReactNode; riskHeadline: string; showRiskReview?: boolean }) {
   const liquidity = liquidityReview(from, to);
   const mark = (value: number, signed = false) => ({ text: `${signed ? fmt.signedEok(value) : fmt.amount(value)} 달러`, value });
   const destinationAmounts = to ? [
@@ -66,12 +66,12 @@ export function LiquidityDashboard({ how, from, to, who, flow, flowLoading, flow
         </ReviewRow>
       </>}
     </div>
-    <section aria-label="위험 신호 리뷰" className="mt-6 border-t-2 border-[#1A1A18] pt-6">
+    {showRiskReview && <section aria-label="위험 신호 리뷰" className="mt-6 border-t-2 border-[#1A1A18] pt-6">
     <h2 className="mt-3 mb-6 text-[24px] font-semibold leading-normal sm:text-[28px]" style={{ fontFamily: "'Noto Serif KR', serif" }} data-testid="risk-headline">{riskHeadline}</h2>
     <ReviewRow question="위험 신호는?">
     {stress.breached.length > 0 && <div className="my-5 rounded-lg border border-[#DCC5AA] bg-[#FAF5EB] p-4 text-sm leading-relaxed" role="status"><strong>자금시장에 주의 신호가 있습니다.</strong><p className="mt-2">{stress.breached.map(r => `${r.name} ${r.value}${r.unit === "bp" ? "bp" : ""} · 경계 ${r.threshold} · ${r.date}`).join(" / ")}</p></div>}
     {alerts}
     </ReviewRow>
-    </section>
+    </section>}
   </section>;
 }

@@ -62,3 +62,14 @@ B안은 A안과 같은 `/api/liquidity/credit?asOf=...&basis=observation&years=.
 - 차트 바로 아래에 ‘분배금 누적으로 상승할 수 있어, 우상향만으로 대출 가격이나 신용 여건이 개선됐다고 볼 수 없습니다’를 표시한다. 항상 우상향한다고 단정하지 않는다. 기존 급락 조건은 분배금 반영 수정가격 변화율에 그대로 적용한다.
 - 공식 성과 정의 참고: [SSGA SRLN](https://www.ssga.com/us/en/institutional/etfs/state-street-blackstone-senior-loan-etf-srln), [Invesco BKLN](https://www.invesco.com/us/en/financial-products/etfs/invesco-senior-loan-etf.html).
 - 검증: `tests/credit-trends.test.ts`와 기존 신용·리뷰 테스트. 설정 파일 변경으로 수집본의 configHash가 달라지므로, 운영 배포 시 새 설정의 수집 작업을 완료해 설정 변경 대기 표시를 해소해야 한다. 배포 전 현재 운영 DB의 설정 해시를 바꾸지는 않는다.
+
+## 지표를 연결하는 B안 보고서
+
+- `shared/liquidity-report.ts`는 상단 종합 분석과 01~05·거시 배경 해설을 선택 주차·4주/13주 비교에 맞춰 생성한다. 01~04의 왼쪽 정의는 유지하고 해석은 오른쪽 본문에 배치한다.
+- `shared/credit/report.ts`는 06~09의 기존 지표 요약을 교차 해석으로 확장한다. 은행 잔액·심사·수요·규모별 흐름, 회사채 발행·시장금리·OAS, CP 잔액·가격·은행 차입, CCC–HY 격차·BDC 공시·ETF 성과를 연결한다.
+- 정의와 자료 한계는 작고 옅은 글씨, 분석은 기본 크기, 결론은 제한적인 강조로 구분한다. 긴 왼쪽 평가도 본문을 가리거나 고정 영역 밖으로 숨지 않도록 기존 스크롤 배치를 유지한다.
+- 10에서는 다음에 확인할 변화를 먼저 제시하고 시나리오 적합도와 선택되지 않은 이유는 펼치기에 둔다. 고정 신호 규칙과 화면의 비교 기간은 구분한다.
+- 같은 지표 간 가격 비교는 동일한 시작·종료일을 요구한다. 분기 조사·공시는 별도 기준일을 표시한다. 결측·오래된 자료를 정상으로 간주하지 않으며 확보 표본의 백분위를 10년 분포라고 부르지 않는다.
+- 보유액 해설은 그래프와 같은 분기의 자료를 사용한다. 보유액 변화는 신규 매입액, 담보부 현금대여는 직접 국채 보유로 간주하지 않는다.
+- 이번 변경은 기존 API 응답과 설정을 사용한다. 새 데이터 수집이나 운영 DB 변경은 필요하지 않다.
+- 검증: `tests/liquidity-report.test.ts`, 기존 chapter/bond/credit/ownership/liquidity-review 테스트, 타입 검사·빌드 및 실제 주차·비교 기간 전환.
