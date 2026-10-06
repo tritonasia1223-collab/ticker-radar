@@ -12,6 +12,7 @@ import { RateComparisonChart } from "./RateComparisonChart";
 import { rateNarrative } from "@shared/credit/rate-comparison";
 import { bondReading } from "@shared/credit/bond-reading";
 import { CreditTrendNote } from "./CreditTrendNote";
+import { creditChapter, type ChapterReading } from "@shared/credit/chapter-reading";
 
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "#1A1A18", muted = "#5F5C54", border = "#D9D5CA";
@@ -37,6 +38,12 @@ export function useCreditReading(asOf: string) {
   return { query, data, outcome, years, setYears, asOf };
 }
 export type CreditReadingState = ReturnType<typeof useCreditReading>;
+
+export function creditChapterForState(id: string, state: CreditReadingState, weeks: 4 | 13): ChapterReading {
+  if (state.query.isLoading) return { text: "선택 시점의 신용 자료를 확인하고 있습니다.", details: [] };
+  if (state.query.isError || state.query.data?.error || state.query.data?.configChanged) return { text: "선택 시점의 신용 자료를 확인하지 못했습니다.", details: [] };
+  return creditChapter(id, state.data, state.outcome, weeks);
+}
 
 export function CreditSummary({ state, weeks = 4 }: { state: CreditReadingState; weeks?: 4 | 13 }) {
   const { query, outcome, asOf } = state;
@@ -162,11 +169,14 @@ export function CreditReadingControls({ state }: { state: CreditReadingState }) 
 
 export function CreditReadingGroup({ group, state, weeks }: { group: typeof readingGroups[number]; state: CreditReadingState; weeks: 4 | 13 }) {
   const r = groupReading(group, state.outcome);
-  const bonds = group.id === "credit-bonds" ? bondReading(state.data, state.outcome) : null;
+  const chapter = creditChapterForState(group.id, state, weeks);
   const unavailable = state.query.isError || state.query.data?.error || state.query.data?.configChanged;
   return <>
     <h2 style={{ fontFamily: serif, fontSize: 24, lineHeight: 1.5, margin: 0 }}>{group.question}</h2>
-    {bonds ? state.query.isLoading ? <p style={paragraph}>자료 조회 중</p> : unavailable ? <p style={paragraph}>신용 자료를 확인하지 못했습니다.</p> : <div><ReviewText className="text-sm leading-[1.8] text-[#3B3934]" text={bonds.text} /><details className="mt-3 text-xs leading-relaxed text-[#918D83]"><summary className="cursor-pointer">세부 기준·자료 범위</summary><div className="mt-2 space-y-1">{bonds.details.map(text => <p key={text}>{text}</p>)}</div></details></div> : <p style={paragraph}><b>{state.query.isLoading ? "자료 조회 중" : r.status}.</b> {!state.query.isLoading && r.text}</p>}
+    {!state.query.isLoading && !unavailable && <div>
+      {group.id === "credit-bonds" && <p style={paragraph}>스프레드는 국채 금리보다 추가로 요구하는 금리(프리미엄)를 뜻합니다.</p>}
+      <details className="text-xs leading-relaxed text-[#918D83]"><summary className="cursor-pointer">요약 근거·세부 기준</summary><div className="mt-2 space-y-1">{chapter.details.map(text => <p key={text}>{text}</p>)}<p>기존 경고 판정: {r.text}</p></div></details>
+    </div>}
     {group.id === readingGroups[0].id && <CreditReadingControls state={state} />}
     {group.ids.map(id => { const spec = indicators.find(i => i.id === id)!, result = state.data.find(i => i.id === id)!; return <ReadingChart key={id} spec={spec} result={result} state={state} weeks={weeks} />; })}
   </>;

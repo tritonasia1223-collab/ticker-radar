@@ -29,5 +29,5 @@ export function bondReading(data: IndicatorAnalysis[], outcome: CreditOutcome) {
   const overview = stable && issuanceKnown && !wide && !collapse && high.every(Boolean)
     ? "회사채 시장은 안정적이지만, 높은 금리는 여전히 부담입니다."
     : `${opening} ${burden}`;
-  return { overview, text: `${opening}\n${burden}\n스프레드는 국채 금리보다 추가로 요구하는 금리(프리미엄)를 뜻합니다.`, details };
+  return { opening, burden, overview, text: `${opening}\n${burden}\n스프레드는 국채 금리보다 추가로 요구하는 금리(프리미엄)를 뜻합니다.`, details };
 }
