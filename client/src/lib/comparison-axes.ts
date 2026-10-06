@@ -2,13 +2,14 @@ import { commonBase, rebase, type ComparePoint, type ComparisonView } from "../.
 import { COMPARE_SERIES, type CompareSeriesDef } from "./comparison-series";
 
 export type AxisSide = "left" | "right";
-export interface ComparisonAxis { side: AxisSide; key: string; label: string; normalized: boolean }
+export interface ComparisonAxis { side: AxisSide; key: string; label: string; normalized: boolean; independent?: boolean }
 export interface AxisSeries { def: CompareSeriesDef; points: ComparePoint[]; axis: string }
 export interface RawComparisonSeries { def: CompareSeriesDef; points: ComparePoint[] }
 
 const actualValueIds = new Set(["gdp_growth", "inflation", "unrate", "debt_gdp", "fedfunds", "tb3ms", "real_tb3ms", "gs10", "trade", "trade_bal"]);
 export const defaultAxis = (id: string): AxisSide => actualValueIds.has(id) ? "right" : "left";
 export const assignedAxis = (id: string, view: ComparisonView): AxisSide => view.assignments[id] ?? defaultAxis(id);
+export const usesIndependentScale = (id: string, view: ComparisonView) => view.mode === "mixed" && id === "cpi_level";
 export function sameComparisonView(a: ComparisonView | undefined, b: ComparisonView | undefined, ids: string[]) {
   if (!a) return true; // Legacy notes remember indicators only.
   if (!b || a.mode !== b.mode) return false;
@@ -30,6 +31,8 @@ export function buildComparisonAxes(raw: RawComparisonSeries[], view: Comparison
   const groups: { key: string; label: string; ids: string[] }[] = [];
   const unavailable: string[] = [];
   let base: string | null = null, rightUnit: string | null = null;
+  const independent = raw.filter(s => usesIndependentScale(s.def.id, view));
+  raw = raw.filter(s => !usesIndependentScale(s.def.id, view));
   if (view.mode === "raw") {
     raw.slice(0, 2).forEach((s, i) => {
       const key = "raw:" + s.def.id;
@@ -60,6 +63,11 @@ export function buildComparisonAxes(raw: RawComparisonSeries[], view: Comparison
     const key = "right:" + rightUnit;
     axes.push({ side: "right", key, label: rawUnitLabel(rightUnit), normalized: false });
     right.filter(s => rawUnitKey(s.def) === rightUnit).forEach(s => series.push({ ...s, axis: key }));
+  }
+  for (const s of independent) {
+    const key = "independent:" + s.def.id;
+    axes.push({ side: "left", key, label: s.def.label + " · 독립 배율", normalized: false, independent: true });
+    series.push({ ...s, axis: key });
   }
   return { axes, series, groups, unavailable, base, rightUnit, pending: right.filter(s => rawUnitKey(s.def) !== rightUnit).map(s => s.def.id) };
 }

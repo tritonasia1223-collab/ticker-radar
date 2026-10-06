@@ -18,17 +18,32 @@ describe("CPI level replaces YoY only in comparison views", () => {
     expect(data.inflation.length).toBeGreaterThan(1000);
     expect(withRealInterestRate(data).real_tb3ms).toEqual(differenceSeries(data.tb3ms, data.inflation, 2));
   });
-  it("uses a price index axis in the main chart and a median baseline in the experiment", () => {
+  it("uses independent raw CPI in the main chart and a median baseline in the experiment", () => {
     const points = monthlyPoints(data.cpi_level);
     const raw = [{ def: COMPARE_SERIES.find(s => s.id === "cpi_level")!, points }];
     const main = buildComparisonAxes(raw, automaticComparisonView(["cpi_level"]));
-    expect(main.series[0].axis).toBe("index");
-    expect(main.series[0].points.find(p => p.month === main.base)?.value).toBe(100);
+    expect(main.series[0].axis).toBe("independent:cpi_level");
+    expect(main.axes).toEqual([{ side: "left", key: "independent:cpi_level", label: "미국 소비자물가 수준(CPI) · 독립 배율", normalized: false, independent: true }]);
+    expect(main.series[0].points).toEqual(points);
     expect(main.series[0].points.map(p => p.raw)).toEqual(points.map(p => p.raw));
     const experiment = buildAlignedComparison(raw, defaultAlignment);
     expect(experiment.alignment.calibrations.cpi_level.kind).toBe("median");
     expect(experiment.alignment.calibrations.cpi_level.center).toBeGreaterThan(0);
     expect(experiment.series[0].points.map(p => p.raw)).toEqual(points.map(p => p.raw));
+  });
+  it("keeps other series, common base and unit groups unchanged when CPI is toggled", () => {
+    const ids = ["dxy", "real_tb3ms"], source = withRealInterestRate(data);
+    const raw = [...ids, "cpi_level"].map(id => ({ def: COMPARE_SERIES.find(s => s.id === id)!, points: monthlyPoints(source[id]) }));
+    const without = buildComparisonAxes(raw.slice(0, 2), automaticComparisonView(ids));
+    const withCpi = buildComparisonAxes(raw, automaticComparisonView([...ids, "cpi_level"]));
+    expect(withCpi.series.filter(s => s.def.id !== "cpi_level")).toEqual(without.series);
+    expect(withCpi.axes.filter(a => !a.independent)).toEqual(without.axes);
+    expect(withCpi.base).toBe(without.base);
+    expect(withCpi.groups).toEqual(without.groups);
+    expect(withCpi.pending).toEqual(without.pending);
+    const oldBase = buildComparisonAxes([raw[2]], { ...automaticComparisonView(["cpi_level"]), base: "2100-01" });
+    expect(oldBase.unavailable).toEqual([]);
+    expect(oldBase.series[0].points).toEqual(raw[2].points);
   });
   it("migrates viewing selections but preserves what old insight prose referenced", () => {
     expect(viewingSeriesIds(["inflation", "cpi_level", "usd_purchasing_power"])).toEqual(["cpi_level", "usd_purchasing_power"]);

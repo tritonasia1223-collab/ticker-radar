@@ -81,9 +81,9 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     const axisShapes = axes.map(axis => {
       const values = visible.filter(s => s.axis === axis.key).flatMap(s => s.points.map(p => p.value));
       let lo = values.length ? Math.min(...values) : 0, hi = values.length ? Math.max(...values) : 1;
-      if (!axis.normalized) { lo = Math.min(0, lo); hi = Math.max(0, hi); }
+      if (!axis.normalized && !axis.independent) { lo = Math.min(0, lo); hi = Math.max(0, hi); }
       const pad = (hi - lo) * .08 || Math.abs(hi) * .05 || 1; lo -= pad; hi += pad;
-      if (domains[axis.key]) [lo, hi] = domains[axis.key];
+      if (!axis.independent && domains[axis.key]) [lo, hi] = domains[axis.key];
       const y = (v: number) => plotBottom - (v - lo) / (hi - lo) * plotHeight;
       return { ...axis, lo, hi, y };
     });
@@ -97,6 +97,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     return { shapes, axisShapes };
   }, [series, axes, from, to, width, plotBottom, simplifyMonths, domains]);
   const { shapes, axisShapes } = geometry;
+  const labeledAxes = axisShapes.filter(a => !a.independent);
   const nearby = useMemo(() => {
     if (!pointer) return [];
     if (pointer.y >= plotTop && pointer.y <= plotBottom) return shapes.flatMap(s => {
@@ -140,7 +141,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     setPointer(null);
     e.preventDefault();
     const { px, py } = coordinates(e.clientX, e.clientY);
-    const side = py <= plotBottom ? (px < left ? axisShapes.find(a => a.side === "left") : px > right ? axisShapes.find(a => a.side === "right") : undefined) : undefined;
+    const side = py <= plotBottom ? (px < left ? labeledAxes.find(a => a.side === "left") : px > right ? labeledAxes.find(a => a.side === "right") : undefined) : undefined;
     const factor = Math.exp(clamp(e.deltaY, -100, 100) * .003);
     if (side && py >= plotTop && py <= plotBottom) {
       const anchor = side.hi - (py - plotTop) / plotHeight * (side.hi - side.lo);
@@ -165,7 +166,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <div className="flex shrink-0 gap-2"><button aria-label="기간 확대" onClick={() => zoom(.7)} className="rounded border px-2">＋</button><button aria-label="기간 축소" onClick={() => zoom(1.4)} className="rounded border px-2">－</button><button className="rounded border px-2" onClick={() => setDomains({})}>세로축 자동</button></div>
     </div>
     <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground" data-testid="compare-values"><span className="w-20 shrink-0 whitespace-nowrap tabular-nums">{cursorMonth ?? "커서로 값 비교"}</span><span className="min-w-0 flex-1">선 가까이에 마우스를 올리면 주변 지표의 값을 함께 볼 수 있습니다.</span></div>
-    <div className="grid grid-cols-2 gap-x-6 px-4 py-1 text-[10px] text-muted-foreground">{axes.map(a => <span key={a.key} data-testid={"axis-label-" + a.side} className={a.side === "right" ? "col-start-2 text-right" : "col-start-1"}>{a.side === "left" ? "← 왼쪽" : "오른쪽 →"} · {a.label}</span>)}</div>
+    <div className="grid grid-cols-2 gap-x-6 px-4 py-1 text-[10px] text-muted-foreground">{axes.filter(a => !a.independent).map(a => <span key={a.key} data-testid={"axis-label-" + a.side} className={a.side === "right" ? "col-start-2 text-right" : "col-start-1"}>{a.side === "left" ? "← 왼쪽" : "오른쪽 →"} · {a.label}</span>)}</div>
     </div>
     <div className="relative" onPointerMove={e => {
         const { px, py } = coordinates(e.clientX, e.clientY);
@@ -193,7 +194,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         setGroupIds([]);
         const { px, py } = coordinates(e.clientX, e.clientY);
         if (py < plotTop) return;
-        const side = py <= plotBottom ? (px < left ? axisShapes.find(a => a.side === "left") : px > right ? axisShapes.find(a => a.side === "right") : undefined) : undefined;
+        const side = py <= plotBottom ? (px < left ? labeledAxes.find(a => a.side === "left") : px > right ? labeledAxes.find(a => a.side === "right") : undefined) : undefined;
         const part = side ? "value" : py > axisBottom ? "time" : px >= left && px <= right ? "plot" : "none";
         if (part === "none") return;
         e.currentTarget.focus(); e.currentTarget.setPointerCapture(e.pointerId);
@@ -204,20 +205,20 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <defs><clipPath id={clip}><rect x={left} y={plotTop} width={span} height={plotHeight} /></clipPath><clipPath id={clip + "-spread"}><rect x={left} y={spreadTop} width={span} height={Math.max(0, axisBottom - spreadTop)} /></clipPath></defs>
       <rect x={left} y={plotTop} width={span} height={plotHeight} fill="transparent" style={{ cursor: tool === "move" ? "grab" : "crosshair" }} />
       <rect x={0} y={plotTop} width={left} height={plotHeight} fill="transparent" style={{ cursor: "ns-resize" }} />
-      <rect x={right} y={plotTop} width={width - right} height={plotHeight} fill="transparent" style={{ cursor: axisShapes.some(a => a.side === "right") ? "ns-resize" : "default" }} />
+      <rect x={right} y={plotTop} width={width - right} height={plotHeight} fill="transparent" style={{ cursor: labeledAxes.some(a => a.side === "right") ? "ns-resize" : "default" }} />
       <rect x={left} y={axisBottom} width={span} height={35} fill="transparent" style={{ cursor: "ew-resize" }} />
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none" data-testid="trend-sections">{phases.filter(p => p.to >= from && p.from <= to).map(p => {
         const a = Math.max(left, x(p.from)), b = Math.min(right, x(p.to)), color = p.direction === "up" ? "#10b981" : p.direction === "down" ? "#f43f5e" : "#94a3b8";
         return <g key={p.from}><rect x={a} y={plotTop} width={Math.max(0, b - a)} height={plotHeight} fill={color} opacity={.075} /><rect x={a} y={plotTop} width={Math.max(0, b - a)} height={3} fill={color} opacity={.45} /></g>;
       })}</g>
       {ticks.map(t => <g key={t.time} pointerEvents="none"><line x1={x(t.time)} x2={x(t.time)} y1={plotTop} y2={axisBottom} stroke="currentColor" opacity={.07} /><text x={x(t.time)} y={axisBottom + 23} textAnchor="middle" fontSize={10} fill="currentColor" opacity={.65}>{t.label}</text></g>)}
-      {Array.from({ length: 5 }, (_, i) => <g key={i} pointerEvents="none"><line x1={left} x2={right} y1={plotBottom - i / 4 * plotHeight} y2={plotBottom - i / 4 * plotHeight} stroke="currentColor" opacity={.07} />{axisShapes.map(a => <text key={a.key} data-testid={"axis-tick-" + a.side} x={a.side === "right" ? right + 7 : left - 7} y={plotBottom - i / 4 * plotHeight + 4} textAnchor={a.side === "right" ? "start" : "end"} fontSize={10} fill="currentColor">{fmt(a.lo + (a.hi - a.lo) * i / 4)}</text>)}</g>)}
-      {axisShapes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0 && Array.from({ length: 5 }, (_, i) => Math.abs(a.y(0) - (plotBottom - i / 4 * plotHeight))).every(gap => gap > 14)).map(a => <text key={a.key} x={a.side === "right" ? right + 7 : left - 7} y={a.y(0) + 4} textAnchor={a.side === "right" ? "start" : "end"} fontSize={10} fill="currentColor" pointerEvents="none">0</text>)}
+      {Array.from({ length: 5 }, (_, i) => <g key={i} pointerEvents="none"><line x1={left} x2={right} y1={plotBottom - i / 4 * plotHeight} y2={plotBottom - i / 4 * plotHeight} stroke="currentColor" opacity={.07} />{labeledAxes.map(a => <text key={a.key} data-testid={"axis-tick-" + a.side} x={a.side === "right" ? right + 7 : left - 7} y={plotBottom - i / 4 * plotHeight + 4} textAnchor={a.side === "right" ? "start" : "end"} fontSize={10} fill="currentColor">{fmt(a.lo + (a.hi - a.lo) * i / 4)}</text>)}</g>)}
+      {labeledAxes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0 && Array.from({ length: 5 }, (_, i) => Math.abs(a.y(0) - (plotBottom - i / 4 * plotHeight))).every(gap => gap > 14)).map(a => <text key={a.key} x={a.side === "right" ? right + 7 : left - 7} y={a.y(0) + 4} textAnchor={a.side === "right" ? "start" : "end"} fontSize={10} fill="currentColor" pointerEvents="none">0</text>)}
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none">
         {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.06} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
         {/* 실제 값 축마다 0선을 한 번 그려 흑자/적자와 증가율의 부호를 표시합니다. */}
-        {axisShapes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0).map(a => <line key={"zero-" + a.key} data-testid={"compare-zero-" + a.side} x1={left} x2={right} y1={a.y(0)} y2={a.y(0)} stroke="currentColor" strokeDasharray="4 4" opacity={.4} />)}
+        {labeledAxes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0).map(a => <line key={"zero-" + a.key} data-testid={"compare-zero-" + a.side} x1={left} x2={right} y1={a.y(0)} y2={a.y(0)} stroke="currentColor" strokeDasharray="4 4" opacity={.4} />)}
         {shapes.map(s => <g key={s.def.id} data-axis={s.side} data-axis-key={s.key} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
       </g>
       {!shapes.some(s => s.points.length) && <text x={width / 2} y={plotTop + plotHeight / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={.6}>이 구간에 표시할 관측값이 없습니다.</text>}
