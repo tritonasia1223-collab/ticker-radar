@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, renameSync } from "fs";
 import { closedMonthEnds, annualChange, mergeObservations, type Point } from "../shared/capitalism-refresh.js";
 import { fetchDxy } from "./lib/dollar-sources.js";
+import { fetchNetExportsGdp } from "./lib/net-exports-gdp-sources.js";
 import { fetchTradeHistory } from "./lib/trade-sources.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -52,6 +53,7 @@ const SERIES: SeriesDef[] = [
   { key: "gdp_growth", fredId: "A191RL1Q225SBEA", freq: "asis", decimals: 1 }, // 실질GDP 전기대비 연율(%)
   { key: "debt_gdp", fredId: "GFDEGDQ188S", freq: "asis", decimals: 2 },       // 공공부채/GDP(%)
   // ── 통화·대외 ──
+  { key: "net_exports_gdp", fredId: "NETEXP", freq: "asis" }, // Special verified ratio rebuild below.
   { key: "trade", fredId: "NETEXC", freq: "asis", decimals: 1 },   // 실질 순수출($B, 분기)
   { key: "m2", fredId: "M2SL", freq: "asis", decimals: 1 },        // M2($B, 월)
   { key: "monbase", fredId: "BOGMBASE", freq: "asis", decimals: 1 }, // 본원통화($B, 월)
@@ -148,6 +150,17 @@ async function main() {
     process.stdout.write(`  ${s.key.padEnd(11)} `);
     // These two official, revised datasets must stay on a single release basis.
     // Rebuild rather than keeping stale observations under the append-only policy.
+    if (s.key === "net_exports_gdp") {
+      try {
+        const rebuilt = await fetchNetExportsGdp();
+        json[s.key] = rebuilt.points; sources[s.key] = rebuilt.history;
+        writeFileSync(join(__dirname, "../client/src/data/net-exports-gdp-audit.json"), JSON.stringify(rebuilt.audit, null, 2) + "\n");
+        writeFileSync(sourcesPath, JSON.stringify(sources, null, 2) + "\n");
+        report.series.push({ key: s.key, status: "ok", policy: "same-period nominal ratio rebuild", observations: rebuilt.points.length });
+        console.log(`검증 후 재계산 ${rebuilt.points.length}개 → ${rebuilt.points.at(-1)?.[0]}`);
+      } catch (e) { skipped++; report.series.push({ key: s.key, status: "error", error: String(e) }); console.log(`ERR ${String(e)} — SKIP`); }
+      continue;
+    }
     if (s.key === "trade" || s.key === "trade_bal") {
       try {
         const rebuilt = await (tradeResult ??= fetchTradeHistory());

@@ -255,5 +255,22 @@
         "factor": null
       }
     ]
+  },
+  "net_exports_gdp": {
+    "modernFrom": "1947-01-01",
+    "segments": [
+      {
+        "from": "1929-01-01",
+        "to": "1946-01-01",
+        "source": "BEA 명목 순수출 / 명목 GDP · 연간",
+        "short": "연간·계산값",
+        "id": "A019RC1A027NBEA / GDPA × 100",
+        "url": "https://fred.stlouisfed.org/graph/?id=A019RC1A027NBEA,GDPA",
+        "note": "상품·서비스·국민계정 기준. 같은 해 명목 순수출÷명목 GDP×100. 연간 1개 관측.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
   }
 }

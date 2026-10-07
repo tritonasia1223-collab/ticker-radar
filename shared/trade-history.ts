@@ -44,6 +44,7 @@ export function buildNominalTrade(annualMillions: Point[], monthlyMillions: Poin
 }
 
 export function tradeObservationLabel(id: string, date: string): string {
+  if (id === "net_exports_gdp") return date < "1947-01-01" ? "연간·계산값" : "분기·계산값";
   if (id === "trade_bal" && date < "1992-01-01") return "연간·월평균 환산";
   if (id === "trade" && date < "1947-01-01") return "연간·계산값";
   if (id === "trade" && date < "1970-01-01") return "분기·계산값";

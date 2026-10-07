@@ -14,24 +14,24 @@ const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
   dollar: ["dxy", "reer", "usd_purchasing_power", "fx_krw", "fx_jpy", "fx_eur"],
   money: ["real_tb3ms", "m2"],
   assets: ["gold", "oil", "nasdaq"],
-  economy: ["gdp_growth", "cpi_level", "debt_gdp", "trade_bal", "trade"],
+  economy: ["gdp_growth", "cpi_level", "debt_gdp", "trade_bal", "net_exports_gdp"],
 };
 
-const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", trade: "NETEXC", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
+const ids: Record<string, string> = { gdp_growth: "A191RL1Q225SBEA", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", net_exports_gdp: "NETEXP", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
   { id: "cpi_level", label: "미국 소비자물가 수준(CPI)", unit: "idx", color: "#e0c267", cadence: 1, category: "economy", note: "CPIAUCNS · 월간 · 비계절조정 · 1982~1984=100 · 전년비가 아닌 물가 수준", url: "https://fred.stlouisfed.org/series/CPIAUCNS" },
-  ...PANELS.filter(p => !excludedIds.has(p.id)).map(p => ({ id: p.series, label: p.id === "trade" ? "실질 순수출" : p.label,
-    unit: p.id === "trade" ? "십억 2017달러·연율" : p.unit, color: p.color, category: ["real_tb3ms", "usd_purchasing_power"].includes(p.id) ? "money" : p.cat,
-    cadence: ["gdp_growth", "debt_gdp", "mktcap", "trade"].includes(p.id) ? 3 : 1,
+  ...PANELS.filter(p => !excludedIds.has(p.id)).map(p => ({ id: p.series, label: p.label,
+    unit: p.unit, color: p.color, category: ["real_tb3ms", "usd_purchasing_power"].includes(p.id) ? "money" : p.cat,
+    cadence: ["gdp_growth", "debt_gdp", "mktcap", "net_exports_gdp"].includes(p.id) ? 3 : 1,
     note: p.id === "dxy" ? "주요 6개 통화 대비 명목 달러가치 · 실제 DXY 월말 종가 · 1973-03부터"
       : p.id === "reer" ? "상대국 물가를 반영한 실질 대외가치 · Fed/BIS 장기 연결"
       : p.id === "usd_purchasing_power" ? "미국 CPI 역수 · 하락=미국 내 달러 구매력 감소 · 기준월 대비 구매력 비교"
       : p.id === "real_tb3ms" ? "3개월 T-bill 금리 − 동월 CPI 전년비 · 직접 계산한 실질금리 근사치"
-      : p.id === "inflation" ? "CPI 수준이 아닌 전년 동월 대비 변화율(%)" : p.id === "trade" ? "2017년 연쇄가격 · 초기 연간/이후 분기 연율 · 당시 명목 흑자·적자와 다를 수 있음"
+      : p.id === "inflation" ? "CPI 수준이 아닌 전년 동월 대비 변화율(%)" : p.id === "net_exports_gdp" ? "명목 순수출÷명목 GDP×100 · 상품·서비스·국민계정 기준 · 1929~1946 연간, 1947~ 분기 · 0%=균형, 양수=흑자, 음수=적자"
       : ["nasdaq", "walcl", "wresbal", "rrp"].includes(p.id) ? "일·주간 자료의 각 월 마지막 관측값"
       : ["gdp_growth", "debt_gdp", "mktcap"].includes(p.id) ? "분기 자료 (일부 초기 구간은 연간 자료)" : "월간 자료 · 기존 경제사 계열",
-    url: p.id === "real_tb3ms" ? "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL" : p.id === "dxy" ? "https://finance.yahoo.com/quote/DX-Y.NYB/history/" : p.id === "gold" ? "https://datahub.io/core/gold-prices" : `https://fred.stlouisfed.org/series/${ids[p.id]}` })),
+    url: p.id === "net_exports_gdp" ? "https://fred.stlouisfed.org/graph/?id=NETEXP,GDP" : p.id === "real_tb3ms" ? "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL" : p.id === "dxy" ? "https://finance.yahoo.com/quote/DX-Y.NYB/history/" : p.id === "gold" ? "https://datahub.io/core/gold-prices" : `https://fred.stlouisfed.org/series/${ids[p.id]}` })),
   { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
   { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
   { id: "fx_eur", label: "유로/달러 환율", unit: "달러 / 1유로", color: "#38bdf8", cadence: 1, category: "money", note: "월평균 · 시장 관행(EUR/USD)대로 1유로당 달러 · 상승=유로 강세/달러 약세(원·엔 환율과 방향 반대) · 1999년 유로 도입 이후 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXUSEU" },
@@ -65,9 +65,9 @@ export const signedLabel = (value: number) => (value > 0 ? "+" : "") + numberLab
 export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === "idx" || unit === "p" ? "pt" : unit === "원 / 1달러" ? "원" : unit === "엔 / 1달러" ? "엔" : unit === "달러 / 1유로" ? "달러" : unit; }
 
 // Preserve saved note identities; never relabel the retired composite as DXY or REER.
-const retiredTradeLabels: Record<string, string> = { trade_cycle: "수출−수입 증가율 격차", exports_yoy: "미국 수출 증가율", imports_yoy: "미국 수입 증가율" };
+const retiredTradeLabels: Record<string, string> = { trade: "실질 순수출", trade_cycle: "수출−수입 증가율 격차", exports_yoy: "미국 수출 증가율", imports_yoy: "미국 수입 증가율" };
 export const seriesLabel = (id: string) => COMPARE_SERIES.find(s => s.id === id)?.label ?? (excludedIds.has(id) ? (PANELS.find(p => p.id === id)?.label ?? id) + "(비교에서 제외됨)" : retiredTradeLabels[id] ? retiredTradeLabels[id] + "(삭제됨)" : id === "dollar" ? "기존 달러지수(삭제됨)" : id);
 export const activeSeriesIds = (ids: string[]) => [...new Set(ids.filter(id => COMPARE_SERIES.some(s => s.id === id)))];
 
 // Migrate viewing preferences only; saved prose retains its original series identity.
-export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id => id === "inflation" ? "cpi_level" : id));
+export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id => id === "inflation" ? "cpi_level" : id === "trade" ? "net_exports_gdp" : id));

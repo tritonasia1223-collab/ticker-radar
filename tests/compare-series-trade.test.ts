@@ -33,9 +33,12 @@ describe("그래프 비교 — 유로/달러·미국 무역수지", () => {
       expect(def(id)).toBeUndefined(); expect(series[id]).toBeUndefined();
       expect(seriesLabel(id)).toContain("삭제됨");
     }
-    expect(activeSeriesIds(["trade_bal", ...retired, "trade"])).toEqual(["trade_bal", "trade"]);
+    expect(activeSeriesIds(["trade_bal", ...retired, "trade"])).toEqual(["trade_bal"]);
+    expect(viewingSeriesIds(["trade"])).toEqual(["net_exports_gdp"]);
+    expect(seriesLabel("trade")).toBe("실질 순수출(삭제됨)");
     expect(viewingSeriesIds(retired)).toEqual([]);
-    expect(def("trade").unit).toBe("십억 2017달러·연율");
+    expect(def("trade")).toBeUndefined();
+    expect(def("net_exports_gdp").unit).toBe("%");
     expect(series.trade.length).toBeGreaterThan(0);
   });
 

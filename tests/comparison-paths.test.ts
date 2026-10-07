@@ -20,7 +20,7 @@ describe("annual comparison guides", () => {
   });
   it("keeps annual guides and raw values unchanged by smoothing, with estimated zero crossings", () => {
     const points = monthlyPoints([["1930-01-01", 2], ["1931-01-01", -2], ["1932-01-01", 4]]);
-    const result = comparisonPaths(points, "trade", 3, 12);
+    const result = comparisonPaths(points, "net_exports_gdp", 3, 12);
     expect(result).toHaveLength(1);
     expect(result[0].rendered).toEqual(points);
     expect(result[0].crossings).toHaveLength(2);

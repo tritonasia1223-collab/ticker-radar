@@ -37,7 +37,7 @@ export const PANELS: PanelDef[] = [
   { id: "reer", label: "실질실효환율(REER, 장기 접합)", unit: "idx", series: "reer", cat: "money", color: "#6366f1", on: false, start: "1973", kind: "line" },
   { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "#cc7a33", on: false, start: "1946", kind: "line" },
   { id: "gold", label: "금값 (oz당)", unit: "$/oz", series: "gold", cat: "money", color: "#d4af37", on: false, start: "1944", kind: "line" },
-  { id: "trade", label: "실질 순수출", unit: "십억 2017달러·연율", series: "trade", cat: "money", color: "#e0a050", on: false, start: "1929", zeroLine: true, kind: "area" },
+  { id: "net_exports_gdp", label: "GDP 대비 순수출", unit: "%", series: "net_exports_gdp", cat: "money", color: "#e0a050", on: false, start: "1929", zeroLine: true, kind: "area" },
   { id: "m2", label: "M2 통화량", unit: "$B", series: "m2", cat: "money", color: "#d9954a", on: false, start: "1959", kind: "line" },
   { id: "monbase", label: "본원통화", unit: "$B", series: "monbase", cat: "fed", color: "#c08cf0", on: false, start: "1959", kind: "line" },
   { id: "walcl", label: "연준 총자산", unit: "$B", series: "walcl", cat: "fed", color: "#b07ce0", on: false, start: "2002", kind: "area" },
