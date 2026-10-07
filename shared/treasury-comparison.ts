@@ -24,23 +24,23 @@ export function bidderAllocation(agg: AuctionAgg | null, maturities: Maturity[])
 export const NON_BILLS: Maturity[] = ['notes', 'bonds', 'tips', 'frn'];
 
 /** 사용자가 지정한 9월 해설만 해당 주차에 표시한다. 다른 주차에 자동 문안을 채우지 않는다. */
-export function treasuryEditorial(asOf: string, weeks: number, flow: TreasuryFlow | null, current: AuctionAgg | null, previous: AuctionAgg | null, monthly: TreasuryStock[]): ChapterParagraph[] {
+export function treasuryEditorialByChart(asOf: string, weeks: number, flow: TreasuryFlow | null, current: AuctionAgg | null, previous: AuctionAgg | null, monthly: TreasuryStock[]): { issuance: ChapterParagraph[]; auctions: ChapterParagraph[] } {
   if (asOf !== '2026-09-30' || weeks !== 4 || !flow || flow.end !== asOf || flow.weeks !== weeks
-    || Math.round(flow.net / 100) !== -20 || Math.round(flow.billsNet / 100) !== -1391) return [];
-  const shares = billShares(monthly, asOf), latest = shares.at(-1);
-  const nonBills = bidderAllocation(current, NON_BILLS), before = bidderAllocation(previous, NON_BILLS);
-  const bonds = bidderAllocation(current, ['bonds']), oldBonds = bidderAllocation(previous, ['bonds']);
-  const eok = (v: number) => Math.round(Math.abs(v) / 100).toLocaleString('ko-KR');
-  const p: ChapterParagraph[] = [
-    { kind: 'analysis', text: `9월의 최근 4주에는 국채 순발행을 통한 자금 흡수가 거의 없었습니다. 순발행은 오히려 ${eok(flow.net)}억 달러 감소입니다.`, emphasis: ['국채 순발행을 통한 자금 흡수가 거의 없었습니다.'] },
-    { kind: 'analysis', text: `단기채는 줄고, 중장기채 등 나머지는 늘어 합계가 0에 가까웠습니다. 단기채는 ${eok(flow.billsNet)}억 달러 순상환, 중장기채 등은 ${eok(flow.net - flow.billsNet)}억 달러 순발행입니다.`, emphasis: ['단기채는 줄고, 중장기채 등 나머지는 늘어 합계가 0에 가까웠습니다.'] },
+    || Math.round(flow.net / 100) !== -20 || Math.round(flow.billsNet / 100) !== -1391) return { issuance: [], auctions: [] };
+  const issuance: ChapterParagraph[] = [
+    { kind: 'analysis', text: '7월 구간 4천억 달러 대, 8월 구간 3천억 달러씩 늘던 잔액이 9월 구간에는 20억 달러 줄었습니다.' },
+    { kind: 'analysis', text: '바뀐 것은 단기채입니다. 7월 구간에 3,405억 달러를 늘렸던 단기채가 9월 구간에는 1,391억 달러 순상환으로 돌아섰습니다. 반면 중장기채는 688억, 1,140억, 1,371억 달러로 매 구간 늘었습니다.' },
+    { kind: 'analysis', text: '그래서 9월은 총량은 그대로인데 구성이 달라진 구간입니다. 단기채를 들고 있던 쪽(주로 MMF)에는 현금이 돌아왔고, 시장이 새로 소화해야 하는 물량은 만기가 긴 채권으로 옮겨갔습니다.' },
   ];
-  if (latest) {
-    const earlier = shares.filter(s => s.date < latest.date && s.share >= latest.share).at(-1);
-    p.push({ kind: 'analysis', text: `다만, 단기채 비중은 ${earlier ? `${earlier.date.slice(0, 4)}년 ${Number(earlier.date.slice(5, 7))}월 이후 가장 높습니다.` : '확보한 기간에서 가장 높습니다.'} 전체 시장성 국채 중 단기채 비중은 ${latest.share.toFixed(1)}%입니다 (${Number(latest.date.slice(5, 7))}월 말 기준).`, emphasis: ['단기채 비중'] });
-  }
-  if (nonBills && before) p.push({ kind: 'analysis', text: `중장기물은 간접·직접 입찰자 중심의 배분이 이어졌습니다. 이번 기간 간접 입찰은 ${nonBills.indirect.toFixed(1)}%, 직접 입찰은 ${nonBills.direct.toFixed(1)}%입니다. 프라이머리 딜러 몫은 직전 4주 ${before.dealer.toFixed(1)}%에서 ${nonBills.dealer.toFixed(1)}%로 소폭 상승했습니다.`, emphasis: ['간접·직접 입찰자 중심의 배분이 이어졌습니다.'] });
-  if (bonds && oldBonds) p.push({ kind: 'analysis', text: `특히 장기채는 간접 입찰 비중이 크게 늘었습니다. 낙찰액 ${eok(bonds.total)}억 달러 가운데 간접 입찰이 ${bonds.indirect.toFixed(1)}%로, 직전 4주의 ${oldBonds.indirect.toFixed(1)}%보다 높아졌습니다. 높은 수익률이 매수 유인으로 작용했을 가능성이 있습니다.`, emphasis: ['장기채는 간접 입찰 비중이 크게 늘었습니다.'] });
-  p.push({ kind: 'explanation', text: `순발행·입찰 비교: ${flow.start}~${flow.end}, 직전 ${previous?.start ?? '—'}~${previous?.end ?? '—'}. 순발행만으로 전체 유동성 효과를 계산할 수 없고, 낙찰자 비중만으로 수요 강도나 매수 동기를 확정하지 않습니다.` });
-  return p;
+  const auctions: ChapterParagraph[] = current && previous ? [
+    { kind: 'analysis', text: '금리가 급등한 4주였지만 국채 수요는 무너지지 않았습니다.' },
+    { kind: 'analysis', text: '장기채 수요가 특히 강했습니다. 장기채 350억 달러 가운데 간접 입찰이 69.2%를 가져가 직전 4주(53.9%)보다 크게 늘었습니다. 금리가 오르자 그 수익률을 보고 들어온 매수로 보입니다.' },
+    { kind: 'analysis', text: '다만 딜러 몫이 직전 4주 10.6%에서 조금 올랐습니다. 아직은 정상 범위이지만, 이 비중이 계속 오르면 시장이 물량을 버거워하기 시작했다는 신호입니다.' },
+  ] : [];
+  return { issuance, auctions };
+}
+
+export function treasuryEditorial(asOf: string, weeks: number, flow: TreasuryFlow | null, current: AuctionAgg | null, previous: AuctionAgg | null, monthly: TreasuryStock[]): ChapterParagraph[] {
+  const groups = treasuryEditorialByChart(asOf, weeks, flow, current, previous, monthly);
+  return [...groups.issuance, ...groups.auctions];
 }

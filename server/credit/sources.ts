@@ -60,15 +60,16 @@ export function parseNav(j: any, src: Source): Point[] {
   }
   return points.sort((a, b) => a.date.localeCompare(b.date) || a.publishedAt!.localeCompare(b.publishedAt!));
 }
-export async function collectCredit(previous: Snapshot | null, now = new Date(), backfill = false): Promise<Snapshot> {
+export async function collectCredit(previous: Snapshot | null, now = new Date(), backfill = false, onlyKeys?: string[]): Promise<Snapshot> {
   const collectedAt = now.toISOString(), today = collectedAt.slice(0, 10), start = new Date(now.getTime() - config.settings.historyYears * 365.25 * DAY).toISOString().slice(0, 10);
-  const prior = new Map(previous?.series.map(s => [s.key, s]) ?? []); const series: Series[] = [];
+  const prior = new Map(previous?.series.map(s => [s.key, s]) ?? []);
+  const series: Series[] = onlyKeys ? [...prior.values()].filter(s => !onlyKeys.includes(s.key)) : [];
   const requests = new Map<string, Promise<any>>();
   const once = (url: string, json = false) => { if (!json) return get(url); if (!requests.has(url)) requests.set(url, get(url, json)); return requests.get(url)!; };
   const bdcs = new Map<string, ReturnType<typeof collectBdc>>();
   // 필수 지표 원계열부터 수집. 키와 순서는 JSON에서 가져온다.
   const essential = new Set(config.paths.flatMap(p => p.indicators).filter(i => i.essential).flatMap(i => i.chart.lines.flatMap(l => [l.key, ...(l.navKey ? [l.navKey] : [])])));
-  const sources = [...config.sources].sort((a, b) => Number(essential.has(b.key)) - Number(essential.has(a.key)));
+  const sources = config.sources.filter(s => !onlyKeys || onlyKeys.includes(s.key)).sort((a, b) => Number(essential.has(b.key)) - Number(essential.has(a.key)));
   for (let offset = 0; offset < sources.length; offset += config.settings.concurrency) {
     series.push(...await Promise.all(sources.slice(offset, offset + config.settings.concurrency).map(async src => {
       const old = prior.get(src.key);

@@ -52,8 +52,8 @@ export function FacilitiesHistoryChart({history,data,asOf,weeks}:{history:ReadWe
     <p data-funding-definition="loans" className={definition}>{FUNDING_DEFINITIONS.loans}{data.includesBtfp?' 선택 시점의 BTFP 잔액도 포함했습니다.':''}</p>
     <ReadingValue value={data.value==null?'자료 없음':facilityAmount(data.value)} change={data.change==null?'비교 불가':facilityAmount(data.change,true)} date={data.currentDate} previousDate={data.previousDate} weeks={weeks}/>
     <div className={frame}>
-      <p className={`${caption} mb-3`}>최근 1년 · 주간 잔액 · 단위: 억 달러</p>
-      <div className="h-[250px]" role="img" aria-label="최근 1년 연준 대출·레포·스왑 구성별 누적 막대그래프">
+      <p className={`${caption} mb-3`}>최근 3년 · 주간 잔액 · 단위: 억 달러</p>
+      <div className="h-[250px]" role="img" aria-label="최근 3년 연준 대출·레포·스왑 구성별 누적 막대그래프">
         {series.some(p=>data.rows.every(r=>p[r.key]!=null))?<ResponsiveContainer width="100%" height="100%"><BarChart data={series} margin={{top:8,right:12,left:0,bottom:0}} barCategoryGap="20%">
           <CartesianGrid vertical={false} stroke="#E8E5DC"/>
           <XAxis dataKey="date" tickFormatter={(v:string)=>v.slice(2,7)} minTickGap={48} tick={{fontSize:11}} axisLine={false} tickLine={false}/>

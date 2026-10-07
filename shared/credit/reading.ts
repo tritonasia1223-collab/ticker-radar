@@ -6,9 +6,9 @@ import { type scenarios } from "./scenarios.js";
 export type CreditOutcome = ReturnType<typeof scenarios>;
 export const readingGroups = [
   { id: "credit-bank", title: "은행 대출", question: "은행은 돈을 빌려주고 있나?", ids: ["sloos_ci_standards", "sloos_ci_demand", "h8_ci_loans", "h8_large_vs_small_banks", "h8_loans_to_nondepository"], watch: ["bank_tight", "loan_slow", "demand_weak", "small_bank_divergence", "ndfi_growth", "loan_emergency_warning"], calm: ["bank_ease", "loan_growth"] },
-  { id: "credit-bonds", title: "회사채 조달", question: "회사채 시장이 자금을 공급하고 있나?", ids: ["ig_oas", "hy_oas", "corporate_bond_issuance"], watch: ["ig_wide", "hy_wide", "issuance_collapse"], calm: ["ig_stable", "hy_stable", "issuance_active"] },
-  { id: "credit-short", title: "단기 자금", question: "당장 쓸 돈을 구하기 어려워졌나?", ids: ["cp_spread", "cp_outstanding"], watch: ["cp_jump", "cp_fall", "loan_emergency_warning"], calm: [] },
-  { id: "credit-fragile", title: "취약 기업·사모대출", question: "취약한 곳에서 먼저 문제가 생기나?", ids: ["ccc_oas", "bdc_price_to_nav", "bdc_credit_quality", "leveraged_loans"], watch: ["ccc_wide", "ccc_gap_trend", "bdc_discount", "bdc_crash", "defaults_up", "pik_up", "etf_drop"], calm: ["ccc_stable", "bdc_stable"] },
+  { id: "credit-bonds", title: "회사채 조달", question: "회사채 시장이 자금을 공급하고 있나?", ids: ["ig_oas", "hy_oas", "corporate_bond_issuance", "leveraged_loans"], watch: ["ig_wide", "hy_wide", "issuance_collapse"], calm: ["ig_stable", "hy_stable", "issuance_active"] },
+  { id: "credit-short", title: "기업어음(CP)", question: "기업의 단기 운영자금 조달 여건은?", ids: ["cp_spread", "cp_outstanding"], watch: ["cp_jump", "cp_fall", "loan_emergency_warning"], calm: [] },
+  { id: "credit-fragile", title: "중견기업·사모대출", question: "BDC를 통해 본 중견기업의 자금 사정은?", ids: ["ccc_oas", "bdc_price_to_nav", "bdc_credit_quality"], watch: ["ccc_wide", "ccc_gap_trend", "bdc_discount", "bdc_crash", "defaults_up", "pik_up", "etf_drop"], calm: ["ccc_stable", "bdc_stable"] },
 ];
 
 export const readingNotes: Record<string, { question: string; reading: string; together: string }> = {
@@ -23,9 +23,15 @@ export const readingNotes: Record<string, { question: string; reading: string; t
   cp_spread: { question: "단기 운영자금의 가격이 뛰었나?", reading: "A2/P2 비금융 90일 CP 금리에서 3개월 단기국채 할인율을 뺀 대리지표입니다. 확대에는 CP 금리 상승뿐 아니라 안전자산인 단기국채 금리 하락도 영향을 줍니다.", together: "CP 잔액 감소와 C&I 대출 급증까지 겹치면 시장 조달이 막혀 은행 한도를 인출했을 가능성이 있습니다." },
   cp_outstanding: { question: "기업어음으로 조달한 잔액은 줄었나?", reading: "전체 CP 시장의 잔액입니다. 감소는 공급 위축뿐 아니라 수요 감소나 다른 조달 수단으로의 이동 때문일 수도 있습니다.", together: "CP 비용 상승과 잔액 감소가 겹치면 조달 위축 가능성이 있습니다. 전체 시장 잔액과 A2/P2 비금융 CP 금리는 관측 대상이 다릅니다." },
   ccc_oas: { question: "가장 약한 차주부터 어려워지나?", reading: "CCC 이하 시장금리와 OAS를 구분해 봅니다. HY 평균 OAS가 안정적인데 CCC OAS만 확대되면 취약한 차주에 긴장이 집중됐을 가능성이 있습니다.", together: "HY·IG까지 확대되면 긴장 범위가 더 넓습니다. BDC 가격 하락과 부실 증가는 사모대출 쪽의 추가 신호입니다." },
-  bdc_price_to_nav: { question: "시장은 대출자산의 장부가를 어떻게 평가하나?", reading: "주가를 주당 순자산가치(NAV)로 나눈 값입니다. 1배 미만이면 장부가 대비 할인입니다. 할인은 자산 우려 외에도 금리·배당·회사별 특성에 영향을 받습니다.", together: "주가는 일간, NAV는 분기 자료입니다. 분기말 NAV를 연결한 과거 분석이며 당시 알려진 정보만의 재현은 아닙니다. 부실·PIK 공시는 대출자산의 상태를 보여줍니다." },
-  bdc_credit_quality: { question: "가격의 우려가 실제 부실에도 나타나나?", reading: "부실(non-accrual)은 정상적으로 이자를 인식하지 않는 대출의 비중입니다. PIK는 현금 대신 원금 등에 더해 받는 이자·배당으로, 비중 상승의 배경을 확인해야 합니다.", together: "공정가치·원가 기준과 회사별 PIK 정의가 다릅니다. 회사·기준이 같은 분기끼리 비교해야 하며, PIK 증가 자체가 부도를 뜻하지는 않습니다." },
-  leveraged_loans: { question: "대출 ETF의 분배금 반영 성과는 어떤가?", reading: "분배금 재투자 효과가 반영된 성과입니다. 분배금 누적으로 상승할 수 있어, 우상향만으로 대출 가격이나 신용 여건이 개선됐다고 볼 수 없습니다.", together: "분배금을 반영하고도 성과가 하락하면 가격 약세를 추가로 확인할 필요가 있습니다. CCC·HY 스프레드와 함께 보며, CLO 스프레드나 원대출 가격의 직접 측정값은 아닙니다." },
+  bdc_price_to_nav: { question: "시장은 대출자산의 장부가를 어떻게 평가하나?", reading: `BDC 주가를 장부상 순자산가치(NAV)로 나눈 값입니다. 1배보다 낮으면 시장이 "빌려준 돈을 장부에 적힌 만큼 돌려받지 못할 것"이라고 본다는 뜻입니다.
+수준보다 움직임을 봅니다. 세 회사가 함께 내려가거나, 평소 1배 근처인 ARCC가 1배 아래에 머물면 사모대출 전반에 대한 불신 신호입니다. 한 회사만 내려가면 그 회사의 문제일 가능성이 큽니다.
+할인에는 배당 삭감 우려나 운용사 평판 같은 회사별 사정도 섞여 있습니다.`, together: "주가는 일간, NAV는 분기 자료입니다. 분기말 NAV를 연결한 과거 분석이며 당시 알려진 정보만의 재현은 아닙니다. 부실·PIK 공시는 대출자산의 상태를 보여줍니다." },
+  bdc_credit_quality: { question: "가격의 우려가 실제 부실에도 나타나나?", reading: `BDC가 빌려준 돈 가운데 문제가 생긴 대출의 비중입니다. 부실(non-accrual)은 이자가 들어오지 않아 수익으로 잡지 않는 대출입니다. PIK는 이자를 현금으로 받지 않고 원금에 얹어 나중에 받기로 한 것입니다.
+PIK는 부실로 분류되기 직전 단계인 경우가 많아 먼저 오릅니다. PIK가 오른 뒤 부실이 따라 오르면, 미뤄둔 문제가 드러나기 시작한 것입니다.
+원가 기준은 빌려준 금액으로, 공정가치 기준은 값을 깎은 뒤의 금액으로 잽니다. 분기에 한 번 나오는 숫자라, 최근 상황은 위의 P/NAV로 먼저 확인합니다.`, together: "공정가치·원가 기준과 회사별 PIK 정의가 다릅니다. 회사·기준이 같은 분기끼리 비교해야 하며, PIK 증가 자체가 부도를 뜻하지는 않습니다." },
+  leveraged_loans: { question: "대출 ETF의 분배금 반영 성과는 어떤가?", reading: `레버리지론은 빚이 많은 투기등급 기업에 내준 변동금리 대출입니다. 사모펀드가 기업을 인수할 때 인수 자금으로 가장 많이 쓰고, 은행이 주선해 여러 투자자에게 나눠 팝니다. 같은 기업의 고정금리 빚이 HY 회사채, 변동금리 빚이 레버리지론입니다.
+대출 자체는 일반 투자자가 사고팔기 어려워, 이 대출을 묶어 담은 ETF 두 개의 가격으로 시장을 봅니다. BKLN은 규모가 큰 대출 100개를 지수대로 담고, SRLN은 운용사가 대출을 골라 담습니다.
+변동금리라 금리가 올라도 가격이 잘 내리지 않습니다. 그래서 뚜렷한 하락은 금리가 아닌 신용 불안으로 읽습니다. 분배금과 수급이 가격에 섞여 있어 평소의 작은 움직임은 신호로 보지 않고, 고점 대비 낙폭만 참고합니다.`, together: "분배금을 반영하고도 성과가 하락하면 가격 약세를 추가로 확인할 필요가 있습니다. CCC·HY 스프레드와 함께 보며, CLO 스프레드나 원대출 가격의 직접 측정값은 아닙니다." },
 };
 
 export function groupReading(group: typeof readingGroups[number], outcome: CreditOutcome) {

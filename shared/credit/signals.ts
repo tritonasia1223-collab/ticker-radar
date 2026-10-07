@@ -80,10 +80,10 @@ function analyzeLine(i: Indicator, key: string, label: string, input: Point[], s
   const full = enough && points.length > 0 && points[0].date <= iso(Date.parse(cutoff) + config.settings.toleranceDays[i.frequency] * DAY);
   return { asOf, key, label, points, unit: i.chart.unit, latest, changes, metrics, stale, ageDays, navAgeDays, collectionOverdue, sampleStart: sample[0]?.date ?? null, sampleEnd: sample.at(-1)?.date ?? null, sampleCount: sample.length, tenYearPercentile: full ? p : null, errors: series.flatMap(s => s.error ? [s.error] : []), notes: [...new Set(series.flatMap(s => s.notes))], sources: series.map(s => { const src = config.sources.find(x => x.key === s.key); return { url: latest?.sourceUrl ?? src?.url, label: src?.label ?? s.key, transport: s.transport, checkedAt: s.checkedAt }; }) };
 }
-export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString().slice(0, 10), basis: TimeBasis = "publication"): IndicatorAnalysis[] {
+export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString().slice(0, 10), basis: TimeBasis = "publication", specs: Indicator[] = indicators): IndicatorAnalysis[] {
   const byKey = new Map(snapshot?.series.map(s => [s.key, s]) ?? []);
   const source = (key: string): Series => byKey.get(key) ?? { key, points: [], checkedAt: "", transport: "미수집", notes: [] };
-  return indicators.map(i => {
+  return specs.map(i => {
     const lines = i.chart.kind === "spread" ? (() => { const a = source(i.chart.lines[0].key), b = source(i.chart.lines[1].key); return [analyzeLine(i, i.id, i.name, joinSpread(a.points, b.points), [a, b], asOf, basis)]; })() : i.chart.lines.map(l => {
       const a = source(l.key); const nav = l.navKey ? source(l.navKey) : null;
       return analyzeLine(i, l.key, l.label, nav ? joinNav(a.points, nav.points, basis) : a.points, nav ? [a, nav] : [a], asOf, basis, nav ? a.points : undefined);

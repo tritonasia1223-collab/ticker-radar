@@ -7,6 +7,12 @@ const week = (date:string,discount:number,repo:number,swap:number,btfp=NaN): Rea
 const history = [week('2026-07-01',7778,1,250),week('2026-09-02',5282,0,132),week('2026-09-30',8738,1200,207)];
 
 describe('연준 자금 공급 항목별 비교',()=>{
+  it('최근 3년을 표시하고 범위 밖의 관측은 제외한다',()=>{
+    const points=[week('2023-09-20',1,0,0),week('2023-10-04',2,0,0),week('2024-09-25',3,0,0),...history];
+    const bars=facilityHistory(points,'2026-09-30',fedFacilities(points,'2026-09-30',4));
+    expect(bars[0].date).toBe('2023-10-04');
+    expect(bars.some(p=>p.date==='2024-09-25')).toBe(true);
+  });
   it('누적 막대는 선택일 이후 자료를 제외하고 결측 주를 0으로 쌓지 않는다',()=>{
     const points=[...history,week('2026-09-16',5,NaN,1),week('2026-10-07',99999,99999,99999)];
     const bars=facilityHistory(points,'2026-09-30',fedFacilities(points,'2026-09-30',4));

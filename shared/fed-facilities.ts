@@ -39,7 +39,7 @@ export type FedFacilities = ReturnType<typeof fedFacilities>;
 
 // 선택 시점과 같은 구성으로 과거 잔액을 비교한다. 일부 계열이 없으면 그 주 막대 전체를 비운다.
 export function facilityHistory(history: ReadWeek[], asOf: string, data: FedFacilities) {
-  const start = Date.parse(asOf) - 365.25 * DAY;
+  const start = Date.parse(asOf) - 3 * 365.25 * DAY;
   return history.filter(w => w.date <= asOf && Date.parse(w.date) >= start).sort((a,b) => a.date.localeCompare(b.date)).map(w => {
     const complete = data.rows.every(r => valid(w[r.key]));
     const values = Object.fromEntries(data.rows.map(r => [r.key, complete ? w[r.key] / 100 : null])) as Partial<Record<(typeof FED_FACILITIES)[number]['key'], number | null>>;

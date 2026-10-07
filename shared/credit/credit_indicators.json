@@ -1503,6 +1503,15 @@
       "unit": "percent",
       "seriesId": "BAMLC0A0CMEY",
       "url": "https://fred.stlouisfed.org/series/BAMLC0A0CMEY"
+    },
+    {
+      "key": "DCPN3M",
+      "label": "AA 비금융 90일 CP 금리",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "DCPN3M",
+      "url": "https://fred.stlouisfed.org/series/DCPN3M"
     }
   ],
   "signals": {
@@ -1664,8 +1673,12 @@
     },
     "ccc_pressure": {
       "any": [
-        { "signal": "ccc_wide" },
-        { "signal": "ccc_gap_trend" }
+        {
+          "signal": "ccc_wide"
+        },
+        {
+          "signal": "ccc_gap_trend"
+        }
       ]
     },
     "ccc_stable": {
@@ -1986,6 +1999,86 @@
       "calm": [
         "bdc_stable"
       ]
+    }
+  ],
+  "readingIndicators": [
+    {
+      "priority": 2,
+      "essential": false,
+      "category": "단기자금",
+      "frequency": "daily",
+      "role": "CP 금리차 분해",
+      "stress_direction": "higher_is_stress",
+      "signal_keys": [],
+      "source": {
+        "access": "free",
+        "provider": "FRED",
+        "derived": true
+      },
+      "refresh": {
+        "publication": "일간 · 같은 날짜에 관측된 금리끼리 비교",
+        "collection": "한국시간 화~토 10:20 자동 확인",
+        "url": "https://www.federalreserve.gov/releases/cp/about.htm"
+      },
+      "id": "cp_credit_spread",
+      "name": "A2/P2 − AA",
+      "measures": "신용도 낮은 기업(A2/P2)이 우량 기업(AA)보다 더 내는 프리미엄",
+      "caveats": [
+        "발행사 구성과 유동성 차이도 영향을 주므로 신용 위험만 완전히 분리한 값은 아닙니다."
+      ],
+      "chart": {
+        "kind": "spread",
+        "unit": "pp",
+        "lines": [
+          {
+            "key": "RIFSPPNA2P2D90NB",
+            "label": "A2/P2 비금융 90일 CP"
+          },
+          {
+            "key": "DCPN3M",
+            "label": "AA 비금융 90일 CP"
+          }
+        ]
+      }
+    },
+    {
+      "priority": 1,
+      "essential": false,
+      "category": "단기자금",
+      "frequency": "daily",
+      "role": "CP 금리차 분해",
+      "stress_direction": "higher_is_stress",
+      "signal_keys": [],
+      "source": {
+        "access": "free",
+        "provider": "FRED",
+        "derived": true
+      },
+      "refresh": {
+        "publication": "일간 · 같은 날짜에 관측된 금리끼리 비교",
+        "collection": "한국시간 화~토 10:20 자동 확인",
+        "url": "https://www.federalreserve.gov/releases/cp/about.htm"
+      },
+      "id": "cp_treasury_spread",
+      "name": "AA − T-bill",
+      "measures": "우량 기업(AA)에게 얹히는 금리 프리미엄",
+      "caveats": [
+        "두 금리는 할인율 기준입니다. 최우량 비금융 CP를 통해 보는 지표로 금융회사·자산담보 CP 전체를 대표하지 않습니다."
+      ],
+      "chart": {
+        "kind": "spread",
+        "unit": "pp",
+        "lines": [
+          {
+            "key": "DCPN3M",
+            "label": "AA 비금융 90일 CP"
+          },
+          {
+            "key": "DTB3",
+            "label": "3개월 T-bill 할인율"
+          }
+        ]
+      }
     }
   ]
 }

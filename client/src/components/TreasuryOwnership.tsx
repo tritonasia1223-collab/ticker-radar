@@ -63,7 +63,6 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         {rows.map(r => <div key={r.id} className="flex items-center gap-1.5 text-[11px] sm:text-xs"><i className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: r.color }} /><span>{r.label}</span><span className="ml-auto text-[#5F5C54] tabular-nums">{r.share.toFixed(1)}%</span></div>)}
       </div>
 
-      <div className="mt-6 space-y-3 text-sm leading-[1.85] text-[#3B3934]" data-testid="ownership-analysis">{insights.owners.map(text => <ReviewText key={text} text={text} />)}</div>
       <div className="mt-6 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
         <span className="font-medium">이 중 스테이블코인은?</span>
         <span className="text-[#5F5C54]">{share !== null ? <>전체 보유액의 약 {pct(share)}</> : "같은 분기의 두 회사 자료 대기"}</span>

@@ -7,17 +7,20 @@ import { formatCredit } from "@shared/credit/reading";
 const colors = ["#477FA3", "#B18E58", "#7B6B93"];
 const caption = "text-[11px] leading-relaxed text-muted-foreground";
 
-export function RateComparisonChart({ id, kind, rates, spread, asOf, years, weeks = 4, spreadUnit = "pp", showNote = true, showSources = true, compact = false }: {
+export function RateComparisonChart({ id, kind, rates, spread, asOf, years, weeks = 4, spreadUnit = "pp", showNote = true, showSources = true, compact = false, initialMode = "rates", readingLayout = false }: {
   id: string; kind: "oas" | "difference"; rates: RateLine[]; spread: RateLine;
-  asOf: string; years: number; weeks?: 4 | 13; spreadUnit?: "pp" | "bp"; showNote?: boolean; showSources?: boolean; compact?: boolean;
+  asOf: string; years: number; weeks?: 4 | 13; spreadUnit?: "pp" | "bp"; showNote?: boolean; showSources?: boolean; compact?: boolean; initialMode?: "rates" | "spread"; readingLayout?: boolean;
 }) {
-  const [mode, setMode] = useState<"rates" | "spread">("rates");
+  const [mode, setMode] = useState<"rates" | "spread">(initialMode);
   const start = new Date(Date.parse(asOf) - years * 365.25 * DAY).toISOString().slice(0, 10);
   const chart = useMemo(() => mode === "rates" ? rateRows(rates[0]?.points ?? [], kind === "difference" ? rates[1]?.points ?? [] : [], start, asOf) :
     spread.points.filter(p => p.date >= start && p.date <= asOf).map(p => ({ time: Date.parse(p.date), a: p.value * (spreadUnit === "bp" ? 100 : 1) })), [mode, rates, spread, start, asOf, kind, spreadUnit]);
   const rows = [...rates, spread];
   const active = mode === "rates" ? rates : [spread];
   const fmt = (v: number | undefined, spreadValue = false, signed = false) => spreadValue && spreadUnit === "bp" ? v == null ? "—" : `${signed && v > 0 ? "+" : ""}${Number((v * 100).toFixed(2))}bp` : formatCredit(v, spreadValue ? "pp" : "percent", signed);
+  const spreadChange = spread.changes[weeks];
+  const changeAvailable = spreadChange && !spreadChange.unchangedRelease;
+  const observationAge = spread.latest ? Math.floor((Date.parse(asOf) - Date.parse(spread.latest.date)) / DAY) : null;
   const available = chart.some(row => row.a != null || ("b" in row && row.b != null));
   return <div data-testid={`rate-chart-${id}`} className="min-w-0">
     <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label={`${id} 그래프 보기`}>
@@ -25,7 +28,20 @@ export function RateComparisonChart({ id, kind, rates, spread, asOf, years, week
         {key === "rates" ? kind === "oas" ? "회사채 시장금리" : "금리 함께 보기" : kind === "oas" ? "OAS 보기" : "스프레드만 보기"}
       </button>)}
     </div>
-    <div className={`grid gap-3 mb-4 ${kind === "oas" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+    {readingLayout ? <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div>
+          <div className="text-xs leading-relaxed text-[#5F5C54]">스프레드</div>
+          <div className="text-[22px] font-semibold tabular-nums">{fmt(spread.latest?.value, true)}</div>
+          <div className="text-xs leading-relaxed text-[#5F5C54]">{spread.latest ? `(${spread.latest.date} 기준)` : '관측 없음'}</div>
+        </div>
+        <div>
+          <div className="text-[15px] font-semibold">{weeks}주 비교 <span className="tabular-nums" style={{ color: changeAvailable ? spreadChange.value > 0 ? '#1F7A4D' : spreadChange.value < 0 ? '#B3402E' : undefined : undefined }}>{changeAvailable ? fmt(spreadChange.value, true, true) : '비교 자료 부족'}</span></div>
+          {spreadChange && <div className="text-xs leading-relaxed text-[#5F5C54]">{spreadChange.from} → {spreadChange.to}</div>}
+        </div>
+      </div>
+      {(spread.errors.length > 0 || spread.stale) && <p className="text-xs leading-relaxed text-[#918D83] mb-4">{spread.errors.length ? '수집 상태 확인 필요 · 마지막 유효 관측을 표시합니다.' : observationAge != null ? `최근 공통 관측은 선택일보다 ${observationAge}일 전입니다.` : '공통 관측 자료가 없습니다.'}</p>}
+    </> : <div className={`grid gap-3 mb-4 ${kind === "oas" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
       {rows.map((line, index) => { const isSpread = index === rows.length - 1; const c = line.changes[weeks]; return <div key={`${line.key}-${index}`}>
         <div className={caption}><span style={{ color: isSpread ? colors[2] : colors[index] }}>● </span>{line.label}</div>
         <div className="text-xl font-semibold tabular-nums mt-1">{fmt(line.latest?.value, isSpread)}</div>
@@ -33,12 +49,14 @@ export function RateComparisonChart({ id, kind, rates, spread, asOf, years, week
         <div className={compact ? "text-sm mt-2 font-medium" : caption}>{weeks}주 {compact ? "비교" : "변화"} <span style={{ color: compact && c && !line.stale && !line.errors.length && !c.unchangedRelease ? c.value > 0 ? '#1F7A4D' : c.value < 0 ? '#B3402E' : undefined : undefined }}>{c && !c.unchangedRelease ? isSpread ? fmt(c.value, true, true) : formatCredit(c.value, "pp", true) : "비교 자료 부족"}</span></div>
         {c && <div className={caption}>비교 {c.from} → {c.to}</div>}
       </div>; })}
-    </div>
+    </div>}
     <div className="rounded-xl border border-[#D9D5CA] bg-white p-3 text-[#3B3934]">
       <div className="flex flex-wrap justify-between gap-2 mb-3 text-[11px] text-[#5F5C54]">
         <span>단위: {mode === "rates" ? "%" : spreadUnit === "bp" ? "bp" : "%p"} · {asOf}까지 {years}년</span>
-        <span>{active.map(l => l.label).join(" / ")}</span>
+        {!readingLayout && <span>{active.map(l => l.label).join(" / ")}</span>}
+        {readingLayout && <span>{mode === 'spread' ? '스프레드' : '원금리 비교'}</span>}
       </div>
+      {readingLayout && mode === 'rates' && <div className="flex flex-wrap gap-x-5 gap-y-2 px-1 mb-3 text-xs text-[#5F5C54]">{rates.map((line, index) => <span key={line.key}><span style={{ color: colors[index] }}>● </span>{line.label} <span className="font-medium tabular-nums">{fmt(line.latest?.value)}</span></span>)}</div>}
       {available ? <div className="h-[220px]" role="img" aria-label={`${id} ${mode === "rates" ? "원금리 비교" : "스프레드"} 그래프`}><ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="#E8E5DC" />

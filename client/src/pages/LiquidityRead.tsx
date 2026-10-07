@@ -3,7 +3,7 @@
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
 //   잔고 기준 부호는 T계정 펼쳐보기 안에서만(머리에 명시, 중립색). 수준값에는 초록/빨강을 쓰지 않는다.
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
-import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Sankey, Layer } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,12 +21,13 @@ import type { ChapterParagraph } from "@shared/credit/chapter-reading";
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 import { TreasuryPeriodComparison } from '@/components/TreasuryPeriodComparison';
-import { treasuryEditorial } from '@shared/treasury-comparison';
+import { treasuryEditorialByChart } from '@shared/treasury-comparison';
+import { amountEditorial, ownershipEditorial } from '@shared/liquidity-editorial';
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
 import { FundingRateChart } from "@/components/credit/FundingRateChart";
 import { NfciHistoryChart, FacilitiesHistoryChart } from "@/components/FundingReferenceCharts";
 import { fedFacilities } from "@shared/fed-facilities";
-import { authoredFundingReading } from '@shared/funding-editorial';
+import { fundingReadingByChart } from '@shared/funding-editorial';
 import { FUNDING_DEFINITIONS } from "@shared/funding-definitions";
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -68,31 +69,19 @@ function Expander({ label, open, onToggle, children, transparent = false }: { la
     </div>
   );
 }
-// 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 스티키·본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
+// 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
 // 라벨이 본문 폭을 잡아먹지 않고, 본문은 남는 폭의 가운데에 선다. lg 미만에서는 라벨이 본문 위로 올라간다.
 const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,900px)_minmax(0,1fr)] xl:grid-cols-[minmax(280px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
-const STICKY_TOP = "var(--liquidity-sticky-top, 84px)";
-function StickyChapter({ children }: { children: ReactNode }) {
-  const [node, setNode] = useState<HTMLDivElement | null>(null);
-  const [height, setHeight] = useState(0);
-  useLayoutEffect(() => {
-    if (!node) return;
-    const measure = () => setHeight(Math.ceil(node.getBoundingClientRect().height));
-    const observer = new ResizeObserver(measure);
-    observer.observe(node); measure();
-    return () => observer.disconnect();
-  }, [node]);
-  // 화면보다 긴 해설은 먼저 자연스럽게 스크롤한 뒤 끝부분이 보이는 위치에 고정한다.
-  return <div ref={setNode} className="lg:sticky" style={{ top: `min(${STICKY_TOP}, calc(100dvh - ${height}px - 20px))` }}>{children}</div>;
-}
-function Row({ id, as = "section", aside, children }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode }) {
+const SECTION_SCROLL_MARGIN = 20;
+function Row({ id, as = "section", aside, children, continuation = false, lead, asideClassName, bottomGap = 48 }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode; continuation?: boolean; lead?: ReactNode; asideClassName?: string; bottomGap?: number }) {
   const Tag = as;
   return (
-    <Tag id={id} className={ROW_GRID} style={{ scrollMarginTop: STICKY_TOP }}>
-      <div className="border-t border-[#1A1A18] pt-7 lg:border-t-0 lg:justify-self-end lg:w-[260px] xl:w-[280px]">
-        <StickyChapter>{aside}</StickyChapter>
+    <Tag id={id} className={ROW_GRID} style={{ scrollMarginTop: SECTION_SCROLL_MARGIN }}>
+      {lead && <div className="lg:col-start-2 mb-4" style={{ minWidth: 0 }}>{lead}</div>}
+      <div className={`${continuation ? "" : "border-t border-[#1A1A18] lg:border-t-0 pt-7"} ${lead ? "lg:row-start-2" : ""} ${asideClassName ?? ''} lg:justify-self-end lg:w-[260px] xl:w-[280px]`}>
+        {aside}
       </div>
-      <div className="lg:pt-7 lg:border-t lg:border-[#1A1A18]" style={{ minWidth: 0, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
+      <div className={`${continuation ? "" : "lg:pt-7 lg:border-t lg:border-[#1A1A18]"} ${lead ? "lg:col-start-2 lg:row-start-2" : ""}`} style={{ minWidth: 0, paddingBottom: bottomGap, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
     </Tag>
   );
 }
@@ -130,17 +119,21 @@ function OpinionText({ paragraph }: { paragraph: ChapterParagraph }) {
   parts.push(paragraph.text.slice(cursor));
   return <>{parts}</>;
 }
-function Section({ id, num, title, question, answer, paragraphs, children }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; children: ReactNode }) {
+function ReadingOpinion({ id, title, paragraphs = [] }: { id: string; title: string; paragraphs?: ChapterParagraph[] }) {
+  if (!paragraphs.length) return null;
+  return <div aria-label={`${title} 해설`} data-testid={`chart-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#EEEBDF", borderRadius: 10, padding: "18px 16px", wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word", whiteSpace: "pre-line" }}>
+    {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
+  </div>;
+}
+function Section({ id, num, title, question, answer, paragraphs, children, bottomGap }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; children: ReactNode; bottomGap?: number }) {
   const opinion = paragraphs ?? answer?.split(/(?<=[.!?])\s+/).filter(Boolean).map(text => ({ kind: "analysis" as const, text }));
   return (
-    <Row id={id} aside={
+    <Row id={id} bottomGap={bottomGap} aside={
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{num}</div>
         <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
         <Cap>{question}</Cap>
-        {!!opinion?.length && <div aria-label={`${title} 종합 의견`} data-testid={`chapter-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#EEEBDF", borderRadius: 10, padding: "18px 16px", marginTop: 12, wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word" }}>
-          {opinion.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
-        </div>}
+        {!!opinion?.length && <div style={{ marginTop: 12 }}><ReadingOpinion id={id} title={title} paragraphs={opinion} /></div>}
       </div>
     }>{children}</Row>
   );
@@ -301,19 +294,6 @@ function ReadSankeyLink(props: any) {
 }
 
 export default function LiquidityRead() {
-  const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
-  const [headerHeight, setHeaderHeight] = useState(64);
-  useLayoutEffect(() => {
-    if (!headerNode) return;
-    const sticky = window.matchMedia("(min-width: 768px)");
-    const measure = () => setHeaderHeight(sticky.matches ? Math.ceil(headerNode.getBoundingClientRect().height) : 0);
-    // 버튼 줄바꿈·화면 폭·글꼴 로딩으로 달라지는 상단 바의 실제 높이를 따른다.
-    const observer = new ResizeObserver(measure);
-    observer.observe(headerNode);
-    sticky.addEventListener("change", measure);
-    measure();
-    return () => { observer.disconnect(); sticky.removeEventListener("change", measure); };
-  }, [headerNode]);
   useEffect(() => { // 이 페이지 스코프의 글꼴만 추가로 로드
     if (document.querySelector(`link[href="${FONT_HREF}"]`)) return;
     const l = document.createElement("link"); l.rel = "stylesheet"; l.href = FONT_HREF; document.head.appendChild(l);
@@ -412,13 +392,17 @@ export default function LiquidityRead() {
   const m2Parts = m2Composition(ctx, m2Now);
   const reserveRatio = sel ? reservesGdp(sel.reserves, sel.date, ctx.gdp ?? []) : null;
   const funding = fundingComparisons({ context: ctx, history: weeks, asOf: selDate, weeks: cmp });
+  const treasuryReading = treasuryEditorialByChart(selDate, cmp, debt.data?.flow ?? null, agg, prevAgg, monthly);
+  const fundingReading = !context.isLoading && !context.isError
+    ? fundingReadingByChart(selDate, cmp, funding.spread.current?.value ?? null, !!funding.nfci.current)
+    : { spread: [], nfci: [], facilities: [] };
 
   return (
-    <div style={{ "--liquidity-sticky-top": `${headerHeight + 20}px`, background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
+    <div style={{ "--liquidity-sticky-top": "20px", background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
       <div className="px-4 md:px-10" style={{ maxWidth: 1280 + 80, margin: "0 auto", paddingTop: 24, paddingBottom: 96 }}>
 
-        {/* 머리띠 — md 이상에서 스크롤을 따라오는 스티키. 배경을 깔아 본문이 비치지 않게 한다. */}
-        <header ref={setHeaderNode} className="md:sticky md:top-0 z-20 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
+        {/* 머리띠 — 본문과 함께 자연스럽게 스크롤한다. */}
+        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
           <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
@@ -436,7 +420,7 @@ export default function LiquidityRead() {
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID}>
-        <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] lg:pt-6"><div className="lg:sticky" style={{ top: STICKY_TOP }}>
+        <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] lg:pt-6"><div>
           <h2 className="text-base font-semibold">개요</h2>
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
         </div></div>
@@ -445,7 +429,7 @@ export default function LiquidityRead() {
         </div></div>
 
         {/* 01 얼마나 */}
-        <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나" paragraphs={[]}>
+        <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나" paragraphs={how ? amountEditorial(selDate, cmp) : []}>
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2>순유동성과 M2</H2>
 
@@ -498,7 +482,7 @@ export default function LiquidityRead() {
         {/* 02 어디서 */}
         <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나" paragraphs={[]}>
           {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
-            <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "풀린" : "흡수된"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
+            <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "늘어난 순유동성" : "줄어든 순유동성"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
             <ContribBars N={cmp} centered rows={[
               ...from.ranked.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: c.key === "tga" ? `TGA 잔액 ${fmt.eok(prev.tga)}억 → ${fmt.eok(sel.tga)}억` : c.key === "rrp" ? `역레포 잔액 ${fmt.eok(prev.rrp)}억 → ${fmt.eok(sel.rrp)}억` : from.fedDetail.map(d => `${d.label} ${fmt.signedEok(d.value)}`).join(" · "), value: c.effect })),
               { name: "합계", desc: "", value: from.dNl, total: true },
@@ -559,24 +543,26 @@ export default function LiquidityRead() {
         </Section>
 
         {/* 04 누가 샀나 */}
-        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryEditorial(selDate, cmp, debt.data?.flow ?? null, agg, prevAgg, monthly)}>
+        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryReading.issuance}>
           <TreasuryPeriodComparison asOf={selDate} weeks={cmp} current={debt.data?.flow ?? null} />
-          {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
-            <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
-          ) : (<>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        </Section>
+        <Row id="s4-auctions" continuation lead={who && S4 && sank && !auctions.isLoading ? (<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <Cap>{fmt.dateKo(who.start)} ~ {fmt.dateKo(who.end)} 결제분 · 입찰 {who.counted}건{who.excludeBills ? " · 단기채 제외" : ""}</Cap>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <Pill active={auctionMode === "all"} onClick={() => setAuctionMode("all")}>전체</Pill>
                   <Pill active={auctionMode === "nobills"} onClick={() => setAuctionMode("nobills")}>단기채 빼고 보기</Pill>
                   <Cap>상단 기준 · 최근 {cmp}주</Cap>
                 </div>
-              </div>
+              </div>) : undefined} aside={<ReadingOpinion id="s4-auctions" title="국채 입찰" paragraphs={treasuryReading.auctions} />}>
+          {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
+            <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
+          ) : (<>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 12px", overflowX: "auto" }}>
                 <div style={{ minWidth: 640, height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <Sankey data={sank} nodeWidth={14} nodePadding={22} linkCurvature={0.5} iterations={32} margin={{ top: 24, right: 200, bottom: 8, left: 210 }} node={<ReadSankeyNode />} link={<ReadSankeyLink />} />
+                    <Sankey data={sank} nodeWidth={14} nodePadding={22} linkCurvature={0.5} iterations={32} margin={{ top: 24, right: 200, bottom: 36, left: 210 }} node={<ReadSankeyNode />} link={<ReadSankeyLink />} />
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -604,39 +590,40 @@ export default function LiquidityRead() {
               )}
             </Expander>
           </>)}
-        </Section>
+        </Row>
 
-        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap></div>}>
+        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap><div className="mt-3"><ReadingOpinion id="treasury-holders" title="국채 보유 주체" paragraphs={ownershipEditorial(selDate)} /></div></div>}>
           <TreasuryOwnership asOf={selDate} />
         </Row>
 
         {/* 05 탈은 없나 */}
-        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={!context.isLoading && !context.isError ? authoredFundingReading(selDate, cmp, funding.spread.current?.value ?? null, !!funding.nfci.current) : []}>
+        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={[]} bottomGap={28}>
           <p data-funding-definition="spread" className="rounded-xl bg-[#EAF0EE] px-5 py-5 md:px-6" style={{ fontSize: 15, lineHeight: 1.8, color: C.body }}>{FUNDING_DEFINITIONS.spread}</p>
-          <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} showNotes={false} showSources={false} />
-          <H2>참고할만한 위험 지표들</H2>
-          <div>
-            <NfciHistoryChart points={ctx.nfci ?? []} stats={funding.nfci} asOf={selDate} weeks={cmp} />
-            <FacilitiesHistoryChart history={weeks} data={fedFacilities(weeks,selDate,cmp)} asOf={selDate} weeks={cmp} />
-          </div>
-          {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
         </Section>
+        <Row id="s5-spread" continuation aside={<ReadingOpinion id="s5-spread" title="SOFR·IORB" paragraphs={fundingReading.spread} />}>
+          <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} showNotes={false} showSources={false} />
+        </Row>
+        <Row id="s5-nfci" continuation asideClassName="lg:pt-[25px]" lead={<H2>참고할만한 위험 지표들</H2>} aside={<ReadingOpinion id="s5-nfci" title="NFCI 지수" paragraphs={fundingReading.nfci} />}>
+          <NfciHistoryChart points={ctx.nfci ?? []} stats={funding.nfci} asOf={selDate} weeks={cmp} />
+        </Row>
+        <Row id="s5-facilities" continuation asideClassName="lg:pt-[25px]" aside={<ReadingOpinion id="s5-facilities" title="연준 긴급대출 창구 합계" paragraphs={fundingReading.facilities} />}>
+          <FacilitiesHistoryChart history={weeks} data={fedFacilities(weeks,selDate,cmp)} asOf={selDate} weeks={cmp} />
+          {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
+        </Row>
 
         {readingGroups.map((group, n) => {
-          if (group.id === 'credit-bank') return <section key={group.id} id={group.id} style={{ scrollMarginTop: STICKY_TOP }}>
-            <CreditReadingGroup group={group} state={credit} weeks={cmp} renderBankRow={(id, content, paragraphs) => <div key={id} data-bank-reading-row={id} className={ROW_GRID}>
-              <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] pt-6">
-                {id === 'bank-intro' && <div className="space-y-1.5"><div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>06</div><div className="text-base font-semibold">{group.title}</div><Cap>{group.question}</Cap></div>}
+          return <section key={group.id} id={group.id} style={{ scrollMarginTop: SECTION_SCROLL_MARGIN }}>
+            <CreditReadingGroup group={group} state={credit} weeks={cmp} renderReadingRow={(id, content, paragraphs) => <div key={id} data-bank-reading-row={group.id === 'credit-bank' ? id : undefined} data-credit-reading-row={id} className={ROW_GRID}>
+              <div className={`lg:justify-self-end lg:w-[260px] xl:w-[280px] ${paragraphs.length ? (["bond-dashboard", "cp-dashboard"].includes(id) ? "" : "lg:pt-[53px]") : "pt-6"}`}>
+                {['bank-intro', 'corporate_bond_issuance', 'cp-intro', 'bdc-intro'].includes(id) && <div className="space-y-1.5"><div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{String(n + 6).padStart(2, "0")}</div><div className="text-base font-semibold">{group.title}</div><Cap>{group.question}</Cap></div>}
                 {!!paragraphs.length && <div aria-label={`${id} 해설`} data-testid={`chart-answer-${id}`} className="rounded-[10px] bg-[#EEEBDF] px-4 py-[18px] space-y-4" style={{ wordBreak: "keep-all", overflowWrap: "break-word" }}>
-                  {paragraphs.map((p, index) => <p key={index} style={{ margin: 0, marginTop: index ? 14 : 0, fontSize: p.kind === 'explanation' ? 12 : 14, lineHeight: 1.85, color: p.kind === 'explanation' ? '#777369' : C.body }}><OpinionText paragraph={p} /></p>)}
+                  {paragraphs.map((p, index) => <p key={index} style={{ margin: 0, marginTop: index ? 14 : 0, fontSize: p.kind === 'explanation' ? 12 : 14, lineHeight: 1.85, whiteSpace: 'pre-line', color: p.kind === 'explanation' ? '#777369' : C.body }}><OpinionText paragraph={p} /></p>)}
                 </div>}
               </div>
-              <div className={id === 'bank-intro' ? 'border-t border-[#1A1A18] pt-7' : ''} style={{ minWidth: 0, paddingBottom: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>{content}</div>
+              <div className={['bank-intro', 'cp-intro', 'bdc-intro'].includes(id) ? 'border-t border-[#1A1A18] pt-7' : ''} style={{ minWidth: 0, paddingBottom: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>{content}</div>
             </div>} />
           </section>;
-          return <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question} paragraphs={[]}>
-          <CreditReadingGroup group={group} state={credit} weeks={cmp} />
-        </Section>; })}
+        })}
         {/* 배경 */}
         <Row as="footer" aside={<div style={{ display: "flex", flexDirection: "column", gap: 6 }}><span style={{ fontSize: 16, fontWeight: 600 }}>배경</span><Cap>유동성 바깥의 가격과 경기</Cap></div>}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
