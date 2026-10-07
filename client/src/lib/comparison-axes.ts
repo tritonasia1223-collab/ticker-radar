@@ -13,7 +13,7 @@ export const usesIndependentScale = (id: string, view: ComparisonView) => view.m
 export function sameComparisonView(a: ComparisonView | undefined, b: ComparisonView | undefined, ids: string[]) {
   if (!a) return true; // Legacy notes remember indicators only.
   if (!b || a.mode !== b.mode) return false;
-  if (a.mode === "raw") return true;
+  if (a.mode === "raw" || a.mode === "independent") return true;
   if (a.base !== b.base) return false;
   return a.mode !== "mixed" || (a.rightUnit === b.rightUnit && ids.every(id => assignedAxis(id, a) === assignedAxis(id, b)));
 }
@@ -26,11 +26,29 @@ export function automaticComparisonView(ids: string[], view?: ComparisonView, fa
   return { mode: "mixed", base: view?.base ?? fallbackBase, assignments: {}, rightUnit: lastRight ? rawUnitKey(lastRight) : null };
 }
 
+// Main-page preferences and restored notes use independent raw scales. Keep the
+// legacy fields in the saved schema so old notes and the experiment remain valid.
+export function independentComparisonView(_ids: string[], view?: ComparisonView, fallbackBase = "2000-01"): ComparisonView {
+  return { mode: "independent", base: view?.base ?? fallbackBase, assignments: {}, rightUnit: null };
+}
+
+export function restoredComparisonView(ids: string[], saved: ComparisonView, current?: ComparisonView) {
+  return current?.mode === "independent" ? independentComparisonView(ids, saved) : automaticComparisonView(ids, saved);
+}
+
 export function buildComparisonAxes(raw: RawComparisonSeries[], view: ComparisonView) {
   const axes: ComparisonAxis[] = [], series: AxisSeries[] = [];
   const groups: { key: string; label: string; ids: string[] }[] = [];
   const unavailable: string[] = [];
   let base: string | null = null, rightUnit: string | null = null;
+  if (view.mode === "independent") {
+    for (const s of raw) {
+      const key = "independent:" + s.def.id;
+      axes.push({ side: "left", key, label: s.def.label, normalized: false, independent: true });
+      series.push({ ...s, axis: key });
+    }
+    return { axes, series, groups, unavailable, base, rightUnit, pending: [] as string[] };
+  }
   const independent = raw.filter(s => usesIndependentScale(s.def.id, view));
   raw = raw.filter(s => !usesIndependentScale(s.def.id, view));
   if (view.mode === "raw") {
