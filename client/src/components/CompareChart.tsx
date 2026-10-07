@@ -1,3 +1,4 @@
+import { comparisonSegments, visiblePathPoints, isAnnualObservation } from "@/lib/comparison-paths";
 import { tradeObservationLabel } from "../../../shared/trade-history";
 import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -78,7 +79,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     return { points, lo, hi, y, segments, paths: segments.map(g => g.map((p, i) => (i ? "L" : "M") + x(p.time) + "," + y(p.value)).join(" ")) };
   }, [spread, from, to, width, axisBottom, spreadTop]);
   const geometry = useMemo(() => {
-    const visible = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= from && p.time <= to) }));
+    const visible = series.map(s => ({ ...s, points: visiblePathPoints(s.points, from, to) }));
     const axisShapes = axes.map(axis => {
       const values = visible.filter(s => s.axis === axis.key).flatMap(s => s.points.map(p => p.value));
       let lo = values.length ? Math.min(...values) : 0, hi = values.length ? Math.max(...values) : 1;
@@ -90,9 +91,9 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     });
     const shapes = visible.map(s => {
       const axis = axisShapes.find(a => a.key === s.axis)!;
-      return { ...s, ...axis, paths: lineSegments(s.points, s.def.cadence).map(original => {
-        const points = simplifyExtrema(original, simplifyMonths);
-        return { original, points, d: points.map((p, i) => (i ? "L" : "M") + x(p.time).toFixed(2) + "," + axis.y(p.value).toFixed(2)).join(" ") };
+      return { ...s, ...axis, paths: comparisonSegments(s.points, s.def.id, s.def.cadence).map(({ original, dashed }) => {
+        const points = dashed ? original : simplifyExtrema(original, simplifyMonths);
+        return { original, points, dashed, d: points.map((p, i) => (i ? "L" : "M") + x(p.time).toFixed(2) + "," + axis.y(p.value).toFixed(2)).join(" ") };
       }) };
     });
     return { shapes, axisShapes };
@@ -166,7 +167,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       <span>{tool === "date" ? "차트에서 날짜를 클릭하세요 · Esc 취소" : tool === "period" ? "차트에서 시작부터 끝까지 드래그하세요 · Esc 취소" : "드래그 이동 · 휠 확대 · 축 드래그로 축척 조절"}</span>
       <div className="flex shrink-0 gap-2"><button aria-label="기간 확대" onClick={() => zoom(.7)} className="rounded border px-2">＋</button><button aria-label="기간 축소" onClick={() => zoom(1.4)} className="rounded border px-2">－</button><button className="rounded border px-2" onClick={() => setDomains({})}>세로축 자동</button></div>
     </div>
-    <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground" data-testid="compare-values"><span className="w-20 shrink-0 whitespace-nowrap tabular-nums">{cursorMonth ?? "커서로 값 비교"}</span><span className="min-w-0 flex-1">선 가까이에 마우스를 올리면 주변 지표의 값을 함께 볼 수 있습니다.</span></div>
+    <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground" data-testid="compare-values"><span className="w-20 shrink-0 whitespace-nowrap tabular-nums">{cursorMonth ?? "커서로 값 비교"}</span><span className="min-w-0 flex-1">선 가까이에 마우스를 올리면 주변 지표의 값을 함께 볼 수 있습니다.{shapes.some(s => s.paths.some(g => g.dashed)) && <span className="ml-2" data-testid="annual-guide">점선은 연간 관측값을 이은 참고선입니다.</span>}</span></div>
     <div className="grid grid-cols-2 gap-x-6 px-4 py-1 text-[10px] text-muted-foreground">{axes.filter(a => !a.independent).map(a => <span key={a.key} data-testid={"axis-label-" + a.side} className={a.side === "right" ? "col-start-2 text-right" : "col-start-1"}>{a.side === "left" ? "← 왼쪽" : "오른쪽 →"} · {a.label}</span>)}</div>
     </div>
     <div className="relative" onPointerMove={e => {
@@ -220,7 +221,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
         {/* 실제 값 축마다 0선을 한 번 그려 흑자/적자와 증가율의 부호를 표시합니다. */}
         {labeledAxes.filter(a => !a.normalized && a.lo < 0 && a.hi > 0).map(a => <line key={"zero-" + a.key} data-testid={"compare-zero-" + a.side} x1={left} x2={right} y1={a.y(0)} y2={a.y(0)} stroke="currentColor" strokeDasharray="4 4" opacity={.4} />)}
-        {shapes.map(s => <g key={s.def.id} data-axis={s.side} data-axis-key={s.key} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
+        {shapes.map(s => <g key={s.def.id} data-axis={s.side} data-axis-key={s.key} data-testid={"compare-series-" + s.def.id}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} data-cadence={g.dashed ? "annual" : "regular"} strokeDasharray={g.dashed ? "5 4" : undefined} stroke={s.def.color} fill="none" strokeWidth={1.8} />)}</g>)}
       </g>
       {!shapes.some(s => s.points.length) && <text x={width / 2} y={plotTop + plotHeight / 2} textAnchor="middle" fontSize={12} fill="currentColor" opacity={.6}>이 구간에 표시할 관측값이 없습니다.</text>}
       {spread && spreadShape && <g data-testid="spread-chart">
@@ -252,7 +253,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     </svg>
     {pointer && !!nearby.length && createPortal(<div role="tooltip" aria-label="커서 주변 지표 값" data-testid="compare-hover" className="pointer-events-none fixed z-50 grid grid-flow-col gap-x-4 overflow-hidden rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md" style={{ width: tooltipLayout.width, height: tooltipLayout.height, gridTemplateColumns: `repeat(${tooltipLayout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${tooltipLayout.rows}, 24px)`, left: clamp(pointer.clientX + 16 + tooltipLayout.width <= viewport.width - 8 ? pointer.clientX + 16 : pointer.clientX - tooltipLayout.width - 16, 8, viewport.width - tooltipLayout.width - 8), top: clamp(pointer.clientY - 12, 8, viewport.height - tooltipLayout.height - 8) }}>
       {nearby.map(hit => <div key={hit.id} data-testid={"hover-value-" + hit.id} className="flex min-w-0 items-center gap-2">
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="min-w-0 truncate">{hit.label}{tradeObservationLabel(hit.id, hit.point.date) && <small className="ml-1 text-[9px] text-muted-foreground">{tradeObservationLabel(hit.id, hit.point.date)}</small>}</span><span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)}</span>
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="min-w-0 truncate">{hit.label}{(tradeObservationLabel(hit.id, hit.point.date) || (isAnnualObservation(hit.id, hit.point.month) ? "연간" : "")) && <small className="ml-1 text-[9px] text-muted-foreground">{(tradeObservationLabel(hit.id, hit.point.date) || (isAnnualObservation(hit.id, hit.point.month) ? "연간" : ""))}</small>}</span><span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)}</span>
       </div>)}
     </div>, document.body)}
     </div>

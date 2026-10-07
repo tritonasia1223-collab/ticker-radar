@@ -182,7 +182,7 @@ export default function GraphCompareExperiment() {
         <span className="text-[11px] text-muted-foreground">비워두면 제한 없음</span>
       </div> : <span className="text-muted-foreground">전체 자료 기준</span>}
       <span className="text-[11px] text-muted-foreground">확대·이동해도 기준 유지 · 커서는 실제 값</span>
-      {prefs.smooth && <span className="w-full text-[11px] text-muted-foreground">기준선 통과 위치는 원본과 동일 · 점은 월 관측 사이 추정 포함 · 표시 곡선만 평활화</span>}
+      {prefs.smooth && <span className="w-full text-[11px] text-muted-foreground">기준선 통과 위치는 원본과 동일 · 점은 관측 사이 추정 포함 · 표시 곡선만 평활화</span>}
     </section>
     {comparison.unavailable.length > 0 && <p role="status" className="border-b px-4 py-2 text-xs text-amber-600">참고 기간의 관측값이 12개 미만이거나 변동이 없어 표시할 수 없습니다: {comparison.unavailable.map(id => COMPARE_SERIES.find(s => s.id === id)?.label).join(", ")}. 참고 기간을 넓혀 주세요.</p>}
     <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
