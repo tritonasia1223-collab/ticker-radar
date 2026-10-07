@@ -2,7 +2,7 @@ import { commonBase, rebase, type ComparePoint, type ComparisonView } from "../.
 import { COMPARE_SERIES, type CompareSeriesDef } from "./comparison-series";
 
 export type AxisSide = "left" | "right";
-export interface ComparisonAxis { side: AxisSide; key: string; label: string; normalized: boolean; independent?: boolean }
+export interface ComparisonAxis { side: AxisSide; key: string; label: string; normalized: boolean; independent?: boolean; includeZero?: boolean }
 export interface AxisSeries { def: CompareSeriesDef; points: ComparePoint[]; axis: string }
 export interface RawComparisonSeries { def: CompareSeriesDef; points: ComparePoint[] }
 
@@ -59,15 +59,17 @@ export function buildComparisonAxes(raw: RawComparisonSeries[], view: Comparison
     else groups.push({ key, label: rawUnitLabel(key), ids: [s.def.id] });
   }
   rightUnit = groups.some(g => g.key === view.rightUnit) ? view.rightUnit : groups[0]?.key ?? null;
-  if (rightUnit !== null) {
-    const key = "right:" + rightUnit;
-    axes.push({ side: "right", key, label: rawUnitLabel(rightUnit), normalized: false });
-    right.filter(s => rawUnitKey(s.def) === rightUnit).forEach(s => series.push({ ...s, axis: key }));
+  for (const group of groups) {
+    const key = "right:" + group.key;
+    // Show every selected series. Only the active unit owns the right-hand ticks;
+    // incompatible units keep separate scales rather than disappearing or sharing false units.
+    axes.push({ side: "right", key, label: group.label, normalized: false, includeZero: true, ...(group.key !== rightUnit ? { independent: true } : {}) });
+    right.filter(s => rawUnitKey(s.def) === group.key).forEach(s => series.push({ ...s, axis: key }));
   }
   for (const s of independent) {
     const key = "independent:" + s.def.id;
     axes.push({ side: "left", key, label: s.def.label + " · 독립 배율", normalized: false, independent: true });
     series.push({ ...s, axis: key });
   }
-  return { axes, series, groups, unavailable, base, rightUnit, pending: right.filter(s => rawUnitKey(s.def) !== rightUnit).map(s => s.def.id) };
+  return { axes, series, groups, unavailable, base, rightUnit, pending: [] as string[] };
 }

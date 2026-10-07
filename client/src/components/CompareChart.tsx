@@ -82,7 +82,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     const axisShapes = axes.map(axis => {
       const values = visible.filter(s => s.axis === axis.key).flatMap(s => s.points.map(p => p.value));
       let lo = values.length ? Math.min(...values) : 0, hi = values.length ? Math.max(...values) : 1;
-      if (!axis.normalized && !axis.independent) { lo = Math.min(0, lo); hi = Math.max(0, hi); }
+      if (!axis.normalized && (!axis.independent || axis.includeZero)) { lo = Math.min(0, lo); hi = Math.max(0, hi); }
       const pad = (hi - lo) * .08 || Math.abs(hi) * .05 || 1; lo -= pad; hi += pad;
       if (!axis.independent && domains[axis.key]) [lo, hi] = domains[axis.key];
       const y = (v: number) => plotBottom - (v - lo) / (hi - lo) * plotHeight;
