@@ -272,5 +272,22 @@
         "factor": null
       }
     ]
+  },
+  "real_gdp": {
+    "modernFrom": "1947-01-01",
+    "segments": [
+      {
+        "from": "1929-01-01",
+        "to": "1946-01-01",
+        "source": "BEA 실질 GDP 수준 · 연간",
+        "short": "연간",
+        "id": "GDPCA",
+        "url": "https://fred.stlouisfed.org/series/GDPCA",
+        "note": "십억 2017년 연쇄달러·연간. 물가 영향을 제거한 경제 규모. 공식 수준값을 그대로 사용합니다.",
+        "method": "append",
+        "proxy": false,
+        "factor": null
+      }
+    ]
   }
 }

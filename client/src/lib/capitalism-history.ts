@@ -20,6 +20,7 @@ const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
   trade: [{ source: "BEA 실질 순수출 · 분기 연율", id: "NETEXC", url: fred("NETEXC"), note: "2017년 연쇄가격·십억 달러·계절조정 연율. 양수·음수는 당시 명목 무역흑자·적자와 다를 수 있습니다." }],
   reer: [{ source: "BIS 실질 광의 실효환율", id: "RBUSBIS", url: fred("RBUSBIS"), note: "2020=100. 상대국 물가를 반영한 실질 대외가치." }],
   inflation: [{ source: "미국 CPI 전년비 · 계절조정", id: "CPIAUCSL", url: fred("CPIAUCSL"), note: "이전 구간과 계절조정 방식이 다릅니다." }],
+  real_gdp: [{ source: "BEA 실질 GDP 수준 · 분기", id: "GDPC1", url: fred("GDPC1"), note: "십억 2017년 연쇄달러·계절조정 연율. 물가 영향을 제거한 경제 규모. 성장률이 아닌 수준입니다." }],
   gdp_growth: [{ source: "미국 실질 GDP 성장률 · 분기 전기 대비 연율", id: "A191RL1Q225SBEA", url: fred("A191RL1Q225SBEA"), note: "이전 구간은 연간 성장률입니다." }],
   unrate: [{ source: "미국 실업률 · 월간 계절조정", id: "UNRATE", url: fred("UNRATE"), note: "1947년은 자료가 없습니다." }],
   fedfunds: [{ source: "미국 유효 연방기금금리", id: "FEDFUNDS", url: fred("FEDFUNDS"), note: "월평균." }],
@@ -72,7 +73,7 @@ export function sourcePeriods(seriesKey: string): SourcePeriod[] {
   if (["real_tb3ms", "usd_purchasing_power", "cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
   if (!h) return [];
   const earlier = h.segments.map(s => ({ from: s.from, to: s.to, source: s.source, id: s.id, url: s.url,
-    note: ["trade", "trade_bal", "net_exports_gdp"].includes(seriesKey) ? s.note : seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));
+    note: ["trade", "trade_bal", "net_exports_gdp", "real_gdp"].includes(seriesKey) ? s.note : seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));
   const current = SPECIAL[seriesKey] ?? CURRENT[seriesKey]?.map(s => ({ ...s, from: h.modernFrom })) ?? [];
   return [...earlier, ...current];
 }

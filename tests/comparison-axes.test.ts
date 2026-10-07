@@ -62,7 +62,7 @@ describe("mixed comparison axes", () => {
     }
   });
   it("shares one actual-value scale between rates and growth rates and retains their raw values", () => {
-    const result = build(["dxy", "real_tb3ms", "debt_gdp", "gdp_growth"]);
+    const result = build(["dxy", "real_tb3ms", "debt_gdp", "net_exports_gdp"]);
     expect(result.groups).toHaveLength(1);
     expect(result.series.slice(1).map(s => s.axis)).toEqual(["right:%", "right:%", "right:%"]);
     expect(result.series.slice(1).every(s => s.points.every(p => p.value === p.raw))).toBe(true);
