@@ -13,7 +13,7 @@ export const alignmentSchema = z.object({
 }).strict().refine(p => !p.from || !p.to || p.from <= p.to, "참고 기간의 종료는 시작 이후여야 합니다.");
 export type Alignment = z.infer<typeof alignmentSchema>;
 export type Calibration = z.infer<typeof calibrationSchema>;
-const zeroIds = new Set(["gdp_growth", "inflation", "real_tb3ms", "trade", "trade_bal"]);
+const zeroIds = new Set(["gdp_growth", "inflation", "real_tb3ms", "trade", "net_exports_gdp", "trade_bal"]);
 export const baselineKind = (id: string): Calibration["kind"] => zeroIds.has(id) ? "zero" : ["dxy", "reer"].includes(id) ? "index" : "median";
 export function quantile(sorted: number[], fraction: number) {
   const at = (sorted.length - 1) * fraction, i = Math.floor(at);

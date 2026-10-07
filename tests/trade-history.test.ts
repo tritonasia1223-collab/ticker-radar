@@ -49,13 +49,13 @@ describe("verified trade histories", () => {
     expect(tradeObservationLabel("trade", "1970-01-01")).toBe("");
   });
   it("recomputes obsolete experiment scales, including scales restored from old insights", () => {
-    const points = monthlyPoints(data.trade), def = COMPARE_SERIES.find(s => s.id === "trade")!;
-    const old = { ...calibrate("trade", points, null, null)!, scale: 99999 };
-    const alignment = { method: "median-iqr-asinh-v1" as const, from: null, to: null, calibrations: { trade: old } };
+    const points = monthlyPoints(data.trade_bal), def = COMPARE_SERIES.find(s => s.id === "trade_bal")!;
+    const old = { ...calibrate("trade_bal", points, null, null)!, scale: 99999 };
+    const alignment = { method: "median-iqr-asinh-v1" as const, from: null, to: null, calibrations: { trade_bal: old } };
     const result = buildAlignedComparison([{ def, points }], alignment);
-    expect(result.alignment.calibrations.trade.scale).not.toBe(99999);
-    expect(result.alignment.calibrations.trade.dataRevision).toBe("trade-history-2026-10-06");
-    expect(alignment.calibrations.trade.scale).toBe(99999); // Do not mutate saved note contents.
+    expect(result.alignment.calibrations.trade_bal.scale).not.toBe(99999);
+    expect(result.alignment.calibrations.trade_bal.dataRevision).toBe("trade-history-2026-10-06");
+    expect(alignment.calibrations.trade_bal.scale).toBe(99999); // Do not mutate saved note contents.
     expect(buildAlignedComparison([{ def, points }], result.alignment).alignment.calibrations).toEqual(result.alignment.calibrations);
   });
 });

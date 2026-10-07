@@ -15,7 +15,7 @@ const build = (ids: string[], overrides: Partial<ComparisonView> = {}) => buildC
 
 describe("mixed comparison axes", () => {
   it("renders the reported four indicators, both trade series, and all 16 selected indicators", () => {
-    for (const ids of [["cpi_level", "debt_gdp", "trade_bal", "trade"], ["trade", "trade_bal"], ["trade_bal", "trade"], COMPARE_SERIES.map(s => s.id)]) {
+    for (const ids of [["cpi_level", "debt_gdp", "trade_bal", "net_exports_gdp"], ["net_exports_gdp", "trade_bal"], ["trade_bal", "net_exports_gdp"], COMPARE_SERIES.map(s => s.id)]) {
       const result = buildComparisonAxes(raw(ids), automaticComparisonView(ids));
       expect(result.series.map(s => s.def.id).sort()).toEqual([...ids].sort());
       expect(result.pending).toEqual([]);
@@ -24,9 +24,9 @@ describe("mixed comparison axes", () => {
       for (const s of result.series) {
         expect(s.points.length).toBeGreaterThan(0);
         expect(result.axes.filter(a => a.key === s.axis)).toHaveLength(1);
-        if (s.def.id === "trade" || s.def.id === "trade_bal") expect(s.points.every(p => p.value === p.raw)).toBe(true);
+        if (s.def.id === "net_exports_gdp" || s.def.id === "trade_bal") expect(s.points.every(p => p.value === p.raw)).toBe(true);
       }
-      if (ids.includes("trade") && ids.includes("trade_bal")) expect(result.series.find(s => s.def.id === "trade")!.axis).not.toBe(result.series.find(s => s.def.id === "trade_bal")!.axis);
+      if (ids.includes("net_exports_gdp") && ids.includes("trade_bal")) expect(result.series.find(s => s.def.id === "net_exports_gdp")!.axis).not.toBe(result.series.find(s => s.def.id === "trade_bal")!.axis);
     }
   });
   it("automatically migrates old views and follows the last selected right-side unit", () => {
@@ -41,7 +41,7 @@ describe("mixed comparison axes", () => {
   });
   it("assigns prices and amounts left; rates, ratios and signed flows right", () => {
     for (const id of ["dxy", "cpi_level", "fx_eur", "fx_krw", "fx_jpy", "nasdaq", "gold", "oil", "m2"]) expect(defaultAxis(id)).toBe("left");
-    for (const id of ["real_tb3ms", "gdp_growth", "inflation", "debt_gdp", "trade", "trade_bal"]) expect(defaultAxis(id)).toBe("right");
+    for (const id of ["real_tb3ms", "gdp_growth", "inflation", "debt_gdp", "net_exports_gdp", "trade_bal"]) expect(defaultAxis(id)).toBe("right");
   });
   it("overlays four indexed currencies and a negative trade balance without losing selections", () => {
     const ids = ["dxy", "fx_krw", "fx_jpy", "fx_eur", "trade_bal"];
@@ -54,7 +54,7 @@ describe("mixed comparison axes", () => {
     expect(result.series.at(-1)!.points.some(p => p.raw > 0)).toBe(true);
   });
   it("fixes the 1990 base/EUR/real-net-export combination and preserves a three-series legacy context", () => {
-    for (const ids of [["fx_eur", "trade"], ["dxy", "fx_eur", "trade_bal"]]) {
+    for (const ids of [["fx_eur", "net_exports_gdp"], ["dxy", "fx_eur", "trade_bal"]]) {
       const result = build(ids, { base: "1990-01" });
       expect(result.series).toHaveLength(ids.length);
       expect(result.series.every(s => s.points.length > 0)).toBe(true);
@@ -62,15 +62,15 @@ describe("mixed comparison axes", () => {
     }
   });
   it("shares one actual-value scale between rates and growth rates and retains their raw values", () => {
-    const result = build(["dxy", "real_tb3ms", "debt_gdp", "gdp_growth"]);
+    const result = build(["dxy", "real_tb3ms", "debt_gdp", "net_exports_gdp"]);
     expect(result.groups).toHaveLength(1);
     expect(result.series.slice(1).map(s => s.axis)).toEqual(["right:%", "right:%", "right:%"]);
     expect(result.series.slice(1).every(s => s.points.every(p => p.value === p.raw))).toBe(true);
   });
-  it("separates nominal/monthly, real/annualized and rate units", () => {
-    const ids = ["dxy", "trade_bal", "trade", "real_tb3ms"];
+  it("separates nominal monthly dollars from GDP shares and rates", () => {
+    const ids = ["dxy", "trade_bal", "net_exports_gdp", "real_tb3ms"];
     const result = build(ids, { rightUnit: "trade-balance" });
-    expect(result.groups).toHaveLength(3);
+    expect(result.groups).toHaveLength(2);
     expect(result.pending).toEqual([]);
     expect(result.series.map(s => s.def.id)).toEqual(ids);
     expect(result.axes.filter(a => a.side === "right" && !a.independent).map(a => a.key)).toEqual(["right:trade-balance"]);
@@ -94,7 +94,7 @@ describe("mixed comparison axes", () => {
     expect(build(["dxy", "trade_bal"], { base: "2100-01" }).series.map(s => s.def.id)).toEqual(["trade_bal"]);
   });
   it("keeps raw and all-index modes available", () => {
-    const rawResult = build(["trade", "trade_bal"], { mode: "raw" });
+    const rawResult = build(["net_exports_gdp", "trade_bal"], { mode: "raw" });
     expect(rawResult.axes.every(a => !a.normalized)).toBe(true);
     expect(rawResult.series.every(s => s.points.every(p => p.value === p.raw))).toBe(true);
     expect(build(["dxy", "fx_eur"], { mode: "index" }).axes).toHaveLength(1);

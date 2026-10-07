@@ -21,7 +21,7 @@ export const CATEGORIES: Record<string, { label: string; color: string }> = {
 };
 
 export const PANELS: PanelDef[] = [
-  { id: "gdp_growth", label: "실질 GDP 성장률", unit: "%", series: "gdp_growth", cat: "macro", color: "#5dd6a0", on: true, start: "1947", zeroLine: true, kind: "area" },
+  { id: "real_gdp", label: "실질 GDP 수준", unit: "십억 2017달러", series: "real_gdp", cat: "macro", color: "#5dd6a0", on: true, start: "1929", kind: "line" },
   { id: "inflation", label: "인플레이션 (CPI YoY)", unit: "%", series: "inflation", cat: "macro", color: "#e0c267", on: true, start: "1948", zeroLine: true, kind: "line" },
   { id: "usd_purchasing_power", label: "달러 구매력(미국 내, CPI 역수)", unit: "idx", series: "usd_purchasing_power", cat: "macro", color: "#0d9488", on: false, start: "1913", kind: "line" },
   { id: "sp500", label: "미국 주가지수 (S&P500 추종)", unit: "idx", series: "sp500", cat: "market", color: "#0ea5e9", on: false, start: "1957", kind: "line" },
@@ -37,7 +37,7 @@ export const PANELS: PanelDef[] = [
   { id: "reer", label: "실질실효환율(REER, 장기 접합)", unit: "idx", series: "reer", cat: "money", color: "#6366f1", on: false, start: "1973", kind: "line" },
   { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "#cc7a33", on: false, start: "1946", kind: "line" },
   { id: "gold", label: "금값 (oz당)", unit: "$/oz", series: "gold", cat: "money", color: "#d4af37", on: false, start: "1944", kind: "line" },
-  { id: "trade", label: "실질 순수출", unit: "십억 2017달러·연율", series: "trade", cat: "money", color: "#e0a050", on: false, start: "1929", zeroLine: true, kind: "area" },
+  { id: "net_exports_gdp", label: "순수출/GDP", unit: "%", series: "net_exports_gdp", cat: "money", color: "#e0a050", on: false, start: "1929", zeroLine: true, kind: "area" },
   { id: "m2", label: "M2 통화량", unit: "$B", series: "m2", cat: "money", color: "#d9954a", on: false, start: "1959", kind: "line" },
   { id: "monbase", label: "본원통화", unit: "$B", series: "monbase", cat: "fed", color: "#c08cf0", on: false, start: "1959", kind: "line" },
   { id: "walcl", label: "연준 총자산", unit: "$B", series: "walcl", cat: "fed", color: "#b07ce0", on: false, start: "2002", kind: "area" },

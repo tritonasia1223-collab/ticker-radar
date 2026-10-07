@@ -33,7 +33,7 @@ describe("isolated baseline comparison", () => {
     expect(alignmentSchema.parse(old)).toEqual(old); // Saved note contexts are not migrated.
   });
   it("aligns meaningful anchors, preserves signs and the underlying observations", () => {
-    for (const [id, center] of [["dxy", 100], ["reer", 100], ["gdp_growth", 0], ["real_tb3ms", 0], ["trade_bal", 0], ["trade", 0]] as const) {
+    for (const [id, center] of [["dxy", 100], ["reer", 100], ["gdp_growth", 0], ["real_tb3ms", 0], ["trade_bal", 0], ["net_exports_gdp", 0]] as const) {
       const c = calibrate(id, points(values), "2000-01", "2001-12")!;
       expect(c.center).toBe(center);
       expect(alignedValue(center, c)).toBe(0);

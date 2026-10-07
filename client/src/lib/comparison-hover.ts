@@ -4,11 +4,11 @@ export const HOVER_RADIUS = 18;
 export interface HoverSegment { points: ComparePoint[]; rendered: ComparePoint[] }
 
 // Fixed dimensions before mounting prevent tooltip measurement from changing page scrollbars.
-export function hoverLayout(count: number, viewport: { width: number; height: number }) {
+export function hoverLayout(count: number, viewport: { width: number; height: number }, columnWidth = 260) {
   const maxRows = Math.max(1, Math.floor((viewport.height - 34) / 24));
   const columns = Math.max(1, Math.ceil(count / maxRows));
   const rows = Math.max(1, Math.ceil(count / columns));
-  return { columns, rows, width: Math.min(columns * 260, viewport.width - 16), height: rows * 24 + 18 };
+  return { columns, rows, width: Math.min(columns * columnWidth, viewport.width - 16), height: rows * 24 + 18 };
 }
 
 // Hit-test the drawn segments, but report a real observation, never an interpolated value.

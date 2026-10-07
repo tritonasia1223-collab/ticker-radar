@@ -12,7 +12,7 @@ import { plainText } from "@/lib/capitalism-richtext";
 import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, CapImageData, CapHtmlData, FlowNodeDTO } from "@/lib/capitalism-types";
 import { useCapSeries, type SeriesMap } from "@/lib/capitalism-series";
 
-const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? { ...PANELS[0], id: key, series: key, label: key === "dollar" ? "기존 달러지수(삭제됨)" : key === "cpi_level" ? "CPI 수준(이전 지표)" : "사용할 수 없는 지표", unit: "" };
+const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? (key === "gdp_growth" ? { ...PANELS[0], id: key, series: key, label: "실질 GDP 성장률(이전 지표)", unit: "%", start: "1930", zeroLine: true, kind: "area" as const } : undefined) ?? (key === "trade" ? { ...PANELS[0], id: key, series: key, label: "실질 순수출(이전 지표)", unit: "십억 2017달러·연율", color: "#e0a050", start: "1929", zeroLine: true, kind: "area" as const } : undefined) ?? { ...PANELS[0], id: key, series: key, label: key === "dollar" ? "기존 달러지수(삭제됨)" : key === "cpi_level" ? "CPI 수준(이전 지표)" : "사용할 수 없는 지표", unit: "" };
 // series 미로드 시(undefined) 안전 기본값. 로드 후엔 실제 데이터 범위.
 function lastYearOf(series: SeriesMap | undefined, key: string): number {
   const arr = series?.[key];
