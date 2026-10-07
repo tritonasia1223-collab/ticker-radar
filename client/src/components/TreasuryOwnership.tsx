@@ -122,10 +122,9 @@ export function TreasuryOwnership({ asOf }: { asOf: string }) {
         {issuers.map(item => <div key={item.id}>
           <b>{NAMES[item.id]}</b>: {item.holding ? <>{item.id === "circle" ? `전용 펀드 ${money(item.holding.fund ?? 0)} + 별도 계정 ${money(item.holding.direct ?? 0)}` : "공시의 U.S. Treasury Bills 항목만 집계"}. {item.holding.publishedAt ? `공시일 ${item.holding.publishedAt}. ` : ""}</> : "해당 분기 공시 미수집. "}
           {item.latest && item.latest.date > quarter.date && <>선택 주차 이전의 더 최근 보유 관측: {item.latest.date} {money(item.latest.treasuries)}{item.latest.publishedAt ? ` (공시 ${item.latest.publishedAt})` : ""}. 전체 구성과 기준일을 맞추기 위해 위 막대에는 같은 분기 값을 사용합니다. </>}
-          {item.holding && <a className="underline" href={item.holding.source} target="_blank" rel="noreferrer">공시 원문</a>}
         </div>)}
         <p>서클은 월별 공시, 테더는 분기별 공시를 수집합니다. 블랙록 일간 종목 매칭에 의한 매입 추산은 이 보유액 그래프에 사용하지 않습니다. 테더의 간접 보유분은 구성 확인이 안 된 경우 제외합니다.</p>
-        <p>상단 주차까지의 관측일 기준으로 선택하며, 이후 공시·수정된 과거 수치도 반영합니다. 주간 보간은 하지 않습니다. 발행사 수집 범위: 2025년 이후. 자료 수집일 {data.collectedAt.slice(0, 10)} · <a className="underline" href={data.ownershipSource} target="_blank" rel="noreferrer">연준 Z.1</a></p>
+        <p>상단 주차까지의 관측일 기준으로 선택하며, 이후 공시·수정된 과거 수치도 반영합니다. 주간 보간은 하지 않습니다. 발행사 수집 범위: 2025년 이후. 자료 수집일 {data.collectedAt.slice(0, 10)}</p>
       </div>}
     </div>
   </div>;

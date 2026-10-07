@@ -59,7 +59,7 @@ describe("읽기 페이지 — (a) 2026-09-09 실제값이 목업 문장을 재�
     expect(plain(s2(from, 4).summary)).toBe("재무부가 TGA 잔고를 시중에 푼 결과라 오래가긴 어렵습니다.");
     expect(plain(s3(to).summary)).toBe("늘어난 돈은 대부분 은행 지급준비금으로 들어갔습니다.");
     expect(s4(who).summary).toBe("새로 찍은 국채는 절반 이상을 간접 입찰자가 받아갔습니다.");
-    expect(s5(st).summary).toBe("자금시장에 긴장 신호는 없습니다.");
+    expect(s5(st).summary).toBe("단기 자금시장과 금융여건은 어떻게 달라졌나?");
   });
 
   it("01 결론·백분위·M2 문장", () => {
@@ -93,11 +93,11 @@ describe("읽기 페이지 — (a) 2026-09-09 실제값이 목업 문장을 재�
     expect(who.top?.share).toBeCloseTo(4_200_000 / 7_570_000, 6);
   });
 
-  it("05 결론 — 경계가 있는 지표만 센다", () => {
-    expect(s5(st).headline).toEqual(["자금시장에 긴장 신호는 없습니다.", "세 지표 모두 경계선 아래입니다."]);
+  it("05 — 수치는 보존하고 자체 위험 경계를 적용하지 않는다", () => {
+    expect(s5(st).headline).toEqual(["단기 자금시장과 금융여건은 어떻게 달라졌나?"]);
     expect(st.rows[0].value).toBe(-1); expect(st.rows[0].date).toBe("2026-09-15"); // 공통 관측일에서 차감
     expect(st.rows[3].breached).toBeNull(); expect(st.rows[3].note).toContain("BTFP");
-    expect(s5(stress(SOFR, IORB, NFCI, HY, null, READ_CONFIG)).headline[1]).toBe("두 지표 모두 경계선 아래입니다."); // 운영 설정(HY 미설정)
+    expect(stress(SOFR, IORB, NFCI, HY, null, READ_CONFIG).rows.every(r => r.threshold === null && r.breached === null)).toBe(true); // 운영 설정(HY 미설정)
   });
 });
 
@@ -205,17 +205,17 @@ describe("읽기 페이지 — 다른 국면", () => {
     expect(plain(s2(from, 4).summary)).toBe("연준과 재무부가 함께 움직여 한 요인으로 설명되지 않습니다.");
   });
 
-  it("맥락 자료가 비면 '판정하지 않았다'고 말한다 — 경계는 있으므로 '설정 없음'이 아니다", () => {
+  it("자료가 없어도 자체 판정을 만들지 않는다", () => {
     const st = stress([], [], [], [], null, READ_CONFIG);
     expect(st.evaluated).toHaveLength(0);
-    expect(s5(st).summary).toBe("자금시장 지표를 불러오지 못해 이번 주는 판정하지 않았습니다.");
+    expect(st.rows.every(r => r.value === null)).toBe(true);
   });
 
-  it("(g) 스트레스 지표 1개 초과", () => {
+  it("값이 커져도 자체 임계값의 초과 판정을 만들지 않는다", () => {
     const st = stress(obs([["2026-09-15", 3.80]]), IORB, NFCI, HY, null, CFG_TEST);
-    expect(st.rows[0].value).toBe(15); expect(st.breached.map((r) => r.key)).toEqual(["spread"]);
-    expect(s5(st).headline).toEqual(["초단기 금리 압력이 경계선을 넘었습니다.", "나머지 두 지표는 경계선 아래입니다."]);
-    expect(s5(st).summary).toBe("초단기 금리 압력이 경계선을 넘었습니다.");
+    expect(st.rows[0].value).toBe(15); expect(st.breached).toEqual([]);
+    expect(s5(st).headline).toEqual(["단기 자금시장과 금융여건은 어떻게 달라졌나?"]);
+    expect(st.evaluated).toEqual([]);
   });
 
   it("13주 기준이면 문장의 기간과 비교일이 함께 바뀐다", () => {

@@ -7,9 +7,9 @@ import { formatCredit } from "@shared/credit/reading";
 const colors = ["#477FA3", "#B18E58", "#7B6B93"];
 const caption = "text-[11px] leading-relaxed text-muted-foreground";
 
-export function RateComparisonChart({ id, kind, rates, spread, asOf, years, weeks = 4, spreadUnit = "pp" }: {
+export function RateComparisonChart({ id, kind, rates, spread, asOf, years, weeks = 4, spreadUnit = "pp", showNote = true, showSources = true, compact = false }: {
   id: string; kind: "oas" | "difference"; rates: RateLine[]; spread: RateLine;
-  asOf: string; years: number; weeks?: 4 | 13; spreadUnit?: "pp" | "bp";
+  asOf: string; years: number; weeks?: 4 | 13; spreadUnit?: "pp" | "bp"; showNote?: boolean; showSources?: boolean; compact?: boolean;
 }) {
   const [mode, setMode] = useState<"rates" | "spread">("rates");
   const start = new Date(Date.parse(asOf) - years * 365.25 * DAY).toISOString().slice(0, 10);
@@ -29,8 +29,8 @@ export function RateComparisonChart({ id, kind, rates, spread, asOf, years, week
       {rows.map((line, index) => { const isSpread = index === rows.length - 1; const c = line.changes[weeks]; return <div key={`${line.key}-${index}`}>
         <div className={caption}><span style={{ color: isSpread ? colors[2] : colors[index] }}>● </span>{line.label}</div>
         <div className="text-xl font-semibold tabular-nums mt-1">{fmt(line.latest?.value, isSpread)}</div>
-        <div className={caption}>{weeks}주 변화 {c && !c.unchangedRelease ? isSpread ? fmt(c.value, true, true) : formatCredit(c.value, "pp", true) : "비교 자료 부족"}</div>
-        <div className={caption}>{line.latest?.date ?? "관측 없음"}{line.latest && (line.stale || line.errors.length > 0) ? " · 갱신 확인 필요" : ""}</div>
+        <div className={caption}>{line.latest ? compact ? `(${line.latest.date} 기준)` : line.latest.date : "관측 없음"}{line.latest && (line.stale || line.errors.length > 0) ? " · 갱신 확인 필요" : ""}</div>
+        <div className={compact ? "text-sm mt-2 font-medium" : caption}>{weeks}주 {compact ? "비교" : "변화"} <span style={{ color: compact && c && !line.stale && !line.errors.length && !c.unchangedRelease ? c.value > 0 ? '#1F7A4D' : c.value < 0 ? '#B3402E' : undefined : undefined }}>{c && !c.unchangedRelease ? isSpread ? fmt(c.value, true, true) : formatCredit(c.value, "pp", true) : "비교 자료 부족"}</span></div>
         {c && <div className={caption}>비교 {c.from} → {c.to}</div>}
       </div>; })}
     </div>
@@ -50,8 +50,8 @@ export function RateComparisonChart({ id, kind, rates, spread, asOf, years, week
           {kind === "difference" && mode === "rates" && <Line dataKey="b" type="linear" stroke={colors[1]} strokeWidth={1.8} dot={chart.length === 1} connectNulls={false} isAnimationActive={false} />}
         </ComposedChart>
       </ResponsiveContainer></div> : <div className="py-14 text-center text-xs text-[#918D83]">선택한 기간의 {mode === "rates" ? "금리" : "스프레드"} 자료가 없습니다.</div>}
-      <p className="mt-2 text-[11px] leading-relaxed text-[#918D83]">{kind === "oas" ? "시장금리: 신규 발행·차환 여건의 참고치. 기존 채무 전체의 평균 지급이자율은 아닙니다. OAS는 만기·옵션을 조정한 프리미엄으로, 특정 국채 금리와 단순 차감하지 않습니다." : `두 금리 모두 관측된 날짜만 사용합니다. 음영은 두 금리 간격입니다. 스프레드 = ${rates[0]?.label ?? "A"} − ${rates[1]?.label ?? "B"}. 간격 축소만으로 조달금리 하락을 뜻하지 않습니다.`}</p>
+      {showNote && <p className="mt-2 text-[11px] leading-relaxed text-[#918D83]">{kind === "oas" ? "시장금리: 신규 발행·차환 여건의 참고치. 기존 채무 전체의 평균 지급이자율은 아닙니다. OAS는 만기·옵션을 조정한 프리미엄으로, 특정 국채 금리와 단순 차감하지 않습니다." : `두 금리 모두 관측된 날짜만 사용합니다. 음영은 두 금리 간격입니다. 스프레드 = ${rates[0]?.label ?? "A"} − ${rates[1]?.label ?? "B"}. 간격 축소만으로 조달금리 하락을 뜻하지 않습니다.`}</p>}
     </div>
-    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-muted-foreground">{rows.flatMap(l => "sources" in l ? (l as RateLine & { sources: { url?: string; label: string }[] }).sources : []).filter((s, n, all) => all.findIndex(other => other.url === s.url) === n).map(s => s.url && <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="underline">{s.label}</a>)}</div>
+    {showSources && <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-muted-foreground">{rows.flatMap(l => "sources" in l ? (l as RateLine & { sources: { url?: string; label: string }[] }).sources : []).filter((s, n, all) => all.findIndex(other => other.url === s.url) === n).map(s => s.url && <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="underline">{s.label}</a>)}</div>}
   </div>;
 }

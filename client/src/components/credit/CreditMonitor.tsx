@@ -1,3 +1,5 @@
+import { creditChapter } from "@shared/credit/chapter-reading";
+import { readingGroups } from "@shared/credit/reading";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from "recharts";
@@ -14,8 +16,6 @@ type Response = { asOf: string; collectedAt: string | null; configChanged?: bool
 const colors = ["#6366f1", "#0d9488", "#d97706", "#db2777", "#7c3aed", "#0284c7", "#65a30d", "#ea580c", "#64748b"];
 const frequencies: Record<string, string> = { daily: "일간", weekly: "주간", monthly: "월간", quarterly: "분기" };
 const units: Record<string, string> = { billions: "십억 달러", percent: "%", pp: "%p", ratio: "배", usd: "달러" };
-const metricLabels: Record<string, string> = { gapConsecutiveWeeks: "격차 연속 확대(주)", gapChange: "격차 누적 변화(%p)", primaryTrendChange: "CCC 자체 변화(%p)", latest: "수준", delta4: "4주 절대변화", change4: "4주 변화율(%)", change13: "13주 변화율(%)", annual13: "13주 연율화(%)", previousDelta: "직전 관측 대비", percentile: "확보 기간 백분위(%)", speedPercentile: "4주 증가율 백분위(%)", speed13Percentile: "13주 증가율 백분위(%)", issuanceYoy: "3개월 발행합 전년비(%)", priceChange4: "4주 수정주가 변화율(%)" };
-const ruleLabel = (s: string) => s.replace("absLte", "절댓값 ≤").replace("absLt", "절댓값 <").replace("gte", "≥").replace("lte", "≤");
 const num = (v: number | null | undefined, digits = 2) => v == null || !Number.isFinite(v) ? "—" : v.toLocaleString("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const signed = (v: number | null | undefined, digits = 2) => v == null ? "—" : `${v > 0 ? "+" : ""}${num(v, digits)}`;
 function value(v: number | null | undefined, unit: string) { if (v == null) return "—"; if (unit === "billions") return Math.abs(v) >= 1000 ? `${num(v / 1000)}조 달러` : `${num(v * 10, 1)}억 달러`; return `${num(v)}${unit === "usd" ? " 달러" : units[unit] ?? ""}`; }
@@ -29,19 +29,17 @@ function delta(line: LineAnalysis, weeks: number) {
 }
 function Pill({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) { return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${muted ? "bg-muted text-muted-foreground" : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"}`}>{children}</span>; }
 
-function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof creditSignals>["signals"] }) {
+function IndicatorCard(props: { spec: Indicator; result: IndicatorAnalysis; years: number; asOf: string; signals: ReturnType<typeof creditSignals>["signals"]; allData?: IndicatorAnalysis[] }) {
   const { spec, result, years, asOf } = props;
   if (!spec.chart.marketYield && spec.chart.kind !== "spread") return <OriginalIndicatorCard {...props} />;
   return <article data-credit-indicator={spec.id} className="p-4 md:p-5 space-y-4 min-w-0">
     <h3 className="font-semibold text-sm">{spec.name}</h3>
     <p className="text-xs leading-relaxed text-muted-foreground">{rateNarrative(result, 4)}</p>
     <RateComparisonChart id={spec.id} kind={spec.chart.marketYield ? "oas" : "difference"} rates={result.comparisonLines ?? []} spread={result.lines[0]} asOf={asOf} years={years} />
-    {spec.signal_keys.includes("ccc_gap_trend") && <CreditTrendNote signals={props.signals} />}
+    {spec.signal_keys.includes("ccc_gap_trend") && <CreditTrendNote data={props.allData ?? []} weeks={4} />}
     <p className="text-xs leading-relaxed text-muted-foreground">{spec.interpretation}</p>
-    <details className="text-[11px] text-muted-foreground"><summary className="cursor-pointer">갱신 주기·관측 범위·판정 근거</summary><div className="pt-2 space-y-2">
+    <details className="text-[11px] text-muted-foreground"><summary className="cursor-pointer">갱신 주기·관측 범위</summary><div className="pt-2 space-y-2">
       <p>{spec.refresh?.publication} · {spec.refresh?.collection}</p>
-      <p>신호 조건은 시장금리가 아닌 스프레드에 적용합니다.</p>
-      {spec.signal_keys.map(k => <p key={k}>{config.signalLabels[k]} · {props.signals[k]?.status === true ? "충족" : props.signals[k]?.status === false ? "미충족" : "확인 대기"}</p>)}
       {[...result.lines, ...(result.comparisonLines ?? [])].map(l => <p key={l.key}>{l.label}: {l.sampleStart ?? "—"} ~ {l.sampleEnd ?? "—"} · {l.sampleCount}개{l.errors.length ? ` · ${l.errors.join(" / ")}` : ""}</p>)}
       {spec.caveats?.map(c => <p key={c}>{c}</p>)}
     </div></details>
@@ -99,7 +97,6 @@ function OriginalIndicatorCard({ spec, result, years, asOf, signals }: { spec: I
     <div className="rounded-lg bg-muted/50 px-3 py-2 text-[11px] grid grid-cols-2 gap-2"><span>10년 백분위 <b className="tabular-nums">{num(focus.tenYearPercentile, 0)}{focus.tenYearPercentile == null ? " · 자료 부족" : "%"}</b></span><span>확보 기간 <b>{num(focus.metrics.percentile, 0)}{focus.metrics.percentile == null ? "" : "%"}</b></span><span className="col-span-2 text-[10px] text-muted-foreground">{focus.sampleStart ? `${focus.sampleStart} ~ ${focus.sampleEnd} · ${focus.sampleCount.toLocaleString()}개 관측` : "분석 기간 없음"} · 높을수록 원값이 큼</span></div>
     <p className="text-xs leading-relaxed text-muted-foreground"><span className="font-medium text-foreground">읽는 법 </span>{spec.interpretation ?? spec.role}</p>
     {focus.notes.length > 0 && <details className="text-[10px] text-muted-foreground"><summary className="cursor-pointer">수집·자료 안내</summary><div className="pt-2 space-y-1">{focus.notes.map(note => <p key={note}>{note}</p>)}</div></details>}
-    <div className="flex flex-wrap gap-1.5">{spec.signal_keys.map(k => <span key={k} className={`rounded-md px-2 py-1 text-[10px] ${signals[k]?.status === true ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300" : "bg-muted text-muted-foreground"}`}>{config.signalLabels[k]} · {signals[k]?.status === true ? "충족" : signals[k]?.status === false ? "미충족" : "확인 대기"}</span>)}</div>
     {(spec.caveats?.length || warnings.length) ? <div className="text-[10px] text-muted-foreground leading-relaxed">{spec.caveats?.map(t => <p key={t}>{t}</p>)}{warnings.map(t => <p key={t} className="text-amber-700 dark:text-amber-400">{t}</p>)}</div> : null}
     <div className="mt-auto border-t pt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">{focus.sources.map(s => s.url ? <a key={s.label} href={s.url} target="_blank" rel="noreferrer" className="inline-flex gap-1 items-center hover:text-foreground">{s.label}<ExternalLink size={10} /></a> : <span key={s.label}>{s.label}</span>)}</div>
   </article>;
@@ -128,7 +125,7 @@ function CreditPath({ path, index, results, years, asOf, signals }: {
       </div>
     </div>
     <div id={panelId} role="region" aria-label={spec.name}>
-      <IndicatorCard key={spec.id} spec={spec} result={results.find(result => result.id === spec.id)!} years={years} asOf={asOf} signals={signals} />
+      <IndicatorCard key={spec.id} spec={spec} result={results.find(result => result.id === spec.id)!} allData={results} years={years} asOf={asOf} signals={signals} />
     </div>
   </div>;
 }
@@ -147,8 +144,8 @@ export default function CreditMonitor({ asOf }: { asOf: string }) {
       {query.data?.configChanged && <p className="text-xs text-amber-700">지표 설정이 변경되었습니다. 다음 수집 시 원자료를 갱신합니다.</p>}
     </header>
     {config.paths.map((path, n) => <CreditPath key={path.path_id} path={path} index={n} results={empty.map(fallback => results.find(result => result.id === fallback.id) ?? fallback)} years={years} asOf={asOf} signals={outcome.signals} />)}
-    <div className="space-y-4 border-t pt-7"><div><h2 className="text-lg font-semibold">지표를 함께 읽으면</h2><p className="text-xs text-muted-foreground mt-1">은행·회사채·사모대출의 개별 신호를 확인합니다. 자료 부족은 따로 표시합니다.</p></div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{outcome.summary.map(s => <div key={s.name} className="rounded-xl border p-4"><div className="text-xs text-muted-foreground">{s.name}</div><div className="text-sm font-semibold mt-2">{s.status}</div><p className="text-[11px] leading-relaxed text-muted-foreground mt-2">{s.evidence.join(" · ") || "뚜렷한 긴장 조합이 아직 확인되지 않았습니다."}</p>{s.missing.length > 0 && <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-2">확인 필요: {s.missing.join(" · ")}</p>}</div>)}</div>
+    <div className="space-y-4 border-t pt-7"><div><h2 className="text-lg font-semibold">지표를 함께 읽으면</h2><p className="text-xs text-muted-foreground mt-1"></p></div>
+      <div className="space-y-3">{readingGroups.map(g => <details key={g.id} className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-semibold">{g.question}</summary><div className="mt-3 space-y-2">{creditChapter(g.id, results, outcome, 4).paragraphs?.map((p,n) => <p key={n} className={p.kind === "explanation" ? "text-xs text-muted-foreground" : "text-sm"}>{p.text}</p>)}</div></details>)}</div>
     </div>
     <footer className="text-[10px] text-muted-foreground leading-relaxed border-t pt-4">현재 확보한 자료를 관측 시점에 배치한 과거 분석입니다. 선택일 이후의 공시·수정 수치가 포함될 수 있습니다. BDC P/NAV는 해당 주가와 그날까지의 최신 분기말 NAV를 연결합니다. 개별 지표의 출처·주기·대상 범위가 다릅니다. 확보된 관측 기간을 표시하며, 10년 미만의 자료를 10년 백분위로 표시하지 않습니다. 수동 지표는 CSV 입력 전까지 판단 근거에서 제외됩니다.</footer>
   </section>;

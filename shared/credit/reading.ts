@@ -86,16 +86,15 @@ export function indicatorReading(spec: Indicator, line: LineAnalysis, weeks: 4 |
   const comparison = readingChange(spec, line, weeks), c = comparison.change;
   const known = !!line.latest && !line.stale && !line.errors.length;
   const direction = !c || c.unchangedRelease ? null : c.value > 0 ? "상승" : c.value < 0 ? "하락" : "변화 없음";
-  const emergency = spec.id === "h8_ci_loans" && outcome.signals.loan_emergency_warning?.status === true;
-  const headline = !line.latest ? "선택 시점에 사용할 자료가 없습니다." : !known ? "관측값은 있지만 현재 상태 판단은 유보합니다." : emergency ? "대출 급증을 확장으로 읽기 전에 비상 인출을 확인해야 합니다." : direction ? `${line.label}: ${comparison.label} ${direction}했습니다.`.replace("변화 없음했습니다", "변화가 없습니다") : "최신 수준은 확인되지만 비교할 관측이 부족합니다.";
-  const matched = spec.signal_keys.filter(k => outcome.signals[k]?.status === true).map(k => config.signalLabels[k]);
+  const headline = !line.latest ? "선택 시점에 사용할 자료가 없습니다." : !known ? "관측값은 있지만 현재 상태 판단은 유보합니다." : direction ? `${line.label}: ${comparison.label} ${direction}했습니다.`.replace("변화 없음했습니다", "변화가 없습니다") : "최신 수준은 확인되지만 비교할 관측이 부족합니다.";
+  const matched: string[] = [];
   let meaning = !known ? "표시된 관측값만으로 선택 시점의 상태를 확정하지 않습니다." : !c || c.unchangedRelease ? "비교 관측이 부족하거나 새 관측이 없어 변화 방향을 해석하지 않습니다." : c.value === 0 ? "비교한 두 관측값은 같습니다. 관측 사이의 움직임과 다른 지표까지 같다는 뜻은 아닙니다." : "이 변화만으로 전체 신용 공급의 상태를 확정하지 않습니다.";
   if (known && c && !c.unchangedRelease && c.value !== 0) {
     const up = c.value > 0;
     if (spec.id === "sloos_ci_standards") meaning = `${line.latest!.value > 0 ? "기준 강화 응답이 우세합니다." : line.latest!.value < 0 ? "기준 완화 응답이 우세합니다." : "기준 강화와 완화의 순응답이 균형입니다."} 직전 분기보다 순강화 비율은 ${up ? "높아졌습니다" : "낮아졌습니다"}.`;
     else if (spec.id === "sloos_ci_demand") meaning = `${line.latest!.value > 0 ? "수요 강화 응답이 우세합니다" : line.latest!.value < 0 ? "수요 약화 응답이 우세합니다" : "수요 강화·약화의 순응답이 균형입니다"}. 직전 분기보다 수요의 순응답은 ${up ? "개선" : "약화"}됐습니다.`;
     else if (["ig_oas", "hy_oas", "ccc_oas", "cp_spread"].includes(spec.id)) meaning = `국채 대비 추가 금리가 ${up ? "벌어져 상대적인 조달 부담이 커지는" : "좁아져 상대적인 조달 부담이 줄어드는"} 방향입니다. 시장금리 자체의 상승·하락은 별도로 확인해야 합니다.`;
-    else if (spec.id === "h8_ci_loans") meaning = emergency ? "CP 금리차 급확대과 기업대출 급증 조건이 함께 관측됐습니다. 시장 조달이 막혀 은행 한도를 인출했을 가능성이 있습니다." : `실제 은행 기업대출 잔액은 ${up ? "늘었습니다" : "줄었습니다"}. 공급 변화인지 수요 변화인지는 대출기준·수요 조사와 대조해야 합니다.`;
+    else if (spec.id === "h8_ci_loans") meaning = `실제 은행 기업대출 잔액은 ${up ? "늘었습니다" : "줄었습니다"}. 공급 변화인지 수요 변화인지는 대출기준·수요 조사와 대조해야 합니다.`;
     else if (spec.id === "bdc_price_to_nav") meaning = `선택 회사의 주가/NAV 비율은 ${up ? "높아졌습니다" : "낮아졌습니다"}. 현재 ${line.latest!.value < 1 ? "1배 미만의 할인" : line.latest!.value > 1 ? "1배 초과의 프리미엄" : "1배"} 상태입니다. 분기 NAV 갱신도 이 비율에 영향을 줍니다.`;
     else if (spec.id === "bdc_credit_quality") meaning = `선택한 회사·공시 기준의 비중이 직전 분기보다 ${up ? "높아졌습니다" : "낮아졌습니다"}. ${up ? "부담 증가 가능성이 있습니다" : "해당 항목의 비중 감소가 전체 부실 감소를 뜻하지는 않습니다"}.`;
     else if (spec.id === "corporate_bond_issuance") meaning = `선택한 발행 계열의 월간 금액은 ${up ? "늘었습니다" : "줄었습니다"}. 계절성과 차환 수요가 있어 한 달 변화로 시장의 개폐를 판단하지 않습니다.`;

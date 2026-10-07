@@ -22,8 +22,6 @@ export function liquidityChapters(how: HowMuch | null, from: WhereFrom | null, t
   const buyer = !who ? "국채 입찰 자료를 확인하고 있습니다." : !who.top ? "선택 기간에 집계된 국채 낙찰액이 없습니다."
     : `${who.excludeBills ? "단기채를 제외한 " : ""}국채 낙찰액의 ${(who.top.share * 100).toFixed(1)}%를 ${BIDDER_SUBJECT[who.top.bidder]}${who.top.bidder === "soma" ? "이" : "가"} 받아갔습니다. 입찰 이후의 최종 보유자와는 다릅니다.`;
   const names: Record<string, string> = { spread: "초단기 조달금리", nfci: "전반적인 금융여건", hy: "저신용 회사채의 추가 금리", loans: "연준 긴급대출" };
-  const pressure = !stress.evaluated.length ? "자금시장 상태를 확인할 자료가 부족합니다."
-    : stress.breached.length ? `${stress.breached.map(r => names[r.key] ?? r.name).join("·")}에서 부담 신호가 보입니다. 한 지표만으로 자금 부족을 단정하지 않습니다.`
-    : `확인된 자금시장 지표에서는 뚜렷한 긴장이 보이지 않습니다.${stress.evaluated.length < stress.rows.length ? " 일부 지표는 확인이 필요합니다." : ""}`;
+  const pressure = "단기 자금시장과 금융여건의 현재 값, 선택 기간 변화, 과거 관측 범위를 비교합니다.";
   return { s1: size, s2: source, s3: destination, s4: buyer, s5: pressure };
 }

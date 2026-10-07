@@ -77,13 +77,14 @@ describe("B안 민간 신용 해설", () => {
     expect(r.known).toBe(false);
     expect(r.headline).toContain("유보");
   });
-  it("CP 급등과 대출 급증을 좋은 확장으로 해석하지 않는다", () => {
+  it("이전 자체 규칙의 결과로 개별 지표 해설을 덮어쓰지 않는다", () => {
     const { all, line } = observed("h8_ci_loans");
     Object.assign(line.metrics, { change4: 8, speedPercentile: 99 });
     const cp = all.find(i => i.id === "cp_spread")!.lines[0];
     cp.stale = false;
     Object.assign(cp.metrics, { delta4: 1, latest: 2 });
-    expect(indicatorReading(spec("h8_ci_loans"), line, 4, scenarios(all)).headline).toContain("비상 인출");
+    expect(indicatorReading(spec("h8_ci_loans"), line, 4, scenarios(all)).headline).not.toContain("비상 인출");
+    expect(indicatorReading(spec("h8_ci_loans"), line, 4, scenarios(all)).matched).toEqual([]);
   });
   it("0과 결측을 구분하고 잔액 단위를 유지한다", () => {
     expect(formatCredit(0, "pp")).toBe("0%p");

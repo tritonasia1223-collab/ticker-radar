@@ -9,21 +9,25 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { apiRequest } from "@/lib/queryClient";
 import { restoreMissingNumbers } from "@shared/time-series";
 import { yoyMonthly, yoyWeekly, changeFrom, nearest, netLiquidity, sumAuctionsBetween, type LiquidityContext, type LiquidityAuctions, type Obs } from "@shared/liquidity-beta";
-import { howMuch, whereFrom, whereTo, whoBought, whoSankey, stress, emergencyLoans, background, pickWeeks, BUCKET_LABEL, type ReadWeek, type CmpWeeks, type Contribution, type StressRow, type Bucket } from "@shared/liquidity-read";
-import { s1, s2, s3, s4, s5, rowDescription, fmt, josa, type Part } from "@shared/liquidity-sentences";
-import { bondReading } from "@shared/credit/bond-reading";
+import { howMuch, whereFrom, whereTo, whoBought, whoSankey, stress, emergencyLoans, background, pickWeeks, BUCKET_LABEL, type ReadWeek, type CmpWeeks, type Contribution, type Bucket } from "@shared/liquidity-read";
+import { s1, s2, s3, s4, fmt, josa, type Part } from "@shared/liquidity-sentences";
 import { reservesGdp } from "@shared/reserves-gdp";
 import { m2Composition } from "@shared/m2-composition";
 import { READ_CONFIG } from "@shared/liquidity-read-config";
 import type { WeekPoint } from "@/components/fed-taccount";
-import { useCreditReading, CreditSummary, CreditReadingGroup, CreditWatchpoints, creditChapterForState } from "@/components/credit/CreditReading";
-import { liquidityChapters } from "@shared/liquidity-chapters";
-import { liquidityReport } from "@shared/liquidity-report";
+import { useCreditReading, CreditReadingGroup } from "@/components/credit/CreditReading";
+import { fundingComparisons } from "@shared/liquidity-report";
 import type { ChapterParagraph } from "@shared/credit/chapter-reading";
 import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
+import { TreasuryPeriodComparison } from '@/components/TreasuryPeriodComparison';
+import { treasuryEditorial } from '@shared/treasury-comparison';
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
 import { FundingRateChart } from "@/components/credit/FundingRateChart";
+import { NfciHistoryChart, FacilitiesHistoryChart } from "@/components/FundingReferenceCharts";
+import { fedFacilities } from "@shared/fed-facilities";
+import { authoredFundingReading } from '@shared/funding-editorial';
+import { FUNDING_DEFINITIONS } from "@shared/funding-definitions";
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ── 서버 응답 형태 ──
@@ -102,6 +106,10 @@ function OpinionText({ paragraph }: { paragraph: ChapterParagraph }) {
     { pattern: new RegExp(`${money}(?:줄었습니다|내렸습니다|축소됐습니다|낮아졌습니다|약해졌습니다)|기업어음 조달은 줄고|대출 ETF도 약해져|완화했다고|줄었다고`, "g"), color: C.absorb },
   ];
   const spans: { start: number; end: number; color?: string; strong: boolean }[] = [];
+  for (const text of paragraph.emphasis ?? []) {
+    const start = paragraph.text.indexOf(text);
+    if (start >= 0) spans.push({ start, end: start + text.length, strong: true });
+  }
   for (const rule of rules) for (const match of paragraph.text.matchAll(rule.pattern)) {
     spans.push({ start: match.index!, end: match.index! + match[0].length, color: rule.color, strong: /\d.*달러/.test(match[0]) });
   }
@@ -130,18 +138,12 @@ function Section({ id, num, title, question, answer, paragraphs, children }: { i
         <div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{num}</div>
         <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
         <Cap>{question}</Cap>
-        {!!opinion?.length && <div aria-label={`${title} 종합 의견`} data-testid={`chapter-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#ECEAE3", borderRadius: 10, padding: "18px 16px", marginTop: 12, wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word" }}>
+        {!!opinion?.length && <div aria-label={`${title} 종합 의견`} data-testid={`chapter-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#EEEBDF", borderRadius: 10, padding: "18px 16px", marginTop: 12, wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word" }}>
           {opinion.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
         </div>}
       </div>
     }>{children}</Row>
   );
-}
-function ReportBody({ paragraphs, overview = false }: { paragraphs: ChapterParagraph[]; overview?: boolean }) {
-  if (!paragraphs.length) return null;
-  return <div data-testid={overview ? "market-analysis" : "section-analysis"} className={overview ? "mb-9 space-y-5 rounded-2xl bg-[#EAEDE7] p-5 sm:p-7" : "space-y-3"}>
-    {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, marginTop: n ? overview ? 18 : 12 : 0, fontSize: p.kind === "explanation" ? 12 : overview && n === 0 ? 24 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#918D83" : C.body, fontFamily: overview && n === 0 ? SERIF : undefined, fontWeight: overview && n === 0 ? 600 : 400 }}><OpinionText paragraph={p} /></p>)}
-  </div>;
 }
 function H2({ children }: { children: ReactNode }) { return <h2 className="text-[20px] md:text-[24px]" style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>{children}</h2>; }
 interface LiquidityPiePart { label: string; value: number; color: string }
@@ -277,40 +279,6 @@ function NeutralTAccount({ rows, total }: { rows: TRow[]; total: number }) {
   );
 }
 
-// 05 눈금 — 경계선이 그려진 가로 눈금 + 점
-function GaugeRow({ r }: { r: StressRow }) {
-  const val = r.value, has = val != null && Number.isFinite(val);
-  const fmtVal = !has ? "" : r.unit === "bp" ? fmt.bp(val!) : r.unit === "idx" ? val!.toFixed(2) : r.unit === "pctp" ? `${val!.toFixed(2)}%p` : dollars(val!);
-  const pos = has ? Math.min(1, Math.max(0, (val! - r.min) / (r.max - r.min || 1))) : 0;
-  const tPos = r.threshold != null ? Math.min(1, Math.max(0, (r.threshold - r.min) / (r.max - r.min || 1))) : null;
-  const fmtT = r.threshold == null ? "" : r.unit === "bp" ? String(r.threshold) : r.unit === "musd" ? dollars(r.threshold) : String(r.threshold);
-  const fmtEdge = (v: number) => (r.unit === "bp" ? fmt.bp(v) : r.unit === "pctp" ? `${v}%p` : r.unit === "musd" ? dollars(v) : v.toFixed(1));
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-[250px_minmax(0,1fr)_90px] gap-x-6 gap-y-2 md:items-center" style={{ padding: "22px 0", borderTop: `1px solid ${C.line}` }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: has ? C.ink : C.cap }}>{r.name}</span>
-        <Cap style={{ lineHeight: 1.5 }}>{r.desc}{r.note ? ` · ${r.note}` : ""}</Cap>
-      </div>
-      {!has ? (
-        <Cap>준비 중 — 데이터 연결 후 표시됩니다</Cap>
-      ) : tPos == null ? (
-        <Cap>판정 기준 미설정</Cap>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ position: "relative", height: 24 }}>
-            <div style={{ position: "absolute", left: 0, top: 9, width: `${tPos * 100}%`, height: 6, background: C.n2, borderRadius: "3px 0 0 3px" }} />
-            <div style={{ position: "absolute", left: `${tPos * 100}%`, top: 9, width: `${(1 - tPos) * 100}%`, height: 6, background: C.over, borderRadius: "0 3px 3px 0" }} />
-            <div style={{ position: "absolute", left: `${tPos * 100}%`, top: 0, width: 2, height: 24, background: C.ink }} />
-            <div style={{ position: "absolute", left: `${pos * 100}%`, top: 3, width: 18, height: 18, borderRadius: 9, background: r.breached ? C.absorb : C.release, marginLeft: -9 }} title={r.breached ? "경계선 위" : "경계선 아래"} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cap }}><span>{fmtEdge(r.min)}</span><span>경계 {fmtT}</span><span>{fmtEdge(r.max)}</span></div>
-        </div>
-      )}
-      {has && <div className="text-left md:text-right" style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 17, fontWeight: 600 }}>{fmtVal}{(val! < r.min || val! > r.max) && tPos != null ? " (눈금 밖)" : ""}</span><span style={{ fontSize: 13, color: C.cap }}>{r.date ? fmt.dateKo(r.date) : ""}</span></div>}
-    </div>
-  );
-}
-
 // 04 생키 — 띠와 만기 노드는 만기 묶음 색(HUE), 입찰자 노드는 먹색. 최소 굵기 2px.
 const BUCKET_FILL: Record<Bucket, string> = { bills: HUE.sky, nb: HUE.blue, tips: HUE.ochre };
 function ReadSankeyNode(props: any) {
@@ -383,7 +351,7 @@ export default function LiquidityRead() {
   const noPrev = `${cmp}주 전(${expectedPrev ? fmt.dateKo(expectedPrev) : ""}) 관측이 없어 이번 주는 비교하지 않았습니다.`;
   const noPrevBlock = `${cmp}주 전(${expectedPrev ? fmt.dateKo(expectedPrev) : ""}) 관측이 없어 이 칸의 변화는 계산하지 않았습니다. 다른 주를 고르면 다시 계산합니다.`;
   const from = sel && prev ? whereFrom(prev, sel, cfg.DOMINANT_SHARE) : null;
-  const to = sel && prev ? whereTo(prev, sel, ctx.deposits ?? [], monthlyBills, cfg.RESERVES_ZONES) : null;
+  const to = sel && prev ? whereTo(prev, sel, ctx.deposits ?? [], monthlyBills, null) : null;
   const agg = auctions.data?.agg ?? null, prevAgg = auctionsPrev.data?.agg ?? null;
   const who = agg ? whoBought(agg, prevAgg, monthlyTotal, monthlyBills, auctionMode === "nobills") : null;
   const overviewWho = agg ? whoBought(agg, prevAgg, [], [], false) : null;
@@ -392,7 +360,7 @@ export default function LiquidityRead() {
   const st = stress(ctx.sofr ?? [], ctx.iorb ?? [], ctx.nfci ?? [], ctx.hy ?? [], sel ? { ...emergencyLoans(sel), date: sel.date } : null, cfg);
   const bg = background(ctx);
 
-  const S1 = how ? s1(how) : null, S2 = from ? s2(from, cmp, how?.flat) : null, S3 = to ? s3(to) : null, S4 = who ? s4(who) : null, S5 = s5(st);
+  const S1 = how ? s1(how) : null, S2 = from ? s2(from, cmp, how?.flat) : null, S3 = to ? s3(to) : null, S4 = who ? s4(who) : null;
 
   // 그림 C 데이터: 전년비(5년), 연도 눈금은 연 1회, 기저효과 주석
   const yoyData = useMemo(() => {
@@ -443,9 +411,7 @@ export default function LiquidityRead() {
 
   const m2Parts = m2Composition(ctx, m2Now);
   const reserveRatio = sel ? reservesGdp(sel.reserves, sel.date, ctx.gdp ?? []) : null;
-  const chapters = liquidityChapters(how, from, to, who, st, cmp);
-  const creditAvailable = !credit.query.isLoading && !credit.query.isError && !credit.query.data?.error && !credit.query.data?.configChanged;
-  const report = liquidityReport({ asOf: selDate, weeks: cmp, history: weeks, sel: selW, prev, context: ctx, how, from, to, who, stress: st, flow: debt.data?.flow ?? null, credit: creditAvailable ? credit.data : [] });
+  const funding = fundingComparisons({ context: ctx, history: weeks, asOf: selDate, weeks: cmp });
 
   return (
     <div style={{ "--liquidity-sticky-top": `${headerHeight + 20}px`, background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
@@ -475,12 +441,11 @@ export default function LiquidityRead() {
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
         </div></div>
         <div style={{ minWidth: 0 }}>
-        <LiquidityDashboard showRiskReview={false} how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} stress={st} riskHeadline={credit.query.isLoading ? "신용 자료를 확인하고 있습니다." : credit.query.isError || credit.query.data?.error || credit.query.data?.configChanged ? "선택 시점의 신용 상태를 확인하지 못했습니다." : bondReading(credit.data, credit.outcome).overview} alerts={<CreditSummary state={credit} weeks={cmp} />} />
+        <LiquidityDashboard how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} />
         </div></div>
 
         {/* 01 얼마나 */}
-        <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나">
-          <ReportBody paragraphs={report.sections.s1} />
+        <Section id="s1" num="01" title="얼마나" question="지금 시장에 돈이 얼마나 풀려 있나" paragraphs={[]}>
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2>순유동성과 M2</H2>
 
@@ -531,12 +496,11 @@ export default function LiquidityRead() {
         </Section>
 
         {/* 02 어디서 */}
-        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나">
-          <ReportBody paragraphs={report.sections.s2} />
+        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나" paragraphs={[]}>
           {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "풀린" : "흡수된"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
             <ContribBars N={cmp} centered rows={[
-              ...from.ranked.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: rowDescription(c, from.fedDetail) + (c.key === "tga" ? `\nTGA 잔액 ${fmt.eok(prev.tga)}억 → ${fmt.eok(sel.tga)}억` : c.key === "rrp" ? `\n역레포 잔액 ${fmt.eok(prev.rrp)}억 → ${fmt.eok(sel.rrp)}억` : ""), value: c.effect })),
+              ...from.ranked.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: c.key === "tga" ? `TGA 잔액 ${fmt.eok(prev.tga)}억 → ${fmt.eok(sel.tga)}억` : c.key === "rrp" ? `역레포 잔액 ${fmt.eok(prev.rrp)}억 → ${fmt.eok(sel.rrp)}억` : from.fedDetail.map(d => `${d.label} ${fmt.signedEok(d.value)}`).join(" · "), value: c.effect })),
               { name: "합계", desc: "", value: from.dNl, total: true },
             ]} />
             <Expander label="연준 대차대조표(T계정) 전체 펼치기" open={openT} onToggle={() => setOpenT((v) => !v)}>
@@ -570,10 +534,10 @@ export default function LiquidityRead() {
         </Section>
 
         {/* 03 어디로 */}
-        <Section id="s3" num="03" title="어디로" question="늘어난 돈이 어디에 쌓였나">
-          <ReportBody paragraphs={report.sections.s3} />
+        <Section id="s3" num="03" title="어디로" question="유동성 변화가 어디에 반영됐나" paragraphs={[]}>
           {!to || !S3 ? <Cap>{noPrevBlock}</Cap> : (<>
             <H2><Parts parts={S3.headline} /></H2>
+            <Cap>{cmp}주 변화 · {sel?.date} 기준</Cap>
             {to.sameSign ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", gap: 3, height: 64 }}>
@@ -590,26 +554,13 @@ export default function LiquidityRead() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <Body>현재 은행 지급준비금은 {fmt.jo(to.reserves)}조 달러{reserveRatio ? `로, 명목 GDP의 ${reserveRatio.pct.toFixed(1)}%입니다.` : "입니다."}</Body>
               <Cap style={{ color: "#918D83" }}>{reserveRatio ? `지준 ${sel?.date} · GDP ${reserveRatio.quarter} (계절조정·연율). 관측 기간 기준·사후 수정치 포함.` : context.isFetching ? "GDP 대비 비율을 불러오는 중입니다." : "비교 가능한 GDP 자료가 없어 비율을 표시하지 않았습니다."}</Cap>
-              <Cap style={{ color: "#918D83" }}>GDP 대비 약 9%는 월러 연준 이사가 제시한 지준의 참고 수준이며, 공식 안전선은 아닙니다. <a href="https://www.federalreserve.gov/newsevents/speech/waller20250710a.htm" target="_blank" rel="noreferrer" className="underline underline-offset-2">2025년 7월 발언</a></Cap>
             </div>
-            {to.zone && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <Sub>지금 지급준비금 {dollars(to.reserves)}는 넉넉한 수준인가</Sub>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ position: "relative", height: 44 }}>
-                    <div style={{ position: "absolute", left: 0, top: 16, width: "100%", height: 12, display: "flex", gap: 3 }}><div style={{ width: "30%", background: C.absorb, borderRadius: "6px 0 0 6px" }} /><div style={{ width: "25%", background: C.n1 }} /><div style={{ flexGrow: 1, background: C.release, borderRadius: "0 6px 6px 0" }} /></div>
-                    <div style={{ position: "absolute", left: `${to.zone.pos * 100}%`, top: 9, width: 26, height: 26, marginLeft: -13, borderRadius: 13, background: C.ink, border: `3px solid ${C.bg}`, boxSizing: "border-box" }} />
-                  </div>
-                  <div style={{ display: "flex", fontSize: 13, color: C.cap }}><span style={{ width: "30%" }}>빠듯 · 금리가 튀기 쉬움</span><span style={{ width: "25%" }}>경계 {to.zone.unit === "gdp_pct" ? `${to.zone.tight}~${to.zone.ample}%` : `${dollars(to.zone.tight)}~${dollars(to.zone.ample)}`}</span><span style={{ flexGrow: 1, textAlign: "right" }}>넉넉</span></div>
-                </div>
-              </div>
-            )}
           </>)}
         </Section>
 
         {/* 04 누가 샀나 */}
-        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나">
-          <ReportBody paragraphs={report.sections.s4} />
+        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryEditorial(selDate, cmp, debt.data?.flow ?? null, agg, prevAgg, monthly)}>
+          <TreasuryPeriodComparison asOf={selDate} weeks={cmp} current={debt.data?.flow ?? null} />
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
@@ -630,9 +581,6 @@ export default function LiquidityRead() {
                 </div>
               </div>
             </div>
-            <p data-testid="treasury-issuance-note" style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: "#918D83" }}>
-              참고 · {S4?.caution}. 단기채는 만기가 돌아오면 다시 발행하므로 발행액에는 기존 빚을 갈아 끼운 물량이 포함됩니다. {debt.data?.flow ? <>같은 {cmp}주간 전체 시장성 국채 순증감은 {fmt.signedAmount(debt.data.flow.net)} 달러, 단기채 순증감은 {fmt.signedAmount(debt.data.flow.billsNet)} 달러입니다. 재무부 일일 발행·상환 및 물가 조정 기준입니다.</> : "선택 기간의 순증감 자료를 확인 중입니다."}
-            </p>
             <Expander transparent label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>
               {!life ? <Cap>준비 중 — 입찰 창 안에 보유 관측이 두 개 이상 없어 표를 만들 수 없습니다</Cap> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -663,25 +611,34 @@ export default function LiquidityRead() {
         </Row>
 
         {/* 05 탈은 없나 */}
-        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={!context.isLoading && !context.isError ? report.sections.s5 : undefined} answer={context.isLoading ? "자금시장 자료를 확인하고 있습니다." : context.isError ? "자금시장 자료를 불러오지 못했습니다." : chapters.s5}>
-          <H2>{S5.headline.join(" ")}</H2>
-          <div style={{ display: "flex", flexDirection: "column", borderBottom: `1px solid ${C.line}` }}>{st.rows.map((r) => <GaugeRow key={r.key} r={r} />)}</div>
-          <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} />
-          <button type="button" onClick={() => document.getElementById("read-hy_oas")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="underline text-left" style={{ fontSize: 13, color: C.cap }}>HY 시장금리·위험 프리미엄의 상세 그래프로 이동 ↓</button>
+        <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={!context.isLoading && !context.isError ? authoredFundingReading(selDate, cmp, funding.spread.current?.value ?? null, !!funding.nfci.current) : []}>
+          <p data-funding-definition="spread" className="rounded-xl bg-[#EAF0EE] px-5 py-5 md:px-6" style={{ fontSize: 15, lineHeight: 1.8, color: C.body }}>{FUNDING_DEFINITIONS.spread}</p>
+          <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} showNotes={false} showSources={false} />
+          <H2>참고할만한 위험 지표들</H2>
+          <div>
+            <NfciHistoryChart points={ctx.nfci ?? []} stats={funding.nfci} asOf={selDate} weeks={cmp} />
+            <FacilitiesHistoryChart history={weeks} data={fedFacilities(weeks,selDate,cmp)} asOf={selDate} weeks={cmp} />
+          </div>
           {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
         </Section>
 
-        {readingGroups.map((group, n) => { const chapter = creditChapterForState(group.id, credit, cmp); return <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question} answer={chapter.text} paragraphs={chapter.paragraphs}>
+        {readingGroups.map((group, n) => {
+          if (group.id === 'credit-bank') return <section key={group.id} id={group.id} style={{ scrollMarginTop: STICKY_TOP }}>
+            <CreditReadingGroup group={group} state={credit} weeks={cmp} renderBankRow={(id, content, paragraphs) => <div key={id} data-bank-reading-row={id} className={ROW_GRID}>
+              <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] pt-6">
+                {id === 'bank-intro' && <div className="space-y-1.5"><div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>06</div><div className="text-base font-semibold">{group.title}</div><Cap>{group.question}</Cap></div>}
+                {!!paragraphs.length && <div aria-label={`${id} 해설`} data-testid={`chart-answer-${id}`} className="rounded-[10px] bg-[#EEEBDF] px-4 py-[18px] space-y-4" style={{ wordBreak: "keep-all", overflowWrap: "break-word" }}>
+                  {paragraphs.map((p, index) => <p key={index} style={{ margin: 0, marginTop: index ? 14 : 0, fontSize: p.kind === 'explanation' ? 12 : 14, lineHeight: 1.85, color: p.kind === 'explanation' ? '#777369' : C.body }}><OpinionText paragraph={p} /></p>)}
+                </div>}
+              </div>
+              <div className={id === 'bank-intro' ? 'border-t border-[#1A1A18] pt-7' : ''} style={{ minWidth: 0, paddingBottom: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>{content}</div>
+            </div>} />
+          </section>;
+          return <Section key={group.id} id={group.id} num={String(n + 6).padStart(2, "0")} title={group.title} question={group.question} paragraphs={[]}>
           <CreditReadingGroup group={group} state={credit} weeks={cmp} />
         </Section>; })}
-        <Section id="credit-watchpoints" num="10" title="함께 읽으면" question="어떤 변화가 현재 판단을 바꿀까" answer={creditChapterForState("credit-watchpoints", credit, cmp).text} paragraphs={creditChapterForState("credit-watchpoints", credit, cmp).paragraphs}>
-          <CreditWatchpoints state={credit} />
-          <Cap>과거 조회: 관측일 기준 · 사후 공시·수정치 포함. 신용 조건 판정: 고정된 4주·13주 규칙. 그래프 비교: 상단 선택 기간.</Cap>
-        </Section>
-
         {/* 배경 */}
         <Row as="footer" aside={<div style={{ display: "flex", flexDirection: "column", gap: 6 }}><span style={{ fontSize: 16, fontWeight: 600 }}>배경</span><Cap>유동성 바깥의 가격과 경기</Cap></div>}>
-          <ReportBody paragraphs={report.sections.background} />
           <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-x-5">
               {bg.map((b) => {

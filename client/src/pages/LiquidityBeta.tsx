@@ -10,8 +10,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { restoreMissingNumbers, weeksBefore } from "@shared/time-series";
 import {
   liquidityBand, netLiquidity, yoyMonthly, yoyWeekly, changeFrom, stockChangeBetween, latestCommon, roundAdditive, sumAuctionsBetween,
-  spreadBand, spreadBp, loansBand, nfciBand,
-  type LiquidityContext, type LiquidityAuctions, type Obs, type Band, type Maturity, type Bidder, type LiquidityBand,
+  spreadBp,
+  type LiquidityContext, type LiquidityAuctions, type Obs, type Maturity, type Bidder, type LiquidityBand,
 } from "@shared/liquidity-beta";
 import { Card } from "@/components/ui/card";
 import CreditMonitor from "@/components/credit/CreditMonitor";
@@ -26,7 +26,6 @@ interface DailyPoint { date: string; netLiq: number; sp500: number | null }
 interface Overview { weeks: WeekPoint[]; daily: DailyPoint[]; treasury?: { monthly: TreasuryMonth[]; fedWeekly: FedMatWeek[] }; updatedAt: string }
 
 const AMBER = "#f59e0b", GREY = "#94a3b8";
-const bandDot = (b: Band) => (b === "위기" ? NEG : b === "경계" ? AMBER : b === "평상시" ? POS : GREY);
 const fmtDate = (d?: string) => (d ? d.slice(2).replace(/-/g, ".") : "—");
 const fmtPct = (v: number, digits = 1) => (Number.isFinite(v) ? `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}%` : "—");
 const fmtNum = (v: number, digits = 2, unit = "") => (Number.isFinite(v) ? `${v.toFixed(digits)}${unit}` : "—");
@@ -406,15 +405,14 @@ export default function LiquidityBeta() {
           <span className="font-semibold">맥락</span>
           <span className="text-muted-foreground">선택 주차 기준</span>
           <span className="w-px h-3.5 bg-border" />
-          <span className="font-semibold text-muted-foreground">경고</span>
+          <span className="font-semibold text-muted-foreground">자금시장</span>
           {([
-            ["SOFR−IORB", Number.isFinite(spreadValue) ? `${spreadValue >= 0 ? "+" : "−"}${Math.abs(spreadValue)}bp` : "자료 부족", sofr?.date, spreadBand(spreadValue)],
-            ["긴급대출", loansLatest && Number.isFinite(loansLatest.loans) ? asMoney(loansLatest.loans) : "자료 부족", loansLatest?.date, loansBand(loansLatest?.loans ?? NaN)],
-            ["HY 스프레드", hy ? `${hy.value.toFixed(2)}%p` : "자료 부족", hy?.date, null],
-            ["NFCI", nfci ? fmtNum(nfci.value, 2) : "자료 부족", nfci?.date, nfciBand(nfci?.value ?? NaN)],
-          ] as [string, string, string | undefined, Band | null][]).map(([k, v, d, b]) => (
+            ["SOFR−IORB", Number.isFinite(spreadValue) ? `${spreadValue >= 0 ? "+" : "−"}${Math.abs(spreadValue)}bp` : "자료 부족", sofr?.date],
+            ["긴급대출", loansLatest && Number.isFinite(loansLatest.loans) ? asMoney(loansLatest.loans) : "자료 부족", loansLatest?.date],
+            ["HY 스프레드", hy ? `${hy.value.toFixed(2)}%p` : "자료 부족", hy?.date],
+            ["NFCI", nfci ? fmtNum(nfci.value, 2) : "자료 부족", nfci?.date],
+          ] as [string, string, string | undefined][]).map(([k, v, d]) => (
             <span key={k} className="flex items-center gap-1.5">
-              {b && <span className="inline-block w-2 h-2 rounded-full" style={{ background: bandDot(b) }} title={b} />}
               <span className="text-muted-foreground">{k}</span><b className="tabular-nums">{v}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(d)}</span>
             </span>
           ))}

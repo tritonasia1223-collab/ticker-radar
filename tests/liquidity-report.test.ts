@@ -5,6 +5,7 @@ import { creditChapter } from "../shared/credit/chapter-reading";
 import { liquidityReport, liquidityQuantity, economySummary, type ReportInput } from "../shared/liquidity-report";
 import { ownershipInsights } from "../shared/treasury-ownership";
 import ownership from "../shared/treasury-ownership-data.json";
+import { howMuch } from "../shared/liquidity-read";
 
 function fixture() {
   const data=analyze(null,'2026-09-30','observation');
@@ -46,7 +47,7 @@ describe('도표를 연결한 신용 보고서',()=>{
   });
   it('CP 감소를 가격과 함께 해석하고 부족한 대출 자료는 별도로 표시한다',()=>{
     const f=fixture();f.set('cp_outstanding',1400,-30);f.set('cp_spread',.2,-.01);
-    expect(f.text('credit-short')).toContain('전형적인 경색 조합은 아직 아닙니다');
+    expect(f.text('credit-short')).toContain('모습은 나타나지 않았습니다');
     expect(f.text('credit-short')).toContain('비상 차입 여부까지 평가하지 않았습니다');
     f.set('cp_spread',1,.8);
     expect(f.text('credit-short')).toContain('조달 규모와 가격이 모두 불리한 방향');
@@ -88,13 +89,13 @@ describe('상단·거시 보고서',()=>{
 });
 
 describe('시나리오 판정 폐기', () => {
-  it('운영 분석은 지표별 신호를 보존하고 시나리오 점수와 후보를 만들지 않는다', () => {
+  it('운영 분석은 자체 위험 신호와 시나리오 점수·후보를 만들지 않는다', () => {
     const f = fixture(); f.set('ccc_oas', 12, 1); f.set('hy_oas', 3, .2);
     const data = analyze(null, '2026-09-30', 'observation');
     const current = creditSignals(data);
     expect(current.rows).toEqual([]);
     expect(current.closest).toEqual([]);
-    expect(current.signals).toEqual(scenarios(data).signals);
+    expect(current.signals).toEqual({}); expect(current.summary).toEqual([]);
     const chapter = creditChapter('credit-watchpoints', data, current, 4);
     expect(JSON.stringify(chapter)).not.toMatch(/시나리오|적합도|후보/);
     expect(chapter.paragraphs?.some(p => p.text.includes('다음에는'))).toBe(true);
@@ -102,6 +103,22 @@ describe('시나리오 판정 폐기', () => {
 });
 
 describe('선택 기간에 맞춘 유동성의 양', () => {
+  it('01 해설은 선택 주수와 M2의 실제 1개월·3개월 관측을 비교한다', () => {
+    const i=macro();
+    i.context.m2=[{date:'2026-05-01',value:2000},{date:'2026-07-01',value:2400},{date:'2026-08-01',value:2500},{date:'2026-10-01',value:99999}];
+    const prev={...i.sel,date:'2026-09-02',total:700};
+    i.prev=prev;i.how=howMuch([prev,i.sel],i.sel,prev,4,i.context.m2,.1);
+    const text=liquidityReport(i).sections.s1.map(p=>p.text).join(' ');
+    expect(text).toContain('선택한 4주'); expect(text).toContain('최근 1개월 동안 1억 달러 늘었습니다');
+    expect(text).toContain('2026-07~2026-08'); expect(text).toContain('서로 다른 방향');
+    i.weeks=13;i.prev={...prev,date:'2026-07-01',total:800};
+    i.how=howMuch([i.prev,i.sel],i.sel,i.prev,13,i.context.m2,.1);
+    const quarter=liquidityReport(i).sections.s1.map(p=>p.text).join(' ');
+    expect(quarter).toContain('선택한 13주'); expect(quarter).toContain('최근 3개월 동안 5억 달러 늘었습니다');
+    expect(quarter).toContain('2026-05~2026-08'); expect(quarter).not.toContain('전년');
+    i.context.m2=i.context.m2.filter(p=>p.date!=='2026-05-01');
+    expect(liquidityReport(i).sections.s1.map(p=>p.text).join(' ')).toContain('최근 3개월 비교 자료가 부족');
+  });
   const sel = { ...macro().sel, total: 6743026, tga: 984044, rrp: 361880, reserves: 2881691 };
   it('4주와 13주의 비교값을 각각 문장에 반영한다', () => {
     const one = { ...sel, date: '2026-09-02', total: sel.total - 5827, tga: sel.tga - 39682, rrp: sel.rrp - 4141, reserves: sel.reserves + 47594 };

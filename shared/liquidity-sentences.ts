@@ -172,19 +172,7 @@ export function s4(w: WhoBought): { headline: string[]; summary: string; caution
 }
 
 // ── 05 탈은 없나 ──
-export function s5(s: Stress): { headline: string[]; summary: string } {
-  const n = s.evaluated.length;
-  if (n === 0) {
-    // 경계는 있는데 값이 없으면 '조회 실패', 경계 자체가 없으면 '설정 없음' — 사유를 구분한다(Codex 2차 F4).
-    const msg = s.rows.some((r) => r.threshold != null) ? "자금시장 지표를 불러오지 못해 이번 주는 판정하지 않았습니다." : "경계선이 설정된 지표가 아직 없습니다.";
-    return { headline: [msg], summary: msg };
-  }
-  if (s.breached.length === 0) {
-    const first = "자금시장에 긴장 신호는 없습니다.";
-    return { headline: [first, `${fmt.count(n)} 지표 모두 경계선 아래입니다.`], summary: first };
-  }
-  const names = s.breached.map((r) => r.name).join("·");
-  const first = `${josa(names, "이가")} 경계선을 넘었습니다.`;
-  const rest = n - s.breached.length;
-  return { headline: rest > 0 ? [first, `나머지 ${fmt.count(rest)} 지표는 경계선 아래입니다.`] : [first], summary: first };
+export function s5(_s: Stress): { headline: string[]; summary: string } {
+  const text = "단기 자금시장과 금융여건은 어떻게 달라졌나?";
+  return { headline: [text], summary: text };
 }

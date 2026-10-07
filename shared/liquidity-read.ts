@@ -214,12 +214,11 @@ export function stress(sofr: Obs[], iorb: Obs[], nfci: Obs[], hy: Obs[], loans: 
   const bp = pair ? spreadBp(pair.a.value, pair.b.value) : null;
   const n = nfci.length ? nfci[nfci.length - 1] : null;
   const h = hy.length ? hy[hy.length - 1] : null;
-  const judge = (v: number | null, t: number | null) => (v == null || t == null || !Number.isFinite(v) ? null : v > t);
   const rows: StressRow[] = [
-    { key: "spread", name: "초단기 금리 압력", desc: "SOFR − IORB. 담보부 조달금리와 준비금 이자의 차이 · 양수만으로 자금 부족을 확정하지 않음", unit: "bp", value: bp, date: pair?.date ?? null, min: -10, max: 10, threshold: 0, breached: judge(bp, 0) },
-    { key: "nfci", name: "금융여건 종합", desc: "시카고 연은 NFCI. 0 위면 평소보다 돈줄이 빡빡함", unit: "idx", value: n?.value ?? null, date: n?.date ?? null, min: -1, max: 1, threshold: 0, breached: judge(n?.value ?? null, 0) },
-    { key: "hy", name: "HY 위험 프리미엄", desc: "하이일드 OAS. 국채 대비 추가 금리이며 회사채 시장금리 자체는 아님", unit: "pctp", value: h?.value ?? null, date: h?.date ?? null, min: 2, max: 10, threshold: cfg.HY_THRESHOLD, breached: judge(h?.value ?? null, cfg.HY_THRESHOLD) },
-    { key: "loans", name: "연준 긴급대출", desc: "은행이 연준 창구에서 급전을 빌린 규모", unit: "musd", value: loans && Number.isFinite(loans.value) ? loans.value : null, date: loans?.date ?? null, min: 0, max: cfg.EMERGENCY_LOAN_THRESHOLD ? cfg.EMERGENCY_LOAN_THRESHOLD * 2 : 0, threshold: cfg.EMERGENCY_LOAN_THRESHOLD, breached: judge(loans?.value ?? null, cfg.EMERGENCY_LOAN_THRESHOLD), note: loans?.btfpEnded ? "BTFP(2024년 종료) 제외" : undefined },
+    { key: "spread", name: "초단기 금리 압력", desc: "SOFR − IORB. 담보부 조달금리와 준비금 이자의 차이 · 양수만으로 자금 부족을 확정하지 않음", unit: "bp", value: bp, date: pair?.date ?? null, min: -10, max: 10, threshold: null, breached: null },
+    { key: "nfci", name: "금융여건 종합", desc: "시카고 연은 NFCI · 0은 지수의 장기 평균", unit: "idx", value: n?.value ?? null, date: n?.date ?? null, min: -1, max: 1, threshold: null, breached: null },
+    { key: "hy", name: "HY 위험 프리미엄", desc: "하이일드 OAS. 국채 대비 추가 금리이며 회사채 시장금리 자체는 아님", unit: "pctp", value: h?.value ?? null, date: h?.date ?? null, min: 2, max: 10, threshold: null, breached: null },
+    { key: "loans", name: "연준 긴급대출", desc: "연준의 할인창구 대출·레포·달러스왑 잔액", unit: "musd", value: loans && Number.isFinite(loans.value) ? loans.value : null, date: loans?.date ?? null, min: 0, max: 0, threshold: null, breached: null, note: loans?.btfpEnded ? "BTFP 제외 · 과거 비교도 같은 범위" : undefined },
   ];
   const evaluated = rows.filter((r) => r.breached !== null);
   return { rows, evaluated, breached: evaluated.filter((r) => r.breached) };

@@ -51,12 +51,7 @@ export function scenarios(data: IndicatorAnalysis[]) {
   return { rows, summary, closest: candidates.length ? candidates.filter(r => candidates[0].rank - r.rank <= config.settings.mixedGap).map(r => r.id) : [], signals };
 }
 
-// 운영 페이지와 수집은 개별 신호만 평가한다. 과거 시나리오 정의는 이력 호환용이다.
-export function creditSignals(data: IndicatorAnalysis[]): ReturnType<typeof scenarios> {
-  const signals = Object.fromEntries(Object.entries(config.signals).map(([key, rule]) => [key, evaluate(rule, data)]));
-  const summary = config.summaries.map(s => {
-    const stress = s.signals.filter(k => signals[k].status === true), unknown = s.signals.filter(k => signals[k].status === null);
-    return { name: s.name, status: stress.length ? "긴장 신호" : unknown.length ? "자료 확인 필요" : s.calm.every(k => signals[k].status === true) ? "완화·안정 근거" : "혼합 신호", evidence: stress.map(k => config.signalLabels[k]), missing: unknown.map(k => config.signalLabels[k]) };
-  });
-  return { signals, summary, rows: [], closest: [] };
+// 운영 경로에서는 자체 임계값·시나리오를 평가하지 않는다. 위 함수는 과거 이력 호환용이다.
+export function creditSignals(_data: IndicatorAnalysis[]): ReturnType<typeof scenarios> {
+  return { signals: {}, summary: [], rows: [], closest: [] };
 }
