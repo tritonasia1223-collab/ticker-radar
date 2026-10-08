@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useComparisonRangeMotion } from "@/lib/use-comparison-range-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookOpen, PanelRightClose, PanelRightOpen, Settings2, StickyNote, RotateCcw, ArrowLeftRight } from "lucide-react";
@@ -18,7 +20,7 @@ import { collaboration, collabApi, seedCollaboration, focusResource } from "@/li
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import type { Resource } from "../../../shared/cap-collaboration";
-import { monthlyPoints, trendSections, placementSchema, comparisonInsightSchema, validDate, comparisonViewSchema, insightTimeRange, type ComparisonView, type SpreadSpec, type InsightContext, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
+import { monthlyPoints, trendSections, comparisonInsightSchema, validDate, comparisonViewSchema, insightTimeRange, type ComparisonView, type SpreadSpec, type InsightContext, type SavedInsight } from "../../../shared/cap-comparison";
 
 const EMPTY_FLOWS: FlowDTO[] = [];
 const DAY = 86400000;
@@ -47,7 +49,6 @@ export default function GraphCompare() {
   const revision = useSyncExternalStore(collaboration.subscribe, collaboration.snapshot);
   const { editable } = useEditMode();
   const flowQuery = useQuery<FlowDTO[]>({ queryKey: ["/api/capitalism/flows"] });
-  const boardQuery = useQuery<Resource[]>({ queryKey: ["comparison-board"], queryFn: () => collabApi("comparison"), staleTime: Infinity, refetchOnWindowFocus: false });
   const noteQuery = useQuery<Resource[]>({ queryKey: ["comparison-insights"], queryFn: () => collabApi("insights"), staleTime: Infinity, refetchOnWindowFocus: false });
   const seriesQuery = useCapSeries();
   const flows = flowQuery.data ?? EMPTY_FLOWS;
@@ -55,6 +56,8 @@ export default function GraphCompare() {
   const [ready, setReady] = useState(false);
   const [focusedSeries, setFocusedSeries] = useState<string | null>(null);
   useEffect(() => { if (focusedSeries && !prefs.ids.includes(focusedSeries)) setFocusedSeries(null); }, [prefs.ids, focusedSeries]);
+  const reducedMotion = useReducedMotion();
+  const [focusTransition, setFocusTransition] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [panel, setPanel] = useState<"insights" | "reference">("insights");
   const [sidebar, setSidebar] = useState(true), [options, setOptions] = useState(false);
@@ -77,7 +80,6 @@ export default function GraphCompare() {
     noteQuery.data.forEach(r => collaboration.seed(r));
     seedCollaboration([], []); setReady(true);
   }, [noteQuery.isSuccess, noteQuery.data]);
-  useEffect(() => { boardQuery.data?.forEach(r => collaboration.seed(r)); }, [boardQuery.data]);
   useEffect(() => { if (flowQuery.isSuccess) seedCollaboration(flows, []); }, [flowQuery.isSuccess, flows]);
   useEffect(() => { try { localStorage.setItem("comparison-view-v3", JSON.stringify(prefs)); } catch { /* Optional preferences. */ } }, [prefs]);
   useEffect(() => { if (!editable) setTool("move"); }, [editable]);
@@ -88,13 +90,6 @@ export default function GraphCompare() {
       const p = comparisonInsightSchema.safeParse(doc); return p.success ? [{ id: key.slice(5), ...p.data }] : [];
     }).sort((a, b) => a.date.localeCompare(b.date) || a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
   }, [revision, noteQuery.data]);
-  const nodes = useMemo<PlacedNode[]>(() => {
-    const keys = new Set([...(boardQuery.data ?? []).map(r => r.key), ...collaboration.confirmed.keys(), ...collaboration.drafts.keys()]);
-    return [...keys].filter(k => k.startsWith("plot:")).flatMap(key => {
-      const doc = collaboration.confirmed.has(key) || collaboration.drafts.has(key) ? collaboration.get(key) : boardQuery.data?.find(r => r.key === key)?.doc;
-      const p = placementSchema.safeParse(doc); return p.success ? [{ id: key.slice(5), ...p.data }] : [];
-    }).sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [revision, boardQuery.data]);
   const rawSeries = useMemo(() => prefs.ids.flatMap(id => {
     const def = COMPARE_SERIES.find(s => s.id === id);
     return def ? [{ def, points: monthlyPoints(seriesQuery.data?.[id] ?? []) }] : [];
@@ -107,26 +102,27 @@ export default function GraphCompare() {
   const phases = useMemo(() => prefs.phases && reference ? trendSections(reference.points, reference.def.cadence) : [], [prefs.phases, reference]);
   const history = useMemo(() => prefs.history ? [
     ...flows.filter(f => validDate(f.date)).map(f => ({ id: f.slug, date: f.date, title: plain(f.title) })),
-    ...nodes.filter(n => n.date).map(n => ({ id: "plot:" + n.id, date: n.date!, title: n.title })),
-  ] : [], [prefs.history, flows, nodes]);
+  ] : [], [prefs.history, flows]);
   const extent = useMemo<[number, number]>(() => {
     const times = rawSeries.flatMap(s => s.points.length ? [s.points[0].time, s.points.at(-1)!.time] : []);
     if (chartSpread?.points.length) times.push(chartSpread.points[0].time, chartSpread.points.at(-1)!.time);
-    for (const n of [...notes, ...nodes]) if (n.date) { times.push(Date.parse(n.date)); if (n.endDate) times.push(Date.parse(n.endDate)); }
+    for (const n of notes) if (n.date) { times.push(Date.parse(n.date)); if (n.endDate) times.push(Date.parse(n.endDate)); }
     const lo = times.length ? Math.min(...times) : Date.UTC(1970, 0, 1), hi = times.length ? Math.max(...times) : Date.now();
     return [lo, Math.max(lo + 31 * DAY, hi)];
-  }, [rawSeries, chartSpread, notes, nodes]);
-  const range = useMemo<[number, number]>(() => {
+  }, [rawSeries, chartSpread, notes]);
+  const targetRange = useMemo<[number, number]>(() => {
     const a = Math.max(extent[0], Math.min(extent[1] - 31 * DAY, prefs.from));
     return [a, Math.min(extent[1], Math.max(a + 31 * DAY, prefs.to))];
   }, [prefs.from, prefs.to, extent]);
+  const range = useComparisonRangeMotion(targetRange, focusTransition);
+  const focusRange = (r: [number, number]) => { setFocusTransition(v => v + 1); setPrefs(p => ({ ...p, from: r[0], to: r[1] })); };
   const setRange = (r: [number, number]) => setPrefs(p => ({ ...p, from: r[0], to: r[1] }));
   const canEdit = ready && editable && ![...collaboration.drafts.values()].some(d => d.conflicts?.length);
   const chosen = notes.find(n => n.id === selected) ?? null;
   const openNote = (id: string) => {
     setSelected(id); setPanel("insights"); setSidebar(true); focusResource("note:" + id);
     const note = notes.find(n => n.id === id);
-    if (note) setRange(insightTimeRange(note, extent));
+    if (note) focusRange(insightTimeRange(note, extent));
   };
   const addNote = (date: string, endDate: string | null) => {
     if (!canEdit) return;
@@ -135,13 +131,14 @@ export default function GraphCompare() {
     setPrefs(p => ({ ...p, badges: true })); openNote(id); setTool("move");
   };
   const restoreContext = (context: InsightContext, note: SavedInsight) => {
+    setFocusTransition(v => v + 1);
     const ids = activeSeriesIds(context.ids);
     const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25);
     setPrefs(p => ({ ...p, ids, view: independentComparisonView(ids, context.view, p.view.base), spread: activeSpread(context.spread), from: start - pad, to: end + pad, badges: true }));
     setResetAxes(v => v + 1);
   };
   const showReferences = (ids: string[] = []) => { setContextIds(ids); setPanel("reference"); setSidebar(true); };
-  const errors = [flowQuery, boardQuery, noteQuery, seriesQuery].filter(q => q.isError);
+  const errors = [flowQuery, noteQuery, seriesQuery].filter(q => q.isError);
   return <div className="flex min-h-full flex-col bg-background" data-testid="graph-compare-page">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2 lg:pr-28">
       <div className="flex items-center gap-2"><Layers size={18} className="text-sky-500" /><h1 className="text-sm font-semibold">그래프 비교</h1></div>
@@ -180,10 +177,10 @@ export default function GraphCompare() {
         </nav>
         <div className="min-w-0 flex-1 overflow-x-auto">
           {availableSpreadIds.length >= 2 && spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
-          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart focusedSeries={focusedSeries} onClearFocus={() => setFocusedSeries(null)} summary={chosen?.endDate && <ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} />} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={notes} showBadges={prefs.badges} selectedNote={selected} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
+          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart focusedSeries={focusedSeries} onClearFocus={() => setFocusedSeries(null)} summary={<AnimatePresence initial={false} mode="wait">{chosen?.endDate && <motion.div key={chosen.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .24, ease: "easeInOut" }} className="overflow-hidden"><ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} /></motion.div>}</AnimatePresence>} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={notes} showBadges={prefs.badges} selectedNote={selected} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
         </div>
       </div>
-      {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={currentContext} onRestore={restoreContext} layoutKey={[indicators, options, prefs.view.mode].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => setRange(insightTimeRange(note, extent))} flows={flows} nodes={nodes} referencesLoading={flowQuery.isLoading || boardQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
+      {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={currentContext} onRestore={restoreContext} layoutKey={[indicators, options, prefs.view.mode].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => focusRange(insightTimeRange(note, extent))} flows={flows} referencesLoading={flowQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
     </div>
     <details className="border-t px-4 py-2 text-[11px] text-muted-foreground"><summary className="cursor-pointer">지표 출처 · 수록 기간 · 비교 기준</summary><p className="my-2">월 단위 비교 · 일·주간 자료는 월 마지막 관측값, 월평균·분기 자료는 원래 발표값을 사용합니다. 결측은 채우지 않습니다. 각 지표는 보이는 기간의 값 범위에 맞춰 독립적으로 배율을 조절합니다. 같은 높이·기울기가 같은 값·변동률을 뜻하지 않습니다. 커서는 실제 값과 단위를 표시합니다. 실질금리·순수출/GDP·무역수지는 0, DXY·REER는 100을 참고선으로 표시하며, 커서를 가까이 대거나 지표명을 눌렀을 때만 보입니다. 범위 밖 기준선은 위치를 문구로 안내합니다.</p>{rawSeries.map(s => <div key={s.def.id} className="border-t py-2"><a href={s.def.url} target="_blank" rel="noreferrer" className="underline">{s.def.label}</a> · {s.def.unit} · {s.points[0]?.date ?? "자료 없음"} ~ {s.points.at(-1)?.date ?? ""}{sourcePeriods(s.def.id).length ? <SeriesSourceHistory seriesKey={s.def.id} /> : <p>{s.def.note}</p>}</div>)}</details>
   </div>;

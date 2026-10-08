@@ -34,12 +34,21 @@ export const insightContextSchema = z.object({
 }).strict();
 export type InsightContext = z.infer<typeof insightContextSchema>;
 // Time anchors remain independent; context remembers which graphs the prose references.
+export const comparisonQuoteTableSchema = z.object({
+  id: z.string().uuid(), from: date, to: date,
+  rows: z.array(z.object({
+    label: z.string().min(1).max(200),
+    start: z.number().finite(), end: z.number().finite(), change: z.number().finite(),
+  }).strict()).min(1).max(100),
+}).strict().refine(t => t.to >= t.from, "표의 종료일은 시작일 이후여야 합니다.");
+export type ComparisonQuoteTable = z.infer<typeof comparisonQuoteTableSchema>;
 export const comparisonInsightSchema = z.object({
   title: z.string().trim().min(1).max(160),
   date, endDate: date.nullable(),
   text: z.string().max(100000), caption: z.string().max(180),
   sortOrder: z.number().finite(),
   context: insightContextSchema.nullable().optional(),
+  tables: z.array(comparisonQuoteTableSchema).max(100).optional(),
 }).strict().refine(p => !p.endDate || p.endDate >= p.date, "종료일은 시작일 이후여야 합니다.");
 export type ComparisonInsight = z.infer<typeof comparisonInsightSchema>;
 export type SavedInsight = ComparisonInsight & { id: string };

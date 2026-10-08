@@ -210,6 +210,10 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
         {shapes.map(s => <g key={s.def.id} data-axis-key={s.key} data-testid={"compare-series-" + s.def.id} opacity={focusedId && focusedId !== s.def.id ? .45 : 1}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} data-cadence={g.dashed ? "annual" : "regular"} strokeDasharray={g.dashed ? "5 4" : undefined} stroke={s.def.color} fill="none" strokeWidth={focusedId === s.def.id ? 2.5 : 1.8} />)}</g>)}
       </g>
+      {active?.endDate && active.endDate > active.date && <g clipPath={"url(#" + clip + ")"} pointerEvents="none" data-testid="insight-outside-dim">
+        <rect x={left} y={plotTop} width={Math.max(0, Math.min(right, x(Date.parse(active.date))) - left)} height={plotHeight} className="fill-background" opacity={.55} />
+        <rect x={Math.max(left, x(Date.parse(active.endDate)))} y={plotTop} width={Math.max(0, right - Math.max(left, x(Date.parse(active.endDate))))} height={plotHeight} className="fill-background" opacity={.55} />
+      </g>}
       {reference && <g pointerEvents="none" data-testid="focused-reference" data-series={reference.shape.def.id} data-value={reference.value} data-position={reference.inRange ? "inside" : reference.value > reference.shape.hi ? "above" : "below"}>
         {reference.inRange && <line data-testid="focused-reference-line" x1={left} x2={right} y1={reference.y} y2={reference.y} stroke="#f34d58" strokeDasharray="5 4" strokeWidth={1.3} />}
         <foreignObject x={left + 4} y={reference.inRange ? clamp(reference.y - 24, plotTop + 3, plotBottom - 24) : reference.value > reference.shape.hi ? plotTop + 3 : plotBottom - 24} width={span - 8} height={23}>

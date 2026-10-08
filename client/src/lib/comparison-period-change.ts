@@ -1,7 +1,5 @@
-import { periodSummary, type ComparePoint } from "../../../shared/cap-comparison";
+import { periodSummary, type ComparisonQuoteTable, type ComparePoint } from "../../../shared/cap-comparison";
 import { isAnnualObservation } from "./comparison-paths";
-import { deltaUnit } from "./comparison-series";
-import { serializeRich } from "./capitalism-richtext";
 
 export function periodChange(id: string, points: ComparePoint[], from: string, to: string) {
   const result = periodSummary(points, from, to);
@@ -10,27 +8,23 @@ export function periodChange(id: string, points: ComparePoint[], from: string, t
   return { result, annual };
 }
 
-export function changePresentation(result: NonNullable<ReturnType<typeof periodSummary>>, unit: string) {
-  // Keep small changes visible rather than showing an arrow next to a rounded zero.
-  const precision = result.change !== 0 && Math.abs(result.change) < .01 ? 6 : 2;
-  const format = (value: number) => value.toLocaleString("ko", { maximumFractionDigits: precision });
-  const direction = result.change > 0 ? "up" : result.change < 0 ? "down" : "flat";
-  const differenceUnit = unit === "$B" ? "십억 달러" : deltaUnit(unit);
+export const oneDecimal = (value: number) => (Number(value.toFixed(1)) || 0).toLocaleString("ko", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+export const directionClass = (direction: string) => direction === "up" ? "text-rose-500 dark:text-rose-400" : direction === "down" ? "text-blue-500 dark:text-blue-400" : "text-muted-foreground";
+
+export function changePresentation(result: { first: { raw: number }; last: { raw: number }; change: number }) {
+  const rounded = Number(result.change.toFixed(1)) || 0;
+  const direction = rounded > 0 ? "up" : rounded < 0 ? "down" : "flat";
+  const start = oneDecimal(result.first.raw), end = oneDecimal(result.last.raw);
+  const difference = (rounded > 0 ? "+" : "") + oneDecimal(rounded);
   return {
-    direction,
+    direction, start, end, difference,
     symbol: direction === "up" ? "▲" : direction === "down" ? "▼" : "—",
     label: direction === "up" ? "상승" : direction === "down" ? "하락" : "변화 없음",
-    line: `${format(result.first.raw)} → ${format(result.last.raw)} (${result.change > 0 ? "+" : ""}${format(result.change)}${differenceUnit})`,
+    line: `${start} → ${end} (${difference})`,
   };
 }
 
-export function periodChangeQuote(rows: { label: string; unit: string; annual: boolean; result: ReturnType<typeof periodSummary> }[], from: string, to: string) {
-  const blocks = rows.flatMap(row => {
-    if (!row.result) return [];
-    const change = changePresentation(row.result, row.unit);
-    const heading = row.label + " " + serializeRich([{ text: change.symbol, mark: change.direction === "up" ? "c-r" : change.direction === "down" ? "c-b" : undefined }]);
-    return [[heading, change.line, ...(row.annual ? ["연간 자료 · 참고"] : [])].join("\n")];
-  });
-  if (!blocks.length) return "";
-  return [`이 구간의 변화\n${from} ~ ${to}`, ...blocks].join("\n\n");
+export function periodChangeQuote(rows: { label: string; result: ReturnType<typeof periodSummary> }[], from: string, to: string, id: string): ComparisonQuoteTable | null {
+  const values = rows.flatMap(row => row.result ? [{ label: row.label, start: row.result.first.raw, end: row.result.last.raw, change: row.result.change }] : []);
+  return values.length ? { id, from, to, rows: values } : null;
 }

@@ -4,12 +4,13 @@ import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, M
 import { CapRichText } from "./CapRichText";
 import { CapRichEditor } from "./CapRichEditor";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
+import { ComparisonQuoteTables } from "./ComparisonQuoteTables";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
 import { restoredComparisonView, sameComparisonView } from "@/lib/comparison-axes";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
-import { comparisonInsightSchema, nearestDatedReference, type ComparisonInsight, type SavedInsight, type PlacedNode, type InsightContext, type Observation } from "../../../shared/cap-comparison";
+import { comparisonInsightSchema, nearestDatedReference, type ComparisonInsight, type SavedInsight, type InsightContext, type Observation } from "../../../shared/cap-comparison";
 
 const field = "w-full min-w-0 rounded-md border bg-background px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500/30";
 const button = "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted disabled:opacity-40";
@@ -18,7 +19,7 @@ type Props = {
   notes: SavedInsight[]; selected: SavedInsight | null; onSelect: (id: string) => void; onCloseNote: () => void;
   panel: "insights" | "reference"; onPanel: (panel: "insights" | "reference") => void; canEdit: boolean; loading: boolean;
   onAdd: () => void; onRemove: (id: string) => void; onView: (note: SavedInsight) => void;
-  flows: FlowDTO[]; nodes: PlacedNode[]; contextIds: string[]; onClearContext: () => void;
+  flows: FlowDTO[]; contextIds: string[]; onClearContext: () => void;
   referencesLoading: boolean;
   showHistory: boolean; onHistory: (show: boolean) => void; onJump: (slug: string) => void;
   layoutKey: string;
@@ -84,7 +85,11 @@ function InsightDocument(p: Props & { note: SavedInsight }) {
     </div>}
     {error && <p role="alert" className="my-2 text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
     <div className="flex items-start gap-1.5 border-b pb-2"><Star size={15} className="mt-1 shrink-0 fill-red-400 text-red-400" />{p.canEdit ? <BufferedInput label="제목" compact value={note.title} maxLength={160} save={value => save({ title: value })} /> : <h2 className="break-words text-sm font-semibold leading-6">{note.title}</h2>}</div>
-    {p.canEdit ? <div className="mt-3"><CapRichEditor ariaLabel="인사이트 본문" value={note.text} onChange={text => { save({ text }); }} onBlur={text => { save({ text }); }} commitOnUnmount rows={12} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="이 시기에 발견한 흐름과 생각을 적어보세요. 글자를 드래그하면 색·하이라이트를 넣을 수 있습니다." /></div> : <CapRichText text={note.text || "아직 작성된 내용이 없습니다."} onJump={p.onJump} className="mt-3 block min-h-[280px] break-words text-sm leading-[22px]" />}
+    {p.canEdit ? <div className="mt-3"><CapRichEditor ariaLabel="인사이트 본문" value={note.text} onChange={text => { save({ text }); }} onBlur={text => { save({ text }); }} commitOnUnmount rows={note.tables?.length ? 4 : 12} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="이 시기에 발견한 흐름과 생각을 적어보세요. 글자를 드래그하면 색·하이라이트를 넣을 수 있습니다." /></div> : <CapRichText text={note.text || (note.tables?.length ? "" : "아직 작성된 내용이 없습니다.")} onJump={p.onJump} className={"mt-3 block break-words text-sm leading-[22px] " + (note.tables?.length ? "" : "min-h-[280px]")} />}
+    {!!note.tables?.length && <div className="mt-4"><ComparisonQuoteTables tables={note.tables} onRemove={p.canEdit ? id => {
+      const current = comparisonInsightSchema.safeParse(collaboration.get(key));
+      if (current.success) save({ tables: current.data.tables?.filter(table => table.id !== id) ?? [] });
+    } : undefined} /></div>}
   </article>;
 }
 
@@ -101,8 +106,7 @@ function ReferencePanel(p: Props & { scrollContainer: RefObject<HTMLDivElement> 
   const [search, setSearch] = useState("");
   const controls = useRef<HTMLDivElement>(null), cards = useRef(new Map<string, HTMLDetailsElement>()), positioned = useRef<string | null>(null);
   const matching = p.flows.filter(f => (!p.contextIds.length || p.contextIds.includes(f.slug)) && (plain(f.title) + " " + f.nodes.map(n => plain(n.text)).join(" ")).toLowerCase().includes(search.toLowerCase())).sort((a, b) => a.date.localeCompare(b.date));
-  const saved = p.nodes.filter(n => (!p.contextIds.length || p.contextIds.includes("plot:" + n.id)) && (n.title + " " + (p.flows.find(f => f.slug === n.flowSlug)?.title ?? "")).toLowerCase().includes(search.toLowerCase())).sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"));
-  const target = p.selected && !p.contextIds.length ? nearestDatedReference([...matching.map(f => ({ key: f.slug, date: f.date, endDate: f.endDate })), ...saved.map(n => ({ key: "plot:" + n.id, date: n.date, endDate: n.endDate }))], p.selected) : null;
+  const target = p.selected && !p.contextIds.length ? nearestDatedReference(matching.map(f => ({ key: f.slug, date: f.date, endDate: f.endDate })), p.selected) : null;
   const anchor = p.selected ? [p.selected.id, p.selected.date, p.selected.endDate].join(":") : null;
   const moveToTarget = () => {
     const container = p.scrollContainer.current, card = target && cards.current.get(target.key);
@@ -121,17 +125,13 @@ function ReferencePanel(p: Props & { scrollContainer: RefObject<HTMLDivElement> 
   }, [anchor, target?.key, search, p.contextIds.join("|"), p.referencesLoading]);
   return <div className="space-y-4 p-4" data-testid="comparison-reference">
     <div ref={controls} className="sticky top-0 z-10 -mx-4 space-y-3 border-b bg-card px-4 pb-3">
-      <p className="text-xs leading-5 text-muted-foreground">자본주의 경제사의 카드와 기존에 가져온 사건을 참고합니다. 원문은 원본 카드에서 수정할 수 있습니다.</p>
+      <p className="text-xs leading-5 text-muted-foreground">자본주의 경제사의 카드를 참고합니다. 원문은 원본 카드에서 수정할 수 있습니다.</p>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={p.showHistory} onChange={e => p.onHistory(e.target.checked)} />차트에 참고 사건 표시</label>
       <input aria-label="경제사 참고 검색" className={field + " text-xs"} placeholder="카드 제목이나 본문 검색" value={search} onChange={e => setSearch(e.target.value)} />
       {!!p.contextIds.length ? <button className={button} onClick={p.onClearContext}>모든 참고 자료 보기</button> : p.selected && <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-amber-600"><span>인사이트 시기 · {p.selected.date}{p.selected.endDate && " ~ " + p.selected.endDate}</span>{target && <button className="rounded border px-2 py-1 hover:bg-muted" onClick={moveToTarget}>이 시기로 이동</button>}</div>}
     </div>
-    {!!saved.length && <section><h3 className="mb-2 text-xs font-semibold">기존에 가져온 사건 · {saved.length}</h3>{saved.map(n => {
-      const flow = p.flows.find(f => f.slug === n.flowSlug), source = flow?.nodes.find(s => s.id === n.nodeKey);
-      return <details key={n.id} ref={el => { if (el) cards.current.set("plot:" + n.id, el); else cards.current.delete("plot:" + n.id); }} data-reference-key={"plot:" + n.id} data-insight-nearest={target?.key === "plot:" + n.id || undefined} className={"mb-2 rounded-lg border p-3 " + (target?.key === "plot:" + n.id ? "border-amber-500/70 bg-amber-500/5" : "border-amber-500/20")}><summary className="cursor-pointer break-words text-xs font-medium">{n.title}<span className="mt-1 block text-[10px] font-normal text-muted-foreground">{n.date ?? "날짜 미지정"}{n.endDate && " ~ " + n.endDate}</span></summary><div className="mt-3">{source ? <ReferenceNode node={source} onJump={p.onJump} /> : <p className="text-xs text-muted-foreground">원본 없음 · 기존 제목과 날짜는 보관되어 있습니다.</p>}{flow && <button className={button + " mt-3"} onClick={() => p.onJump(flow.slug)}>원본 카드<ArrowUpRight size={12} /></button>}</div></details>;
-    })}</section>}
     <section><h3 className="mb-2 text-xs font-semibold">경제사 카드 · {matching.length}</h3>{matching.map(f => <details key={f.slug} ref={el => { if (el) cards.current.set(f.slug, el); else cards.current.delete(f.slug); }} data-reference-key={f.slug} data-insight-nearest={target?.key === f.slug || undefined} className={"mb-2 rounded-lg border p-3 " + (target?.key === f.slug ? "border-amber-500/70 bg-amber-500/5" : "")} open={p.contextIds.length === 1 && p.contextIds[0] === f.slug || undefined}><summary className="cursor-pointer break-words text-xs font-medium"><span className="mb-1 block text-[10px] font-normal tabular-nums text-muted-foreground">{f.date}{f.endDate && " ~ " + f.endDate}</span>{plain(f.title)}</summary><div className="mt-4 space-y-4">{f.nodes.map(n => <ReferenceNode key={n.id} node={n} onJump={p.onJump} />)}<button className={button} onClick={() => p.onJump(f.slug)}>원본 카드<ArrowUpRight size={12} /></button></div></details>)}</section>
-    {!matching.length && !saved.length && <p className="py-4 text-center text-xs text-muted-foreground">표시할 참고 자료가 없습니다.</p>}
+    {!matching.length && <p className="py-4 text-center text-xs text-muted-foreground">표시할 참고 자료가 없습니다.</p>}
   </div>;
 }
 

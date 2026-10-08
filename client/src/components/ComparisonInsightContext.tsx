@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { COMPARE_SERIES, seriesLabel, activeSeriesIds, makeSpread, shortSeriesLabel } from "@/lib/comparison-series";
-import { periodChange, changePresentation, periodChangeQuote } from "@/lib/comparison-period-change";
+import { periodChange, changePresentation, periodChangeQuote, directionClass } from "@/lib/comparison-period-change";
 import { CornerDownRight } from "lucide-react";
 import { collaboration } from "@/lib/cap-collab-client";
 import { comparisonInsightSchema, monthlyPoints, type SavedInsight, type InsightContext, type Observation } from "../../../shared/cap-comparison";
@@ -32,10 +32,12 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
     collaboration.edit(key, { ...parsed.data }); setError("");
   };
   const quote = () => {
-    const quoteText = periodChangeQuote(summaries, note.date, note.endDate!);
+    const table = periodChangeQuote(summaries, note.date, note.endDate!, crypto.randomUUID());
     const current = collaboration.get("note:" + note.id);
-    if (!current || !quoteText) return;
-    save({ text: [current.text, quoteText].filter(Boolean).join("\n\n") });
+    if (!current || !table) return;
+    const parsed = comparisonInsightSchema.safeParse(current);
+    if (!parsed.success) return;
+    save({ tables: [...(parsed.data.tables ?? []), table] });
   };
   return <div className="space-y-4">
     {!summary && <section className="rounded-lg border bg-muted/10 p-3" aria-label="인사이트 관련 그래프">
@@ -58,15 +60,14 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
       </div>
       {!summaries.length && <p className="mt-3 text-sm text-muted-foreground">관련 지표를 연결하면 구간 변화를 볼 수 있습니다.</p>}
       <div className="mt-3 grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>{summaries.map(row => {
-        const change = row.result ? changePresentation(row.result, row.unit) : null;
+        const change = row.result ? changePresentation(row.result) : null;
         return <div key={row.id} className="min-w-0 rounded-xl bg-muted/25 px-3.5 py-3" data-testid={"summary-" + row.id}>
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: row.color ?? "currentColor" }} aria-hidden="true" />
             <h4 className="text-base font-semibold leading-6 text-foreground" title={row.label}>{shortSeriesLabel(row.id) === row.id ? row.label : shortSeriesLabel(row.id)}</h4>
             {change && <span className={"ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] " + (change.direction === "up" ? "bg-rose-500/[.07] text-rose-500 dark:text-rose-400" : change.direction === "down" ? "bg-blue-500/[.07] text-blue-500 dark:text-blue-400" : "text-muted-foreground")} aria-label={change.label} title={change.label}>{change.symbol}</span>}
           </div>
-          <p className="mt-1.5 text-[13px] tabular-nums leading-5 text-foreground/80">{change ? change.line : seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>
-          {row.annual && <p className="mt-1 text-[10px] text-muted-foreground" title="점선은 연간 관측값을 연결한 참고선입니다. 구간 안 실제 관측값만 비교하며 중간 값을 추정하지 않습니다.">연간 자료 · 참고</p>}
+          <p className="mt-1.5 text-[13px] tabular-nums leading-5 text-foreground/80">{change ? <>{change.start} <span className="text-muted-foreground/60">→</span> {change.end} <span className={directionClass(change.direction)}>({change.difference})</span></> : seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>
         </div>;
       })}</div>
     </section>}
