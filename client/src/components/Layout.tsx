@@ -11,7 +11,6 @@ const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: t
   { group: "매크로", items: [
     { href: "/capitalism", label: "자본주의 경제사", icon: History },
     { href: "/graph-compare", label: "그래프 비교(베타)", icon: Layers },
-    { href: "/graph-compare-experiment", label: "실험", icon: Layers, sub: true },
     { href: "/fed", label: "미국 유동성", icon: Building2 },
     { href: "/liquidity", label: "A안", icon: Building2, sub: true },
     { href: "/liquidity-read", label: "B안", icon: Building2, sub: true },

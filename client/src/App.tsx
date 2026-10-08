@@ -1,4 +1,4 @@
-import { Switch, Route, Router, useLocation } from "wouter";
+import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
@@ -22,7 +22,6 @@ const Insider = lazy(() => import("@/pages/Insider"));
 const Interest = lazy(() => import("@/pages/Interest"));
 const Capitalism = lazy(() => import("@/pages/Capitalism"));
 const GraphCompare = lazy(() => import("@/pages/GraphCompare"));
-const GraphCompareExperiment = lazy(() => import("@/pages/GraphCompareExperiment"));
 const Fed = lazy(() => import("@/pages/Fed"));
 const LiquidityBeta = lazy(() => import("@/pages/LiquidityBeta")); // 미국 유동성 A안(구 베타) — Recharts Sankey 포함, 코드 스플릿
 const LiquidityRead = lazy(() => import("@/pages/LiquidityRead")); // 미국 유동성 B안(문장 중심 재설계) — A안과 나란히
@@ -66,7 +65,7 @@ function AppRouter() {
         <Route path="/interest" component={Interest} />
         <Route path="/capitalism" component={Capitalism} />
         <Route path="/graph-compare" component={GraphCompare} />
-        <Route path="/graph-compare-experiment" component={GraphCompareExperiment} />
+        <Route path="/graph-compare-experiment"><Redirect to="/graph-compare" replace /></Route>
         <Route path="/fed" component={Fed} />
         <Route path="/liquidity" component={LiquidityBeta} />
         <Route path="/liquidity-read" component={LiquidityRead} />
