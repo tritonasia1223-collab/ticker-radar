@@ -28,9 +28,9 @@ export function periodChangeQuote(rows: { label: string; unit: string; annual: b
   const blocks = rows.flatMap(row => {
     if (!row.result) return [];
     const change = changePresentation(row.result, row.unit);
-    const heading = serializeRich([{ text: `${row.label} ${change.symbol}`, mark: change.direction === "up" ? "c-r" : change.direction === "down" ? "c-b" : undefined }]);
+    const heading = row.label + " " + serializeRich([{ text: change.symbol, mark: change.direction === "up" ? "c-r" : change.direction === "down" ? "c-b" : undefined }]);
     return [[heading, change.line, ...(row.annual ? ["연간 자료 · 참고"] : [])].join("\n")];
   });
   if (!blocks.length) return "";
-  return [serializeRich([{ text: "이 구간의 변화", mark: "hl-b" }]) + `\n${from} ~ ${to}`, ...blocks].join("\n\n");
+  return [`이 구간의 변화\n${from} ~ ${to}`, ...blocks].join("\n\n");
 }

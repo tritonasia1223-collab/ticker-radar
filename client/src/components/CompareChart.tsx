@@ -20,13 +20,13 @@ const fmt = (v: number) => v.toLocaleString("ko", { maximumFractionDigits: 2 });
 export const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 
-export const CompareChart = memo(function CompareChart({ series, range, extent, axes, onRange, phases, events, onEvents, simplifyMonths, notes, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary, focusedSeries, onClearFocus }: {
+export const CompareChart = memo(function CompareChart({ series, range, extent, axes, onRange, phases, events, onEvents, simplifyMonths, notes, showBadges, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary, focusedSeries, onClearFocus }: {
   focusedSeries: string | null; onClearFocus: () => void;
   summary?: ReactNode;
   spread: SpreadData | null; onRemoveSpread: () => void;
   series: ChartSeries[]; range: Domain; extent: Domain; axes: ComparisonAxis[]; onRange: (value: Domain) => void;
   phases: TrendSection[]; events: HistoryEvent[]; onEvents: (ids: string[]) => void; simplifyMonths: number;
-  notes: SavedInsight[]; selectedNote: string | null; onNote: (id: string) => void;
+  notes: SavedInsight[]; showBadges: boolean; selectedNote: string | null; onNote: (id: string) => void;
   onCreate: (date: string, endDate: string | null) => void; tool: ChartTool; onCancelTool: () => void; resetAxes: number; layoutKey: string;
 }) {
   const host = useRef<HTMLDivElement>(null), svg = useRef<SVGSVGElement>(null);
@@ -112,13 +112,14 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
   })() : null;
   const badges = useMemo(() => {
     const groups: { px: number; items: SavedInsight[] }[] = [];
+    if (!showBadges) return groups;
     for (const n of notes.filter(n => Date.parse(n.endDate ?? n.date) >= from && Date.parse(n.date) <= to).sort((a, b) => a.date.localeCompare(b.date))) {
       const px = clamp(x(Date.parse(n.date)), left, right - badgeWidth), last = groups.at(-1);
       if (last && px - last.px < badgeWidth + 8) last.items.push(n);
       else groups.push({ px, items: [n] });
     }
     return groups;
-  }, [notes, from, to, width]);
+  }, [notes, showBadges, from, to, width]);
   const eventGroups = useMemo(() => {
     const groups: { px: number; items: HistoryEvent[] }[] = [];
     for (const event of events.filter(e => Date.parse(e.date) >= from && Date.parse(e.date) <= to).sort((a, b) => a.date.localeCompare(b.date))) {
@@ -205,7 +206,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       {ticks.map(t => <g key={t.time} pointerEvents="none"><line x1={x(t.time)} x2={x(t.time)} y1={plotTop} y2={axisBottom} stroke="currentColor" opacity={.07} /><text x={x(t.time)} y={axisBottom + 23} textAnchor="middle" fontSize={10} fill="currentColor" opacity={.65}>{t.label}</text></g>)}
       {Array.from({ length: 5 }, (_, i) => <line key={i} pointerEvents="none" x1={left} x2={right} y1={plotBottom - i / 4 * plotHeight} y2={plotBottom - i / 4 * plotHeight} stroke="currentColor" opacity={.05} />)}
       <g clipPath={"url(#" + clip + ")"} pointerEvents="none">
-        {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.06} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
+        {active && <g data-testid="insight-highlight"><rect x={Math.max(left, x(Date.parse(active.date)))} y={plotTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={plotHeight} fill="#f34d58" opacity={.1} />{[active.date, ...(active.endDate ? [active.endDate] : [])].map((d, i) => <line key={i} x1={x(Date.parse(d))} x2={x(Date.parse(d))} y1={plotTop} y2={plotBottom} stroke="#f34d58" strokeDasharray="4 4" opacity={.7} />)}</g>}
         {preview && <rect x={x(preview[0])} y={plotTop} width={Math.max(2, x(preview[1]) - x(preview[0]))} height={plotHeight} fill="#f34d58" opacity={.1} />}
         {shapes.map(s => <g key={s.def.id} data-axis-key={s.key} data-testid={"compare-series-" + s.def.id} opacity={focusedId && focusedId !== s.def.id ? .45 : 1}>{s.paths.map((g, i) => g.points.length === 1 ? <circle key={i} cx={x(g.points[0].time)} cy={s.y(g.points[0].value)} r={2} fill={s.def.color} /> : <path key={i} d={g.d} data-cadence={g.dashed ? "annual" : "regular"} strokeDasharray={g.dashed ? "5 4" : undefined} stroke={s.def.color} fill="none" strokeWidth={focusedId === s.def.id ? 2.5 : 1.8} />)}</g>)}
       </g>
@@ -223,7 +224,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         <g pointerEvents="none" clipPath={"url(#" + clip + "-spread)"}>
           <rect x={left} y={spreadTop} width={span} height={spreadShape.y(0) - spreadTop} fill="#10b981" opacity={.04} />
           <rect x={left} y={spreadShape.y(0)} width={span} height={axisBottom - spreadShape.y(0)} fill="#f43f5e" opacity={.04} />
-          {active && <rect x={Math.max(left, x(Date.parse(active.date)))} y={spreadTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={axisBottom - spreadTop} fill="#f34d58" opacity={.06} />}
+          {active && <rect x={Math.max(left, x(Date.parse(active.date)))} y={spreadTop} width={Math.max(2, Math.min(right, x(Date.parse(active.endDate ?? active.date))) - Math.max(left, x(Date.parse(active.date))))} height={axisBottom - spreadTop} fill="#f34d58" opacity={.1} />}
           <line x1={left} x2={right} y1={spreadShape.y(0)} y2={spreadShape.y(0)} stroke="currentColor" opacity={.3} strokeDasharray="4 4" />
           {spreadShape.paths.map((d, i) => <path key={i} d={d} fill="none" stroke="#8b5cf6" strokeWidth={1.8} />)}
           {spreadShape.points.map(p => <circle key={p.month} cx={x(p.time)} cy={spreadShape.y(p.value)} r={1.3} fill="#8b5cf6" />)}
@@ -236,7 +237,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
       {nearby.map(hit => <circle key={hit.id} data-testid={"hover-marker-" + hit.id} cx={hit.x} cy={hit.y} r={4} stroke={hit.color} strokeWidth={2} className="fill-background" pointerEvents="none" />)}
       {active?.endDate && <line x1={Math.max(left, x(Date.parse(active.date)))} x2={Math.min(right, x(Date.parse(active.endDate)))} y1={plotTop - 2} y2={plotTop - 2} stroke="#f34d58" strokeWidth={2} opacity={.55} pointerEvents="none" />}
       {active?.caption && <foreignObject x={clamp(x(Date.parse(active.date)) + 12, left + 8, right - Math.min(240, span - 16))} y={plotTop + 14} width={Math.min(240, span - 16)} height={110} data-chart-control="true"><div className="max-h-[100px] overflow-auto rounded-lg border border-red-400/20 border-l-2 border-l-red-400 bg-card/95 px-3 py-2 text-xs leading-5 shadow-sm" data-testid="insight-caption">{active.caption}</div></foreignObject>}
-      {!badges.length && <text x={left} y={30} fontSize={11} fill="currentColor" opacity={.45}>시간축에 인사이트를 남겨보세요</text>}
+      {showBadges && !badges.length && <text x={left} y={30} fontSize={11} fill="currentColor" opacity={.45}>시간축에 인사이트를 남겨보세요</text>}
       {badges.map(group => { const n = group.items.find(n => n.id === selectedNote) ?? group.items[0], activeGroup = group.items.some(n => n.id === selectedNote); const open = () => { if (group.items.length === 1) onNote(n.id); else setGroupIds(group.items.map(n => n.id)); }; return <g key={group.items[0].id} role="button" tabIndex={0} data-chart-control="true" aria-pressed={activeGroup} aria-label={"인사이트: " + group.items.map(n => n.title).join(", ")} data-testid={"insight-badge-" + group.items[0].id} onClick={open} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }} style={{ cursor: "pointer" }}>
         <title>{group.items.map(n => n.date + " · " + n.title).join("\n")}</title><rect x={group.px} y={16} width={badgeWidth} height={28} rx={6} className={activeGroup ? "fill-red-400/10" : "fill-card"} stroke={activeGroup ? "#f34d58" : "currentColor"} strokeOpacity={activeGroup ? .35 : .12} /><Star x={group.px + 8} y={23} width={14} height={14} stroke="#f34d58" fill={activeGroup ? "#f34d58" : "none"} strokeWidth={1.7} /><text x={group.px + 29} y={34} fontSize={11} fontWeight={activeGroup ? 600 : 400} fill="currentColor">{n.title.slice(0, group.items.length > 1 ? 11 : 13)}{n.title.length > (group.items.length > 1 ? 11 : 13) ? "…" : ""}{group.items.length > 1 ? " +" + (group.items.length - 1) : ""}</text>
         {n.endDate && group.items.length === 1 && <text x={group.px + 5} y={56} fontSize={9} fill="currentColor" opacity={.55}>{n.date.slice(0, 7)} ~ {n.endDate.slice(0, 7)}</text>}

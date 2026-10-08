@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { COMPARE_SERIES, seriesLabel, activeSeriesIds, makeSpread } from "@/lib/comparison-series";
+import { COMPARE_SERIES, seriesLabel, activeSeriesIds, makeSpread, shortSeriesLabel } from "@/lib/comparison-series";
 import { periodChange, changePresentation, periodChangeQuote } from "@/lib/comparison-period-change";
+import { CornerDownRight } from "lucide-react";
 import { collaboration } from "@/lib/cap-collab-client";
 import { comparisonInsightSchema, monthlyPoints, type SavedInsight, type InsightContext, type Observation } from "../../../shared/cap-comparison";
 
@@ -49,22 +50,25 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
         return <label key={s.id} className="flex items-center gap-2"><input type="checkbox" aria-label={"관련 지표 " + s.label} checked={chosen} onChange={e => save({ context: { view: context?.view, alignment: context?.alignment, ids: e.target.checked ? [...(context?.ids ?? []), s.id] : (context?.ids ?? []).filter(id => id !== s.id), spread: context?.spread ?? null } })} />{s.label}</label>;
       })}</div><p className="mt-2 text-muted-foreground">위 버튼으로 현재 켜 둔 지표와 스프레드를 함께 반영할 수 있습니다. 화면의 그래프를 켜고 꺼도 이 글에 저장된 목록은 유지됩니다.</p>{context?.spread && <button className="mt-2 underline" onClick={() => save({ context: { ...context, spread: null } })}>스프레드 연결 해제</button>}</details>}
     </section>}
-    {summary && note.endDate && <section className="border-t bg-muted/10 px-4 py-3" aria-label="구간 변화 요약" data-testid="period-summary">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2"><h3 className="text-xs font-semibold">이 구간의 변화</h3><span className="mr-auto text-[10px] text-muted-foreground">{note.date} ~ {note.endDate}</span>{canEdit && <button className="rounded border px-2 py-1 text-[11px] disabled:opacity-40" disabled={!summaries.some(r => r.result)} onClick={quote}>본문에 인용</button>}</div>
+    {summary && note.endDate && <section className="border-t bg-background px-4 py-4" aria-label="구간 변화 요약" data-testid="period-summary">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h3 className="text-sm font-semibold" title="구간 내 첫 값과 마지막 값의 차이입니다.">이 구간의 변화</h3>
+        <span className="text-[11px] tabular-nums text-muted-foreground">{note.date} ~ {note.endDate}</span>
+        {canEdit && <button className="ml-auto inline-flex items-center gap-1 rounded-lg bg-muted/50 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" disabled={!summaries.some(r => r.result)} onClick={quote}><CornerDownRight size={13} />본문에 인용</button>}
+      </div>
       {!summaries.length && <p className="mt-3 text-sm text-muted-foreground">관련 지표를 연결하면 구간 변화를 볼 수 있습니다.</p>}
-      <div className="mt-3 grid gap-x-6 gap-y-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>{summaries.map(row => {
+      <div className="mt-3 grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>{summaries.map(row => {
         const change = row.result ? changePresentation(row.result, row.unit) : null;
-        return <div key={row.id} className="min-w-0 border-t pt-3" data-testid={"summary-" + row.id}>
-          <div className="flex items-start gap-2">
-            <span className="mt-2 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color ?? "currentColor" }} aria-hidden="true" />
-            <h4 className="text-base font-semibold leading-6 text-foreground">{row.label}</h4>
-            {change && <span className={"shrink-0 text-lg font-semibold leading-6 " + (change.direction === "up" ? "text-red-600 dark:text-red-400" : change.direction === "down" ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} aria-label={change.label} title={change.label}>{change.symbol}</span>}
+        return <div key={row.id} className="min-w-0 rounded-xl bg-muted/25 px-3.5 py-3" data-testid={"summary-" + row.id}>
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: row.color ?? "currentColor" }} aria-hidden="true" />
+            <h4 className="text-base font-semibold leading-6 text-foreground" title={row.label}>{shortSeriesLabel(row.id) === row.id ? row.label : shortSeriesLabel(row.id)}</h4>
+            {change && <span className={"ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] " + (change.direction === "up" ? "bg-rose-500/[.07] text-rose-500 dark:text-rose-400" : change.direction === "down" ? "bg-blue-500/[.07] text-blue-500 dark:text-blue-400" : "text-muted-foreground")} aria-label={change.label} title={change.label}>{change.symbol}</span>}
           </div>
-          <p className="mt-1.5 pl-4 text-sm tabular-nums leading-6 text-foreground">{change ? change.line : seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>
-          {row.annual && <p className="mt-1 pl-4 text-[11px] text-muted-foreground" title="점선은 연간 관측값을 연결한 참고선입니다. 구간 안 실제 관측값만 비교하며 중간 값을 추정하지 않습니다.">연간 자료 · 참고</p>}
+          <p className="mt-1.5 text-[13px] tabular-nums leading-5 text-foreground/80">{change ? change.line : seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>
+          {row.annual && <p className="mt-1 text-[10px] text-muted-foreground" title="점선은 연간 관측값을 연결한 참고선입니다. 구간 안 실제 관측값만 비교하며 중간 값을 추정하지 않습니다.">연간 자료 · 참고</p>}
         </div>;
       })}</div>
-      <p className="mt-3 text-[11px] text-muted-foreground">구간 내 첫 값 → 마지막 값 (증감)</p>
     </section>}
     {error && <p role="alert" className="text-xs text-amber-600">{error}</p>}
   </div>;

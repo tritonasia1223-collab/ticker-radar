@@ -12,7 +12,7 @@ describe("compact period change", () => {
       { label: "자료 없는 지표", unit: "%", annual: false, result: null },
     ], "2000-01-01", "2000-02-01");
     expect(plainText(quote)).toBe("이 구간의 변화\n2000-01-01 ~ 2000-02-01\n\n실질금리 ▼\n15.96 → 7.16 (-8.8%p)\n\n연간 지표 ▼\n15.96 → 7.16 (-8.8%p)\n연간 자료 · 참고");
-    expect(parseRich(quote)).toContainEqual({ text: "실질금리 ▼", mark: "c-b" });
+    expect(parseRich(quote)).toContainEqual({ text: "▼", mark: "c-b" });
     expect(periodChangeQuote([], "2000-01-01", "2000-02-01")).toBe("");
   });
   it("shows a percentage-point decrease, not a percent return", () => {

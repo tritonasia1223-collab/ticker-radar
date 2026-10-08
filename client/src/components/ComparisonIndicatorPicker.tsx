@@ -1,12 +1,7 @@
 import { X } from "lucide-react";
-import { COMPARE_CATEGORIES, COMPARE_SERIES } from "@/lib/comparison-series";
+import { COMPARE_CATEGORIES, COMPARE_SERIES, shortSeriesLabel } from "@/lib/comparison-series";
 
-const shortLabels: Record<string, string> = {
-  dxy: "달러지수(DXY, 명목)", reer: "실질실효환율(REER)", usd_purchasing_power: "달러 구매력",
-  fx_krw: "원/달러", fx_jpy: "엔/달러", fx_eur: "유로/달러",
-  real_tb3ms: "실질금리", m2: "M2 통화량", gold: "금", oil: "유가(WTI)", nasdaq: "나스닥 종합",
-  cpi_level: "물가 수준(CPI)", debt_gdp: "정부부채/GDP",
-};
+
 
 export function ComparisonIndicatorPicker({ ids, onToggle, onClear, onClose }: {
   ids: string[]; onToggle: (id: string, on: boolean) => void; onClear: () => void; onClose: () => void;
@@ -24,7 +19,7 @@ export function ComparisonIndicatorPicker({ ids, onToggle, onClear, onClose }: {
         const checked = ids.includes(s.id);
         return <label key={s.id} title={s.label + " · " + s.note} className={"inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors " + (checked ? "border-sky-500/30 bg-sky-500/[.07] text-foreground" : "border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground")}>
           <input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 shrink-0 accent-sky-500" checked={checked} onChange={e => onToggle(s.id, e.target.checked)} />
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />{shortLabels[s.id] ?? s.label}
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />{shortSeriesLabel(s.id)}
         </label>;
       })}</div>
     </div>)}</div>

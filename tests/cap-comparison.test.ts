@@ -2,7 +2,24 @@ import { describe, expect, it } from "vitest";
 import { commonBase, isPlotKey, isNoteKey, comparisonInsightSchema, zoomRange, lineSegments, monthlyPoints, movingAverage, simplifyExtrema, trendSections, moveRange, placementSchema, rebase, centerRange, presetRange, calendarTicks, spreadPoints, spreadSchema, periodSummary } from "../shared/cap-comparison";
 import { diff, merge } from "../shared/cap-collaboration";
 import { validateEdit } from "../server/cap-collaboration";
-import { nearestDatedReference } from "../shared/cap-comparison";
+import { nearestDatedReference, insightTimeRange } from "../shared/cap-comparison";
+
+describe("selected insight time range", () => {
+  const extent: [number, number] = [Date.UTC(1900, 0, 1), Date.UTC(2026, 0, 1)];
+  it("brings the full period into view with context on both sides", () => {
+    const note = { date: "1933-01-01", endDate: "1934-12-31" };
+    const range = insightTimeRange(note, extent);
+    expect(range[0]).toBeLessThan(Date.parse(note.date));
+    expect(range[1]).toBeGreaterThan(Date.parse(note.endDate));
+    expect(range[1] - range[0]).toBeLessThan(5 * 366 * 86400000);
+  });
+  it("keeps a point insight visible at the data boundary", () => {
+    const range = insightTimeRange({ date: "1900-01-01", endDate: null }, extent);
+    expect(range[0]).toBe(extent[0]);
+    expect(range[1]).toBeGreaterThan(range[0]);
+    expect(range[1]).toBeLessThanOrEqual(extent[1]);
+  });
+});
 
 describe("references near the insight date", () => {
   const early = { date: "1970-01-01" }, late = { date: "2020-01-01" };

@@ -71,3 +71,11 @@ export const activeSeriesIds = (ids: string[]) => [...new Set(ids.filter(id => C
 
 // Migrate viewing preferences only; saved prose retains its original series identity.
 export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id => id === "inflation" ? "cpi_level" : id === "trade" ? "net_exports_gdp" : id === "gdp_growth" ? "real_gdp" : id));
+
+const shortLabels: Record<string, string> = {
+  dxy: "달러지수(DXY, 명목)", reer: "실질실효환율(REER)", usd_purchasing_power: "달러 구매력",
+  fx_krw: "원/달러", fx_jpy: "엔/달러", fx_eur: "유로/달러",
+  real_tb3ms: "실질금리", m2: "M2 통화량", gold: "금", oil: "유가(WTI)", nasdaq: "나스닥 종합",
+  cpi_level: "물가 수준(CPI)", debt_gdp: "정부부채/GDP",
+};
+export const shortSeriesLabel = (id: string) => shortLabels[id] ?? seriesLabel(id);

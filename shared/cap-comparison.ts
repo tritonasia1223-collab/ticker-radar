@@ -70,6 +70,11 @@ export function centerRange(center: number, duration: number, extent: [number, n
   const start = Math.max(extent[0], Math.min(extent[1] - span, center - span / 2));
   return [start, start + span];
 }
+export function insightTimeRange(note: Pick<SavedInsight, "date" | "endDate">, extent: [number, number]): [number, number] {
+  const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date);
+  const padding = Math.max(365 * 86400000, (end - start) * .25);
+  return centerRange((start + end) / 2, end - start + 2 * padding, extent);
+}
 export function presetRange(range: [number, number], mode: "month" | "year", extent: [number, number]): [number, number] {
   const center = (range[0] + range[1]) / 2;
   const a = new Date(center), b = new Date(center), months = mode === "month" ? 12 : 120;

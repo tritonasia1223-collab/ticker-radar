@@ -18,7 +18,7 @@ import { collaboration, collabApi, seedCollaboration, focusResource } from "@/li
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import type { Resource } from "../../../shared/cap-collaboration";
-import { monthlyPoints, trendSections, placementSchema, comparisonInsightSchema, validDate, comparisonViewSchema, type ComparisonView, type SpreadSpec, type InsightContext, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
+import { monthlyPoints, trendSections, placementSchema, comparisonInsightSchema, validDate, comparisonViewSchema, insightTimeRange, type ComparisonView, type SpreadSpec, type InsightContext, type SavedInsight, type PlacedNode } from "../../../shared/cap-comparison";
 
 const EMPTY_FLOWS: FlowDTO[] = [];
 const DAY = 86400000;
@@ -123,7 +123,11 @@ export default function GraphCompare() {
   const setRange = (r: [number, number]) => setPrefs(p => ({ ...p, from: r[0], to: r[1] }));
   const canEdit = ready && editable && ![...collaboration.drafts.values()].some(d => d.conflicts?.length);
   const chosen = notes.find(n => n.id === selected) ?? null;
-  const openNote = (id: string) => { setSelected(id); setPanel("insights"); setSidebar(true); focusResource("note:" + id); };
+  const openNote = (id: string) => {
+    setSelected(id); setPanel("insights"); setSidebar(true); focusResource("note:" + id);
+    const note = notes.find(n => n.id === id);
+    if (note) setRange(insightTimeRange(note, extent));
+  };
   const addNote = (date: string, endDate: string | null) => {
     if (!canEdit) return;
     const id = crypto.randomUUID();
@@ -176,10 +180,10 @@ export default function GraphCompare() {
         </nav>
         <div className="min-w-0 flex-1 overflow-x-auto">
           {availableSpreadIds.length >= 2 && spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
-          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart focusedSeries={focusedSeries} onClearFocus={() => setFocusedSeries(null)} summary={chosen?.endDate && <ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} />} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={prefs.badges ? notes : []} selectedNote={prefs.badges ? selected : null} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
+          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart focusedSeries={focusedSeries} onClearFocus={() => setFocusedSeries(null)} summary={chosen?.endDate && <ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} />} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={notes} showBadges={prefs.badges} selectedNote={selected} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
         </div>
       </div>
-      {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={currentContext} onRestore={restoreContext} layoutKey={[indicators, options, prefs.view.mode].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => { const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25); setRange([Math.max(extent[0], start - pad), Math.min(extent[1], end + pad)]); }} flows={flows} nodes={nodes} referencesLoading={flowQuery.isLoading || boardQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
+      {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={currentContext} onRestore={restoreContext} layoutKey={[indicators, options, prefs.view.mode].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => setRange(insightTimeRange(note, extent))} flows={flows} nodes={nodes} referencesLoading={flowQuery.isLoading || boardQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}
     </div>
     <details className="border-t px-4 py-2 text-[11px] text-muted-foreground"><summary className="cursor-pointer">지표 출처 · 수록 기간 · 비교 기준</summary><p className="my-2">월 단위 비교 · 일·주간 자료는 월 마지막 관측값, 월평균·분기 자료는 원래 발표값을 사용합니다. 결측은 채우지 않습니다. 각 지표는 보이는 기간의 값 범위에 맞춰 독립적으로 배율을 조절합니다. 같은 높이·기울기가 같은 값·변동률을 뜻하지 않습니다. 커서는 실제 값과 단위를 표시합니다. 실질금리·순수출/GDP·무역수지는 0, DXY·REER는 100을 참고선으로 표시하며, 커서를 가까이 대거나 지표명을 눌렀을 때만 보입니다. 범위 밖 기준선은 위치를 문구로 안내합니다.</p>{rawSeries.map(s => <div key={s.def.id} className="border-t py-2"><a href={s.def.url} target="_blank" rel="noreferrer" className="underline">{s.def.label}</a> · {s.def.unit} · {s.points[0]?.date ?? "자료 없음"} ~ {s.points.at(-1)?.date ?? ""}{sourcePeriods(s.def.id).length ? <SeriesSourceHistory seriesKey={s.def.id} /> : <p>{s.def.note}</p>}</div>)}</details>
   </div>;
