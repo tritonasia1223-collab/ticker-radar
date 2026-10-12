@@ -1,6 +1,6 @@
 import { activeSeriesIds } from "@/lib/comparison-series";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { CapRichText } from "./CapRichText";
 import { CapRichEditor } from "./CapRichEditor";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
@@ -28,17 +28,19 @@ type Props = {
 
 export function ComparisonSidebar(p: Props) {
   const [search, setSearch] = useState("");
+  const ordered = [...p.notes].sort((a, b) => b.date.localeCompare(a.date) || b.sortOrder - a.sortOrder || a.id.localeCompare(b.id));
+  const selectedIndex = ordered.findIndex(n => n.id === p.selected?.id);
+  const showPagination = p.panel === "insights" && selectedIndex >= 0;
   const content = useRef<HTMLDivElement>(null), [panelHeight, setPanelHeight] = useState(600);
   useLayoutEffect(() => {
-    const measure = () => { if (content.current) setPanelHeight(window.innerWidth < 1024 ? Math.max(400, window.innerHeight * .75) : Math.max(320, window.innerHeight - content.current.getBoundingClientRect().top - 35)); };
+    const measure = () => { if (content.current) setPanelHeight((window.innerWidth < 1024 ? Math.max(400, window.innerHeight * .75) : Math.max(320, window.innerHeight - content.current.getBoundingClientRect().top - 35)) - (showPagination ? 56 : 0)); };
     measure(); window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [p.layoutKey]);
+  }, [p.layoutKey, showPagination]);
   useLayoutEffect(() => { if (p.panel === "insights" && content.current) content.current.scrollTop = 0; }, [p.panel, p.selected?.id]);
   const relatedIds = activeSeriesIds(p.selected?.context?.ids ?? []);
   const relatedHidden = p.selected?.context && (!!relatedIds.length || !!p.selected.context.spread) && ((p.currentContext.alignment && JSON.stringify(p.selected.context.alignment) !== JSON.stringify(p.currentContext.alignment)) || !sameComparisonView(p.selected.context.view ? restoredComparisonView(relatedIds, p.selected.context.view, p.currentContext.view) : undefined, p.currentContext.view, relatedIds) || relatedIds.some(id => !p.currentContext.ids.includes(id)) || (p.selected.context.spread && JSON.stringify(p.selected.context.spread) !== JSON.stringify(p.currentContext.spread)));
-  const filtered = p.notes.filter(n => (n.title + " " + plain(n.text) + " " + n.date).toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.sortOrder - a.sortOrder || a.id.localeCompare(b.id));
+  const filtered = ordered.filter(n => (n.title + " " + plain(n.text) + " " + n.date).toLowerCase().includes(search.toLowerCase()));
   return <aside className="w-full min-w-0 shrink-0 border-t bg-muted/15 lg:w-[42%] lg:max-w-[640px] lg:border-l lg:border-t-0" aria-label="인사이트와 경제사 참고" data-testid="comparison-sidebar">
     <div className="flex border-b bg-background text-xs">
       <button className={"flex flex-1 items-center justify-center gap-2 border-b-2 py-3 " + (p.panel === "insights" ? "border-red-400 font-semibold" : "border-transparent text-muted-foreground")} onClick={() => p.onPanel("insights")}><Star size={14} className="fill-red-400 text-red-400" />인사이트 <span className="tabular-nums text-muted-foreground">{p.notes.length}</span></button>
@@ -56,7 +58,24 @@ export function ComparisonSidebar(p: Props) {
         </div>}
       </div>}
     </div>
+    {showPagination && <InsightPagination notes={ordered} index={selectedIndex} onSelect={p.onSelect} />}
   </aside>;
+}
+
+function InsightPagination({ notes, index, onSelect }: { notes: SavedInsight[]; index: number; onSelect: (id: string) => void }) {
+  const last = notes.length - 1;
+  const start = Math.max(0, Math.min(index - 1, last - 2));
+  const pages = Array.from({ length: notes.length }, (_, i) => i).filter(i => notes.length <= 7 || i === 0 || i === last || (i >= start && i <= start + 2));
+  const control = "flex h-8 min-w-8 items-center justify-center rounded-md text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50";
+  return <nav aria-label="인사이트 페이지" className="flex h-14 items-center justify-center gap-1 border-t bg-background px-2" data-testid="insight-pagination">
+    <button aria-label="이전 인사이트" disabled={index === 0} title={index > 0 ? notes[index - 1].title : "첫 인사이트입니다"} className={control + " mr-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => onSelect(notes[index - 1].id)}><ChevronLeft size={18} /></button>
+    {pages.map((page, i) => <span key={page} className="flex items-center gap-1">
+      {i > 0 && page - pages[i - 1] > 1 && <span className="px-1 text-xs text-muted-foreground" aria-hidden="true">…</span>}
+      <button aria-label={`${page + 1}번째 인사이트: ${notes[page].title}`} aria-current={page === index ? "page" : undefined} title={`${notes[page].date} · ${notes[page].title}`} className={control + (page === index ? " bg-red-400/10 font-semibold text-red-500" : " text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={() => { if (page !== index) onSelect(notes[page].id); }}>{page + 1}</button>
+    </span>)}
+    <button aria-label="다음 인사이트" disabled={index === last} title={index < last ? notes[index + 1].title : "마지막 인사이트입니다"} className={control + " ml-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => onSelect(notes[index + 1].id)}><ChevronRight size={18} /></button>
+    <span className="sr-only" aria-live="polite">전체 {notes.length}개 중 {index + 1}번째 인사이트</span>
+  </nav>;
 }
 
 function InsightDocument(p: Props & { note: SavedInsight }) {
