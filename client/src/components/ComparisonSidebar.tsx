@@ -1,10 +1,11 @@
 import { activeSeriesIds } from "@/lib/comparison-series";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { CapRichText } from "./CapRichText";
 import { CapRichEditor } from "./CapRichEditor";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { ComparisonQuoteTables } from "./ComparisonQuoteTables";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
 import { restoredComparisonView, sameComparisonView } from "@/lib/comparison-axes";
@@ -15,6 +16,16 @@ import { comparisonInsightSchema, nearestDatedReference, type ComparisonInsight,
 const field = "w-full min-w-0 rounded-md border bg-background px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500/30";
 const button = "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted disabled:opacity-40";
 const plain = (text: string) => parseRich(text).map(s => s.text).join("");
+const viewedStorageKey = "comparison-viewed-insights-v1";
+function readViewedInsights(): Set<string> {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(viewedStorageKey) ?? "[]");
+    return new Set(Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : []);
+  } catch { return new Set(); }
+}
+function ViewedMark() {
+  return <span title="열어봄 · 이 브라우저에 저장" className="shrink-0 text-muted-foreground"><Check size={13} aria-hidden="true" /><span className="sr-only">열어봄</span></span>;
+}
 type Props = {
   notes: SavedInsight[]; selected: SavedInsight | null; onSelect: (id: string) => void; onCloseNote: () => void;
   panel: "insights" | "reference"; onPanel: (panel: "insights" | "reference") => void; canEdit: boolean; loading: boolean;
@@ -28,6 +39,14 @@ type Props = {
 
 export function ComparisonSidebar(p: Props) {
   const [search, setSearch] = useState("");
+  const [viewed, setViewed] = useState(readViewedInsights);
+  useEffect(() => {
+    if (p.panel !== "insights" || !p.selected || viewed.has(p.selected.id)) return;
+    // Track identities, so adding or reordering records never moves the viewed mark.
+    const next = new Set([...readViewedInsights(), ...viewed, p.selected.id]);
+    setViewed(next);
+    try { localStorage.setItem(viewedStorageKey, JSON.stringify([...next])); } catch { /* Optional reading history. */ }
+  }, [p.panel, p.selected?.id, viewed]);
   const ordered = [...p.notes].sort((a, b) => b.date.localeCompare(a.date) || b.sortOrder - a.sortOrder || a.id.localeCompare(b.id));
   const selectedIndex = ordered.findIndex(n => n.id === p.selected?.id);
   const showPagination = p.panel === "insights" && selectedIndex >= 0;
@@ -53,26 +72,36 @@ export function ComparisonSidebar(p: Props) {
       </div> : <div className="p-4">
         <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="인사이트 검색" placeholder="제목, 내용, 날짜 검색" className={field + " pl-9 text-xs"} value={search} onChange={e => setSearch(e.target.value)} /></div>
         {p.loading ? <p className="py-8 text-center text-xs text-muted-foreground">인사이트 불러오는 중…</p> : !p.notes.length ? <div className="rounded-xl border border-dashed px-5 py-8 text-center"><Star size={25} className="mx-auto mb-3 text-red-400" /><h2 className="text-sm font-medium">발견한 흐름을 남겨보세요</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">날짜나 기간에 생각을 기록하세요.<br />어떤 지표를 보더라도 기록은 그 시간에 남습니다.</p>{p.canEdit && <button className={button + " mt-4"} onClick={p.onAdd}><Plus size={13} />첫 인사이트 작성</button>}</div> : <div className="space-y-2">
-          {filtered.map(n => <button key={n.id} className="block w-full rounded-lg border bg-background p-3 text-left transition-colors hover:border-red-400/50" data-testid={"insight-list-" + n.id} onClick={() => p.onSelect(n.id)}><p className="mb-1.5 text-[11px] tabular-nums text-muted-foreground">{n.date}{n.endDate && " ~ " + n.endDate}</p><h3 className="flex items-start gap-1.5 break-words text-sm font-semibold"><Star size={14} className="mt-0.5 shrink-0 fill-red-400 text-red-400" />{n.title}</h3><p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-[22px] text-muted-foreground">{plain(n.text) || "내용을 작성해 주세요."}</p></button>)}
+          {filtered.map(n => <button key={n.id} className="block w-full rounded-lg border bg-background p-3 text-left transition-colors hover:border-red-400/50" data-testid={"insight-list-" + n.id} onClick={() => p.onSelect(n.id)}><p className="mb-1.5 text-[11px] tabular-nums text-muted-foreground">{n.date}{n.endDate && " ~ " + n.endDate}</p><h3 className="flex items-start gap-2 text-sm font-semibold"><span className="min-w-6 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center text-xs tabular-nums text-muted-foreground" data-testid="insight-number">{ordered.findIndex(note => note.id === n.id) + 1}</span><span className="min-w-0 flex-1 break-words">{n.title}</span>{viewed.has(n.id) && <ViewedMark />}</h3><p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-[22px] text-muted-foreground">{plain(n.text) || "내용을 작성해 주세요."}</p></button>)}
           {!filtered.length && <p className="py-6 text-center text-xs text-muted-foreground">검색 결과가 없습니다.</p>}
         </div>}
       </div>}
     </div>
-    {showPagination && <InsightPagination notes={ordered} index={selectedIndex} onSelect={p.onSelect} />}
+    {showPagination && <InsightPagination notes={ordered} index={selectedIndex} viewed={viewed} onSelect={p.onSelect} />}
   </aside>;
 }
 
-function InsightPagination({ notes, index, onSelect }: { notes: SavedInsight[]; index: number; onSelect: (id: string) => void }) {
+function InsightPagination({ notes, index, viewed, onSelect }: { notes: SavedInsight[]; index: number; viewed: Set<string>; onSelect: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const list = useRef<HTMLDivElement>(null), current = useRef<HTMLButtonElement>(null);
   const last = notes.length - 1;
-  const start = Math.max(0, Math.min(index - 1, last - 2));
-  const pages = Array.from({ length: notes.length }, (_, i) => i).filter(i => notes.length <= 7 || i === 0 || i === last || (i >= start && i <= start + 2));
   const control = "flex h-8 min-w-8 items-center justify-center rounded-md text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50";
   return <nav aria-label="인사이트 페이지" className="flex h-14 items-center justify-center gap-1 border-t bg-background px-2" data-testid="insight-pagination">
     <button aria-label="이전 인사이트" disabled={index === 0} title={index > 0 ? notes[index - 1].title : "첫 인사이트입니다"} className={control + " mr-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => onSelect(notes[index - 1].id)}><ChevronLeft size={18} /></button>
-    {pages.map((page, i) => <span key={page} className="flex items-center gap-1">
-      {i > 0 && page - pages[i - 1] > 1 && <span className="px-1 text-xs text-muted-foreground" aria-hidden="true">…</span>}
-      <button aria-label={`${page + 1}번째 인사이트: ${notes[page].title}`} aria-current={page === index ? "page" : undefined} title={`${notes[page].date} · ${notes[page].title}`} className={control + (page === index ? " bg-red-400/10 font-semibold text-red-500" : " text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={() => { if (page !== index) onSelect(notes[page].id); }}>{page + 1}</button>
-    </span>)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild><button aria-label={`인사이트 목차: ${index + 1} / ${notes.length}, ${notes[index].title}`} className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50" data-testid="insight-index-trigger"><span className="shrink-0 tabular-nums text-muted-foreground"><b className="font-semibold text-red-500">{index + 1}</b> / {notes.length}</span><span className="min-w-0 flex-1 truncate font-medium">{notes[index].title}</span><ChevronDown size={14} className={"shrink-0 text-muted-foreground " + (open ? "rotate-180" : "")} /></button></PopoverTrigger>
+      <PopoverContent side="top" align="center" collisionPadding={12} className="w-[min(420px,calc(100vw-24px))] p-1.5" aria-label="인사이트 목차" onOpenAutoFocus={event => {
+        event.preventDefault(); current.current?.focus({ preventScroll: true });
+        // Popover placement sets the available height after its first layout.
+        requestAnimationFrame(() => {
+          if (list.current && current.current) list.current.scrollTop = current.current.offsetTop - list.current.offsetTop - (list.current.clientHeight - current.current.offsetHeight) / 2;
+        });
+      }}>
+        <div ref={list} className="max-h-[min(320px,calc(var(--radix-popover-content-available-height)-12px))] overflow-y-auto overscroll-contain" data-testid="insight-index-list">
+          {notes.map((note, page) => <button key={note.id} ref={page === index ? current : undefined} aria-label={`${page + 1}번째 인사이트: ${note.title}${viewed.has(note.id) ? ", 열어봄" : ""}`} aria-current={page === index ? "page" : undefined} className={"flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400/50 " + (page === index ? "bg-red-400/10 font-medium text-red-500" : "hover:bg-muted")} onClick={() => { setOpen(false); if (page !== index) onSelect(note.id); }}><span className="w-7 shrink-0 text-center text-xs tabular-nums text-muted-foreground">{page + 1}</span><span className="min-w-0 flex-1 break-words">{note.title}</span>{viewed.has(note.id) && <ViewedMark />}</button>)}
+        </div>
+      </PopoverContent>
+    </Popover>
     <button aria-label="다음 인사이트" disabled={index === last} title={index < last ? notes[index + 1].title : "마지막 인사이트입니다"} className={control + " ml-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => onSelect(notes[index + 1].id)}><ChevronRight size={18} /></button>
     <span className="sr-only" aria-live="polite">전체 {notes.length}개 중 {index + 1}번째 인사이트</span>
   </nav>;
