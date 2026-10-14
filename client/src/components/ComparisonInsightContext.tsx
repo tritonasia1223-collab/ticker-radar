@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { COMPARE_SERIES, seriesLabel, activeSeriesIds, makeSpread, shortSeriesLabel } from "@/lib/comparison-series";
 import { periodChange, changePresentation, periodChangeQuote, directionClass } from "@/lib/comparison-period-change";
 import { CornerDownRight } from "lucide-react";
+import { ComparisonSparkline } from "./ComparisonSparkline";
+import { periodSparkline } from "@/lib/comparison-sparkline";
 import { collaboration } from "@/lib/cap-collab-client";
 import { comparisonInsightSchema, monthlyPoints, type SavedInsight, type InsightContext, type Observation } from "../../../shared/cap-comparison";
 
@@ -18,10 +20,12 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
     if (!note.endDate) return [];
     const rows = ids.map(id => {
       const def = COMPARE_SERIES.find(s => s.id === id);
+      const points = def ? monthlyPoints(seriesData?.[id] ?? []) : [];
       return { id, label: seriesLabel(id), unit: def?.unit ?? "", color: def?.color,
-        ...periodChange(id, def ? monthlyPoints(seriesData?.[id] ?? []) : [], note.date, note.endDate!) };
+        chart: periodSparkline(id, points, def?.cadence ?? 1, note.date, note.endDate!),
+        ...periodChange(id, points, note.date, note.endDate!) };
     });
-    if (spread) rows.push({ id: "spread", label: spread.label, unit: "%p", color: "#8b5cf6", ...periodChange("spread", spread.points, note.date, note.endDate) });
+    if (spread) rows.push({ id: "spread", label: spread.label, unit: "%p", color: "#8b5cf6", chart: periodSparkline("spread", spread.points, 1, note.date, note.endDate), ...periodChange("spread", spread.points, note.date, note.endDate) });
     return rows;
   }, [ids, note.date, note.endDate, seriesData, spread]);
   const save = (patch: object) => {
@@ -54,7 +58,7 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
     </section>}
     {summary && note.endDate && <section className="border-t bg-background px-4 py-4" aria-label="구간 변화 요약" data-testid="period-summary">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 className="text-sm font-semibold" title="구간 내 첫 값과 마지막 값의 차이입니다.">이 구간의 변화</h3>
+        <h3 className="text-sm font-semibold" title="구간 내 실제 관측값의 흐름과 첫 값·마지막 값의 차이입니다. 미니 그래프의 세로 배율은 지표별로 다릅니다.">이 구간의 변화</h3>
         <span className="text-[11px] tabular-nums text-muted-foreground">{note.date} ~ {note.endDate}</span>
         {canEdit && <button className="ml-auto inline-flex items-center gap-1 rounded-lg bg-muted/50 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" disabled={!summaries.some(r => r.result)} onClick={quote}><CornerDownRight size={13} />본문에 인용</button>}
       </div>
@@ -65,9 +69,9 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: row.color ?? "currentColor" }} aria-hidden="true" />
             <h4 className="text-base font-semibold leading-6 text-foreground" title={row.label}>{shortSeriesLabel(row.id) === row.id ? row.label : shortSeriesLabel(row.id)}</h4>
-            {change && <span className={"ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] " + (change.direction === "up" ? "bg-rose-500/[.07] text-rose-500 dark:text-rose-400" : change.direction === "down" ? "bg-blue-500/[.07] text-blue-500 dark:text-blue-400" : "text-muted-foreground")} aria-label={change.label} title={change.label}>{change.symbol}</span>}
+            {change && <span className={"ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[13px] font-medium tabular-nums " + directionClass(change.direction)} aria-label={`${change.label} ${change.difference}`} title="마지막 값 − 첫 값"><span className="text-[9px]" aria-hidden="true">{change.symbol}</span>{change.difference}</span>}
           </div>
-          <p className="mt-1.5 text-[13px] tabular-nums leading-5 text-foreground/80">{change ? <>{change.start} <span className="text-muted-foreground/60">→</span> {change.end} <span className={directionClass(change.direction)}>({change.difference})</span></> : seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>
+          {row.chart ? <ComparisonSparkline chart={row.chart} label={row.label} color={row.color} /> : <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>}
         </div>;
       })}</div>
     </section>}

@@ -119,8 +119,11 @@ export function spreadPoints(a: ComparePoint[], b: ComparePoint[]): SpreadPoint[
 }
 // Use only actual observations inside the requested interval. Expose effective
 // dates rather than silently presenting nearby values as exact boundary values.
+export function periodObservations(points: (ComparePoint | SpreadPoint)[], from: string, to: string) {
+  return points.filter(p => p.date >= from && p.date <= to && (!("aDate" in p) || (p.aDate >= from && p.aDate <= to && p.bDate >= from && p.bDate <= to)));
+}
 export function periodSummary(points: (ComparePoint | SpreadPoint)[], from: string, to: string) {
-  const visible = points.filter(p => p.date >= from && p.date <= to && (!("aDate" in p) || (p.aDate >= from && p.aDate <= to && p.bDate >= from && p.bDate <= to)));
+  const visible = periodObservations(points, from, to);
   if (visible.length < 2) return null;
   const first = visible[0], last = visible.at(-1)!;
   return { first, last, change: last.raw - first.raw, percent: first.raw > 0 ? (last.raw / first.raw - 1) * 100 : null,
