@@ -56,20 +56,20 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
         return <label key={s.id} className="flex items-center gap-2"><input type="checkbox" aria-label={"관련 지표 " + s.label} checked={chosen} onChange={e => save({ context: { view: context?.view, alignment: context?.alignment, ids: e.target.checked ? [...(context?.ids ?? []), s.id] : (context?.ids ?? []).filter(id => id !== s.id), spread: context?.spread ?? null } })} />{s.label}</label>;
       })}</div><p className="mt-2 text-muted-foreground">위 버튼으로 현재 켜 둔 지표와 스프레드를 함께 반영할 수 있습니다. 화면의 그래프를 켜고 꺼도 이 글에 저장된 목록은 유지됩니다.</p>{context?.spread && <button className="mt-2 underline" onClick={() => save({ context: { ...context, spread: null } })}>스프레드 연결 해제</button>}</details>}
     </section>}
-    {summary && note.endDate && <section className="border-t bg-background px-4 py-4" aria-label="구간 변화 요약" data-testid="period-summary">
+    {summary && note.endDate && <section className="border-t bg-background px-3.5 py-3" aria-label="구간 변화 요약" data-testid="period-summary">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h3 className="text-sm font-semibold" title="구간 내 실제 관측값의 흐름과 첫 값·마지막 값의 차이입니다. 미니 그래프의 세로 배율은 지표별로 다릅니다.">이 구간의 변화</h3>
         <span className="text-[11px] tabular-nums text-muted-foreground">{note.date} ~ {note.endDate}</span>
         {canEdit && <button className="ml-auto inline-flex items-center gap-1 rounded-lg bg-muted/50 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40" disabled={!summaries.some(r => r.result)} onClick={quote}><CornerDownRight size={13} />본문에 인용</button>}
       </div>
       {!summaries.length && <p className="mt-3 text-sm text-muted-foreground">관련 지표를 연결하면 구간 변화를 볼 수 있습니다.</p>}
-      <div className="mt-3 grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>{summaries.map(row => {
+      <div className="mt-2.5 grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>{summaries.map(row => {
         const change = row.result ? changePresentation(row.result) : null;
-        return <div key={row.id} className="min-w-0 rounded-xl bg-muted/25 px-3.5 py-3" data-testid={"summary-" + row.id}>
+        return <div key={row.id} className="min-w-0 rounded-xl bg-muted/25 px-3 py-2.5" data-testid={"summary-" + row.id}>
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: row.color ?? "currentColor" }} aria-hidden="true" />
-            <h4 className="text-base font-semibold leading-6 text-foreground" title={row.label}>{shortSeriesLabel(row.id) === row.id ? row.label : shortSeriesLabel(row.id)}</h4>
-            {change && <span className={"ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-base font-semibold leading-6 tabular-nums " + directionClass(change.direction)} aria-label={`${change.label} ${change.difference}`} title="마지막 값 − 첫 값"><span className="text-xs" aria-hidden="true">{change.symbol}</span>{change.difference}</span>}
+            <h4 className="text-[15px] font-semibold leading-[22px] text-foreground" title={row.label}>{shortSeriesLabel(row.id) === row.id ? row.label : shortSeriesLabel(row.id)}</h4>
+            {change && <span className={"ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[15px] font-semibold leading-[22px] tabular-nums " + directionClass(change.direction)} aria-label={`${change.label} ${change.difference}`} title="마지막 값 − 첫 값"><span className="text-xs" aria-hidden="true">{change.symbol}</span>{change.difference}</span>}
           </div>
           {row.chart ? <ComparisonSparkline chart={row.chart} label={row.label} color={row.color} /> : <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>}
         </div>;
