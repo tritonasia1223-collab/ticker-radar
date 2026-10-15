@@ -69,7 +69,7 @@ export function ComparisonInsightContext({ note, currentContext, seriesData, can
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: row.color ?? "currentColor" }} aria-hidden="true" />
             <h4 className="text-base font-semibold leading-6 text-foreground" title={row.label}>{shortSeriesLabel(row.id) === row.id ? row.label : shortSeriesLabel(row.id)}</h4>
-            {change && <span className={"ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[13px] font-medium tabular-nums " + directionClass(change.direction)} aria-label={`${change.label} ${change.difference}`} title="마지막 값 − 첫 값"><span className="text-[9px]" aria-hidden="true">{change.symbol}</span>{change.difference}</span>}
+            {change && <span className={"ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-base font-semibold leading-6 tabular-nums " + directionClass(change.direction)} aria-label={`${change.label} ${change.difference}`} title="마지막 값 − 첫 값"><span className="text-xs" aria-hidden="true">{change.symbol}</span>{change.difference}</span>}
           </div>
           {row.chart ? <ComparisonSparkline chart={row.chart} label={row.label} color={row.color} /> : <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{seriesData ? "비교 자료 부족" : "불러오는 중…"}</p>}
         </div>;
