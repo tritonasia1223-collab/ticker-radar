@@ -1,6 +1,7 @@
 import { BIDDERS, type AuctionAgg, type Bidder, type Maturity } from './liquidity-beta.js';
 import type { TreasuryFlow } from './treasury-flow.js';
 import type { ChapterParagraph } from './credit/chapter-reading.js';
+import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from './october-week-two-editorial.js';
 
 export interface TreasuryStock { date: string; total: number; bills: number }
 export function billShares(monthly: TreasuryStock[], asOf: string) {
@@ -23,8 +24,19 @@ export function bidderAllocation(agg: AuctionAgg | null, maturities: Maturity[])
 
 export const NON_BILLS: Maturity[] = ['notes', 'bonds', 'tips', 'frn'];
 
-/** 사용자가 지정한 9월 해설만 해당 주차에 표시한다. 다른 주차에 자동 문안을 채우지 않는다. */
+/** 사용자가 지정한 해설만 해당 주차에 표시한다. 다른 주차에 자동 문안을 채우지 않는다. */
 export function treasuryEditorialByChart(asOf: string, weeks: number, flow: TreasuryFlow | null, current: AuctionAgg | null, previous: AuctionAgg | null, monthly: TreasuryStock[]): { issuance: ChapterParagraph[]; auctions: ChapterParagraph[] } {
+  if (asOf === OCTOBER_WEEK_TWO && weeks === 4) return {
+    issuance: flow?.end === asOf && flow.weeks === weeks ? octoberWeekTwoEditorial('issuance', asOf) : [],
+    auctions: current && previous ? octoberWeekTwoEditorial('auctions', asOf) : [],
+  };
+  if (asOf === '2026-10-07' && weeks === 4 && flow?.end === asOf && flow.weeks === weeks) return {
+    issuance: [
+      { kind: 'analysis', text: '9월 5주차와 방향은 거의 같습니다. 단기채는 여전히 순상환으로 줄어드는 방향이고, 중장기채는 꾸준히 증가 추세입니다.' },
+      { kind: 'analysis', text: '다만, 비교 구간이 한 주 이동하면서(9/3~9/30 → 9/10~10/7)\n9월 첫째 주의 단기채 대량 순상환(약 490억 달러)이 빠져, 그 결과 순증감은 -20억에서 +509억 달러로 크게 변화했습니다. (10월 첫째 주는 발행과 상환이 거의 같아 구간 변화에 미친 영향은 작습니다)' },
+    ],
+    auctions: [],
+  };
   if (asOf !== '2026-09-30' || weeks !== 4 || !flow || flow.end !== asOf || flow.weeks !== weeks
     || Math.round(flow.net / 100) !== -20 || Math.round(flow.billsNet / 100) !== -1391) return { issuance: [], auctions: [] };
   const issuance: ChapterParagraph[] = [

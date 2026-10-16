@@ -12,6 +12,18 @@ function snapshot(date: string, issues: number, redemption: number, inflation: n
   ].map(([transaction_type, security_type, security_type_desc, value]) => ({ record_date: date, security_market: "Marketable", transaction_type, security_type, security_type_desc, transaction_fytd_amt: String(value), record_fiscal_year: String(Number(date.slice(0, 4)) + (date.slice(5, 7) >= "10" ? 1 : 0)) }));
 }
 describe("상단 주차와 국채 일일 집계", () => {
+  it("이번 주는 직전 주 기준일 다음 날부터 집계하고 회계연도 전환도 반영한다", () => {
+    expect(debtWindow("2026-10-07", 1)).toEqual({ from: "2026-09-30", start: "2026-10-01", end: "2026-10-07", weeks: 1 });
+    const flow = parseTreasuryFlow([...snapshot("2026-09-30", 1000, 900, 10), ...snapshot("2026-10-07", 300, 280, 2)], "2026-10-07", 1);
+    expect(flow).toMatchObject({ issues: 305, redemptions: 280, inflation: 2, net: 27, billsNet: 25 });
+    expect(debtWindow("2026-10-07", 1, 1).end).toBe("2026-09-30");
+  });
+  it("이번 주는 직전 주 기준일 다음 날부터 집계하고 회계연도 전환도 반영한다", () => {
+    expect(debtWindow("2026-10-07", 1)).toEqual({ from: "2026-09-30", start: "2026-10-01", end: "2026-10-07", weeks: 1 });
+    const flow = parseTreasuryFlow([...snapshot("2026-09-30", 1000, 900, 10), ...snapshot("2026-10-07", 300, 280, 2)], "2026-10-07", 1);
+    expect(flow).toMatchObject({ issues: 305, redemptions: 280, inflation: 2, net: 27, billsNet: 25 });
+    expect(debtWindow("2026-10-07", 1, 1).end).toBe("2026-09-30");
+  });
   it("4주·13주와 직전 창을 겹치지 않는 결제일 구간으로 만든다", () => {
     expect(debtWindow("2026-09-23", 4)).toEqual({ from: "2026-08-26", start: "2026-08-27", end: "2026-09-23", weeks: 4 });
     expect(debtWindow("2026-09-23", 13).start).toBe("2026-06-25");

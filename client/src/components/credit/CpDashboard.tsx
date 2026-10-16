@@ -4,15 +4,15 @@ import { cpDashboard } from '@shared/credit/cp-dashboard';
 import type { IndicatorAnalysis } from '@shared/credit/signals';
 
 const series = [
-  {key: 'bill', label: '단기국채', detail: '3개월', color: '#929188'},
-  {key: 'aa', label: 'AA 등급', detail: '90일 CP', color: '#578980'},
-  {key: 'a2', label: 'A2/P2 등급', detail: '90일 CP', color: '#BA7155'},
+  {key: 'bill', label: '단기국채', detail: '4주', color: '#929188'},
+  {key: 'aa', label: 'AA 등급', detail: '30일 CP', color: '#578980'},
+  {key: 'a2', label: 'A2/P2 등급', detail: '30일 CP', color: '#BA7155'},
 ] as const;
 
 export function CpDashboard({data, asOf}: {data: IndicatorAnalysis[]; asOf: string}) {
   const {rows, current, domain} = useMemo(() => cpDashboard(data, asOf), [data, asOf]);
-  const percent = (v: number | undefined) => v == null ? '—' : `${v.toFixed(2)}%`;
-  const gap = (v: number | undefined) => v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%p`;
+  const percent = (v: number | null | undefined) => v == null ? '—' : `${v.toFixed(2)}%`;
+  const gap = (v: number | null | undefined) => v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%p`;
   return <article data-cp-dashboard className="space-y-5">
     <div className="space-y-1.5">
       <h3 className="text-lg font-semibold">단기국채·CP 금리</h3>
@@ -43,6 +43,6 @@ export function CpDashboard({data, asOf}: {data: IndicatorAnalysis[]; asOf: stri
       </LineChart></ResponsiveContainer></div> : <p className="p-8 text-center text-sm text-[#777369]">세 금리가 같은 날 관측된 자료가 없습니다.</p>}
       <p className="px-3 pt-2 text-[11px] leading-relaxed text-[#918D83]">금리 차이가 보이도록 세로축 범위를 좁혔습니다. 세로축은 0부터 시작하지 않습니다.</p>
     </div>
-    <p className="text-xs leading-relaxed text-[#918D83]">같은 날짜의 관측값끼리 비교합니다. CP는 비금융기업 90일물, 단기국채는 3개월물이며 모두 할인율 기준입니다.</p>
+    <p className="text-xs leading-relaxed text-[#918D83]">같은 날짜의 관측값끼리 비교합니다. CP는 비금융기업 30일물, 단기국채는 만기가 가까운 4주물이며 모두 할인율 기준입니다. 개별 금리의 결측 구간은 선으로 잇지 않습니다.</p>
   </article>;
 }

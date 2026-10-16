@@ -1,7 +1,19 @@
 import type { ChapterParagraph } from './credit/chapter-reading.js';
+import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from './october-week-two-editorial.js';
 
-// 사용자가 검토한 2026년 9월 말 해설. 다른 주차·비교 기간에 재사용하지 않는다.
+// 사용자가 제공·검토한 주차별 해설. 다른 주차에 재사용하지 않는다.
+export function overviewEditorial(asOf: string): ChapterParagraph[] {
+  if (asOf === OCTOBER_WEEK_TWO) return octoberWeekTwoEditorial('overview', asOf);
+  // 사용자가 제공한 집계와 확정 문안. 다른 주차나 월초의 자동 판정 규칙으로 쓰지 않는다.
+  if (asOf !== '2026-10-07') return [];
+  return [
+    { kind: 'analysis', text: '9월 말까지 잔고를 쌓아두던 재무부가 이번 주 TGA를 크게 풀었습니다. 다만, 평소와 다른 지출이 발생했다기보다는 월초 캘린더 효과로 보입니다 (매월 첫 영업일에 극단적으로 지출이 몰리는 현상). 메디케어 보험 지급액, 군·공무원 연금 등 사회보장비로 1,400억 달러가 10/1~10/2 이틀만에 나갔습니다. 이는 매달 반복되는 정상 구조입니다.' },
+    { kind: 'analysis', text: '그런데 이번 반등이 유독 컸던 이유는, 이번 주 국채 순발행이 +40억에 그쳤기 때문입니다. (이전 몇 주간 TGA 축적은 지출을 넘는 순발행이 받쳐준 것입니다)' },
+  ];
+}
+
 export function amountEditorial(asOf: string, weeks: number): ChapterParagraph[] {
+  if (asOf === OCTOBER_WEEK_TWO) return octoberWeekTwoEditorial('amount', asOf, weeks);
   if (asOf !== '2026-09-30' || weeks !== 4) return [];
   return [
     '순유동성은 제자리인데 M2는 늘고 있습니다. 연준과 재무부가 풀어둔 돈은 늘지 않는데, 은행이 대출로 만들어낸 돈이 늘고 있다는 뜻입니다.',
@@ -12,6 +24,7 @@ export function amountEditorial(asOf: string, weeks: number): ChapterParagraph[]
 }
 
 export function ownershipEditorial(asOf: string): ChapterParagraph[] {
+  if (asOf === OCTOBER_WEEK_TWO) return octoberWeekTwoEditorial('ownership', asOf);
   if (asOf !== '2026-09-30') return [];
   return [{ kind: 'analysis', text: '국채를 가장 많이 가진 곳은 해외 투자자지만, 지금 국채를 사주는 곳은 따로 있습니다. 해외 투자자는 전체의 32%를 들고 있는데, 지난 1년간 새로 늘어난 국채는 8%만 가져갔습니다. 반면 MMF는 보유 비중이 11%인데 증가분의 30%를 샀습니다. MMF가 최대 매수자라는 사실은 단기채 의존과 같은 이야기입니다. (MMF는 규정상 단기채만 살 수 있기 때문)' }];
 }

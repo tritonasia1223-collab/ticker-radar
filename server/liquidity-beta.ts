@@ -1,7 +1,7 @@
 // 미국 유동성(베타) — 라이브 조회 + 6시간 캐시. DB·크론에 쓰지 않는다(베타).
 //   FRED 공개 CSV(키 불요)와 이미 쓰는 FiscalData auctions_query 만 사용. 정식 승격 시 server/fed.ts 레지스트리로 이관.
 //   패턴은 server/treasury-transactions.ts 와 동일: 부분 실패는 errors 로 명시, 실패 응답은 캐시하지 않는다.
-import { aggregateAuctions, sankeyData, type AuctionRow, type ContextKey, type LiquidityAuctions, type LiquidityContext, type Obs } from "../shared/liquidity-beta.js";
+import { aggregateAuctions, sankeyData, type AuctionBasis, type AuctionRow, type ContextKey, type LiquidityAuctions, type LiquidityContext, type Obs } from "../shared/liquidity-beta.js";
 import { debtWindow } from "../shared/treasury-flow.js";
 
 const FREDGRAPH = "https://fred.stlouisfed.org/graph/fredgraph.csv";
@@ -82,7 +82,7 @@ export async function liquidityContext(): Promise<LiquidityContext> {
 }
 
 // ── 입찰: 만기 → 인수 주체 ──
-const AUCTION_FIELDS = "security_type,security_term,issue_date,total_accepted,primary_dealer_accepted,direct_bidder_accepted,indirect_bidder_accepted,noncomp_accepted,soma_accepted,inflation_index_security,floating_rate";
+const AUCTION_FIELDS = "security_type,security_term,auction_date,issue_date,total_accepted,primary_dealer_accepted,direct_bidder_accepted,indirect_bidder_accepted,noncomp_accepted,soma_accepted,inflation_index_security,floating_rate";
 const auctionCache = new Map<string, { expires: number; data: LiquidityAuctions }>();
 const auctionPending = new Map<string, Promise<LiquidityAuctions>>();
 
@@ -99,10 +99,11 @@ export function auctionWindow(months: number, today = new Date(), offset = 0): {
   return { start: iso(new Date(prevStart)), end: iso(new Date(prevEnd)) };
 }
 
-async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[]> {
+async function fetchAuctionRows(start: string, end: string, basis: AuctionBasis): Promise<AuctionRow[]> {
   const rows: AuctionRow[] = [];
+  const dateField = basis === "auction" ? "auction_date" : "issue_date";
   for (let page = 1; ; page++) {
-    const params = new URLSearchParams({ fields: AUCTION_FIELDS, filter: `issue_date:gte:${start},issue_date:lte:${end}`, sort: "issue_date", "page[size]": "1000", "page[number]": String(page) });
+    const params = new URLSearchParams({ fields: AUCTION_FIELDS, filter: `${dateField}:gte:${start},${dateField}:lte:${end}`, sort: dateField, "page[size]": "1000", "page[number]": String(page) });
     const resp = await fetch(`${FISCAL}/v1/accounting/od/auctions_query?${params}`, { signal: AbortSignal.timeout(12000), headers: { Accept: "application/json", "User-Agent": UA } });
     if (!resp.ok) throw new Error(`FiscalData HTTP ${resp.status}`);
     const j: any = await resp.json();
@@ -113,29 +114,30 @@ async function fetchAuctionRows(start: string, end: string): Promise<AuctionRow[
   return rows;
 }
 
-async function collectAuctions(months: number, offset: number, asOf: string, weeks?: 4 | 13): Promise<LiquidityAuctions> {
+async function collectAuctions(months: number, offset: number, asOf: string, weeks: 1 | 4 | 13 | undefined, basis: AuctionBasis): Promise<LiquidityAuctions> {
   const { start, end } = weeks ? debtWindow(asOf, weeks, offset) : auctionWindow(months, new Date(asOf + "T00:00:00Z"), offset);
   // offset 을 넘기지 않은 기본 호출은 기존 응답 형태를 그대로 유지한다(Codex F6) — 필드는 offset>0 일 때만.
-  const base = { months, ...(offset ? { offset } : {}), start, end, fetchedAt: new Date().toISOString() };
+  const base = { months, basis, ...(offset ? { offset } : {}), start, end, fetchedAt: new Date().toISOString() };
   try {
-    const rows = await fetchAuctionRows(start, end);
+    const rows = await fetchAuctionRows(start, end, basis);
     if (!rows.length) throw new Error("해당 기간 입찰 자료 없음");
-    const agg = aggregateAuctions(rows, start, end);
+    const agg = aggregateAuctions(rows, start, end, basis);
     return { ...base, agg, sankey: sankeyData(agg), errors: {} };
   } catch (e: any) {
     return { ...base, agg: null, sankey: null, errors: { auctions: String(e?.message || e) } };
   }
 }
 
-export async function liquidityAuctions(months: number, offset = 0, asOf = iso(new Date()), weeks?: 4 | 13): Promise<LiquidityAuctions> {
+export async function liquidityAuctions(months: number, offset = 0, asOf = iso(new Date()), weeks?: 1 | 4 | 13, basis: AuctionBasis = "settlement"): Promise<LiquidityAuctions> {
   if (months !== 1 && months !== 3) throw new Error("months 는 1 또는 3");
   if (offset !== 0 && offset !== 1) throw new Error("offset 은 0 또는 1");
-  const key = `${months}:${offset}:${asOf}:${weeks ?? "calendar"}`;
+  if (basis !== "auction" && basis !== "settlement") throw new Error("basis 는 auction 또는 settlement");
+  const key = `${basis}:${months}:${offset}:${asOf}:${weeks ?? "calendar"}`;
   const found = auctionCache.get(key);
   if (found && found.expires > Date.now()) return found.data;
   const ongoing = auctionPending.get(key);
   if (ongoing) return ongoing;
-  const work = collectAuctions(months, offset, asOf, weeks).then((data) => {
+  const work = collectAuctions(months, offset, asOf, weeks, basis).then((data) => {
     if (!data.errors.auctions) auctionCache.set(key, { data, expires: Date.now() + TTL });
     return data;
   }).finally(() => auctionPending.delete(key));

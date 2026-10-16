@@ -33,7 +33,9 @@ describe("B안 민간 신용 해설", () => {
   });
   it("네 묶음이 기존 지표 14개를 정확히 한 번 포함한다", () => {
     const ids = readingGroups.flatMap(g => g.ids);
-    expect(readingGroups.map(g => g.ids.length)).toEqual([5, 3, 2, 4]);
+    expect(readingGroups.map(g => g.ids.length)).toEqual([5, 4, 2, 3]);
+    expect(readingGroups.find(g => g.id === 'credit-bonds')!.ids).toContain('leveraged_loans');
+    expect(readingGroups.find(g => g.id === 'credit-fragile')!.ids).not.toContain('leveraged_loans');
     expect([...ids].sort()).toEqual(indicators.map(i => i.id).sort());
   });
   it("전체 결측을 안정으로 해석하지 않는다", () => {

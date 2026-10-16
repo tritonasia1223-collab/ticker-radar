@@ -61,7 +61,7 @@ function snapshot(rows: Row[], date: string): Totals {
   return totals;
 }
 
-export function parseTreasuryFlow(rows: Row[], asOf: string, weeks: 4 | 13): TreasuryFlow {
+export function parseTreasuryFlow(rows: Row[], asOf: string, weeks: 1 | 4 | 13): TreasuryFlow {
   const window = debtWindow(asOf, weeks);
   const baselineDate = debtBusinessDate(window.from), observedThrough = debtBusinessDate(window.end);
   const first = snapshot(rows, baselineDate), last = snapshot(rows, observedThrough);
@@ -72,7 +72,7 @@ export function parseTreasuryFlow(rows: Row[], asOf: string, weeks: 4 | 13): Tre
   return { ...window, baselineDate, observedThrough, ...delta, net: delta.issues - delta.redemptions + delta.inflation };
 }
 
-export async function treasuryFlow(asOf: string, weeks: 4 | 13): Promise<TreasuryFlowResponse> {
+export async function treasuryFlow(asOf: string, weeks: 1 | 4 | 13): Promise<TreasuryFlowResponse> {
   const key = `${asOf}:${weeks}`, cached = cache.get(key);
   if (cached && cached.expires > Date.now()) return cached.data;
   const ongoing = pending.get(key); if (ongoing) return ongoing;

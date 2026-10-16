@@ -129,6 +129,30 @@ describe("유동성 베타 — 입찰 집계", () => {
     expect(auctionAmount(0)).toBe(0);
   });
 
+  it("입찰일 창은 아직 미결제된 낙찰을 포함하고, 창 이전 입찰의 결제는 제외한다", () => {
+    const rows = [
+      row({ auction_date: "2026-10-07", issue_date: "2026-10-15", security_type: "Note" }),
+      row({ auction_date: "2026-09-09", issue_date: "2026-09-15", security_type: "Note" }),
+      row({ auction_date: "2026-10-08", issue_date: "2026-10-15", security_type: "Bond" }),
+      row({ auction_date: "2026-09-10", issue_date: "2026-09-15" }),
+    ];
+    const auction = aggregateAuctions(rows, "2026-09-10", "2026-10-07", "auction");
+    const settled = aggregateAuctions(rows, "2026-09-10", "2026-10-07", "settlement");
+    expect(auction.rows.map(r => r.auctionDate).sort()).toEqual(["2026-09-10", "2026-10-07"]);
+    expect(settled.rows.map(r => r.auctionDate).sort()).toEqual(["2026-09-09", "2026-09-10"]);
+    expect(auction.basis).toBe("auction");
+    expect(sumAuctionsBetween(auction.rows, ["notes"], "2026-09-10", "2026-10-07").n).toBe(0);
+  });
+
+  it("입찰일 누락을 결제일로 대체하지 않고, 미발표 낙찰 결과도 합산하지 않는다", () => {
+    const agg = aggregateAuctions([
+      row({ issue_date: "2026-10-07" }),
+      row({ auction_date: "2026-10-07", issue_date: "2026-10-15", total_accepted: null }),
+    ], "2026-09-10", "2026-10-07", "auction");
+    expect(agg.counted).toBe(0);
+    expect(agg.skipped).toBe(2);
+  });
+
   it("만기 매핑 — TIPS·FRN 은 플래그로 가르고, CMB 는 단기채, 모르는 값은 null", () => {
     expect(maturityOf("Bill")).toBe("bills"); expect(maturityOf("CMB")).toBe("bills");
     expect(maturityOf("Note")).toBe("notes"); expect(maturityOf("Bond")).toBe("bonds");

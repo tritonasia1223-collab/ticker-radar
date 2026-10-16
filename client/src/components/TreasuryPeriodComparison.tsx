@@ -24,13 +24,11 @@ export function TreasuryPeriodComparison({ asOf, weeks, current }: { asOf: strin
   const periods = dates.map((end, index) => {
     const raw = index === 2 ? current : previous[index].data?.flow;
     const flow = raw?.end === end && raw.weeks === weeks && [raw.net, raw.billsNet, raw.issues, raw.redemptions, raw.inflation].every(Number.isFinite) ? raw : null;
-    // 월 이름은 4주 구간의 가운데 날짜를 사용하고 실제 집계일을 함께 표시한다.
-    const middle = new Date(Date.parse(end) - 14 * 86400000);
-    const label = weeks === 4 ? `${middle.getUTCMonth() + 1}월 비교 구간` : index === 2 ? '최근 13주' : index === 1 ? '직전 13주' : '그 이전 13주';
+    const label = `${index === 2 ? '최근' : index === 1 ? '직전' : '그 이전'} ${weeks}주`;
     return { end, flow, label };
   });
   return <section data-testid="treasury-period-comparison" className="space-y-4">
-    <div className="flex flex-wrap items-baseline justify-between gap-3"><h3 className="text-lg font-semibold">국채 발행·상환·순증감</h3><span className={caption}>단위: 억 달러</span></div>
+    <div className="flex flex-wrap items-baseline justify-between gap-3"><h3 className="text-lg font-semibold">국채 발행·상환·순증감</h3><span className={caption}>결제일 기준 · 단위: 억 달러</span></div>
     <div className="overflow-x-auto">
       <table data-testid="treasury-flow-table" className="w-full text-sm text-right" style={{ minWidth: 520, fontVariantNumeric: 'tabular-nums' }}>
         <thead><tr className="border-b border-[#D9D5CA]">

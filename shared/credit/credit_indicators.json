@@ -1512,6 +1512,33 @@
       "unit": "percent",
       "seriesId": "DCPN3M",
       "url": "https://fred.stlouisfed.org/series/DCPN3M"
+    },
+    {
+      "key": "RIFSPPNA2P2D30NB",
+      "label": "A2/P2 비금융 30일 CP",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "RIFSPPNA2P2D30NB",
+      "url": "https://fred.stlouisfed.org/series/RIFSPPNA2P2D30NB"
+    },
+    {
+      "key": "DCPN30",
+      "label": "AA 비금융 30일 CP 금리",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "DCPN30",
+      "url": "https://fred.stlouisfed.org/series/DCPN30"
+    },
+    {
+      "key": "DTB4WK",
+      "label": "4주 T-bill 할인율",
+      "provider": "fred",
+      "frequency": "daily",
+      "unit": "percent",
+      "seriesId": "DTB4WK",
+      "url": "https://fred.stlouisfed.org/series/DTB4WK"
     }
   ],
   "signals": {
@@ -2031,12 +2058,12 @@
         "unit": "pp",
         "lines": [
           {
-            "key": "RIFSPPNA2P2D90NB",
-            "label": "A2/P2 비금융 90일 CP"
+            "key": "RIFSPPNA2P2D30NB",
+            "label": "A2/P2 비금융 30일 CP"
           },
           {
-            "key": "DCPN3M",
-            "label": "AA 비금융 90일 CP"
+            "key": "DCPN30",
+            "label": "AA 비금융 30일 CP"
           }
         ]
       }
@@ -2070,12 +2097,12 @@
         "unit": "pp",
         "lines": [
           {
-            "key": "DCPN3M",
-            "label": "AA 비금융 90일 CP"
+            "key": "DCPN30",
+            "label": "AA 비금융 30일 CP"
           },
           {
-            "key": "DTB3",
-            "label": "3개월 T-bill 할인율"
+            "key": "DTB4WK",
+            "label": "4주 T-bill 할인율"
           }
         ]
       }

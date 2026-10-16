@@ -109,7 +109,8 @@ export function liquidityBand(prev: BandWeek, now: BandWeek): LiquidityBand {
   return { from: prev.date, to: now.date, netLiqPrev, netLiqNow, dNetLiq, steps, dReserves, dCurrency, dOther, bridge: dNetLiq - dReserves, taxDates: taxDatesWithin(prev.date, now.date) };
 }
 
-// ── 입찰: 만기 종류 → 인수 주체 (FiscalData auctions_query, 결제일 = issue_date 기준) ──
+// ── 입찰: 만기 종류 → 인수 주체 (수요는 auction_date, 자금·보유 변화는 issue_date) ──
+export type AuctionBasis = "auction" | "settlement";
 export type Maturity = "bills" | "notes" | "bonds" | "tips" | "frn";
 export type Bidder = "soma" | "dealer" | "direct" | "indirect" | "noncomp";
 export const MATURITIES: Maturity[] = ["bills", "notes", "bonds", "tips", "frn"];
@@ -132,15 +133,16 @@ export function maturityOf(securityType: string, flags?: { tips?: unknown; frn?:
 }
 
 export interface AuctionRow {
-  security_type: string; issue_date: string;
+  security_type: string; issue_date: string; auction_date?: string;
   total_accepted: unknown; primary_dealer_accepted: unknown; direct_bidder_accepted: unknown;
   indirect_bidder_accepted: unknown; noncomp_accepted: unknown; soma_accepted: unknown;
   inflation_index_security?: unknown; floating_rate?: unknown;   // "Yes" | "No"
 }
 // 집계된 입찰 한 건(musd). 클라이언트가 보유 관측 구간에 맞춰 다시 합산할 때 쓴다.
-export interface AuctionLite { issueDate: string; maturity: Maturity; total: number; soma: number }
+export interface AuctionLite { issueDate: string; auctionDate?: string; maturity: Maturity; total: number; soma: number }
 export interface AuctionAgg {
   start: string; end: string;
+  basis?: AuctionBasis;
   rows: AuctionLite[];                                 // 집계된 입찰(제외분 없음), 결제일 오름차순
   matrix: Record<Maturity, Record<Bidder, number>>;   // musd, 귀속된 낙찰액
   attributed: Record<Maturity, number>;                // = Σ matrix[m][*]
@@ -161,14 +163,18 @@ export function auctionAmount(value: unknown): number {
 const zeroMatrix = () => Object.fromEntries(MATURITIES.map((m) => [m, Object.fromEntries(BIDDERS.map((b) => [b, 0]))])) as Record<Maturity, Record<Bidder, number>>;
 const zeroTotals = () => Object.fromEntries(MATURITIES.map((m) => [m, 0])) as Record<Maturity, number>;
 
-export function aggregateAuctions(rows: AuctionRow[], start: string, end: string): AuctionAgg {
+export function aggregateAuctions(rows: AuctionRow[], start: string, end: string, basis: AuctionBasis = "settlement"): AuctionAgg {
   const matrix = zeroMatrix(), attributed = zeroTotals(), reported = zeroTotals(), countedByMaturity = zeroTotals();
   const lite: AuctionLite[] = [];
   let counted = 0, skipped = 0;
   const unknown = new Set<string>();
   for (const r of rows) {
     const issue = String(r.issue_date ?? "");
-    if (issue < start || issue > end) continue;
+    const auction = String(r.auction_date ?? "");
+    const date = basis === "auction" ? auction : issue;
+    // 입찰일 누락을 결제일로 대체하면 다른 기간의 물량이 섞인다.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { skipped++; continue; }
+    if (date < start || date > end) continue;
     const m = maturityOf(String(r.security_type ?? ""), { tips: r.inflation_index_security, frn: r.floating_rate });
     if (!m) { unknown.add(String(r.security_type)); continue; }
     const total = auctionAmount(r.total_accepted);
@@ -183,10 +189,10 @@ export function aggregateAuctions(rows: AuctionRow[], start: string, end: string
     reported[m] += total / 1e6;
     countedByMaturity[m]++;
     counted++;
-    lite.push({ issueDate: issue, maturity: m, total: total / 1e6, soma: parts.soma / 1e6 });
+    lite.push({ issueDate: issue, ...(auction ? { auctionDate: auction } : {}), maturity: m, total: total / 1e6, soma: parts.soma / 1e6 });
   }
   lite.sort((x, y) => (x.issueDate < y.issueDate ? -1 : x.issueDate > y.issueDate ? 1 : 0));
-  return { start, end, rows: lite, matrix, attributed, reported, countedByMaturity, counted, skipped, unknownTypes: [...unknown].sort() };
+  return { start, end, basis, rows: lite, matrix, attributed, reported, countedByMaturity, counted, skipped, unknownTypes: [...unknown].sort() };
 }
 
 // 보유 관측 구간 (after, through] 에 결제된 입찰만 합산. H.4.1 은 수요일 스냅샷이라, 두 스냅샷 사이에 들어온 물량은
@@ -242,6 +248,7 @@ export interface LiquidityContext {
   errors: Partial<Record<ContextKey, string>>;
 }
 export interface LiquidityAuctions {
+  basis?: AuctionBasis;
   months: number; offset?: number; start: string; end: string; fetchedAt: string;  // offset 은 직전 창(offset=1) 요청에서만 실림
   agg: AuctionAgg | null;
   sankey: { nodes: SankeyNode[]; links: SankeyLink[] } | null;

@@ -5,12 +5,13 @@
 //   기존 /liquidity(베타)·/fed 는 그대로 두고 이 페이지는 /liquidity-read 에 따로 산다.
 import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Sankey, Layer } from "recharts";
+import { ResponsiveContainer, Sankey, Layer } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
-import { restoreMissingNumbers } from "@shared/time-series";
-import { yoyMonthly, yoyWeekly, changeFrom, nearest, netLiquidity, sumAuctionsBetween, type LiquidityContext, type LiquidityAuctions, type Obs } from "@shared/liquidity-beta";
-import { howMuch, whereFrom, whereTo, whoBought, whoSankey, stress, emergencyLoans, background, pickWeeks, BUCKET_LABEL, type ReadWeek, type CmpWeeks, type Contribution, type Bucket } from "@shared/liquidity-read";
-import { s1, s2, s3, s4, fmt, josa, type Part } from "@shared/liquidity-sentences";
+import { useReadingPosition } from "@/hooks/use-reading-position";
+import { restoreMissingNumbers, weeksBefore } from "@shared/time-series";
+import { sumAuctionsBetween, type LiquidityContext, type LiquidityAuctions, type Obs } from "@shared/liquidity-beta";
+import { howMuch, whereFrom, whereTo, whoBought, whoSankey, stress, emergencyLoans, background, pickWeeks, BUCKET_LABEL, type ReadWeek, type CmpWeeks, type Bucket } from "@shared/liquidity-read";
+import { s1, s4, fmt, josa, type Part } from "@shared/liquidity-sentences";
 import { reservesGdp } from "@shared/reserves-gdp";
 import { m2Composition } from "@shared/m2-composition";
 import { READ_CONFIG } from "@shared/liquidity-read-config";
@@ -22,8 +23,13 @@ import { readingGroups } from "@shared/credit/reading";
 import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 import { TreasuryPeriodComparison } from '@/components/TreasuryPeriodComparison';
 import { treasuryEditorialByChart } from '@shared/treasury-comparison';
-import { amountEditorial, ownershipEditorial } from '@shared/liquidity-editorial';
+import { amountEditorial, overviewEditorial, ownershipEditorial } from '@shared/liquidity-editorial';
+import { octoberWeekTwoEditorial, octoberWeekTwoNote } from '@shared/october-week-two-editorial';
+import { liquidityPeriods } from '@shared/liquidity-periods';
+import { LiquidityLevels } from "@/components/LiquidityLevels";
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
+import { LiquidityFlowConnection } from "@/components/LiquidityFlowConnection";
+import { LiquidityPeriodPanels } from "@/components/LiquidityPeriodPanels";
 import { FundingRateChart } from "@/components/credit/FundingRateChart";
 import { NfciHistoryChart, FacilitiesHistoryChart } from "@/components/FundingReferenceCharts";
 import { fedFacilities } from "@shared/fed-facilities";
@@ -72,16 +78,17 @@ function Expander({ label, open, onToggle, children, transparent = false }: { la
 // 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
 // 라벨이 본문 폭을 잡아먹지 않고, 본문은 남는 폭의 가운데에 선다. lg 미만에서는 라벨이 본문 위로 올라간다.
 const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,900px)_minmax(0,1fr)] xl:grid-cols-[minmax(280px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
-const SECTION_SCROLL_MARGIN = 20;
+const SECTION_SCROLL_MARGIN = "var(--liquidity-sticky-top, 96px)";
 function Row({ id, as = "section", aside, children, continuation = false, lead, asideClassName, bottomGap = 48 }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode; continuation?: boolean; lead?: ReactNode; asideClassName?: string; bottomGap?: number }) {
   const Tag = as;
+  const borderColor = id === "s3" ? C.line : C.ink;
   return (
-    <Tag id={id} className={ROW_GRID} style={{ scrollMarginTop: SECTION_SCROLL_MARGIN }}>
+    <Tag id={id} data-scroll-anchor={id} className={ROW_GRID} style={{ scrollMarginTop: SECTION_SCROLL_MARGIN }}>
       {lead && <div className="lg:col-start-2 mb-4" style={{ minWidth: 0 }}>{lead}</div>}
-      <div className={`${continuation ? "" : "border-t border-[#1A1A18] lg:border-t-0 pt-7"} ${lead ? "lg:row-start-2" : ""} ${asideClassName ?? ''} lg:justify-self-end lg:w-[260px] xl:w-[280px]`}>
+      <div className={`${continuation ? "" : "border-t border-[#1A1A18] lg:border-t-0 pt-7"} ${lead ? "lg:row-start-2" : ""} ${asideClassName ?? ''} lg:justify-self-end lg:w-[260px] xl:w-[280px]`} style={{ borderColor }}>
         {aside}
       </div>
-      <div className={`${continuation ? "" : "lg:pt-7 lg:border-t lg:border-[#1A1A18]"} ${lead ? "lg:col-start-2 lg:row-start-2" : ""}`} style={{ minWidth: 0, paddingBottom: bottomGap, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
+      <div className={`${continuation ? "" : "lg:pt-7 lg:border-t lg:border-[#1A1A18]"} ${lead ? "lg:col-start-2 lg:row-start-2" : ""}`} style={{ borderColor, minWidth: 0, paddingBottom: bottomGap, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
     </Tag>
   );
 }
@@ -119,11 +126,11 @@ function OpinionText({ paragraph }: { paragraph: ChapterParagraph }) {
   parts.push(paragraph.text.slice(cursor));
   return <>{parts}</>;
 }
-function ReadingOpinion({ id, title, paragraphs = [] }: { id: string; title: string; paragraphs?: ChapterParagraph[] }) {
+function ReadingOpinion({ id, title, paragraphs = [], note }: { id: string; title: string; paragraphs?: ChapterParagraph[]; note?: string }) {
   if (!paragraphs.length) return null;
-  return <div aria-label={`${title} 해설`} data-testid={`chart-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#EEEBDF", borderRadius: 10, padding: "18px 16px", wordBreak: "keep-all", textWrap: "pretty", overflowWrap: "break-word", whiteSpace: "pre-line" }}>
+  return <><div aria-label={`${title} 해설`} data-testid={`chart-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#EEEBDF", borderRadius: 10, padding: "18px 16px", wordBreak: "normal", textWrap: "wrap", overflowWrap: "break-word", whiteSpace: "pre-line" }}>
     {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
-  </div>;
+  </div>{note && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{note}</p>}</>;
 }
 function Section({ id, num, title, question, answer, paragraphs, children, bottomGap }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; children: ReactNode; bottomGap?: number }) {
   const opinion = paragraphs ?? answer?.split(/(?<=[.!?])\s+/).filter(Boolean).map(text => ({ kind: "analysis" as const, text }));
@@ -202,40 +209,6 @@ function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, p
     </div>
   </div>;
 }
-// 그림 C 기저효과 표식 — 글을 선 위에 쓰면 겹치므로 번호만 찍고 설명은 아래 목록에 둔다. 이웃한 표식은 두 줄로 어긋나게.
-function NoteMarker({ x, y, n, row }: { x: number; y: number; n: number; row: number }) {
-  return (
-    <g transform={`translate(${x},${y - 10 - row * 22})`}>
-      <circle r={9} fill={C.card} stroke={C.ink} strokeWidth={1.2} />
-      <text textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600} fill={C.ink} fontFamily={SANS}>{n}</text>
-    </g>
-  );
-}
-
-// 기여 막대: 02는 중앙 0축·좌우 동일 축척, 03은 기존 범위 맞춤 축척.
-function ContribBars({ rows, N, centered = false }: { rows: { name: string; desc: string; value: number; total?: boolean }[]; N: number; centered?: boolean }) {
-  const maxNeg = Math.max(0, ...rows.map((r) => -Math.min(0, r.value))), maxPos = Math.max(0, ...rows.map((r) => Math.max(0, r.value)));
-  const span = (centered ? 2 * Math.max(maxNeg, maxPos) : maxNeg + maxPos) || 1, zero = centered ? 50 : (maxNeg / span) * 100;
-  return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <Cap style={{ paddingBottom: 10 }}>유동성에 준 영향 · {N}주 · <span style={{ color: C.release }}>초록 = 방출(시중에 풀림)</span> · <span style={{ color: C.absorb }}>빨강 = 흡수(시중에서 빠짐)</span></Cap>
-      {rows.map((r) => {
-        const w = (Math.abs(r.value) / span) * 100, color = r.total && !centered ? C.ink : fmt.isZeroEok(r.value) ? C.n3 : r.value > 0 ? C.release : C.absorb; // '0억'으로 표시되는 값은 중립
-        return (
-          <div key={r.name} className="grid grid-cols-[1fr_auto] md:grid-cols-[240px_minmax(0,1fr)_80px] gap-x-4 gap-y-2 items-center" style={{ padding: "16px 0", borderTop: r.total ? `2px solid ${C.ink}` : `1px solid ${C.line}` }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}><span style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</span>{r.desc && <Cap style={{ lineHeight: 1.65, whiteSpace: "pre-line" }}>{r.desc}</Cap>}</div>
-            <div className="col-span-2 md:col-span-1" style={{ position: "relative", height: 40 }}>
-              <div style={{ position: "absolute", left: `${zero}%`, top: 0, width: 1, height: 40, borderLeft: centered ? `1px dashed ${C.cap}` : undefined, background: centered ? undefined : C.ink, zIndex: 1 }} />
-              <div style={{ position: "absolute", left: r.value >= 0 ? `${zero}%` : `${zero - w}%`, top: 4, width: `${w}%`, height: 32, background: color, borderRadius: r.value >= 0 ? "0 6px 6px 0" : "6px 0 0 6px" }} />
-            </div>
-            <div className="text-left md:text-right" style={{ fontSize: 17, fontWeight: 600, color, whiteSpace: "nowrap" }}>{fmt.signedEok(r.value)}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // 02 펼쳐보기 — T계정. 잔고 기준. 항목 구분은 초록·빨강이 아닌 색(HUE)으로 하고, 얇은 띠는 안에 글자를 못 넣으므로 옆 표의 스와치가 라벨을 맡는다(Codex F2).
 // 자산: 국채·MBS·기관채·대출스왑·기타 / 부채: 지급준비금·역레포·TGA·현금통화·기타 — TGA·역레포는 01 그림 A 와 같은 색
 const ASSET_HUES = [HUE.blue, HUE.sky, HUE.slate, HUE.brown, HUE.ochre];
@@ -303,11 +276,12 @@ export default function LiquidityRead() {
   const [auctionMode, setAuctionMode] = useState<"all" | "nobills">("all");
 
   const [idx, setIdx] = useState(-1);
-  const [cmp, setCmp] = useState<CmpWeeks>(4);
-  const months = cmp === 4 ? 1 : 3;
-  const [range, setRange] = useState<"5y" | "2y">("5y");
-  const [sp, setSp] = useState(false);
-  const [openT, setOpenT] = useState(false);
+  const { pageRef, headerRef, preservePosition } = useReadingPosition(idx, !!overview.data);
+  const selectWeek = (index: number) => { preservePosition(); setIdx(index); };
+  // 상세 항목은 최근 4주를 비교한다. 개요의 1·4·13주 변화와 차트 조회 범위는 별도다.
+  const cmp: CmpWeeks = 4;
+  const months = 1;
+
   const [openM, setOpenM] = useState(false);
   const [openComparison, setOpenComparison] = useState(false);
   const cfg = READ_CONFIG;
@@ -316,9 +290,13 @@ export default function LiquidityRead() {
   const curIdx = idx < 0 ? weeks.length - 1 : Math.min(idx, weeks.length - 1);
   const selDate = weeks.length ? weeks[curIdx].date : "";
   const credit = useCreditReading(selDate);
-  const auctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", cmp, 0, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&weeks=${cmp}&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
-  const auctionsPrev = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", cmp, 1, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?months=${months}&weeks=${cmp}&offset=1&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const auctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", "auction", cmp, 0, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?basis=auction&months=${months}&weeks=${cmp}&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const auctionsPrev = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", "auction", cmp, 1, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?basis=auction&months=${months}&weeks=${cmp}&offset=1&asOf=${selDate}`).then((r) => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const settledAuctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", "settlement", cmp, 0, selDate], enabled: !!selDate && openM, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?basis=settlement&months=${months}&weeks=${cmp}&asOf=${selDate}`).then(r => r.json()), staleTime: 6 * 60 * 60 * 1000 });
   const debt = useQuery<import("@shared/treasury-flow").TreasuryFlowResponse>({ queryKey: ["/api/liquidity/treasury-flow", cmp, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/treasury-flow?weeks=${cmp}&asOf=${selDate}`).then(r => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const weeklyDebt = useQuery<import("@shared/treasury-flow").TreasuryFlowResponse>({ queryKey: ["/api/liquidity/treasury-flow", 1, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/treasury-flow?weeks=1&asOf=${selDate}`).then(r => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const quarterlyDebt = useQuery<import("@shared/treasury-flow").TreasuryFlowResponse>({ queryKey: ["/api/liquidity/treasury-flow", 13, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/treasury-flow?weeks=13&asOf=${selDate}`).then(r => r.json()), staleTime: 6 * 60 * 60 * 1000 });
+  const weeklyAuctions = useQuery<LiquidityAuctions>({ queryKey: ["/api/liquidity/auctions", "auction", 1, 0, selDate], enabled: !!selDate, queryFn: async () => apiRequest("GET", `/api/liquidity/auctions?basis=auction&months=1&weeks=1&asOf=${selDate}`).then(r => r.json()), staleTime: 6 * 60 * 60 * 1000 });
   const { sel, prev } = useMemo(() => pickWeeks(weeks, selDate, cmp), [weeks, selDate, cmp]);
   const ctx = useMemo(() => Object.fromEntries(Object.entries(context.data?.series ?? {}).map(([key, points]) => [key, points.filter(p => p.date <= selDate)])) as LiquidityContext["series"], [context.data, selDate]);
   const monthly = overview.data?.treasury?.monthly ?? [];
@@ -332,44 +310,24 @@ export default function LiquidityRead() {
   const noPrevBlock = `${cmp}주 전(${expectedPrev ? fmt.dateKo(expectedPrev) : ""}) 관측이 없어 이 칸의 변화는 계산하지 않았습니다. 다른 주를 고르면 다시 계산합니다.`;
   const from = sel && prev ? whereFrom(prev, sel, cfg.DOMINANT_SHARE) : null;
   const to = sel && prev ? whereTo(prev, sel, ctx.deposits ?? [], monthlyBills, null) : null;
-  const agg = auctions.data?.agg ?? null, prevAgg = auctionsPrev.data?.agg ?? null;
+  const previousWeek = sel ? weeksBefore(weeks, sel.date, 1) : null;
+  const weeklyFrom = sel && previousWeek ? whereFrom(previousWeek, sel, cfg.DOMINANT_SHARE) : null;
+  const weeklyTo = sel && previousWeek ? whereTo(previousWeek, sel, ctx.deposits ?? [], monthlyBills, null) : null;
+  const agg = auctions.data?.basis === "auction" ? auctions.data.agg : null;
+  const prevAgg = auctionsPrev.data?.basis === "auction" ? auctionsPrev.data.agg : null;
   const who = agg ? whoBought(agg, prevAgg, monthlyTotal, monthlyBills, auctionMode === "nobills") : null;
-  const overviewWho = agg ? whoBought(agg, prevAgg, [], [], false) : null;
+  const weeklyAgg = weeklyAuctions.data?.basis === "auction" ? weeklyAuctions.data.agg : null;
+  const overviewWho = weeklyAgg ? whoBought(weeklyAgg, null, [], [], false) : null;
   const sank = who ? whoSankey(who) : null;
   const latestWeek = weeks.length ? weeks[weeks.length - 1] : null;
   const st = stress(ctx.sofr ?? [], ctx.iorb ?? [], ctx.nfci ?? [], ctx.hy ?? [], sel ? { ...emergencyLoans(sel), date: sel.date } : null, cfg);
   const bg = background(ctx);
 
-  const S1 = how ? s1(how) : null, S2 = from ? s2(from, cmp, how?.flat) : null, S3 = to ? s3(to) : null, S4 = who ? s4(who) : null;
-
-  // 그림 C 데이터: 전년비(5년), 연도 눈금은 연 1회, 기저효과 주석
-  const yoyData = useMemo(() => {
-    if (!weeks.length || !sel) return { rows: [] as { date: string; nl: number; m2: number; sp: number }[], ticks: [] as string[], notes: [] as { date: string; text: string }[], spLast: null as string | null };
-    const nlObs: Obs[] = weeks.map((w) => ({ date: w.date, value: netLiquidity(w) })).filter((o) => Number.isFinite(o.value));
-    const spObs: Obs[] = (overview.data?.daily ?? []).filter((d) => d.sp500 != null && Number.isFinite(d.sp500)).map((d) => ({ date: d.date, value: d.sp500 as number }));
-    const start = new Date(Date.parse(sel.date) - 5 * 365 * 86_400_000).toISOString().slice(0, 10);
-    // S&P 는 그 주에 관측(±4일)이 있을 때만 — 마지막 관측(8/31) 이후 주차에 마지막 값을 끌고 가면 수평선이 생긴다(Codex F5).
-    const spAt = (date: string) => { const to = nearest(spObs, date, 4); return to ? changeFrom(spObs, to.date, 364, 4)?.pct ?? NaN : NaN; };
-    const rows = weeks.filter((w) => w.date >= start && w.date <= sel.date).map((w) => ({ date: w.date, nl: yoyWeekly(nlObs, w.date)?.pct ?? NaN, m2: yoyMonthly(ctx.m2 ?? [], w.date)?.pct ?? NaN, sp: spAt(w.date) }));
-    const seen = new Set<string>(); const ticks = rows.filter((r) => { const y = r.date.slice(0, 4); if (seen.has(y)) return false; seen.add(y); return true; }).map((r) => r.date);
-    // 기저효과: 전년비가 한 주 사이 5%p 이상 급변했고, 1년 전 같은 주에 수준이 한 주 사이 2% 이상 급변한 경우
-    const byDate = new Map(nlObs.map((o) => [o.date, o.value]));
-    const notes: { date: string; text: string }[] = [];
-    for (let i = 1; i < rows.length && notes.length < 3; i++) {
-      if (!Number.isFinite(rows[i].nl) || !Number.isFinite(rows[i - 1].nl) || Math.abs(rows[i].nl - rows[i - 1].nl) < 5) continue;
-      const y1 = new Date(Date.parse(rows[i].date) - 364 * 86_400_000).toISOString().slice(0, 10), y0 = new Date(Date.parse(rows[i - 1].date) - 364 * 86_400_000).toISOString().slice(0, 10);
-      const a = byDate.get(y0), b = byDate.get(y1);
-      if (a && b && Math.abs(b - a) / a >= 0.02) notes.push({ date: rows[i].date, text: rows[i].date.startsWith("2024-03") ? "1년 전 SVB 사태 때 급증한 수치와 비교돼 생긴 낙차" : "1년 전 급변과 비교돼 생긴 기저효과" });
-    }
-    if (!notes.some((n) => n.date.startsWith("2024-03"))) { const r = rows.find((x) => x.date >= "2024-03-06" && x.date <= "2024-03-20"); if (r) notes.push({ date: r.date, text: "1년 전 SVB 사태 때 급증한 수치와 비교돼 생긴 낙차" }); }
-    return { rows, ticks, notes, spLast: spObs.length ? spObs[spObs.length - 1].date : null }; // 기준일은 값이 있는 마지막 관측(Codex 2차 F2)
-  }, [weeks, sel, ctx.m2, overview.data?.daily]);
-  const chartRows = range === "2y" && sel ? yoyData.rows.filter((r) => r.date >= new Date(Date.parse(sel.date) - 2 * 365 * 86_400_000).toISOString().slice(0, 10)) : yoyData.rows;
-  const chartNotes = yoyData.notes.filter((n) => chartRows.some((r) => r.date === n.date)); // 그림 C 에 실제로 있는 주만
-  const chartTicks = yoyData.ticks.filter((t) => chartRows.some((r) => r.date === t));
+  const S1 = how ? s1(how) : null, S4 = who ? s4(who) : null;
 
   // 만기별 표(펼쳐보기) — 보유 관측 구간에 맞춰 인수를 다시 합산(베타와 같은 규칙)
   const life = useMemo(() => {
+    const agg = settledAuctions.data?.agg;
     if (!agg) return null;
     const winStart = fedWeekly.find((w) => w.date >= agg.start) ?? null, winEnd = [...fedWeekly].reverse().find((w) => w.date <= agg.end) ?? null;
     if (!winStart || !winEnd || winStart.date >= winEnd.date) return null;
@@ -379,7 +337,7 @@ export default function LiquidityRead() {
       { label: BUCKET_LABEL.nb, ...b(["notes", "bonds", "frn"]), held: winEnd.notesBonds, dHeld: winEnd.notesBonds - winStart.notesBonds },
       { label: BUCKET_LABEL.tips, ...b(["tips"]), held: winEnd.tips, dHeld: winEnd.tips - winStart.tips },
     ] };
-  }, [agg, fedWeekly]);
+  }, [settledAuctions.data, fedWeekly]);
   const somaExact = (date?: string) => (date ? fedWeekly.find((w) => w.date === date) ?? null : null);
   const somaSel = somaExact(sel?.date), somaPrev = somaExact(prev?.date);
 
@@ -395,37 +353,35 @@ export default function LiquidityRead() {
   const treasuryReading = treasuryEditorialByChart(selDate, cmp, debt.data?.flow ?? null, agg, prevAgg, monthly);
   const fundingReading = !context.isLoading && !context.isError
     ? fundingReadingByChart(selDate, cmp, funding.spread.current?.value ?? null, !!funding.nfci.current)
-    : { spread: [], nfci: [], facilities: [] };
+    : { rateContext: [], spread: [], nfci: [], facilities: [] };
 
   return (
-    <div style={{ "--liquidity-sticky-top": "20px", background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
+    <div ref={pageRef} style={{ background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
       <div className="px-4 md:px-10" style={{ maxWidth: 1280 + 80, margin: "0 auto", paddingTop: 24, paddingBottom: 96 }}>
 
-        {/* 머리띠 — 본문과 함께 자연스럽게 스크롤한다. */}
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
+        {/* 주차 이동은 같은 그래프를 보면서 사용할 수 있도록 헤더만 고정한다. */}
+        <header ref={headerRef} data-testid="liquidity-week-header" className="sticky top-0 z-30 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
           <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
             <Cap>{fmt.dateKo(selW.date)} 기준 · 유동성 주간 / 신용 지표별 주기</Cap>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx <= 0 ? 0.3 : 1, cursor: "pointer" }}>◀</button>
-            <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.3 : 1, cursor: "pointer" }}>▶</button>
-            {curIdx < weeks.length - 1 && <Pill active={false} onClick={() => setIdx(-1)}>이번 주로</Pill>}
-            <span style={{ fontSize: 13, color: C.cap, paddingLeft: 8 }}>비교 기준</span>
-            <Pill active={cmp === 4} onClick={() => setCmp(4)}>1달(4주 전)</Pill>
-            <Pill active={cmp === 13} onClick={() => setCmp(13)}>1분기(13주 전)</Pill>
+            <button type="button" onClick={() => selectWeek(-1)} disabled={curIdx >= weeks.length - 1} style={{ minHeight: 36, padding: "0 16px", fontSize: 13, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.4 : 1, cursor: curIdx >= weeks.length - 1 ? "default" : "pointer" }}>이번 주로</button>
+            <button type="button" onClick={() => selectWeek(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx <= 0 ? 0.3 : 1, cursor: "pointer" }}>◀</button>
+            <button type="button" onClick={() => selectWeek(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.3 : 1, cursor: "pointer" }}>▶</button>
           </div>
         </header>
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
-        <div className={ROW_GRID}>
+        <div className={ROW_GRID} data-scroll-anchor="overview">
         <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] lg:pt-6"><div>
           <h2 className="text-base font-semibold">개요</h2>
           <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
+          {how && overviewEditorial(selDate).length > 0 && <div className="mt-4"><ReadingOpinion id="overview" title="개요" paragraphs={overviewEditorial(selDate)} /></div>}
         </div></div>
         <div style={{ minWidth: 0 }}>
-        <LiquidityDashboard how={how} from={from} to={to} who={overviewWho} flow={debt.data?.flow ?? null} flowLoading={debt.isLoading} flowError={debt.data?.error ?? (debt.isError ? "국채 자료 조회 실패" : null)} />
+        <LiquidityDashboard how={how} periods={liquidityPeriods(weeks, selDate)} from={weeklyFrom} to={weeklyTo} who={overviewWho} flow={weeklyDebt.data?.flow ?? null} flowTrends={{ 4: debt.data?.flow?.net ?? null, 13: quarterlyDebt.data?.flow?.net ?? null }} flowLoading={weeklyDebt.isLoading} flowError={weeklyDebt.data?.error ?? (weeklyDebt.isError ? "국채 자료 조회 실패" : null)} />
         </div></div>
 
         {/* 01 얼마나 */}
@@ -445,96 +401,22 @@ export default function LiquidityRead() {
                 note={<>{m2Now ? `${m2Now.date.slice(0, 4)}년 ${fmt.monthKo(m2Now.date)} · ` : ""}월간 · 정기예금·개인 MMF는 은퇴계좌 제외</>} />
             </div>
 
-            <Expander label={`순유동성·M2 증감률 비교 ${openComparison ? "접기" : "펼치기"}`} open={openComparison} onToggle={() => setOpenComparison(v => !v)}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <Cap>1년 전 대비 증감률 · 규모가 달라 증감률로 비교</Cap>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <Pill active={range === "5y"} onClick={() => setRange("5y")}>5년</Pill>
-                  <Pill active={range === "2y"} onClick={() => setRange("2y")}>최근 2년 확대</Pill>
-                  <Pill active={sp} onClick={() => setSp((v) => !v)}>S&amp;P 500 겹치기{sp ? " ✓" : ""}</Pill>
-                </div>
-              </div>
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "20px 12px 8px", height: 320 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartRows} margin={{ top: 56, right: sp ? 8 : 16, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="date" ticks={chartTicks} tickFormatter={(d) => String(d).slice(0, 4)} tick={{ fontSize: 13, fill: C.cap }} axisLine={false} tickLine={{ stroke: C.border2 }} />
-                    <YAxis yAxisId="left" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 13, fill: C.cap }} axisLine={false} tickLine={false} width={48} />
-                    {sp && <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 13, fill: HUE.ochre }} axisLine={false} tickLine={false} width={48} />}
-                    <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8, fontFamily: SANS }} formatter={(v: any, n: any) => [Number.isFinite(v) ? fmt.pct(v) : "—", n]} labelFormatter={(l) => fmt.dateKo(String(l))} />
-                    <ReferenceLine yAxisId="left" y={0} stroke={C.ink} />
-                    <ReferenceLine yAxisId="left" x={how.date} stroke={C.cap} strokeDasharray="3 3" />
-                    {chartNotes.map((n, i) => <ReferenceLine key={n.date} yAxisId="left" x={n.date} stroke={C.cap} strokeDasharray="2 3" label={(p: any) => <NoteMarker x={p.viewBox.x} y={p.viewBox.y} n={i + 1} row={i % 2} />} />)}
-                    <Line yAxisId="left" dataKey="m2" name="M2" stroke={C.m2} strokeWidth={2.5} strokeDasharray="7 5" dot={false} isAnimationActive={false} connectNulls={false} />
-                    <Line yAxisId="left" dataKey="nl" name="순유동성" stroke={C.ink} strokeWidth={2.5} dot={false} isAnimationActive={false} connectNulls={false} />
-                    {sp && <Line yAxisId="right" dataKey="sp" name="S&P 500" stroke={HUE.ochre} strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              {chartNotes.length > 0 && <Cap style={{ display: "flex", flexWrap: "wrap", gap: "4px 18px" }}>{chartNotes.map((n, i) => <span key={n.date}><b style={{ color: C.ink }}>{i + 1}</b> {n.date.slice(0, 4)}년 {fmt.monthKo(n.date)} — {n.text}</span>)}</Cap>}
-              {sp && yoyData.spLast && <Cap>S&amp;P 500 은 일간 자료가 {fmt.dateKo(yoyData.spLast)}까지 있어 그 뒤는 비어 있습니다.</Cap>}
-              {S1.m2note && <Body>{S1.m2note}</Body>}
-            </div>
+            <Expander label={`순유동성·M2 추이 비교 ${openComparison ? "접기" : "펼치기"}`} open={openComparison} onToggle={() => setOpenComparison(v => !v)}>
+              <LiquidityLevels weeks={weeks} m2={ctx.m2 ?? []} asOf={selDate} />
             </Expander>
           </>)}
         </Section>
 
+        <LiquidityFlowConnection revision={selDate}>
         {/* 02 어디서 */}
-        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나" paragraphs={[]}>
-          {!from || !S2 || !sel || !prev ? <Cap>{noPrevBlock}</Cap> : (<>
-            <H2>{!Number.isFinite(from.dNl) || fmt.isZeroEok(from.dNl) ? "유동성 증감을 항목별로 보면" : <>{from.dNl > 0 ? "늘어난 순유동성" : "줄어든 순유동성"} <span style={{ color: from.dNl > 0 ? C.release : C.absorb }}>{fmt.eok(from.dNl)}억 달러</span>를 분해해보면</>}</H2>
-            <ContribBars N={cmp} centered rows={[
-              ...from.ranked.map((c: Contribution) => ({ name: c.key === "tga" ? "재무부" : c.key === "rrp" ? "역레포" : "연준", desc: c.key === "tga" ? `TGA 잔액 ${fmt.eok(prev.tga)}억 → ${fmt.eok(sel.tga)}억` : c.key === "rrp" ? `역레포 잔액 ${fmt.eok(prev.rrp)}억 → ${fmt.eok(sel.rrp)}억` : from.fedDetail.map(d => `${d.label} ${fmt.signedEok(d.value)}`).join(" · "), value: c.effect })),
-              { name: "합계", desc: "", value: from.dNl, total: true },
-            ]} />
-            <Expander label="연준 대차대조표(T계정) 전체 펼치기" open={openT} onToggle={() => setOpenT((v) => !v)}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <Cap>잔고 증감 기준 · 부채 항목 감소 = 유동성 증가</Cap>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ minWidth: 0 }}>
-                  <NeutralTAccount rows={taccountRows(sel as WeekPoint, prev as WeekPoint)} total={sel.total} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, minWidth: 0 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", color: C.cap, borderBottom: `1px solid ${C.line}`, paddingBottom: 6 }}><span>항목</span><span>{fmt.dateKo(sel.date)} 잔고</span><span>{cmp}주 Δ</span></div>
-                    {taccountRows(sel as WeekPoint, prev as WeekPoint).map((r, i, arr) => (<Fragment key={r.label}>
-                      {i === 5 && <div key="total" style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", padding: "6px 0", borderBottom: `2px solid ${C.ink}`, fontWeight: 600 }}><span>총자산</span><span>{dollars(sel.total)}</span><span style={{ color: C.body, fontWeight: 400 }}>{fmt.signedEok(sel.total - prev.total)}</span></div>}
-                      <div key={r.label} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 12px", padding: "6px 0", borderBottom: i === arr.length - 1 ? undefined : `1px solid ${C.line2}` }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ width: 12, height: 12, flexShrink: 0, background: r.color, borderRadius: 2, border: "1px solid rgba(0,0,0,0.12)", boxSizing: "border-box" }} />{r.label}</span>
-                        <span>{Number.isFinite(r.v) ? dollars(r.v) : "—"}</span><span style={{ color: C.body }}>{Number.isFinite(r.v - r.p) ? fmt.signedEok(r.v - r.p) : "—"}</span>
-                      </div>
-                    </Fragment>))}
-                    {somaSel && (
-                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-                        <Cap>국채(SOMA) 만기별 · {fmt.dateKo(somaSel.date)}{somaPrev ? ` · Δ는 ${cmp}주` : prev ? ` · ${cmp}주 전 보유 관측이 없어 Δ 생략` : ""}</Cap>
-                        {([["단기 Bills", somaSel.bills, somaPrev?.bills], ["중장기 Notes·Bonds·FRN", somaSel.notesBonds, somaPrev?.notesBonds], ["TIPS", somaSel.tips, somaPrev?.tips]] as [string, number, number | undefined][]).map(([k, v, p]) => (
-                          <div key={k} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 16px", padding: "4px 0" }}><span>{k}</span><span>{dollars(v)}</span><span style={{ color: C.body }}>{p != null && Number.isFinite(v - p) ? fmt.signedEok(v - p) : ""}</span></div>
-                        ))}
-                      </div>
-                    )}
-                    <Cap style={{ marginTop: 8 }}>{Number.isFinite(sel.btfp) ? "" : "대출·스왑에서 BTFP(2024년 종료)는 제외."}</Cap>
-                  </div>
-                </div>
-              </div>
-            </Expander>
-          </>)}
+        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나" paragraphs={octoberWeekTwoEditorial('source', selDate)}>
+          <LiquidityPeriodPanels weeks={weeks} selected={sel} kind="source" dominantShare={cfg.DOMINANT_SHARE} />
         </Section>
 
         {/* 03 어디로 */}
-        <Section id="s3" num="03" title="어디로" question="유동성 변화가 어디에 반영됐나" paragraphs={[]}>
-          {!to || !S3 ? <Cap>{noPrevBlock}</Cap> : (<>
-            <H2><Parts parts={S3.headline} /></H2>
-            <Cap>{cmp}주 변화 · {sel?.date} 기준</Cap>
-            {to.sameSign ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", gap: 3, height: 64 }}>
-                  <div style={{ width: `${(Math.abs(to.dReserves) / (Math.abs(to.dReserves) + Math.abs(to.dOther) || 1)) * 100}%`, background: to.dReserves >= 0 ? C.release : C.absorb, color: "#FFFFFF", borderRadius: "8px 0 0 8px", padding: "0 18px", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0, gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>은행 지급준비금</span><span style={{ fontSize: 17, fontWeight: 600, whiteSpace: "nowrap" }}>{fmt.signedEok(to.dReserves)}</span>
-                  </div>
-                  <div style={{ flexGrow: 1, background: C.n1, borderRadius: "0 8px 8px 0" }} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, color: C.body }}>현금통화·기타 {fmt.signedEok(to.dOther)}</div>
-              </div>
-            ) : (
-              <ContribBars N={cmp} rows={[{ name: "은행 지급준비금", desc: "", value: to.dReserves }, { name: "현금통화·기타", desc: "", value: to.dOther }, { name: "합계", desc: "", value: to.dNl, total: true }]} />
-            )}
+        <Section id="s3" num="03" title="어디로" question="유동성 변화가 어디에 반영됐나" paragraphs={octoberWeekTwoEditorial('destination', selDate)}>
+          <LiquidityPeriodPanels weeks={weeks} selected={sel} kind="destination" dominantShare={cfg.DOMINANT_SHARE} />
+          {to && (<>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <Body>현재 은행 지급준비금은 {fmt.jo(to.reserves)}조 달러{reserveRatio ? `로, 명목 GDP의 ${reserveRatio.pct.toFixed(1)}%입니다.` : "입니다."}</Body>
               <Cap style={{ color: "#918D83" }}>{reserveRatio ? `지준 ${sel?.date} · GDP ${reserveRatio.quarter} (계절조정·연율). 관측 기간 기준·사후 수정치 포함.` : context.isFetching ? "GDP 대비 비율을 불러오는 중입니다." : "비교 가능한 GDP 자료가 없어 비율을 표시하지 않았습니다."}</Cap>
@@ -542,16 +424,18 @@ export default function LiquidityRead() {
           </>)}
         </Section>
 
+        </LiquidityFlowConnection>
+
         {/* 04 누가 샀나 */}
         <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryReading.issuance}>
           <TreasuryPeriodComparison asOf={selDate} weeks={cmp} current={debt.data?.flow ?? null} />
         </Section>
         <Row id="s4-auctions" continuation lead={who && S4 && sank && !auctions.isLoading ? (<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <Cap>{fmt.dateKo(who.start)} ~ {fmt.dateKo(who.end)} 결제분 · 입찰 {who.counted}건{who.excludeBills ? " · 단기채 제외" : ""}</Cap>
+                <Cap>{fmt.dateKo(who.start)} ~ {fmt.dateKo(who.end)} 입찰분 · {who.counted}건{who.excludeBills ? " · 단기채 제외" : ""}</Cap>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <Pill active={auctionMode === "all"} onClick={() => setAuctionMode("all")}>전체</Pill>
                   <Pill active={auctionMode === "nobills"} onClick={() => setAuctionMode("nobills")}>단기채 빼고 보기</Pill>
-                  <Cap>상단 기준 · 최근 {cmp}주</Cap>
+                  <Cap>최근 {cmp}주</Cap>
                 </div>
               </div>) : undefined} aside={<ReadingOpinion id="s4-auctions" title="국채 입찰" paragraphs={treasuryReading.auctions} />}>
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
@@ -567,10 +451,11 @@ export default function LiquidityRead() {
                 </div>
               </div>
             </div>
+            <Cap>입찰일 기준입니다. 결제 시점이 달라 위 발행·상환 표의 금액과 차이가 날 수 있습니다.</Cap>
             <Expander transparent label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>
-              {!life ? <Cap>준비 중 — 입찰 창 안에 보유 관측이 두 개 이상 없어 표를 만들 수 없습니다</Cap> : (
+              {!life ? <Cap>{settledAuctions.isLoading ? "결제 기준 자료를 불러오는 중…" : "결제 기준 입찰·보유 자료를 확인하지 못했습니다."}</Cap> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <Cap>발행·연준 인수·보유 변화 모두 H.4.1 보유 관측 구간 {fmt.dateKo(life.from)} → {fmt.dateKo(life.to)} 기준. 발행은 보고 총액, 만기상환은 인수 − 보유 변화의 추정치(음수면 입찰 인수보다 보유가 더 늘어난 것).</Cap>
+                  <Cap>이 표는 결제일 기준입니다. 발행·연준 인수·보유 변화 모두 H.4.1 보유 관측 구간 {fmt.dateKo(life.from)} → {fmt.dateKo(life.to)} 기준. 발행은 보고 총액, 만기상환은 인수 − 보유 변화의 추정치(음수면 입찰 인수보다 보유가 더 늘어난 것).</Cap>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", minWidth: 560, fontSize: 13, borderCollapse: "collapse" }}>
                       <thead><tr style={{ color: C.cap }}>{["만기", "발행", "연준 인수", "연준 보유", "보유 변화", "만기상환(추정)"].map((h, i) => <th key={h} style={{ textAlign: i ? "right" : "left", fontWeight: 500, padding: "6px 0", borderBottom: `1px solid ${C.line}` }}>{h}</th>)}</tr></thead>
@@ -592,7 +477,7 @@ export default function LiquidityRead() {
           </>)}
         </Row>
 
-        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap><div className="mt-3"><ReadingOpinion id="treasury-holders" title="국채 보유 주체" paragraphs={ownershipEditorial(selDate)} /></div></div>}>
+        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap><div className="mt-3"><ReadingOpinion id="treasury-holders" title="국채 보유 주체" paragraphs={ownershipEditorial(selDate)} note={octoberWeekTwoNote('ownership', selDate)} /></div></div>}>
           <TreasuryOwnership asOf={selDate} />
         </Row>
 
@@ -600,7 +485,10 @@ export default function LiquidityRead() {
         <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={[]} bottomGap={28}>
           <p data-funding-definition="spread" className="rounded-xl bg-[#EAF0EE] px-5 py-5 md:px-6" style={{ fontSize: 15, lineHeight: 1.8, color: C.body }}>{FUNDING_DEFINITIONS.spread}</p>
         </Section>
-        <Row id="s5-spread" continuation aside={<ReadingOpinion id="s5-spread" title="SOFR·IORB" paragraphs={fundingReading.spread} />}>
+        <Row id="s5-spread" continuation aside={<div className="flex flex-col gap-3">
+          <ReadingOpinion id="s5-rate-context" title="9월 금리 인상" paragraphs={fundingReading.rateContext} />
+          <ReadingOpinion id="s5-spread" title="SOFR·IORB" paragraphs={fundingReading.spread} />
+        </div>}>
           <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} showNotes={false} showSources={false} />
         </Row>
         <Row id="s5-nfci" continuation asideClassName="lg:pt-[25px]" lead={<H2>참고할만한 위험 지표들</H2>} aside={<ReadingOpinion id="s5-nfci" title="NFCI 지수" paragraphs={fundingReading.nfci} />}>
@@ -616,9 +504,13 @@ export default function LiquidityRead() {
             <CreditReadingGroup group={group} state={credit} weeks={cmp} renderReadingRow={(id, content, paragraphs) => <div key={id} data-bank-reading-row={group.id === 'credit-bank' ? id : undefined} data-credit-reading-row={id} className={ROW_GRID}>
               <div className={`lg:justify-self-end lg:w-[260px] xl:w-[280px] ${paragraphs.length ? (["bond-dashboard", "cp-dashboard"].includes(id) ? "" : "lg:pt-[53px]") : "pt-6"}`}>
                 {['bank-intro', 'corporate_bond_issuance', 'cp-intro', 'bdc-intro'].includes(id) && <div className="space-y-1.5"><div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{String(n + 6).padStart(2, "0")}</div><div className="text-base font-semibold">{group.title}</div><Cap>{group.question}</Cap></div>}
-                {!!paragraphs.length && <div aria-label={`${id} 해설`} data-testid={`chart-answer-${id}`} className="rounded-[10px] bg-[#EEEBDF] px-4 py-[18px] space-y-4" style={{ wordBreak: "keep-all", overflowWrap: "break-word" }}>
+                {!!paragraphs.length && <div aria-label={`${id} 해설`} data-testid={`chart-answer-${id}`} className="rounded-[10px] bg-[#EEEBDF] px-4 py-[18px] space-y-4" style={{ wordBreak: "normal", textWrap: "wrap", overflowWrap: "break-word" }}>
                   {paragraphs.map((p, index) => <p key={index} style={{ margin: 0, marginTop: index ? 14 : 0, fontSize: p.kind === 'explanation' ? 12 : 14, lineHeight: 1.85, whiteSpace: 'pre-line', color: p.kind === 'explanation' ? '#777369' : C.body }}><OpinionText paragraph={p} /></p>)}
                 </div>}
+                {selDate === '2026-10-07' && group.id === 'credit-bank' && !!paragraphs.length
+                  && credit.data.find(indicator => indicator.id === id)?.lines.every(line => line.latest && line.latest.date <= '2026-09-30')
+                  && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>새 관측이 없어 지난주 해석을 유지합니다</p>}
+                {!!paragraphs.length && octoberWeekTwoNote(id, selDate) && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{octoberWeekTwoNote(id, selDate)}</p>}
               </div>
               <div className={['bank-intro', 'cp-intro', 'bdc-intro'].includes(id) ? 'border-t border-[#1A1A18] pt-7' : ''} style={{ minWidth: 0, paddingBottom: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>{content}</div>
             </div>} />

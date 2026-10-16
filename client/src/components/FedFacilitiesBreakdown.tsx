@@ -1,7 +1,7 @@
 import { facilityAmount, type FedFacilities } from "@shared/fed-facilities";
 
 export function FedFacilitiesBreakdown({ data, weeks }: { data: FedFacilities; weeks: 4 | 13 }) {
-  const rows = [...data.rows].sort((a,b) => (b.value ?? -1)-(a.value ?? -1));
+  const rows = data.rows;
   const number = (v: number | null) => v == null ? "자료 없음" : facilityAmount(v);
   const color = (v: number | null) => v == null || v === 0 ? '#5F5C54' : v>0?'#1F7A4D':'#B3402E';
   return <div className="pt-1" aria-label="연준 대출·레포·스왑 구성" data-testid="fed-facilities-breakdown">

@@ -39,7 +39,7 @@ export interface LineAnalysis {
   stale: boolean; ageDays: number | null; navAgeDays?: number | null; collectionOverdue?: boolean; sampleStart: string | null; sampleEnd: string | null; sampleCount: number; tenYearPercentile: number | null;
   errors: string[]; notes: string[]; sources: { url?: string; label: string; transport: string; checkedAt?: string }[];
 }
-export interface IndicatorAnalysis { id: string; lines: LineAnalysis[]; comparisonLines?: LineAnalysis[]; status: "ok" | "partial" | "missing" | "manual" }
+export interface IndicatorAnalysis { id: string; lines: LineAnalysis[]; comparisonLines?: LineAnalysis[]; rawRateLines?: LineAnalysis[]; status: "ok" | "partial" | "missing" | "manual" }
 function issuanceYoy(points: Point[], asOf: string) {
   const complete = points.filter(p => p.date.slice(0, 7) < asOf.slice(0, 7)); const last = complete.at(-1); if (!last) return null;
   const d = new Date(last.date); const month = d.getUTCMonth(), year = d.getUTCFullYear();
@@ -93,6 +93,9 @@ export function analyze(snapshot: Snapshot | null, asOf = new Date().toISOString
     const comparison = i.chart.marketYield ? [i.chart.marketYield] : i.chart.kind === "spread" ? i.chart.lines : [];
     const commonDates = i.chart.kind === "spread" ? new Set(lines[0].points.map(p => p.date)) : null;
     const comparisonLines = comparison.map(l => { const s = source(l.key); return analyzeLine({ ...i, chart: { ...i.chart, kind: "series", unit: "percent" } }, l.key, l.label, commonDates ? s.points.filter(p => commonDates.has(p.date)) : s.points, [s], asOf, basis); });
-    return { id: i.id, lines, comparisonLines, status: !present ? i.chart.kind === "manual" ? "manual" : "missing" : present < lines.length || lines.some(l => l.errors.length || l.stale) ? "partial" : "ok" };
+    // CP 원금리 차트에는 개별 관측과 결측을 보존한다. 스프레드 계산은 공통 날짜만 사용한다.
+    const rawRateLines = ['cp_credit_spread', 'cp_treasury_spread'].includes(i.id)
+      ? i.chart.lines.map(l => { const s = source(l.key); return analyzeLine({ ...i, chart: { ...i.chart, kind: 'series', unit: 'percent' } }, l.key, l.label, s.points, [s], asOf, basis); }) : undefined;
+    return { id: i.id, lines, comparisonLines, ...(rawRateLines ? { rawRateLines } : {}), status: !present ? i.chart.kind === "manual" ? "manual" : "missing" : present < lines.length || lines.some(l => l.errors.length || l.stale) ? "partial" : "ok" };
   });
 }

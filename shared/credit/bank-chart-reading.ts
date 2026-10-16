@@ -4,6 +4,13 @@ import type { IndicatorAnalysis } from './signals.js';
 // 사용자가 지정한 도표 해설만 표시한다. 다른 날짜·범위에는 자동 해설을 채우지 않는다.
 export function bankChartReading(id: string, paragraphs: ChapterParagraph[], data: IndicatorAnalysis[], asOf: string, years: number): ChapterParagraph[] {
   const fallback: ChapterParagraph[] = [];
+  if (asOf === '2026-10-07' && ['sloos_ci_standards', 'h8_large_vs_small_banks'].includes(id)) {
+    const lines = data.find(i => i.id === id)?.lines ?? [];
+    if (lines.length && lines.every(line => line.latest && line.latest.date <= '2026-09-30')) {
+      return bankChartReading(id, paragraphs, data, '2026-09-30', years);
+    }
+    return fallback;
+  }
   if (id === 'h8_large_vs_small_banks' && asOf === '2026-09-30' && years === 3) return bankSizeReading(data, asOf) ?? fallback;
   if (id !== 'sloos_ci_standards' || asOf !== '2026-09-30' || years !== 3) return fallback;
   const standards = data.find(i => i.id === id)?.lines[0];

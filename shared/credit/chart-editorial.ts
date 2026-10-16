@@ -1,6 +1,7 @@
 import type { ChapterParagraph } from './chapter-reading.js';
+import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from '../october-week-two-editorial.js';
 
-// 사용자가 작성한 2026-09-30 / 4주 비교 해설. 다른 관측 기간으로 일반화하지 않는다.
+// 사용자가 작성한 2026-09-30 / 4주 비교 해설. 지정한 H.8 두 해설만 10월 1주차에도 사용한다.
 const copy: Record<string, string[]> = {
   h8_ci_loans: [
     '기업 대출은 1년 전보다 10% 가까이 늘었습니다. 은행이 대출로 돈을 만들어내고 있다는 뜻이고, M2가 늘어나는 원천이기도 합니다.',
@@ -19,8 +20,8 @@ const copy: Record<string, string[]> = {
     '차이의 큰 부분은 구조에서 옵니다. 레버리지론은 변동금리라 금리가 올라도 가격이 잘 내리지 않습니다. 그래서 이 지표가 뚜렷하게 내린다면 그때는 금리가 아닌 신용 문제로 봐야 합니다.',
   ],
   'cp-dashboard': [
-    '기업의 단기 자금줄은 막히지 않았습니다. 단기채 금리 대비 A2/P2들이 더 내는 프리미엄은 0.24%p로, 최근 3년 내 낮은 편에 속합니다.',
-    '다만 프리미엄과 별개로, 빌리는 값 자체는 비싸졌습니다. 9월 금리 인상으로 단기국채 금리가 0.3%p 오르자, 기업어음 금리도 따라 올랐습니다. 지표는 프리미엄을 보여주고 있어 조용하게 보이지만, 기업이 실제로 내는 이자는 한 달 전보다 0.3%p 늘었다는 뜻입니다.',
+    '기업의 단기 자금줄은 막히지 않았습니다. 30일물 기준 A2/P2와 AA의 금리차는 0.22%p이고, 4주 단기국채 대비 A2/P2들이 더 내는 프리미엄은 0.30%p입니다.',
+    '다만 프리미엄과 별개로, 빌리는 값 자체는 비싸졌습니다. 9월 2일부터 30일까지 4주 단기국채 금리는 0.19%p, A2/P2 기업어음 금리는 0.22%p 올랐습니다. 프리미엄의 변화가 크지 않더라도 기업이 실제로 내는 이자는 한 달 전보다 늘었다는 뜻입니다.',
   ],
   bdc_price_to_nav: [
     '사모대출 시장에 대한 의심이 다시 커지고 있습니다. 9월 한 달 동안 주요 3사의 P/NAV가 모두 내렸습니다.',
@@ -34,6 +35,20 @@ const copy: Record<string, string[]> = {
 };
 
 export function chartEditorial(id: string, asOf: string, weeks: number): ChapterParagraph[] {
-  return asOf === '2026-09-30' && weeks === 4
+  if (asOf === OCTOBER_WEEK_TWO && weeks === 4) {
+    // 새 H.8 관측이 없는 두 잔액 해설은 사용자가 확정한 1주차 문안을 그대로 유지한다.
+    if (['h8_ci_loans', 'h8_loans_to_nondepository'].includes(id)) return chartEditorial(id, '2026-10-07', weeks);
+    return octoberWeekTwoEditorial(id, asOf, weeks);
+  }
+  if (id === 'bdc_price_to_nav' && asOf === '2026-10-07' && weeks === 4) return [
+    { kind: 'analysis', text: 'BDC 3사에 대한 시장 평가가 하향세를 이어가고 있습니다. 이는 07에서 언급한 CCC 스프레드 확대와 같은 방향의 신용 우려를 보여줍니다. BDC가 대출해 준 기업들은 공개 신용등급이 없는 경우가 많지만, 차환 부담과 신용 위험에 대한 우려가 BDC 주가에도 반영될 수 있습니다.' },
+    { kind: 'analysis', text: '다만 3사의 부실 대출과 PIK 공시는 여전히 2분기 기준으로, 지난주와 같습니다. NAV는 분기 단위로 발표되기 때문에, 지금의 P/NAV 하락은 주가 쪽 움직임입니다. 장부에서도 실제 악화가 확인되는지는 10월 말에서 11월 초 발표되는 3분기 NAV와 부실·PIK 공시를 함께 봐야 합니다.' },
+  ];
+  if (id === 'bond-dashboard' && asOf === '2026-10-07' && weeks === 4) return [
+    { kind: 'analysis', text: '이번 주 회사채 금리는 IG(-4bp)와 HY(-8bp)는 소폭 내려갔지만, CCC만 꽤 크게(+40bp) 올랐습니다.' },
+    { kind: 'analysis', text: '같은 주에 HY 전체 금리가 내리면서 CCC만 올랐다는 건, 신용 시장에서 전반적으로 빠져나간 게 아니라 등급 사이를 갈라놓은 겁니다. 금리 인상기 후반에 흔히 보이는 모습으로, 당장 재융자가 급한 가장 약한 고리부터 가격이 밀립니다. 블룸버그 집계로는 CCC 스프레드가 9월 30일에 1,000bp를 넘었습니다. 2023년 3월 SVB 사태 이후 처음이고, 9월 한 달에만 150bp 가까이 벌어졌습니다. 전반적인 금리 상승보다 최하위 등급에 대한 우려가 두드러진 한 주입니다.' },
+  ];
+  const approvedWeek = asOf === '2026-09-30' || (asOf === '2026-10-07' && ['h8_ci_loans', 'h8_loans_to_nondepository'].includes(id));
+  return approvedWeek && weeks === 4
     ? (copy[id] ?? []).map(text => ({ kind: 'analysis', text })) : [];
 }
