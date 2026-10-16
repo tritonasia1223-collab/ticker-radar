@@ -360,13 +360,13 @@ export default function LiquidityRead() {
       <div className="px-4 md:px-10" style={{ maxWidth: 1280 + 80, margin: "0 auto", paddingTop: 24, paddingBottom: 96 }}>
 
         {/* 주차 이동은 같은 그래프를 보면서 사용할 수 있도록 헤더만 고정한다. */}
-        <header ref={headerRef} data-testid="liquidity-week-header" className="sticky top-0 z-30 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
-          <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4" style={{ minWidth: 0 }}>
+        <header ref={headerRef} data-testid="liquidity-week-header" className="sticky top-0 z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
+          <div className="flex flex-col xl:flex-row xl:items-baseline gap-1 xl:gap-4" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
             <Cap>{fmt.dateKo(selW.date)} 기준 · 유동성 주간 / 신용 지표별 주기</Cap>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <button type="button" onClick={() => selectWeek(-1)} disabled={curIdx >= weeks.length - 1} style={{ minHeight: 36, padding: "0 16px", fontSize: 13, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.4 : 1, cursor: curIdx >= weeks.length - 1 ? "default" : "pointer" }}>이번 주로</button>
             <button type="button" onClick={() => selectWeek(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx <= 0 ? 0.3 : 1, cursor: "pointer" }}>◀</button>
             <button type="button" onClick={() => selectWeek(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.3 : 1, cursor: "pointer" }}>▶</button>
