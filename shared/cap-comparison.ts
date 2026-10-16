@@ -34,12 +34,21 @@ export const insightContextSchema = z.object({
 }).strict();
 export type InsightContext = z.infer<typeof insightContextSchema>;
 // Time anchors remain independent; context remembers which graphs the prose references.
+export const comparisonQuoteTableSchema = z.object({
+  id: z.string().uuid(), from: date, to: date,
+  rows: z.array(z.object({
+    label: z.string().min(1).max(200),
+    start: z.number().finite(), end: z.number().finite(), change: z.number().finite(),
+  }).strict()).min(1).max(100),
+}).strict().refine(t => t.to >= t.from, "표의 종료일은 시작일 이후여야 합니다.");
+export type ComparisonQuoteTable = z.infer<typeof comparisonQuoteTableSchema>;
 export const comparisonInsightSchema = z.object({
   title: z.string().trim().min(1).max(160),
   date, endDate: date.nullable(),
   text: z.string().max(100000), caption: z.string().max(180),
   sortOrder: z.number().finite(),
   context: insightContextSchema.nullable().optional(),
+  tables: z.array(comparisonQuoteTableSchema).max(100).optional(),
 }).strict().refine(p => !p.endDate || p.endDate >= p.date, "종료일은 시작일 이후여야 합니다.");
 export type ComparisonInsight = z.infer<typeof comparisonInsightSchema>;
 export type SavedInsight = ComparisonInsight & { id: string };
@@ -69,6 +78,11 @@ export function centerRange(center: number, duration: number, extent: [number, n
   const span = Math.min(extent[1] - extent[0], Math.max(31 * 86400000, duration));
   const start = Math.max(extent[0], Math.min(extent[1] - span, center - span / 2));
   return [start, start + span];
+}
+export function insightTimeRange(note: Pick<SavedInsight, "date" | "endDate">, extent: [number, number]): [number, number] {
+  const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date);
+  const padding = Math.max(365 * 86400000, (end - start) * .25);
+  return centerRange((start + end) / 2, end - start + 2 * padding, extent);
 }
 export function presetRange(range: [number, number], mode: "month" | "year", extent: [number, number]): [number, number] {
   const center = (range[0] + range[1]) / 2;
@@ -105,8 +119,11 @@ export function spreadPoints(a: ComparePoint[], b: ComparePoint[]): SpreadPoint[
 }
 // Use only actual observations inside the requested interval. Expose effective
 // dates rather than silently presenting nearby values as exact boundary values.
+export function periodObservations(points: (ComparePoint | SpreadPoint)[], from: string, to: string) {
+  return points.filter(p => p.date >= from && p.date <= to && (!("aDate" in p) || (p.aDate >= from && p.aDate <= to && p.bDate >= from && p.bDate <= to)));
+}
 export function periodSummary(points: (ComparePoint | SpreadPoint)[], from: string, to: string) {
-  const visible = points.filter(p => p.date >= from && p.date <= to && (!("aDate" in p) || (p.aDate >= from && p.aDate <= to && p.bDate >= from && p.bDate <= to)));
+  const visible = periodObservations(points, from, to);
   if (visible.length < 2) return null;
   const first = visible[0], last = visible.at(-1)!;
   return { first, last, change: last.raw - first.raw, percent: first.raw > 0 ? (last.raw / first.raw - 1) * 100 : null,
