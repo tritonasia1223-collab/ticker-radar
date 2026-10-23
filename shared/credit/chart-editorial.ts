@@ -1,3 +1,4 @@
+import { hasWeeklyEditorial, weeklyEditorial } from '../weekly-editorial.js';
 import type { ChapterParagraph } from './chapter-reading.js';
 import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from '../october-week-two-editorial.js';
 
@@ -35,6 +36,7 @@ const copy: Record<string, string[]> = {
 };
 
 export function chartEditorial(id: string, asOf: string, weeks: number): ChapterParagraph[] {
+  if (hasWeeklyEditorial(asOf)) return weeklyEditorial(id, asOf, weeks);
   if (asOf === OCTOBER_WEEK_TWO && weeks === 4) {
     // 새 H.8 관측이 없는 두 잔액 해설은 사용자가 확정한 1주차 문안을 그대로 유지한다.
     if (['h8_ci_loans', 'h8_loans_to_nondepository'].includes(id)) return chartEditorial(id, '2026-10-07', weeks);

@@ -1,8 +1,10 @@
+import { hasWeeklyEditorial, weeklyEditorial } from './weekly-editorial.js';
 import type { ChapterParagraph } from './credit/chapter-reading.js';
 import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from './october-week-two-editorial.js';
 
 // 사용자가 제공·검토한 주차별 해설. 다른 주차에 재사용하지 않는다.
 export function overviewEditorial(asOf: string): ChapterParagraph[] {
+  if (hasWeeklyEditorial(asOf)) return weeklyEditorial('overview', asOf);
   if (asOf === OCTOBER_WEEK_TWO) return octoberWeekTwoEditorial('overview', asOf);
   // 사용자가 제공한 집계와 확정 문안. 다른 주차나 월초의 자동 판정 규칙으로 쓰지 않는다.
   if (asOf !== '2026-10-07') return [];
@@ -13,6 +15,7 @@ export function overviewEditorial(asOf: string): ChapterParagraph[] {
 }
 
 export function amountEditorial(asOf: string, weeks: number): ChapterParagraph[] {
+  if (hasWeeklyEditorial(asOf)) return weeklyEditorial('amount', asOf, weeks);
   if (asOf === OCTOBER_WEEK_TWO) return octoberWeekTwoEditorial('amount', asOf, weeks);
   if (asOf !== '2026-09-30' || weeks !== 4) return [];
   return [
@@ -24,6 +27,7 @@ export function amountEditorial(asOf: string, weeks: number): ChapterParagraph[]
 }
 
 export function ownershipEditorial(asOf: string): ChapterParagraph[] {
+  if (hasWeeklyEditorial(asOf)) return weeklyEditorial('ownership', asOf);
   if (asOf === OCTOBER_WEEK_TWO) return octoberWeekTwoEditorial('ownership', asOf);
   if (asOf !== '2026-09-30') return [];
   return [{ kind: 'analysis', text: '국채를 가장 많이 가진 곳은 해외 투자자지만, 지금 국채를 사주는 곳은 따로 있습니다. 해외 투자자는 전체의 32%를 들고 있는데, 지난 1년간 새로 늘어난 국채는 8%만 가져갔습니다. 반면 MMF는 보유 비중이 11%인데 증가분의 30%를 샀습니다. MMF가 최대 매수자라는 사실은 단기채 의존과 같은 이야기입니다. (MMF는 규정상 단기채만 살 수 있기 때문)' }];

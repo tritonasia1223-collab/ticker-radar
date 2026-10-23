@@ -14,12 +14,12 @@ const raw = (ids: string[]) => ids.map(id => ({ def: COMPARE_SERIES.find(s => s.
 const build = (ids: string[], overrides: Partial<ComparisonView> = {}) => buildComparisonAxes(raw(ids), { ...view, ...overrides });
 
 describe("mixed comparison axes", () => {
-  it("renders the reported four indicators, both trade series, and all 16 selected indicators", () => {
+  it("renders current indicators and reports the pre-euro mark unavailable at the modern common base", () => {
     for (const ids of [["cpi_level", "debt_gdp", "trade_bal", "net_exports_gdp"], ["net_exports_gdp", "trade_bal"], ["trade_bal", "net_exports_gdp"], COMPARE_SERIES.map(s => s.id)]) {
       const result = buildComparisonAxes(raw(ids), automaticComparisonView(ids));
-      expect(result.series.map(s => s.def.id).sort()).toEqual([...ids].sort());
+      expect(result.series.map(s => s.def.id).sort()).toEqual(ids.filter(id => id !== "fx_dem").sort());
       expect(result.pending).toEqual([]);
-      expect(result.unavailable).toEqual([]);
+      expect(result.unavailable).toEqual(ids.includes("fx_dem") ? ["fx_dem"] : []);
       expect(result.axes.filter(a => !a.independent && a.side === "right")).toHaveLength(1);
       for (const s of result.series) {
         expect(s.points.length).toBeGreaterThan(0);

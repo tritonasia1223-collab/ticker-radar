@@ -24,7 +24,7 @@ import { TreasuryOwnership } from "@/components/TreasuryOwnership";
 import { TreasuryPeriodComparison } from '@/components/TreasuryPeriodComparison';
 import { treasuryEditorialByChart } from '@shared/treasury-comparison';
 import { amountEditorial, overviewEditorial, ownershipEditorial } from '@shared/liquidity-editorial';
-import { octoberWeekTwoEditorial, octoberWeekTwoNote } from '@shared/october-week-two-editorial';
+import { weeklyEditorial, weeklyEditorialNote } from '@shared/weekly-editorial';
 import { liquidityPeriods } from '@shared/liquidity-periods';
 import { LiquidityLevels } from "@/components/LiquidityLevels";
 import { LiquidityDashboard } from "@/components/LiquidityDashboard";
@@ -409,12 +409,12 @@ export default function LiquidityRead() {
 
         <LiquidityFlowConnection revision={selDate}>
         {/* 02 어디서 */}
-        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나" paragraphs={octoberWeekTwoEditorial('source', selDate)}>
+        <Section id="s2" num="02" title="어디서" question="누가 이 변화를 만들었나" paragraphs={weeklyEditorial('source', selDate)}>
           <LiquidityPeriodPanels weeks={weeks} selected={sel} kind="source" dominantShare={cfg.DOMINANT_SHARE} />
         </Section>
 
         {/* 03 어디로 */}
-        <Section id="s3" num="03" title="어디로" question="유동성 변화가 어디에 반영됐나" paragraphs={octoberWeekTwoEditorial('destination', selDate)}>
+        <Section id="s3" num="03" title="어디로" question="유동성 변화가 어디에 반영됐나" paragraphs={weeklyEditorial('destination', selDate)}>
           <LiquidityPeriodPanels weeks={weeks} selected={sel} kind="destination" dominantShare={cfg.DOMINANT_SHARE} />
           {to && (<>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -477,7 +477,7 @@ export default function LiquidityRead() {
           </>)}
         </Row>
 
-        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap><div className="mt-3"><ReadingOpinion id="treasury-holders" title="국채 보유 주체" paragraphs={ownershipEditorial(selDate)} note={octoberWeekTwoNote('ownership', selDate)} /></div></div>}>
+        <Row id="treasury-holders" aside={<div className="flex flex-col gap-1"><div style={{ fontSize: 16, fontWeight: 600 }}>누가 들고 있나</div><Cap>국채 보유 주체와<br />스테이블코인 발행사</Cap><div className="mt-3"><ReadingOpinion id="treasury-holders" title="국채 보유 주체" paragraphs={ownershipEditorial(selDate)} note={weeklyEditorialNote('ownership', selDate)} /></div></div>}>
           <TreasuryOwnership asOf={selDate} />
         </Row>
 
@@ -510,7 +510,7 @@ export default function LiquidityRead() {
                 {selDate === '2026-10-07' && group.id === 'credit-bank' && !!paragraphs.length
                   && credit.data.find(indicator => indicator.id === id)?.lines.every(line => line.latest && line.latest.date <= '2026-09-30')
                   && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>새 관측이 없어 지난주 해석을 유지합니다</p>}
-                {!!paragraphs.length && octoberWeekTwoNote(id, selDate) && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{octoberWeekTwoNote(id, selDate)}</p>}
+                {!!paragraphs.length && weeklyEditorialNote(id, selDate) && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{weeklyEditorialNote(id, selDate)}</p>}
               </div>
               <div className={['bank-intro', 'cp-intro', 'bdc-intro'].includes(id) ? 'border-t border-[#1A1A18] pt-7' : ''} style={{ minWidth: 0, paddingBottom: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>{content}</div>
             </div>} />

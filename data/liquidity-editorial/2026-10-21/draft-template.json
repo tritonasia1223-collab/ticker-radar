@@ -1,0 +1,184 @@
+{
+  "asOf": "2026-10-21",
+  "previousAsOf": "2026-10-14",
+  "handoffHash": "079cb6831010e3cddcad1e839174ff7f33470c7d6b90e0b39be42618d2844173",
+  "sources": [],
+  "blocks": [
+    {
+      "id": "overview",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "amount",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "source",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "destination",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "issuance",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "auctions",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "ownership",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "rateContext",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "spread",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "nfci",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "facilities",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "h8_ci_loans",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "h8_loans_to_nondepository",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "sloos_ci_standards",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "sloos_ci_demand",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "h8_large_vs_small_banks",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "corporate_bond_issuance",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "bond-dashboard",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "leveraged_loans",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "cp-dashboard",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "bdc_price_to_nav",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "bdc_credit_quality",
+      "decision": "omit",
+      "reason": "",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    }
+  ]
+}

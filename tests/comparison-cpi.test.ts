@@ -11,7 +11,7 @@ import { differenceSeries, type Point } from "../shared/capitalism-refresh";
 const data = JSON.parse(readFileSync("client/src/data/capitalism-series.json", "utf8")) as Record<string, Point[]>;
 describe("CPI level replaces YoY only in comparison views", () => {
   it("keeps the original YoY series and real-rate calculation while selecting CPIAUCNS", () => {
-    expect(COMPARE_SERIES).toHaveLength(16);
+    expect(COMPARE_SERIES).toHaveLength(17);
     expect(COMPARE_SERIES.some(s => s.id === "inflation")).toBe(false);
     expect(COMPARE_SERIES.find(s => s.id === "cpi_level")).toMatchObject({ unit: "idx", cadence: 1, category: "economy", url: "https://fred.stlouisfed.org/series/CPIAUCNS" });
     expect(PANELS.find(s => s.id === "inflation")?.series).toBe("inflation");

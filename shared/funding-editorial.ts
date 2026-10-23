@@ -1,3 +1,4 @@
+import { hasWeeklyEditorial, weeklyEditorial } from './weekly-editorial.js';
 import type { ChapterParagraph } from './credit/chapter-reading.js';
 import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from './october-week-two-editorial.js';
 
@@ -13,6 +14,12 @@ export const FUNDING_EDITORIAL = {
 } as const;
 
 export function fundingReadingByChart(asOf: string, weeks: number, spread: number | null, hasNfci: boolean) {
+  if (hasWeeklyEditorial(asOf) && weeks === 4) return {
+    rateContext: weeklyEditorial('rateContext', asOf),
+    spread: spread === null ? [] : weeklyEditorial('spread', asOf),
+    nfci: hasNfci ? weeklyEditorial('nfci', asOf) : [],
+    facilities: weeklyEditorial('facilities', asOf),
+  };
   if (asOf === OCTOBER_WEEK_TWO && weeks === 4) return {
     rateContext: octoberWeekTwoEditorial('rateContext', asOf),
     spread: spread === null ? [] : octoberWeekTwoEditorial('spread', asOf),

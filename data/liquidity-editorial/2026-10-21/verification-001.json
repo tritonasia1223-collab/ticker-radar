@@ -1,0 +1,7 @@
+{
+  "kind": "agent_validation",
+  "notHumanFeedback": true,
+  "reason": "4주 롤링 창에서 빠진 9/16→9/23 TGA 흐름은 축적이 아니라 방출. 검산으로 source 첫 문단 정정.",
+  "fromRevision": 1,
+  "toRevision": 2
+}

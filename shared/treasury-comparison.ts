@@ -1,5 +1,6 @@
 import { BIDDERS, type AuctionAgg, type Bidder, type Maturity } from './liquidity-beta.js';
 import type { TreasuryFlow } from './treasury-flow.js';
+import { hasWeeklyEditorial, weeklyEditorial } from './weekly-editorial.js';
 import type { ChapterParagraph } from './credit/chapter-reading.js';
 import { OCTOBER_WEEK_TWO, octoberWeekTwoEditorial } from './october-week-two-editorial.js';
 
@@ -26,6 +27,10 @@ export const NON_BILLS: Maturity[] = ['notes', 'bonds', 'tips', 'frn'];
 
 /** 사용자가 지정한 해설만 해당 주차에 표시한다. 다른 주차에 자동 문안을 채우지 않는다. */
 export function treasuryEditorialByChart(asOf: string, weeks: number, flow: TreasuryFlow | null, current: AuctionAgg | null, previous: AuctionAgg | null, monthly: TreasuryStock[]): { issuance: ChapterParagraph[]; auctions: ChapterParagraph[] } {
+  if (hasWeeklyEditorial(asOf) && weeks === 4) return {
+    issuance: flow?.end === asOf && flow.weeks === weeks ? weeklyEditorial('issuance', asOf) : [],
+    auctions: current && previous ? weeklyEditorial('auctions', asOf) : [],
+  };
   if (asOf === OCTOBER_WEEK_TWO && weeks === 4) return {
     issuance: flow?.end === asOf && flow.weeks === weeks ? octoberWeekTwoEditorial('issuance', asOf) : [],
     auctions: current && previous ? octoberWeekTwoEditorial('auctions', asOf) : [],
