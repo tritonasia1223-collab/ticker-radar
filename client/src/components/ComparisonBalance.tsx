@@ -36,44 +36,31 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
       </g>)}
       <line x1={editing && canEdit ? 94 : 38} x2="338" y1="82" y2="82" className="stroke-foreground/35" strokeDasharray="3 4" />
       {!editing && <text x="25" y="86" fontSize="11" className="fill-muted-foreground">0</text>}
-      <BalanceBar id="money" label="돈" x={128} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} />
-      <BalanceBar id="goods" label="물건" x={263} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} />
-      {!editing && <>
-        <motion.text data-testid="balance-comparison-symbol" x="195" y="165" textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={motionValues.comparisonOpacity}>{comparison}</motion.text>
-        {result && <BalanceResult text={result} opacity={motionValues.resultOpacity} />}
-      </>}
+      <BalanceBar id="money" label="돈" x={128} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} />
+      <BalanceBar id="goods" label="물건" x={263} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} />
+      <motion.text data-testid="balance-comparison-symbol" x="195" y="165" textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
+      {(result || editing) && <BalanceResult text={result} opacity={motionValues.resultOpacity} editing={editing && canEdit} onCommit={outcomeLabel => onChange({ outcomeLabel })} />}
     </svg>
     {editing && canEdit && <div className="mt-1 px-2" data-testid="balance-controls">
-      <p className="text-center text-[11px] text-muted-foreground">막대를 위아래로 드래그 · 방향키로 한 칸씩 조정</p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {(["money", "goods"] as const).map(kind => {
-          const key = kind === "money" ? "moneyLabel" : "goodsLabel";
-          return <label key={kind} className="text-xs text-muted-foreground">{kind === "money" ? "돈" : "물건"} 설명
-            <input key={value[key] ?? ""} aria-label={(kind === "money" ? "돈" : "물건") + " 막대 설명"} defaultValue={value[key] ?? ""} maxLength={20} placeholder="비우면 증가·감소 표시" className="mt-1 w-full min-w-0 rounded-md border bg-background px-2 py-1.5 text-foreground" onBlur={e => { const next = e.target.value.trim(); if (next !== (value[key] ?? "") && !onChange({ [key]: next })) e.target.value = value[key] ?? ""; }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
-          </label>;
-        })}
-      </div>
-      <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">결과
-        <input key={result} defaultValue={result} maxLength={40} placeholder="예: 호황형 골디락스" aria-label="도표 결과 문구" className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1.5 text-foreground" onBlur={e => { const next = e.target.value.trim(); if (next !== result && !onChange({ outcomeLabel: next })) e.target.value = result; }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
-      </label>
+      <p className="text-center text-[11px] text-muted-foreground">막대는 드래그 · 문구는 클릭해서 수정</p>
       <div className="flex items-center justify-between pt-1"><button className="text-[11px] text-muted-foreground hover:text-red-500" onClick={() => { if (onChange(null)) setEditing(false); }}>도표 제거</button><button className="rounded-md bg-foreground px-3 py-1.5 text-xs text-background" onClick={closeEditor}>완료</button></div>
     </div>}
   </section>;
 }
 
-function BalanceResult({ text, opacity }: { text: string; opacity: MotionValue<number> }) {
+function BalanceResult({ text, opacity, editing, onCommit }: { text: string; opacity: MotionValue<number>; editing: boolean; onCommit: (text: string) => boolean }) {
   const label = useRef<SVGTextElement>(null);
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => { setWidth(label.current?.getComputedTextLength() ?? 0); }, [text]);
-  return <motion.g opacity={opacity}>
+  return <motion.g opacity={editing ? 1 : opacity}>
     <rect data-testid="balance-result-highlight" x={195 - width / 2 - 5} y="195" width={width + 10} height="10" rx="2" className="fill-teal-400/20 dark:fill-teal-300/20" />
-    <text ref={label} data-testid="balance-result" data-placement="bottom" x="195" y="201" textAnchor="middle" fontSize="15" fontWeight="600" className="fill-teal-700 dark:fill-teal-300">{text}</text>
+    <InlineChartText textRef={label} testId="balance-result" text={text} placeholder="결과 문구 입력" x={195} y={201} inputY={201} width={280} fontSize={15} className="fill-teal-700 dark:fill-teal-300" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} />
   </motion.g>;
 }
 
-function BalanceBar({ id, label, x, color, edge, text, target, wording, level: animatedLevel, labelOpacity, editing, onCommit }: {
+function BalanceBar({ id, label, x, color, edge, text, target, wording, level: animatedLevel, labelOpacity, editing, onCommit, onWording }: {
   id: string; label: string; x: number; color: string; edge: string; text: string; target: InsightBalance["money"]; wording?: string; level: MotionValue<number>;
-  labelOpacity: MotionValue<number>; editing: boolean; onCommit: (value: InsightBalance["money"]) => boolean;
+  labelOpacity: MotionValue<number>; editing: boolean; onCommit: (value: InsightBalance["money"]) => boolean; onWording: (text: string) => boolean;
 }) {
   const draft = useMotionValue<number>(target);
   const [step, setStep] = useState(target);
@@ -106,7 +93,7 @@ function BalanceBar({ id, label, x, color, edge, text, target, wording, level: a
   const zeroOpacity = useTransform(level, n => Math.max(0, 1 - Math.abs(n) * 8));
   const labelY = useTransform(level, n => 82 - n * 24 - 8 + 23 * Math.min(1, Math.max(0, -n / .3)));
   const labelText = wording || BALANCE_LEVELS[(editing ? step : target) + 2].label;
-  return <g data-testid={`balance-bar-${id}`} data-level={editing ? step : target}
+  return <g><g data-testid={`balance-bar-${id}`} data-level={editing ? step : target}
     role={editing ? "slider" : undefined} tabIndex={editing ? 0 : undefined}
     aria-label={editing ? `${label} 변화 단계` : undefined} aria-orientation={editing ? "vertical" : undefined}
     aria-valuemin={editing ? -2 : undefined} aria-valuemax={editing ? 2 : undefined}
@@ -147,11 +134,44 @@ function BalanceBar({ id, label, x, color, edge, text, target, wording, level: a
     }}>
     <motion.rect x={x - 23} y={y} width="46" height={height} rx="3" fill={color} fillOpacity={fillOpacity} stroke={edge} strokeOpacity={strokeOpacity} strokeWidth="1.5" />
     <motion.line x1={x - 23} x2={x + 23} y1="82" y2="82" stroke={color} strokeWidth="3" strokeLinecap="round" opacity={zeroOpacity} />
-    <motion.text data-testid={`balance-label-${id}`} x={x} y={labelY} opacity={editing ? 1 : labelOpacity} textAnchor="middle" fontSize="12" fontWeight="500" textLength={labelText.length > 10 ? 116 : undefined} lengthAdjust="spacingAndGlyphs" className={text}>{labelText}</motion.text>
     {editing && <>
       <rect x={x - 30} y={Math.min(82, 82 - step * 24) - 12} width="60" height={Math.abs(step) * 24 + 24} fill="transparent" />
       <rect className="balance-handle" x={x - 13} y={82 - step * 24 - 4} width="26" height="8" rx="4" fill={color} stroke={edge} strokeWidth="1.5" pointerEvents="none" />
     </>}
     <text x={x} y="163" textAnchor="middle" fontSize="13" fontWeight="600" className="fill-foreground">{label}</text>
+  </g>
+    <InlineChartText testId={`balance-label-${id}`} text={labelText} x={x} y={labelY} inputY={82 - step * 24 + (step < 0 ? 15 : -8)} width={124} fontSize={12} className={text} opacity={editing ? 1 : labelOpacity} editable={editing} ariaLabel={`${label} 막대 설명`} maxLength={20} onCommit={onWording} />
   </g>;
+}
+
+// Keep text editing outside the draggable slider so selecting text never moves a bar.
+function InlineChartText({ text, placeholder = "", x, y, inputY, width, fontSize, className, opacity = 1, editable, ariaLabel, maxLength, onCommit, testId, textRef }: {
+  text: string; placeholder?: string; x: number; y: number | MotionValue<number>; inputY: number; width: number; fontSize: number; className: string; opacity?: number | MotionValue<number>;
+  editable: boolean; ariaLabel: string; maxLength: number; onCommit: (text: string) => boolean; testId: string; textRef?: React.Ref<SVGTextElement>;
+}) {
+  const [active, setActive] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const cancelled = useRef(false);
+  useLayoutEffect(() => { if (!editable) setActive(false); }, [editable]);
+  useLayoutEffect(() => { if (active) { input.current?.focus(); input.current?.select(); } }, [active]);
+  const start = () => { if (editable) { cancelled.current = false; setActive(true); } };
+  if (active && editable) return <foreignObject x={x - width / 2} y={inputY - fontSize - 5} width={width} height={30}>
+    <input ref={input} aria-label={ariaLabel} defaultValue={text} maxLength={maxLength} placeholder={placeholder}
+      className="h-[28px] w-full min-w-0 rounded border border-teal-400 bg-background px-1 text-center font-medium text-foreground outline-none ring-1 ring-teal-400/30"
+      style={{ fontSize, userSelect: "text", touchAction: "auto" }}
+      onBlur={e => { if (!cancelled.current) { const next = e.target.value.trim(); if (next !== text) onCommit(next); } setActive(false); }}
+      onKeyDown={e => {
+        e.stopPropagation();
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+        if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+        if (e.key === "Escape") { e.preventDefault(); cancelled.current = true; setActive(false); }
+      }} />
+  </foreignObject>;
+  return <motion.text ref={textRef} data-testid={testId} x={x} y={y} opacity={opacity} textAnchor="middle" fontSize={fontSize} fontWeight={fontSize === 15 ? 600 : 500}
+    textLength={fontSize === 12 && text.length > 10 ? 116 : undefined} lengthAdjust="spacingAndGlyphs"
+    role={editable ? "button" : undefined} tabIndex={editable ? 0 : undefined} aria-label={editable ? `${ariaLabel} 수정` : undefined}
+    className={`${className}${editable ? " cursor-text underline decoration-dotted underline-offset-4 outline-none focus:stroke-teal-300/40" : ""}`}
+    onClick={start} onKeyDown={e => { if (editable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); start(); } }}>
+    {text || placeholder}
+  </motion.text>;
 }
