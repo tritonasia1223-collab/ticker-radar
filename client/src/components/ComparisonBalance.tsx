@@ -14,6 +14,8 @@ type Props = {
 
 export function ComparisonBalance({ value, canEdit, onChange, motionValues, initiallyEditing = false }: Props) {
   const [editing, setEditing] = useState(initiallyEditing);
+  const [resultLines, setResultLines] = useState(1);
+  const [moneyLines, setMoneyLines] = useState(1), [goodsLines, setGoodsLines] = useState(1);
   const section = useRef<HTMLElement>(null);
   const closeEditor = () => {
     setEditing(false);
@@ -26,9 +28,12 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
   const result = value.outcomeLabel ?? (value.outcome ? BALANCE_OUTCOMES[value.outcome].detail : "");
   const gap = value.money - value.goods;
   const comparison = gap >= 2 ? ">>" : gap > 0 ? ">" : gap <= -2 ? "<<" : gap < 0 ? "<" : "≈";
+  const extra = (Math.max(moneyLines, goodsLines) - 1) * 24;
+  const topPad = extra ? 10 : 0;
+  const chartHeight = 214 + extra + topPad + (resultLines - 1) * 21;
   return <section ref={section} className="relative mt-3" aria-label="돈과 물건의 변화" data-testid="insight-balance">
     {canEdit && <button aria-label="돈·물건 도표 수정" aria-expanded={editing} className="absolute right-0 top-0 z-10 rounded p-1 text-muted-foreground/60 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-sky-400" onClick={() => editing ? closeEditor() : setEditing(true)}>{editing ? <X size={13} /> : <Pencil size={13} />}</button>}
-    <svg viewBox="0 0 360 214" className="mx-auto block h-[194px] w-full max-w-[440px]" style={editing && canEdit ? { touchAction: "none" } : undefined} role={editing && canEdit ? "group" : "img"} aria-label={`돈 ${value.moneyLabel || BALANCE_LEVELS.find(l => l.value === value.money)!.label}, 물건 ${value.goodsLabel || BALANCE_LEVELS.find(l => l.value === value.goods)!.label}. ${relation}${result ? `. ${result}` : ""}`}>
+    <svg viewBox={`0 ${-topPad} 360 ${chartHeight}`} className="mx-auto block w-full max-w-[440px]" style={{ height: chartHeight * 194 / 214, ...(editing && canEdit ? { touchAction: "none" } : {}) }} role={editing && canEdit ? "group" : "img"} aria-label={`돈 ${value.moneyLabel || BALANCE_LEVELS.find(l => l.value === value.money)!.label}, 물건 ${value.goodsLabel || BALANCE_LEVELS.find(l => l.value === value.goods)!.label}. ${relation}${result ? `. ${result}` : ""}`}>
       <title>본문의 증감 방향과 강도를 나타낸 도표 · 실제 통계값이 아닙니다</title>
       {editing && canEdit && BALANCE_LEVELS.map(step => <g key={step.value} aria-hidden="true">
         <line x1="94" x2="338" y1={82 - step.value * 24} y2={82 - step.value * 24} className="stroke-foreground/10" strokeDasharray="2 4" />
@@ -36,10 +41,10 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
       </g>)}
       <line x1={editing && canEdit ? 94 : 38} x2="338" y1="82" y2="82" className="stroke-foreground/35" strokeDasharray="3 4" />
       {!editing && <text x="25" y="86" fontSize="11" className="fill-muted-foreground">0</text>}
-      <BalanceBar id="money" label="돈" x={128} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} />
-      <BalanceBar id="goods" label="물건" x={263} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} />
-      <motion.text data-testid="balance-comparison-symbol" x="195" y="165" textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
-      {(result || editing) && <BalanceResult text={result} opacity={motionValues.resultOpacity} editing={editing && canEdit} onCommit={outcomeLabel => onChange({ outcomeLabel })} />}
+      <BalanceBar id="money" label="돈" x={128} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} onLines={setMoneyLines} extra={extra} />
+      <BalanceBar id="goods" label="물건" x={263} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} onLines={setGoodsLines} extra={extra} />
+      <motion.text data-testid="balance-comparison-symbol" x="195" y={165 + extra} textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
+      <BalanceResult text={result} opacity={motionValues.resultOpacity} editing={editing && canEdit} onLines={setResultLines} extra={extra} onCommit={outcomeLabel => onChange({ outcomeLabel })} />
     </svg>
     {editing && canEdit && <div className="mt-1 px-2" data-testid="balance-controls">
       <p className="text-center text-[11px] text-muted-foreground">막대는 드래그 · 문구는 클릭해서 수정</p>
@@ -48,19 +53,16 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
   </section>;
 }
 
-function BalanceResult({ text, opacity, editing, onCommit }: { text: string; opacity: MotionValue<number>; editing: boolean; onCommit: (text: string) => boolean }) {
-  const label = useRef<SVGTextElement>(null);
-  const [width, setWidth] = useState(0);
-  useLayoutEffect(() => { setWidth(label.current?.getComputedTextLength() ?? 0); }, [text]);
+function BalanceResult({ text, opacity, editing, onCommit, onLines, extra }: { text: string; opacity: MotionValue<number>; editing: boolean; onCommit: (text: string) => boolean; onLines: (count: number) => void; extra: number }) {
   return <motion.g opacity={editing ? 1 : opacity}>
-    <rect data-testid="balance-result-highlight" x={195 - width / 2 - 5} y="195" width={width + 10} height="10" rx="2" className="fill-teal-400/20 dark:fill-teal-300/20" />
-    <InlineChartText textRef={label} testId="balance-result" text={text} placeholder="결과 문구 입력" x={195} y={201} inputY={201} width={280} fontSize={15} className="fill-teal-700 dark:fill-teal-300" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} />
+    <InlineChartText testId="balance-result" text={text} placeholder={editing ? "결과 문구 입력" : ""} x={195} y={201 + extra} inputY={201 + extra} width={280} fontSize={15} className="fill-teal-700 dark:fill-teal-300" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} onLines={onLines} highlight />
   </motion.g>;
 }
 
-function BalanceBar({ id, label, x, color, edge, text, target, wording, level: animatedLevel, labelOpacity, editing, onCommit, onWording }: {
+function BalanceBar({ id, label, x, color, edge, text, target, wording, level: animatedLevel, labelOpacity, editing, onCommit, onWording, onLines, extra }: {
   id: string; label: string; x: number; color: string; edge: string; text: string; target: InsightBalance["money"]; wording?: string; level: MotionValue<number>;
   labelOpacity: MotionValue<number>; editing: boolean; onCommit: (value: InsightBalance["money"]) => boolean; onWording: (text: string) => boolean;
+  onLines: (count: number) => void; extra: number;
 }) {
   const draft = useMotionValue<number>(target);
   const [step, setStep] = useState(target);
@@ -138,27 +140,63 @@ function BalanceBar({ id, label, x, color, edge, text, target, wording, level: a
       <rect x={x - 30} y={Math.min(82, 82 - step * 24) - 12} width="60" height={Math.abs(step) * 24 + 24} fill="transparent" />
       <rect className="balance-handle" x={x - 13} y={82 - step * 24 - 4} width="26" height="8" rx="4" fill={color} stroke={edge} strokeWidth="1.5" pointerEvents="none" />
     </>}
-    <text x={x} y="163" textAnchor="middle" fontSize="13" fontWeight="600" className="fill-foreground">{label}</text>
+    <text x={x} y={163 + extra} textAnchor="middle" fontSize="13" fontWeight="600" className="fill-foreground">{label}</text>
   </g>
-    <InlineChartText testId={`balance-label-${id}`} text={labelText} x={x} y={labelY} inputY={82 - step * 24 + (step < 0 ? 15 : -8)} width={124} fontSize={12} className={text} opacity={editing ? 1 : labelOpacity} editable={editing} ariaLabel={`${label} 막대 설명`} maxLength={20} onCommit={onWording} />
+    <InlineChartText testId={`balance-label-${id}`} text={labelText} x={x} y={labelY} inputY={82 - step * 24 + (step < 0 ? 15 : -8)} width={124} fontSize={12} className={text} opacity={editing ? 1 : labelOpacity} editable={editing} ariaLabel={`${label} 막대 설명`} maxLength={20} onCommit={onWording} above={target >= 0} onLines={onLines} />
   </g>;
 }
 
 // Keep text editing outside the draggable slider so selecting text never moves a bar.
-function InlineChartText({ text, placeholder = "", x, y, inputY, width, fontSize, className, opacity = 1, editable, ariaLabel, maxLength, onCommit, testId, textRef }: {
+function InlineChartText({ text, placeholder = "", x, y, inputY, width, fontSize, className, opacity = 1, editable, ariaLabel, maxLength, onCommit, testId, above = false, onLines, highlight = false }: {
   text: string; placeholder?: string; x: number; y: number | MotionValue<number>; inputY: number; width: number; fontSize: number; className: string; opacity?: number | MotionValue<number>;
-  editable: boolean; ariaLabel: string; maxLength: number; onCommit: (text: string) => boolean; testId: string; textRef?: React.Ref<SVGTextElement>;
+  editable: boolean; ariaLabel: string; maxLength: number; onCommit: (text: string) => boolean; testId: string; above?: boolean; onLines?: (count: number) => void; highlight?: boolean;
 }) {
   const [active, setActive] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const cancelled = useRef(false);
+  const measure = useRef<SVGTextElement>(null);
+  const [lines, setLines] = useState<{ text: string; width: number }[]>([]);
+  const displayed = text || placeholder;
+  const lineHeight = fontSize + 6;
+  const weight = fontSize === 15 ? 600 : 500;
+  useLayoutEffect(() => {
+    const el = measure.current;
+    if (!el) return;
+    let live = true;
+    const layout = () => {
+      if (!live) return;
+      const parts: { text: string; width: number }[] = [];
+      const chars = Array.from(displayed);
+      const widthOf = (value: string) => { el.textContent = value; return el.getComputedTextLength(); };
+      let start = 0;
+      while (start < chars.length) {
+        let end = start + 1;
+        while (end <= chars.length && widthOf(chars.slice(start, end).join("")) <= width) end++;
+        end = Math.max(start + 1, end - 1);
+        if (fontSize === 15 && end < chars.length) {
+          const space = chars.lastIndexOf(" ", end - 1);
+          if (space > start) end = space + 1;
+        }
+        const line = chars.slice(start, end).join("");
+        parts.push({ text: line, width: widthOf(line) });
+        start = end;
+      }
+      el.textContent = displayed;
+      setLines(parts); onLines?.(Math.max(1, parts.length));
+    };
+    layout();
+    document.fonts.ready.then(layout);
+    return () => { live = false; };
+  }, [displayed, width, fontSize, onLines]);
   useLayoutEffect(() => { if (!editable) setActive(false); }, [editable]);
   useLayoutEffect(() => { if (active) { input.current?.focus(); input.current?.select(); } }, [active]);
   const start = () => { if (editable) { cancelled.current = false; setActive(true); } };
-  if (active && editable) return <foreignObject x={x - width / 2} y={inputY - fontSize - 5} width={width} height={30}>
+  return <>
+    <text ref={measure} fontSize={fontSize} fontWeight={weight} visibility="hidden" aria-hidden="true" pointerEvents="none">{displayed}</text>
+    {active && editable ? <foreignObject x={x - width / 2} y={inputY - fontSize - 5} width={width} height={30}>
     <input ref={input} aria-label={ariaLabel} defaultValue={text} maxLength={maxLength} placeholder={placeholder}
       className="h-[28px] w-full min-w-0 rounded border border-teal-400 bg-background px-1 text-center font-medium text-foreground outline-none ring-1 ring-teal-400/30"
-      style={{ fontSize, userSelect: "text", touchAction: "auto" }}
+      style={{ fontSize, fontWeight: weight, userSelect: "text", touchAction: "auto" }}
       onBlur={e => { if (!cancelled.current) { const next = e.target.value.trim(); if (next !== text) onCommit(next); } setActive(false); }}
       onKeyDown={e => {
         e.stopPropagation();
@@ -166,12 +204,13 @@ function InlineChartText({ text, placeholder = "", x, y, inputY, width, fontSize
         if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
         if (e.key === "Escape") { e.preventDefault(); cancelled.current = true; setActive(false); }
       }} />
-  </foreignObject>;
-  return <motion.text ref={textRef} data-testid={testId} x={x} y={y} opacity={opacity} textAnchor="middle" fontSize={fontSize} fontWeight={fontSize === 15 ? 600 : 500}
-    textLength={fontSize === 12 && text.length > 10 ? 116 : undefined} lengthAdjust="spacingAndGlyphs"
+  </foreignObject> : <>
+    {highlight && lines.map((line, index) => <rect key={index} data-testid="balance-result-highlight" x={x - line.width / 2 - 5} y={inputY - 6 + index * lineHeight} width={line.width + 10} height="10" rx="2" className="fill-teal-400/20 dark:fill-teal-300/20" />)}
+    <motion.text data-testid={testId} x={x} y={y} opacity={opacity} textAnchor="middle" fontSize={fontSize} fontWeight={weight}
     role={editable ? "button" : undefined} tabIndex={editable ? 0 : undefined} aria-label={editable ? `${ariaLabel} 수정` : undefined}
-    className={`${className}${editable ? " cursor-text underline decoration-dotted underline-offset-4 outline-none focus:stroke-teal-300/40" : ""}`}
+    className={`${className}${editable ? " cursor-text underline decoration-dotted underline-offset-4 outline-none focus:decoration-solid" : ""}`}
     onClick={start} onKeyDown={e => { if (editable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); start(); } }}>
-    {text || placeholder}
-  </motion.text>;
+    {lines.map((line, index) => <tspan key={index} x={x} dy={index === 0 ? (above ? -(lines.length - 1) * lineHeight : 0) : lineHeight}>{line.text}</tspan>)}
+  </motion.text></>}
+  </>;
 }
