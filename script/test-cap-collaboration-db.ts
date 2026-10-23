@@ -136,7 +136,17 @@ try {
   staleSeed.changes.push({ path: ["text"], before: latest.doc!.text, after: latest.doc!.text });
   await assert.rejects(() => applyCollaborativeEdit(staleSeed, isolated), CollaborationConflict);
   assert.deepEqual((await getResource("note:one", isolated)).doc, inline);
-  await applyCollaborativeEdit(op("note:one", inline, null), isolated);
+  const labelled = { ...inline, balance: { ...balance, moneyLabel: "수요 위축", goodsLabel: "재고가 남음" } };
+  await applyCollaborativeEdit(op("note:one", inline, labelled), isolated);
+  const older = insightForClient(await getResource("note:one", isolated), true, false);
+  assert.equal((older.doc!.balance as any).moneyLabel, undefined);
+  await applyCollaborativeEdit(op("note:one", older.doc, { ...older.doc, title: "Older editor latest title" }), isolated, false, true);
+  const protectedLabels = await getResource("note:one", isolated);
+  assert.deepEqual(protectedLabels.doc!.balance, labelled.balance);
+  await assert.rejects(() => applyCollaborativeEdit(op("note:one", older.doc, { ...older.doc, balance: { money: 2, goods: 2 } }), isolated, false, true), InsightUpgradeRequired);
+  await assert.rejects(() => applyCollaborativeEdit(op("note:one", older.doc, { ...older.doc, scenes: [] }), isolated, false, true), InsightUpgradeRequired);
+  assert.deepEqual((await getResource("note:one", isolated)).doc, protectedLabels.doc);
+  await applyCollaborativeEdit(op("note:one", protectedLabels.doc, null), isolated);
   const removedNote = await getResource("note:one", isolated);
   assert.equal(removedNote.doc, null); assert.ok(removedNote.version > written.version);
   assert.equal((await getResource("plot:two", isolated)).doc!.nodeKey, "b");

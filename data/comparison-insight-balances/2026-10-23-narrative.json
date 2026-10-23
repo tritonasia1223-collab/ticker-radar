@@ -1,0 +1,429 @@
+{
+  "date": "2026-10-23",
+  "scope": "사용자 승인 개별 해석 도표 수정. 기존 본문 보존. 신규 27번은 공급 충격 재발 장면만 추가.",
+  "entries": [
+    {
+      "key": "note:7e08e719-9fc4-47e4-ad8e-ac091e47b6e9",
+      "title": "1차 대전의 전쟁 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "sourceVersion": 1792736162579,
+      "sourceDocHash": "4dd2ae77a11b6c2c4aa7d7bba6bce2dfb9d2676f9083eb87990fdb133f196dc8",
+      "balance": {
+        "money": 2,
+        "goods": -1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션",
+        "moneyLabel": "전시 돈이 남아돎",
+        "goodsLabel": "군수·수출로 부족"
+      }
+    },
+    {
+      "key": "note:03463758-1025-40ad-972e-bf4a2b9bc4d2",
+      "title": "종전 이후 1920~21년 [침체형 디플레이션] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "sourceVersion": 1792736182144,
+      "sourceDocHash": "c67f6b7860774e88492a516058ed6a4d823f1efa91d42d5f0e59d70963a8b9a9",
+      "balance": {
+        "money": -2,
+        "goods": 1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션",
+        "moneyLabel": "돈줄 급감",
+        "goodsLabel": "재고가 풀림"
+      }
+    },
+    {
+      "key": "note:9914c4eb-9a68-4573-87d0-16eb24cf6316",
+      "title": "1920년대 대량생산, 할부확대=[겉보기 골디락스] 물건↑≈돈↑→물가 안정 생산 ↑",
+      "sourceVersion": 1792736193551,
+      "sourceDocHash": "b55ef069a2ab81dfbe93bfa403db9e287b4b72fa326448790d0abe64a3be2663",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "겉보기 골디락스",
+        "moneyLabel": "할부·신용 확대",
+        "goodsLabel": "대량생산"
+      }
+    },
+    {
+      "key": "note:a4bca5f6-e2b9-43b1-8209-591d88f1af4f",
+      "title": "경제 대공황 [침체형 디플레이션] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "sourceVersion": 1792736207814,
+      "sourceDocHash": "0456701945b3c5ca1fd70e7225e5fc56c177fe6dd18fa370bdb2da92be2a9ca7",
+      "balance": {
+        "money": -2,
+        "goods": 1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션",
+        "moneyLabel": "돈·신용 붕괴",
+        "goodsLabel": "재고가 남음"
+      }
+    },
+    {
+      "key": "note:f4be8491-a212-4f69-a8eb-58ad823331c7",
+      "title": "1차 뉴딜-경제회복 [인플레이션 반등 시작]",
+      "sourceVersion": 1792736223696,
+      "sourceDocHash": "f7162fb7f09663e179cf29d79a43c678f131deb4c7163be011633dbf6fc165dc",
+      "balance": {
+        "money": 1,
+        "goods": -1,
+        "outcome": "inflation",
+        "outcomeLabel": "인플레이션 반등",
+        "moneyLabel": "다시 풀기 시작",
+        "goodsLabel": "정책으로 공급 억제"
+      }
+    },
+    {
+      "key": "note:336e4234-f566-4f09-b571-d1924f75fbae",
+      "title": "2차 뉴딜(1) -사회보장 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "sourceVersion": 1792736240396,
+      "sourceDocHash": "840cddce2a129925a5e9d4a13001c313dcc75a46f7948f1b6ce7a1f571217f7b",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션",
+        "moneyLabel": "지출·소득 확대",
+        "goodsLabel": "생산 회복"
+      }
+    },
+    {
+      "key": "note:31eb2137-d123-4072-a600-5d70baf9165e",
+      "title": "2차 뉴딜(2)  [침체형 디플레이션] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "sourceVersion": 1792736260759,
+      "sourceDocHash": "66740a4442391db270bc947ca055c03bb1b8aa0a8117f00709188f4b3b72c591",
+      "balance": {
+        "money": -2,
+        "goods": 1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션",
+        "moneyLabel": "세 갈래 긴축",
+        "goodsLabel": "쌓아둔 재고가 남음"
+      }
+    },
+    {
+      "key": "note:25f91680-5606-4640-ae49-90e78e1c4310",
+      "title": "회복기 [호황형 골디락스(약)] 돈 ↑ ≈ 물건 ↑ → 물가 정체 생산 ↑",
+      "sourceVersion": 1792736287275,
+      "sourceDocHash": "b78a6993cb96cc8bad08afa781730666c5fb91cecaacbd64f711dc1029c5a191",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스 · 약",
+        "moneyLabel": "다시 돈을 풂",
+        "goodsLabel": "빈 공장이 다시 가동"
+      }
+    },
+    {
+      "key": "note:b51329ca-c92d-4389-bb5d-a2d86261d2a3",
+      "title": "2차 대전 발발(미국 참전 전) [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "sourceVersion": 1792736303970,
+      "sourceDocHash": "5e8a44122c95ce037321046f8fd7b38d625e140a92ab63a37a0fc41c0c182a0b",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스",
+        "moneyLabel": "수요 확대",
+        "goodsLabel": "여유 생산이 흡수"
+      }
+    },
+    {
+      "key": "note:3d2de73c-8ac5-4268-ba33-27eeb835636d",
+      "title": "2차 대전 [호황형 인플레이션(억제)] 돈 ↑ → 물가↑(억눌림) 생산 ↑",
+      "sourceVersion": 1792736321480,
+      "sourceDocHash": "043f7c956a94cf719ecfca19db33fb67466254697d18981bc0db071af1a12382",
+      "balance": {
+        "money": 2,
+        "goods": -2,
+        "outcome": "inflation",
+        "outcomeLabel": "인플레이션 · 가격통제",
+        "moneyLabel": "전시 지출 지속",
+        "goodsLabel": "민간 공급 더 제한"
+      }
+    },
+    {
+      "key": "note:eadb785f-77d7-4fc4-bac2-9f0df09ff7bb",
+      "title": "2차 대전 후 본격 부채 녹이기 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "sourceVersion": 1792736338174,
+      "sourceDocHash": "56d7a20524b87066b2cde50e3d5652d2d5a2bfd9d7780fb710d8c1a6e352a77c",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "전후 인플레이션",
+        "moneyLabel": "쌓였던 돈이 풀림",
+        "goodsLabel": "민간 공급 회복"
+      }
+    },
+    {
+      "key": "note:8fac4aef-9d8d-4884-99a2-5f077c9ae82b",
+      "title": "민간 생산 정상화 [침체형 디플레이션(약)] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "sourceVersion": 1792736349439,
+      "sourceDocHash": "8be7007d0d18d6457a6e2b43301593bccd49301db573966335cdcbca27859a61",
+      "balance": {
+        "money": -1,
+        "goods": 1,
+        "outcome": "deflation",
+        "outcomeLabel": "디플레이션 · 약",
+        "moneyLabel": "수요 위축",
+        "goodsLabel": "공급이 따라잡음"
+      },
+      "scenes": [
+        {
+          "id": "c6f0b8fb-7a62-46db-853a-98e0d23f60a2",
+          "title": "1949년 말 · 완화 후 회복",
+          "balance": {
+            "money": 1,
+            "goods": 1,
+            "outcome": "goldilocks",
+            "outcomeLabel": "완화 후 회복",
+            "moneyLabel": "다시 돈을 풂",
+            "goodsLabel": "생산이 회복됨"
+          },
+          "append": true
+        }
+      ]
+    },
+    {
+      "key": "note:ad5054fb-1ee7-4835-aa39-a152e7e8af15",
+      "title": "한국 전쟁 발발 (냉전시대) [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "sourceVersion": 1792736364228,
+      "sourceDocHash": "bfb8e7b5349792f8bbcff790a1046c6e7f3de5f322124dcfb09b68855bd8ba42",
+      "balance": {
+        "money": 2,
+        "goods": -1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션",
+        "moneyLabel": "사재기·신용 급증",
+        "goodsLabel": "진열대가 비어감"
+      }
+    },
+    {
+      "key": "note:900956a4-9c53-430c-9a58-d50170f96681",
+      "title": "세금으로 치른 전쟁 [디스인플레이션→골디락스] 돈 ≈ 물건 → 물가 안정 생산 ↑",
+      "sourceVersion": 1792736387022,
+      "sourceDocHash": "8eb2e7eda13fb1b8b50c0e5b661d1b6981532304a4a3989141de2a5a9fecd345",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스",
+        "moneyLabel": "과열이 식음",
+        "goodsLabel": "공급이 따라옴"
+      }
+    },
+    {
+      "key": "note:2ffae084-6720-4bd7-b65b-8c7d675827f1",
+      "title": "종전 침체 [침체형 디플레이션 (약)] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "sourceVersion": 1792736401276,
+      "sourceDocHash": "a9b746596b24c2294e096b1280a6cbf5deecc485ec8891d27e86fc44bce2dacc",
+      "balance": {
+        "money": -1,
+        "goods": 1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션 · 약",
+        "moneyLabel": "전쟁 주문 감소",
+        "goodsLabel": "재고·설비가 남음"
+      }
+    },
+    {
+      "key": "note:fe602338-1961-4944-bac6-acd76b99e592",
+      "title": "회복과 자동차 붐 [호황형 골디락스 (빈 식당형)] 돈 ↑ ≈ 물건 ↑ → 물가 정체 생산 ↑",
+      "sourceVersion": 1792736415523,
+      "sourceDocHash": "370100140d2128350fd920cd1b892d666e9cc2fba0b271b60b22468cce81a2fb",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스",
+        "moneyLabel": "소비·대출 회복",
+        "goodsLabel": "빈 설비가 생산으로"
+      }
+    },
+    {
+      "key": "note:d2cd00f8-062a-441e-b318-8731c863246c",
+      "title": "투자 붐 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 -",
+      "sourceVersion": 1792736429769,
+      "sourceDocHash": "bbc2040db9cc5c7fc93066fd8a98350a6474960d0def839c4201281e61736da1",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션",
+        "moneyLabel": "투자 수요 확대",
+        "goodsLabel": "병목으로 못 따라감"
+      }
+    },
+    {
+      "key": "note:2e9d24d5-147d-49ac-bba1-d5bbcc51421e",
+      "title": "짧은 침체  → [침체형(겉보기 스태그)] 돈 ↓ → 생산 ↓, 물가는 ↑",
+      "sourceVersion": 1792736442393,
+      "sourceDocHash": "9c9922a4249d1d7ae5de229ef1f40ecf2682f1bf9047caa7e66e1e1ae2e920ee",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "stagflation",
+        "outcomeLabel": "침체 · 원가 압력으로 물가 상승",
+        "moneyLabel": "긴축·투자 위축",
+        "goodsLabel": "생산 감소·원가 압력"
+      }
+    },
+    {
+      "key": "note:51cb7cbe-d8d5-477d-b72d-1173026f7510",
+      "title": "긴축 속의 회복 [호황형 골디락스 (약)] 돈 ↑ ≈ 물건 ↑ → 물가 정체 생산 ↑",
+      "sourceVersion": 1792736455019,
+      "sourceDocHash": "87d177e88eb1d670630d6701934c0edd748f178baa012f88505e70066aafe536",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스 · 약",
+        "moneyLabel": "회복하되 과열 억제",
+        "goodsLabel": "여유 설비 활용"
+      }
+    },
+    {
+      "key": "note:53cb378a-2a76-4b51-b550-2dcb68166cf7",
+      "title": "긴축의 대가 [침체형 디플레이션 (약)] 돈 ↓ → 물가 정체 생산 ↓",
+      "sourceVersion": 1792738189449,
+      "sourceDocHash": "abd1594f208e4ae2d5968d7abfe8897f1f1bd253de01e867759b771520e99483",
+      "balance": {
+        "money": -1,
+        "goods": 1,
+        "moneyLabel": "긴축으로 수요 위축",
+        "goodsLabel": "재고·설비가 남음",
+        "outcome": "stable",
+        "outcomeLabel": "저물가 속 침체"
+      }
+    },
+    {
+      "key": "note:073514d3-af18-4c6e-92e6-8a11112b29c8",
+      "title": "저물가 고성장 황금기 [골디락스(강)] 돈 ↑ ≈ 물건 ↑ → 물가 안정 생산 ↑",
+      "sourceVersion": 1792736479042,
+      "sourceDocHash": "7e322cf5bc65ceba3eebf386e0cea3ec18dec9f58ce6e1f12ae61c8babdde90f",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스",
+        "moneyLabel": "수요 회복",
+        "goodsLabel": "생산·공급이 받침"
+      }
+    },
+    {
+      "key": "note:178f59af-da08-4896-9878-acbaa34c28ef",
+      "title": "총과 버터 [호황형 인플레이션] 돈 ↑↑ → 물가 ↑ 생산 ↑",
+      "sourceVersion": 1792736501031,
+      "sourceDocHash": "0a471cd8074ce39f1a7ab38fc24b1e124f088f2b59e8aa1b5b3749d576d18adf",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션",
+        "moneyLabel": "전쟁·복지 지출 확대",
+        "goodsLabel": "늘지만 못 따라감"
+      }
+    },
+    {
+      "key": "note:fc5753a1-d524-459d-8e88-cfe844764c71",
+      "title": "닉슨의 첫 긴축 [침체형 (겉보기 스태그)] 돈 ↓ → 생산 ↓, 물가는 ↑",
+      "sourceVersion": 1792736519358,
+      "sourceDocHash": "6c21436e2597d62843438ec34b43c1d0e1836d692d121ac2a9670c13c682c4da",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "stagflation",
+        "outcomeLabel": "침체 · 물가 기대가 버팀",
+        "moneyLabel": "긴축으로 수요 위축",
+        "goodsLabel": "생산 감소·원가 압력"
+      }
+    },
+    {
+      "key": "note:7524b32b-7b00-4821-a148-3f989ed5c089",
+      "title": "닉슨 쇼크 [호황형 인플레 + 가격 통제] 돈 ↑↑ → 물가 ↑(뚜껑으로 억제) 생산 ↑ // 달러 ↓",
+      "sourceVersion": 1792732589912,
+      "sourceDocHash": "06c072d399aac36e071481b565c43651868b72e276fdf7cd109ee3a18918098e",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "moneyLabel": "재부양·신용 확대",
+        "goodsLabel": "회복하나 못 따라감",
+        "outcome": "inflation",
+        "outcomeLabel": "인플레이션 압력 · 가격통제"
+      }
+    },
+    {
+      "key": "note:e5be178c-7bb0-4b7c-b202-78b419b67779",
+      "title": "석유 파동 [스태그플레이션] 물건 ↓ → 물가 ↑↑ 생산 ↓",
+      "sourceVersion": 1792734753659,
+      "sourceDocHash": "5ce2a1e5ce7ff9c4576ab9f0dbda2e524389a600965e82f95f52ae65f24680be",
+      "balance": {
+        "money": 2,
+        "goods": -1,
+        "moneyLabel": "과열이 남아 있음",
+        "goodsLabel": "공급 충격",
+        "outcome": "stagflation",
+        "outcomeLabel": "공급 충격 · 스태그플레이션"
+      },
+      "scenes": [
+        {
+          "id": "00c66db7-f627-436d-a725-b475aafcc053",
+          "title": "긴축과 생산 위축이 겹침",
+          "balance": {
+            "money": -1,
+            "goods": -2,
+            "outcome": "stagflation",
+            "outcomeLabel": "긴축이 겹치며 침체 심화",
+            "moneyLabel": "긴축·소비 위축",
+            "goodsLabel": "공급 제약 더 심화"
+          },
+          "before": "② [[hl-b|연준 긴축]]: 1973년 [[hl-b|금리 인상]] → 1974년 중반 연방기금금리 13% (당시 사상 최고) "
+        }
+      ]
+    },
+    {
+      "key": "note:cd9b3636-6a54-43b1-9e0f-70da7e7263f3",
+      "title": "물가 높은 상태로 돈만 품 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑→정체 // 달러 ↓",
+      "sourceVersion": 1792739385814,
+      "sourceDocHash": "426b262da0dbac789723fcc13bffd7413fef7375e759cfdae3be1dcbde625cb7",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "moneyLabel": "소비·신용 회복",
+        "goodsLabel": "생산 회복",
+        "outcome": "inflation",
+        "outcomeLabel": "회복 · 높은 물가 지속"
+      },
+      "scenes": [
+        {
+          "id": "faa91ce5-12b6-450a-bebb-497c88868ae9",
+          "title": "1978년 · 공급이 수요를 못 따라감",
+          "balance": {
+            "money": 2,
+            "goods": 1,
+            "outcome": "inflation",
+            "outcomeLabel": "인플레이션 재가속",
+            "moneyLabel": "돈이 더 빠르게 늘어남",
+            "goodsLabel": "늘지만 더 못 따라감"
+          },
+          "before": "④ [[hl-g|1978년 만석 도달]]: 실업률 6%, 가동률 85%대 → 수요가 늘어도 [[c-g|생산이 못 따라감 → 물가 9%로 재가속]]"
+        }
+      ]
+    },
+    {
+      "key": "note:26a21f53-d746-4b8e-af2c-0f5b625748a8",
+      "title": "유가 또 터지고 볼커 등장 [스태그플레이션] 물건 ↓ → 물가 ↑↑ 생산 ↓",
+      "sourceVersion": 1792739515436,
+      "sourceDocHash": "eda9977099171aae250b69628e06af12b10f03854ac207eff82b7c5019aae95d",
+      "balance": {
+        "money": 2,
+        "goods": -2,
+        "moneyLabel": "과열이 남아 있음",
+        "goodsLabel": "공급 충격 재발",
+        "outcome": "stagflation",
+        "outcomeLabel": "2차 석유 충격 · 스태그플레이션"
+      }
+    }
+  ]
+}

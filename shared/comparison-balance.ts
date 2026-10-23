@@ -7,6 +7,8 @@ export const insightBalanceSchema = z.object({
   goods: balanceLevelSchema,
   outcome: z.enum(["inflation", "deflation", "stagflation", "goldilocks", "stable"]).nullable(),
   outcomeLabel: z.string().trim().max(40).optional(),
+  moneyLabel: z.string().trim().max(20).optional(),
+  goodsLabel: z.string().trim().max(20).optional(),
 }).strict();
 export type InsightBalance = z.infer<typeof insightBalanceSchema>;
 export type BalanceLevel = InsightBalance["money"];

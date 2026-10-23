@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261023-narrative-diagrams",
+  "title": "인사이트별 해석 도표 수정 및 신규 카드 도표 반영",
+  "baseRef": "d62b889",
+  "requirement": "승인된 개별 수정안과 최신 신규 카드를 반영하고, 재고·공급 제약 등 막대별 문구를 지원한다. 운영 본문과 다른 필드는 보존한다.",
+  "acceptanceCriteria": [
+    "도표별 막대 문구가 기존 페이드와 함께 표시되고 편집 가능하다",
+    "구형 클라이언트는 글을 계속 읽고 본문을 편집할 수 있으며 새 도표 문구를 지우지 못한다",
+    "운영 반영은 검토한 문서 버전·해시가 일치할 때만 협업 API로 수행한다",
+    "본문은 중간 도표 마커 외 바뀌지 않으며 기존 장면을 보존한다",
+    "신규 카드도 최신 원문을 읽어 개별 해석하고 도표를 채운다"
+  ],
+  "requiredChecks": ["npm.cmd run check", "npx.cmd vitest run tests/comparison-balance.test.ts tests/comparison-publication.test.ts tests/comparison-narrative.test.ts tests/comparison-scenes.test.ts", "npm.cmd run cap:collab:test-db", "npm.cmd run build"],
+  "requiresEvaluationDatabase": true
+}

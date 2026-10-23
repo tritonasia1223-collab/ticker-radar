@@ -6,7 +6,7 @@ import { capFlows, capNodes, capEdges, capLinks, capSettings, capEditOperations,
 import { assemble } from "./capitalism.js";
 import { PLOT_PREFIX, NOTE_PREFIX, comparisonInsightSchema, placementSchema, isPlotKey, isNoteKey } from "../shared/cap-comparison.js";
 import { diff, equal, flowDocument, merge, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration.js";
-import { DIAGRAM_HEADER, insightForClient, guardLegacyInsightEdit, InsightUpgradeRequired } from "../shared/comparison-compat.js";
+import { DIAGRAM_HEADER, LABEL_HEADER, insightForClient, guardLegacyInsightEdit, guardUnlabelledInsightEdit, InsightUpgradeRequired } from "../shared/comparison-compat.js";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 const resourceKey = z.string().refine(key => /^(flow|meta):[^\s]{1,200}$/.test(key) || isPlotKey(key) || isNoteKey(key));
@@ -128,7 +128,7 @@ async function writeResource(tx: Tx, current: Resource, doc: Document): Promise<
 export class CollaborationConflict extends Error {
   constructor(public current: Resource, public conflicts: ReturnType<typeof merge>["conflicts"]) { super("동일한 항목이 다른 곳에서 수정되었습니다."); }
 }
-export async function applyCollaborativeEdit(op: EditRequest, database = db, legacyNotes = false): Promise<Resource & { operation: string }> {
+export async function applyCollaborativeEdit(op: EditRequest, database = db, legacyNotes = false, unlabelledNotes = false): Promise<Resource & { operation: string }> {
   return database.transaction(async (tx) => {
     await lock(tx, "operation:" + op.id);
     await lock(tx, op.resource.startsWith("meta:") ? "meta" : op.resource);
@@ -140,6 +140,7 @@ export async function applyCollaborativeEdit(op: EditRequest, database = db, leg
     }
     if (op.ifVersion !== undefined && op.ifVersion !== current.version) throw new CollaborationConflict(current, [{ path: [], before: null, after: null, remote: current.doc }]);
     if (legacyNotes) guardLegacyInsightEdit(current.doc, op);
+    if (unlabelledNotes) guardUnlabelledInsightEdit(current.doc, op);
     const merged = merge(current.doc, op.changes);
     if (merged.conflicts.length) throw new CollaborationConflict(current, merged.conflicts);
     const result = equal(current.doc, merged.doc) ? current : await writeResource(tx, current, merged.doc);
@@ -151,7 +152,7 @@ export function registerCollaborationRoutes(app: Express) {
   app.get("/api/capitalism/collab/insights", async (req, res) => {
     try {
       const rows = await db.select().from(capSettings).where(sql`starts_with(${capSettings.key}, ${NOTE_PREFIX})`);
-      res.set("Cache-Control", "no-store").json(rows.map(r => insightForClient({ key: `note:${r.key.slice(NOTE_PREFIX.length)}`, version: Number(r.updatedAt), doc: r.value ? JSON.parse(r.value) : null }, req.get(DIAGRAM_HEADER) === "1")));
+      res.set("Cache-Control", "no-store").json(rows.map(r => insightForClient({ key: `note:${r.key.slice(NOTE_PREFIX.length)}`, version: Number(r.updatedAt), doc: r.value ? JSON.parse(r.value) : null }, req.get(DIAGRAM_HEADER) === "1", req.get(LABEL_HEADER) === "1")));
     } catch { res.status(503).json({ error: "인사이트를 읽지 못했습니다." }); }
   });
   app.get("/api/capitalism/collab/comparison", async (_req, res) => {
@@ -161,15 +162,15 @@ export function registerCollaborationRoutes(app: Express) {
     } catch { res.status(503).json({ error: "비교 보드를 읽지 못했습니다." }); }
   });
   app.get("/api/capitalism/collab/resource", async (req, res) => {
-    try { const key = resourceKey.parse(req.query.key); res.set("Cache-Control", "no-store").json(insightForClient(await getResource(key), req.get(DIAGRAM_HEADER) === "1")); }
+    try { const key = resourceKey.parse(req.query.key); res.set("Cache-Control", "no-store").json(insightForClient(await getResource(key), req.get(DIAGRAM_HEADER) === "1", req.get(LABEL_HEADER) === "1")); }
     catch (e) { res.status(e instanceof z.ZodError ? 400 : 503).json({ error: "문서를 읽지 못했습니다." }); }
   });
   app.post("/api/capitalism/collab/edit", async (req, res) => {
-    const diagrams = req.get(DIAGRAM_HEADER) === "1";
-    try { res.json(insightForClient(await applyCollaborativeEdit(validateEdit(req.body), db, !diagrams), diagrams)); }
+    const diagrams = req.get(DIAGRAM_HEADER) === "1", labels = req.get(LABEL_HEADER) === "1";
+    try { res.json(insightForClient(await applyCollaborativeEdit(validateEdit(req.body), db, !diagrams, !labels), diagrams, labels)); }
     catch (e) {
       if (e instanceof InsightUpgradeRequired) { res.status(428).json({ error: e.message }); return; }
-      if (e instanceof CollaborationConflict) { res.status(409).json({ error: e.message, current: insightForClient(e.current, diagrams), conflicts: e.conflicts }); return; }
+      if (e instanceof CollaborationConflict) { res.status(409).json({ error: e.message, current: insightForClient(e.current, diagrams, labels), conflicts: e.conflicts }); return; }
       if (e instanceof z.ZodError || (e instanceof Error && /경로|필드|ID|일치|순서/.test(e.message))) { res.status(400).json({ error: String(e) }); return; }
       console.error("[cap-collab]", e); res.status(503).json({ error: "저장에 실패했습니다. 초안을 보관하고 재시도합니다." });
     }
