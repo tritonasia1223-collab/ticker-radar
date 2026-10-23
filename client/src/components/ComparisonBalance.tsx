@@ -28,7 +28,7 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
   const comparison = gap >= 2 ? ">>" : gap > 0 ? ">" : gap <= -2 ? "<<" : gap < 0 ? "<" : "≈";
   return <section ref={section} className="relative mt-3" aria-label="돈과 물건의 변화" data-testid="insight-balance">
     {canEdit && <button aria-label="돈·물건 도표 수정" aria-expanded={editing} className="absolute right-0 top-0 z-10 rounded p-1 text-muted-foreground/60 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-sky-400" onClick={() => editing ? closeEditor() : setEditing(true)}>{editing ? <X size={13} /> : <Pencil size={13} />}</button>}
-    <svg viewBox="0 0 360 206" className="mx-auto block h-[186px] w-full max-w-[440px]" style={editing && canEdit ? { touchAction: "none" } : undefined} role={editing && canEdit ? "group" : "img"} aria-label={`돈 ${BALANCE_LEVELS.find(l => l.value === value.money)!.label}, 물건 ${BALANCE_LEVELS.find(l => l.value === value.goods)!.label}. ${relation}${result ? `. ${result}` : ""}`}>
+    <svg viewBox="0 0 360 214" className="mx-auto block h-[194px] w-full max-w-[440px]" style={editing && canEdit ? { touchAction: "none" } : undefined} role={editing && canEdit ? "group" : "img"} aria-label={`돈 ${BALANCE_LEVELS.find(l => l.value === value.money)!.label}, 물건 ${BALANCE_LEVELS.find(l => l.value === value.goods)!.label}. ${relation}${result ? `. ${result}` : ""}`}>
       <title>본문의 증감 방향과 강도를 나타낸 도표 · 실제 통계값이 아닙니다</title>
       {editing && canEdit && BALANCE_LEVELS.map(step => <g key={step.value} aria-hidden="true">
         <line x1="94" x2="338" y1={82 - step.value * 24} y2={82 - step.value * 24} className="stroke-foreground/10" strokeDasharray="2 4" />
@@ -40,7 +40,7 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
       <BalanceBar id="goods" label="물건" x={263} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} />
       {!editing && <>
         <motion.text data-testid="balance-comparison-symbol" x="195" y="165" textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={motionValues.comparisonOpacity}>{comparison}</motion.text>
-        {result && <motion.text data-testid="balance-result" data-placement="bottom" x="195" y="193" textAnchor="middle" fontSize="15" fontWeight="600" className="fill-teal-700 dark:fill-teal-300" opacity={motionValues.resultOpacity}>{result}</motion.text>}
+        {result && <BalanceResult text={result} opacity={motionValues.resultOpacity} />}
       </>}
     </svg>
     {editing && canEdit && <div className="mt-1 px-2" data-testid="balance-controls">
@@ -51,6 +51,16 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
       <div className="flex items-center justify-between pt-1"><button className="text-[11px] text-muted-foreground hover:text-red-500" onClick={() => { if (onChange(null)) setEditing(false); }}>도표 제거</button><button className="rounded-md bg-foreground px-3 py-1.5 text-xs text-background" onClick={closeEditor}>완료</button></div>
     </div>}
   </section>;
+}
+
+function BalanceResult({ text, opacity }: { text: string; opacity: MotionValue<number> }) {
+  const label = useRef<SVGTextElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => { setWidth(label.current?.getComputedTextLength() ?? 0); }, [text]);
+  return <motion.g opacity={opacity}>
+    <rect data-testid="balance-result-highlight" x={195 - width / 2 - 5} y="195" width={width + 10} height="10" rx="2" className="fill-teal-400/20 dark:fill-teal-300/20" />
+    <text ref={label} data-testid="balance-result" data-placement="bottom" x="195" y="201" textAnchor="middle" fontSize="15" fontWeight="600" className="fill-teal-700 dark:fill-teal-300">{text}</text>
+  </motion.g>;
 }
 
 function BalanceBar({ id, label, x, color, edge, text, target, level: animatedLevel, labelOpacity, editing, onCommit }: {

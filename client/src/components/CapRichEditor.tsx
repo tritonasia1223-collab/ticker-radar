@@ -218,7 +218,7 @@ export interface LinkTarget { slug: string; year: number; title: string; }
 
 export interface CapRichEditorHandle {
   // 현재 캐럿 위치에서 본문을 둘로 분할(마크 보존). 캐럿이 이 에디터 밖이면 null.
-  splitAtCaret(): { before: string; after: string } | null;
+  splitAtCaret(): { before: string; after: string; source: string } | null;
   splitAfterParagraph(): { before: string; after: string } | null;
   blur(): void;
 }
@@ -275,13 +275,14 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     },
     splitAtCaret() {
       const el = ref.current;
-      if (!el) return null;
+      if (!el || composingRef.current) return null;
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) return null;
       const r = sel.getRangeAt(0);
       if (!el.contains(r.startContainer)) return null;
       const offset = caretSerializeOffsetOf(el, r.startContainer, r.startOffset);
-      return splitRichTextAt(serializeEl(el), offset);
+      const source = serializeEl(el);
+      return { ...splitRichTextAt(source, offset), source };
     },
     blur() { ref.current?.blur(); },
   }));

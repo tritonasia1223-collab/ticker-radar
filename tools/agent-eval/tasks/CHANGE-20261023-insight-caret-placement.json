@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261023-insight-caret-placement",
+  "title": "결과 형광펜과 본문 커서 위치 도표 삽입",
+  "baseRef": "e2a3dfb",
+  "requirement": "결과 문구에 옅은 청록색 형광펜과 약간의 위 여백을 준다. 글을 다 쓴 뒤에도 원하는 위치에 도표를 넣고 옮길 수 있게 한다.",
+  "acceptanceCriteria": [
+    "결과와 형광펜은 같은 페이드로 나타나고 기존 애니메이션을 유지한다",
+    "도표 추가 후 커서를 놓고 확인하면 해당 위치에 삽입하며 자동 끝 삽입은 하지 않는다",
+    "기존 도표를 임의 커서 위치로 이동할 때 설정·본문·강조를 보존한다",
+    "취소는 저장하지 않으며 한글 조합 중 분할이나 오래된 문단 덮어쓰기를 막는다",
+    "데스크톱과 390px 로컬 미리보기에서 확인하고 운영 데이터는 변경하지 않는다"
+  ],
+  "requiredChecks": ["npm.cmd run check", "npx.cmd vitest run tests/comparison-scenes.test.ts tests/comparison-balance.test.ts tests/cap-richtext-palette.test.ts", "npm.cmd run build"],
+  "requiresEvaluationDatabase": false
+}
