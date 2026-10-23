@@ -31,6 +31,9 @@ const CURRENT: Record<string, Omit<SourcePeriod, "from">[]> = {
 };
 
 const SPECIAL: Record<string, SourcePeriod[]> = {
+  fx_dem: [
+    { from: "1971-01-01", to: "1998-12-01", source: "FRED 독일 마르크/달러 · 월평균", id: "EXGEUS", url: fred("EXGEUS"), note: "1달러당 마르크 · 비계절조정 · 원자료 그대로 사용. 1999년 이후 유로 고정환산값은 제외." },
+  ],
   real_tb3ms: [
     { from: "1914-01-01", to: "1933-12-01", source: "상업어음 금리(대용) − CPI 전년비", id: "M13002US35620M156NNBR − CPIAUCNS YoY", url: "https://fred.stlouisfed.org/graph/?id=M13002US35620M156NNBR,CPIAUCNS", note: "T-bill 이전 대용값 · 비계절조정 CPI · 직접 계산." },
     { from: "1934-01-01", to: "1947-12-01", source: "3개월 T-bill − CPI 전년비(비계절조정)", id: "TB3MS − CPIAUCNS YoY", url: "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCNS", note: "동월 금리 − 물가상승률 · 직접 계산." },
@@ -70,7 +73,7 @@ export function historyOf(seriesKey: string): SeriesHistory | null {
 
 export function sourcePeriods(seriesKey: string): SourcePeriod[] {
   const h = historyOf(seriesKey);
-  if (["real_tb3ms", "usd_purchasing_power", "cpi_level", "dxy", "gold"].includes(seriesKey)) return SPECIAL[seriesKey];
+  if (["real_tb3ms", "usd_purchasing_power", "cpi_level", "dxy", "gold", "fx_dem"].includes(seriesKey)) return SPECIAL[seriesKey];
   if (!h) return [];
   const earlier = h.segments.map(s => ({ from: s.from, to: s.to, source: s.source, id: s.id, url: s.url,
     note: ["trade", "trade_bal", "net_exports_gdp", "real_gdp"].includes(seriesKey) ? s.note : seriesKey === "debt_gdp" ? "직접 계산한 대용값. 1939년 경계에 약 8%p 단절." : s.proxy ? "정의가 다른 대용 지표 · 배율 조정 없음." : s.method === "rebase" ? "배율을 조정해 연결." : "배율 조정 없음." }));

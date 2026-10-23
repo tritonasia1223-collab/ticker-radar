@@ -11,7 +11,7 @@ export const COMPARE_CATEGORIES = {
   economy: { label: "경제·무역", color: "#8b5cf6" },
 };
 const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
-  dollar: ["dxy", "reer", "usd_purchasing_power", "fx_krw", "fx_jpy", "fx_eur"],
+  dollar: ["dxy", "reer", "usd_purchasing_power", "fx_krw", "fx_jpy", "fx_dem", "fx_eur"],
   money: ["real_tb3ms", "m2"],
   assets: ["gold", "oil", "nasdaq"],
   economy: ["real_gdp", "cpi_level", "debt_gdp", "trade_bal", "net_exports_gdp"],
@@ -34,6 +34,7 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
     url: p.id === "net_exports_gdp" ? "https://fred.stlouisfed.org/graph/?id=NETEXP,GDP" : p.id === "real_tb3ms" ? "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL" : p.id === "dxy" ? "https://finance.yahoo.com/quote/DX-Y.NYB/history/" : p.id === "gold" ? "https://datahub.io/core/gold-prices" : `https://fred.stlouisfed.org/series/${ids[p.id]}` })),
   { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
   { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
+  { id: "fx_dem", label: "마르크/달러 환율", unit: "마르크 / 1달러", color: "#64748b", cadence: 1, category: "dollar", note: "1971~1998 월평균 · 1달러당 독일 마르크 · 상승=달러 강세/마르크 약세 · 1999년 이후 유로 환산값 제외", url: "https://fred.stlouisfed.org/series/EXGEUS" },
   { id: "fx_eur", label: "유로/달러 환율", unit: "달러 / 1유로", color: "#38bdf8", cadence: 1, category: "money", note: "월평균 · 시장 관행(EUR/USD)대로 1유로당 달러 · 상승=유로 강세/달러 약세(원·엔 환율과 방향 반대) · 1999년 유로 도입 이후 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXUSEU" },
   // 미국 대외거래 — 명목 상품·서비스 무역수지.
   { id: "trade_bal", label: "미국 무역수지", unit: "$B", color: "#fb923c", cadence: 1, category: "money", note: "상품·서비스 명목 무역수지(국제수지 기준) · 십억 달러/월 · 초기 연간÷12, 이후 계절조정 월간 · 음수=적자", url: "https://fred.stlouisfed.org/series/BOPGSTB" },
@@ -62,7 +63,7 @@ export function makeSpread(spec: SpreadSpec | null | undefined, data: Record<str
 }
 export const numberLabel = (value: number) => value.toLocaleString("ko", { maximumFractionDigits: 2 });
 export const signedLabel = (value: number) => (value > 0 ? "+" : "") + numberLabel(value);
-export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === "idx" || unit === "p" ? "pt" : unit === "원 / 1달러" ? "원" : unit === "엔 / 1달러" ? "엔" : unit === "달러 / 1유로" ? "달러" : unit; }
+export function deltaUnit(unit: string) { return unit === "%" ? "%p" : unit === "idx" || unit === "p" ? "pt" : unit === "원 / 1달러" ? "원" : unit === "엔 / 1달러" ? "엔" : unit === "마르크 / 1달러" ? "마르크" : unit === "달러 / 1유로" ? "달러" : unit; }
 
 // Preserve saved note identities; never relabel the retired composite as DXY or REER.
 const retiredTradeLabels: Record<string, string> = { gdp_growth: "실질 GDP 성장률", trade: "실질 순수출", trade_cycle: "수출−수입 증가율 격차", exports_yoy: "미국 수출 증가율", imports_yoy: "미국 수입 증가율" };
@@ -74,7 +75,7 @@ export const viewingSeriesIds = (ids: string[]) => activeSeriesIds(ids.map(id =>
 
 const shortLabels: Record<string, string> = {
   dxy: "달러지수(DXY, 명목)", reer: "실질실효환율(REER)", usd_purchasing_power: "달러 구매력",
-  fx_krw: "원/달러", fx_jpy: "엔/달러", fx_eur: "유로/달러",
+  fx_krw: "원/달러", fx_jpy: "엔/달러", fx_dem: "마르크/달러", fx_eur: "유로/달러",
   real_tb3ms: "실질금리", m2: "M2 통화량", gold: "금", oil: "유가(WTI)", nasdaq: "나스닥 종합",
   cpi_level: "물가 수준(CPI)", debt_gdp: "정부부채/GDP",
 };

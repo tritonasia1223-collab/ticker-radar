@@ -31,6 +31,7 @@ interface SeriesDef {
   freq: "monthly" | "asis"; // monthly=일별→월말 다운샘플 / asis=원본 날짜 유지(월·분기·주간·일간)
   valueCol?: number;    // 값 컬럼 인덱스(기본 1)
   fromDate?: string;    // 'YYYY-MM-DD' 이상만 포함
+  toDate?: string;      // 종료된 통화 등은 이 날짜까지의 원자료만 포함
   scale?: number;       // 값 배율(예: 백만$→십억$ = 1/1000)
   decimals: number;
   transform?: "yoy";    // yoy = 12개월 전 대비 % 변화(월별 시리즈 전용)
@@ -41,6 +42,7 @@ interface SeriesDef {
 const SERIES: SeriesDef[] = [
   { key: "fx_krw", fredId: "EXKOUS", freq: "asis", decimals: 4 },
   { key: "fx_jpy", fredId: "EXJPUS", freq: "asis", decimals: 4 },
+  { key: "fx_dem", fredId: "EXGEUS", freq: "asis", decimals: 4, toDate: "1998-12-31" }, // 1999~ 유로 고정환산값 제외
   { key: "fx_eur", fredId: "EXUSEU", freq: "asis", decimals: 4 }, // 유로/달러(1유로당 달러, 월평균, 1999~) — 원·엔과 방향 반대
   // ── 미국 대외거래(그래프 비교 전용) — 국제수지 기준 상품·서비스, 월간 ──
   { key: "trade_bal", fredId: "BOPGSTB", freq: "asis", scale: 1 / 1000, decimals: 1 },                 // 무역수지($B, 음수=적자)
@@ -111,6 +113,7 @@ async function buildFetched(s: SeriesDef): Promise<Point[]> {
   let pts = s.freq === "monthly" ? closedMonthEnds(raw) : raw;
   if (s.transform === "yoy") pts = annualChange(pts, s.decimals);
   if (s.fromDate) pts = pts.filter(([d]) => d >= s.fromDate!);
+  if (s.toDate) pts = pts.filter(([d]) => d <= s.toDate!);
   if (s.key.startsWith("fx_") || ["cpi_level", "reer"].includes(s.key)) pts = pts.filter(([d]) => d.slice(0, 7) < new Date().toISOString().slice(0, 7));
   const scale = s.scale ?? 1;
   if (scale !== 1 || s.transform !== "yoy") pts = pts.map(([d, v]) => [d, Number((v * scale).toFixed(s.decimals))] as Point);

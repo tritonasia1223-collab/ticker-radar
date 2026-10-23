@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261023-DEM",
+  "title": "그래프 비교에 독일 마르크/달러 추가",
+  "baseRef": "origin/master",
+  "requirement": "마르크/달러를 유로/달러와 별도의 선택 지표로 추가한다. 1달러당 마르크, 월평균, 1998년까지 수록한다.",
+  "acceptanceCriteria": [
+    "공식 EXGEUS 월간 원자료를 사용하고 1999년 이후 고정 유로 환산값을 제외한다.",
+    "달러·환율에서 선택하고 기존 지표와 함께 표시하며 인사이트 구간 요약에서도 사용할 수 있다.",
+    "유로를 포함한 모든 기존 시계열 및 저장된 인사이트를 변경하지 않는다.",
+    "정기 수집도 동일한 종료일을 적용하여 유로 환산값을 다시 추가하지 않는다."
+  ],
+  "requiredChecks": ["npm.cmd run check", "npx.cmd vitest run tests/comparison-dem.test.ts tests/comparison-independent.test.ts tests/comparison-period-change.test.ts", "npm.cmd run build"],
+  "requiresEvaluationDatabase": false,
+  "notes": "로컬 브라우저에서 선택·겹침·구간 요약·개인 설정 새로고침을 확인한다. 운영 인사이트에는 테스트 데이터를 쓰지 않으며, 배포는 별도 명시 요청 후 진행한다."
+}
