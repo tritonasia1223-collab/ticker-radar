@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261023-category-visibility",
+  "title": "선택을 보존하는 카테고리 표시 토글",
+  "baseRef": "1cd8e64",
+  "requirement": "달러·환율과 경제·무역 제목을 밑줄 버튼으로 만들고 선택된 지표만 숨겼다가 복원한다.",
+  "acceptanceCriteria": [
+    "두 카테고리를 독립적으로 숨기고 복원하며 미선택 지표를 켜지 않는다",
+    "숨김 상태와 선택 상태를 구분하고 새로고침에도 유지한다",
+    "숨김은 기간·인사이트 데이터·관련 지표를 변경하지 않는다",
+    "전체 선택 해제와 인사이트 관련 그래프 복원 시 숨김을 초기화한다",
+    "로컬 브라우저에서 복원·전체 숨김·모바일 표시를 확인한다"
+  ],
+  "requiredChecks": ["npm.cmd run check", "npx.cmd vitest run tests/comparison-visibility.test.ts tests/comparison-independent.test.ts", "npm.cmd run build"],
+  "requiresEvaluationDatabase": false
+}

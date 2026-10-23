@@ -7,6 +7,7 @@ import { Plus, ChevronDown, Layers, MousePointer2, CalendarPlus, ScanLine, BookO
 import { CompareChart, iso, type ChartTool } from "@/components/CompareChart";
 import { ComparisonInsightContext } from "@/components/ComparisonInsightContext";
 import { ComparisonIndicatorPicker } from "@/components/ComparisonIndicatorPicker";
+import { readHiddenCategories, visibleIndicatorIds, type ToggleCategory } from "@/lib/comparison-visibility";
 import { SeriesSourceHistory } from "@/components/SeriesSourceHistory";
 import { sourcePeriods } from "@/lib/capitalism-history";
 import { ComparisonSidebar } from "@/components/ComparisonSidebar";
@@ -27,8 +28,8 @@ const DAY = 86400000;
 const inputClass = "rounded-md border border-border bg-background px-2 py-1.5 text-xs min-w-0";
 const buttonClass = "inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed";
 const plain = (text: string) => parseRich(text).map(s => s.text).join("").trim();
-type Preferences = { ids: string[]; view: ComparisonView; from: number; to: number; smooth: boolean; months: number; phases: boolean; reference: string; history: boolean; badges: boolean; spread: SpreadSpec | null };
-const defaults: Preferences = { ids: ["dxy", "reer", "usd_purchasing_power"], view: { mode: "independent", base: "2000-01", assignments: {}, rightUnit: null }, from: Date.UTC(1990, 0, 1), to: Date.now(), smooth: false, months: 12, phases: false, reference: "dxy", history: false, badges: true, spread: null };
+type Preferences = { ids: string[]; hiddenCategories: ToggleCategory[]; view: ComparisonView; from: number; to: number; smooth: boolean; months: number; phases: boolean; reference: string; history: boolean; badges: boolean; spread: SpreadSpec | null };
+const defaults: Preferences = { ids: ["dxy", "reer", "usd_purchasing_power"], hiddenCategories: [], view: { mode: "independent", base: "2000-01", assignments: {}, rightUnit: null }, from: Date.UTC(1990, 0, 1), to: Date.now(), smooth: false, months: 12, phases: false, reference: "dxy", history: false, badges: true, spread: null };
 function readPreferences(): Preferences {
   try {
     const current = localStorage.getItem("comparison-view-v3") ?? localStorage.getItem("comparison-view-v2");
@@ -38,7 +39,7 @@ function readPreferences(): Preferences {
     if (v && Array.isArray(v.ids) && validDate(base + "-01") && Number.isFinite(v.from) && Number.isFinite(v.to) && v.to > v.from && Math.abs(v.from) < 1e14 && Math.abs(v.to) < 1e14) {
       const ids = viewingSeriesIds(v.ids);
       const view = independentComparisonView(ids, parsedView.success ? parsedView.data : undefined, base);
-      return { ...defaults, ids, view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "inflation" ? "cpi_level" : v.reference === "trade" ? "net_exports_gdp" : v.reference === "gdp_growth" ? "real_gdp" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
+      return { ...defaults, ids, hiddenCategories: readHiddenCategories(v.hiddenCategories), view, from: v.from, to: v.to, smooth: v.smooth === true, months: [3, 6, 12, 24].includes(v.months) ? v.months : 12, phases: current ? v.phases === true : false, history: current ? v.history === true : false, badges: v.badges !== false, reference: v.reference === "inflation" ? "cpi_level" : v.reference === "trade" ? "net_exports_gdp" : v.reference === "gdp_growth" ? "real_gdp" : typeof v.reference === "string" ? v.reference : "dxy", spread: activeSpread(v.spread) };
     }
   } catch { /* Viewing preferences are optional. */ }
   return defaults;
@@ -53,9 +54,10 @@ export default function GraphCompare() {
   const seriesQuery = useCapSeries();
   const flows = flowQuery.data ?? EMPTY_FLOWS;
   const [prefs, setPrefs] = useState(readPreferences);
+  const visibleIds = useMemo(() => visibleIndicatorIds(prefs.ids, prefs.hiddenCategories), [prefs.ids, prefs.hiddenCategories]);
   const [ready, setReady] = useState(false);
   const [focusedSeries, setFocusedSeries] = useState<string | null>(null);
-  useEffect(() => { if (focusedSeries && !prefs.ids.includes(focusedSeries)) setFocusedSeries(null); }, [prefs.ids, focusedSeries]);
+  useEffect(() => { if (focusedSeries && !visibleIds.includes(focusedSeries)) setFocusedSeries(null); }, [visibleIds, focusedSeries]);
   const reducedMotion = useReducedMotion();
   const [focusTransition, setFocusTransition] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -96,6 +98,7 @@ export default function GraphCompare() {
   }), [prefs.ids, seriesQuery.data]);
   const comparison = useMemo(() => buildComparisonAxes(rawSeries, prefs.view), [rawSeries, prefs.view]);
   const { series, axes } = comparison;
+  const visibleSeries = useMemo(() => series.filter(s => visibleIds.includes(s.def.id)), [series, visibleIds]);
   const currentContext: InsightContext = { ids: series.map(s => s.def.id), spread: prefs.spread, view: { ...prefs.view, assignments: Object.fromEntries(Object.entries(prefs.view.assignments).filter(([id]) => series.some(s => s.def.id === id))), rightUnit: comparison.rightUnit } };
   const chartSpread = useMemo(() => makeSpread(prefs.spread, seriesQuery.data), [prefs.spread, seriesQuery.data]);
   const reference = rawSeries.find(s => s.def.id === prefs.reference) ?? rawSeries[0];
@@ -134,7 +137,7 @@ export default function GraphCompare() {
     setFocusTransition(v => v + 1);
     const ids = activeSeriesIds(context.ids);
     const start = Date.parse(note.date), end = Date.parse(note.endDate ?? note.date), pad = Math.max(365 * DAY, (end - start) * .25);
-    setPrefs(p => ({ ...p, ids, view: independentComparisonView(ids, context.view, p.view.base), spread: activeSpread(context.spread), from: start - pad, to: end + pad, badges: true }));
+    setPrefs(p => ({ ...p, ids, hiddenCategories: [], view: independentComparisonView(ids, context.view, p.view.base), spread: activeSpread(context.spread), from: start - pad, to: end + pad, badges: true }));
     setResetAxes(v => v + 1);
   };
   const showReferences = (ids: string[] = []) => { setContextIds(ids); setPanel("reference"); setSidebar(true); };
@@ -148,11 +151,11 @@ export default function GraphCompare() {
     {!!errors.length && <div role="alert" className="border-b bg-amber-500/10 px-4 py-2 text-xs">일부 자료를 불러오지 못했습니다. <button className="underline" onClick={() => errors.forEach(q => void q.refetch())}>다시 불러오기</button></div>}
     <div ref={indicatorPanel} className="relative">
     <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-      <button className={buttonClass} aria-expanded={indicators} aria-controls="comparison-indicators" onClick={() => setIndicators(!indicators)}><Layers size={14} />표시 지표 {prefs.ids.length}개<ChevronDown size={13} className={indicators ? "rotate-180" : ""} /></button>
-      <div className="order-last flex w-full flex-wrap gap-x-2 gap-y-1 text-[11px] sm:order-none sm:w-auto sm:flex-1">{prefs.ids.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <button key={id} type="button" aria-label={s.label + " 기준선 보기"} aria-pressed={focusedSeries === id} title="클릭하면 강조 · 기준선 고정, 다시 클릭하면 해제" onClick={() => setFocusedSeries(v => v === id ? null : id)} className={"inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-accent " + (focusedSeries === id ? "bg-accent font-semibold ring-1 ring-border" : "")}><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</button>; })}{!prefs.ids.length && <span className="text-muted-foreground">비교할 지표를 체크하세요</span>}</div>
+      <button className={buttonClass} aria-expanded={indicators} aria-controls="comparison-indicators" onClick={() => setIndicators(!indicators)}><Layers size={14} />표시 지표 {visibleIds.length}개{visibleIds.length < prefs.ids.length && <span className="text-muted-foreground">· {prefs.ids.length - visibleIds.length}개 숨김</span>}<ChevronDown size={13} className={indicators ? "rotate-180" : ""} /></button>
+      <div className="order-last flex w-full flex-wrap gap-x-2 gap-y-1 text-[11px] sm:order-none sm:w-auto sm:flex-1">{visibleIds.map(id => { const s = COMPARE_SERIES.find(s => s.id === id)!; return <button key={id} type="button" aria-label={s.label + " 기준선 보기"} aria-pressed={focusedSeries === id} title="클릭하면 강조 · 기준선 고정, 다시 클릭하면 해제" onClick={() => setFocusedSeries(v => v === id ? null : id)} className={"inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-accent " + (focusedSeries === id ? "bg-accent font-semibold ring-1 ring-border" : "")}><span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />{s.label}</button>; })}{!visibleIds.length && <span className="text-muted-foreground">{prefs.ids.length ? "선택한 지표가 숨겨져 있습니다" : "비교할 지표를 체크하세요"}</span>}</div>
       <button className={buttonClass + (options ? " bg-accent" : "")} aria-expanded={options} onClick={() => setOptions(!options)}><Settings2 size={14} />표시 설정</button>
     </div>
-    {indicators && <ComparisonIndicatorPicker ids={prefs.ids} onClose={() => setIndicators(false)} onClear={() => setPrefs(p => ({ ...p, ids: [], view: independentComparisonView([], p.view) }))} onToggle={(id, on) => setPrefs(p => { const ids = on ? p.ids.includes(id) ? p.ids : [...p.ids, id] : p.ids.filter(v => v !== id); return { ...p, ids, view: independentComparisonView(ids, p.view) }; })} />}
+    {indicators && <ComparisonIndicatorPicker ids={prefs.ids} hiddenCategories={prefs.hiddenCategories} onToggleCategory={category => setPrefs(p => ({ ...p, hiddenCategories: p.hiddenCategories.includes(category) ? p.hiddenCategories.filter(c => c !== category) : [...p.hiddenCategories, category] }))} onClose={() => setIndicators(false)} onClear={() => setPrefs(p => ({ ...p, ids: [], hiddenCategories: [], view: independentComparisonView([], p.view) }))} onToggle={(id, on) => setPrefs(p => { const ids = on ? p.ids.includes(id) ? p.ids : [...p.ids, id] : p.ids.filter(v => v !== id); return { ...p, ids, view: independentComparisonView(ids, p.view) }; })} />}
     </div>
     {options && <section className="space-y-3 border-b bg-muted/20 px-4 py-3 text-xs" aria-label="차트 표시 설정">
       <div className="flex flex-wrap items-center gap-4">
@@ -177,7 +180,7 @@ export default function GraphCompare() {
         </nav>
         <div className="min-w-0 flex-1 overflow-x-auto">
           {availableSpreadIds.length >= 2 && spreadOptions && <SpreadControls value={prefs.spread} onChange={spread => setPrefs(p => ({ ...p, spread }))} onClose={() => setSpreadOptions(false)} />}
-          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart focusedSeries={focusedSeries} onClearFocus={() => setFocusedSeries(null)} summary={<AnimatePresence initial={false}>{chosen?.endDate && <motion.div key="insight-summary" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={reducedMotion ? { duration: 0 } : { height: { type: "spring", stiffness: 800, damping: 40, mass: .5, restDelta: .5 }, opacity: { duration: .1, ease: "easeOut" } }} className="overflow-hidden"><ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} /></motion.div>}</AnimatePresence>} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={series} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={notes} showBadges={prefs.badges} selectedNote={selected} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
+          {seriesQuery.isLoading ? <div className="p-20 text-center text-sm text-muted-foreground">시계열 불러오는 중…</div> : <CompareChart focusedSeries={focusedSeries} onClearFocus={() => setFocusedSeries(null)} summary={<AnimatePresence initial={false}>{chosen?.endDate && <motion.div key="insight-summary" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={reducedMotion ? { duration: 0 } : { height: { type: "spring", stiffness: 800, damping: 40, mass: .5, restDelta: .5 }, opacity: { duration: .1, ease: "easeOut" } }} className="overflow-hidden"><ComparisonInsightContext summary note={chosen} currentContext={currentContext} seriesData={seriesQuery.data} canEdit={canEdit} onRestore={restoreContext} /></motion.div>}</AnimatePresence>} spread={chartSpread} onRemoveSpread={() => setPrefs(p => ({ ...p, spread: null }))} series={visibleSeries} range={range} extent={extent} axes={axes} onRange={setRange} phases={phases} events={history} onEvents={showReferences} simplifyMonths={prefs.smooth ? prefs.months : 1} notes={notes} showBadges={prefs.badges} selectedNote={selected} onNote={openNote} onCreate={addNote} tool={canEdit ? tool : "move"} onCancelTool={() => setTool("move")} resetAxes={resetAxes} layoutKey={[indicators, options, sidebar, prefs.view.mode, spreadOptions, !!prefs.spread].join(":")} />}
         </div>
       </div>
       {sidebar && <ComparisonSidebar seriesData={seriesQuery.data} currentContext={currentContext} onRestore={restoreContext} layoutKey={[indicators, options, prefs.view.mode].join(":")} notes={notes} selected={chosen} onSelect={openNote} onCloseNote={() => setSelected(null)} panel={panel} onPanel={next => { if (next === "reference") showReferences(); else setPanel(next); }} canEdit={canEdit} loading={noteQuery.isLoading} onAdd={() => addNote(iso((range[0] + range[1]) / 2), null)} onRemove={id => { collaboration.edit("note:" + id, null); setSelected(null); }} onView={note => focusRange(insightTimeRange(note, extent))} flows={flows} referencesLoading={flowQuery.isLoading} contextIds={contextIds} onClearContext={() => setContextIds([])} showHistory={prefs.history} onHistory={history => setPrefs(p => ({ ...p, history }))} onJump={slug => navigate("/capitalism?flow=" + encodeURIComponent(slug))} />}

@@ -1,10 +1,12 @@
 import { X } from "lucide-react";
 import { COMPARE_CATEGORIES, COMPARE_SERIES, shortSeriesLabel } from "@/lib/comparison-series";
+import { isToggleCategory, type ToggleCategory } from "@/lib/comparison-visibility";
 
 
 
-export function ComparisonIndicatorPicker({ ids, onToggle, onClear, onClose }: {
-  ids: string[]; onToggle: (id: string, on: boolean) => void; onClear: () => void; onClose: () => void;
+export function ComparisonIndicatorPicker({ ids, hiddenCategories, onToggleCategory, onToggle, onClear, onClose }: {
+  ids: string[]; hiddenCategories: ToggleCategory[]; onToggleCategory: (category: ToggleCategory) => void;
+  onToggle: (id: string, on: boolean) => void; onClear: () => void; onClose: () => void;
 }) {
   return <section id="comparison-indicators" aria-label="표시 지표 선택" className="fixed bottom-3 left-3 right-3 z-30 max-h-[70vh] max-w-[900px] overflow-auto rounded-xl border bg-background shadow-xl sm:absolute sm:bottom-auto sm:top-full sm:mt-1">
     <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-3 py-2.5 sm:px-4">
@@ -13,15 +15,25 @@ export function ComparisonIndicatorPicker({ ids, onToggle, onClear, onClose }: {
       <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{ids.length}개 선택</span>
       <button type="button" aria-label="지표 선택 닫기" onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-muted"><X size={16} /></button>
     </div>
-    <div className="divide-y px-3 sm:px-4">{Object.entries(COMPARE_CATEGORIES).map(([key, group]) => <div key={key} role="group" aria-labelledby={"indicator-group-" + key} className="py-2.5 sm:flex sm:items-start sm:gap-3">
-      <div id={"indicator-group-" + key} className="mb-2 flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-muted-foreground sm:mb-0 sm:w-20 sm:pt-2"><span className="h-1 w-1 rounded-full" style={{ background: group.color }} />{group.label}</div>
+    <div className="divide-y px-3 sm:px-4">{Object.entries(COMPARE_CATEGORIES).map(([key, group]) => {
+      const toggleable = isToggleCategory(key);
+      const hidden = toggleable && hiddenCategories.includes(key);
+      const selectedCount = COMPARE_SERIES.filter(s => s.category === key && ids.includes(s.id)).length;
+      return <div key={key} role="group" aria-labelledby={"indicator-group-" + key} className="py-2.5 sm:flex sm:items-start sm:gap-3">
+      <div className="mb-2 flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-muted-foreground sm:mb-0 sm:w-20 sm:pt-2">
+        <span className="h-1 w-1 rounded-full" style={{ background: group.color }} />
+        {toggleable ? <button type="button" id={"indicator-group-" + key} aria-label={group.label} aria-pressed={!hidden} disabled={!selectedCount && !hidden} onClick={() => onToggleCategory(key)} title={hidden ? `선택한 ${selectedCount}개 지표 다시 표시` : `선택한 ${selectedCount}개 지표 잠시 숨기기`} className={"rounded-sm text-left underline decoration-1 underline-offset-4 transition-colors hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40 " + (hidden ? "text-muted-foreground" : "text-foreground")}>
+          {group.label}{hidden && <span className="mt-1 block text-[10px] font-normal">숨김</span>}
+        </button> : <span id={"indicator-group-" + key}>{group.label}</span>}
+      </div>
       <div className="flex min-w-0 flex-wrap gap-1.5">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
         const checked = ids.includes(s.id);
-        return <label key={s.id} title={s.label + " · " + s.note} className={"inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors " + (checked ? "border-sky-500/30 bg-sky-500/[.07] text-foreground" : "border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground")}>
+        return <label key={s.id} title={s.label + " · " + s.note + (hidden ? " · 카테고리 숨김 중" : "")} className={"inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors " + (hidden ? "opacity-50 " : "") + (checked ? "border-sky-500/30 bg-sky-500/[.07] text-foreground" : "border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground")}>
           <input type="checkbox" aria-label={s.label} className="h-3.5 w-3.5 shrink-0 accent-sky-500" checked={checked} onChange={e => onToggle(s.id, e.target.checked)} />
           <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />{shortSeriesLabel(s.id)}
         </label>;
       })}</div>
-    </div>)}</div>
+    </div>; })}</div>
+    <p className="border-t px-3 py-2 text-[11px] text-muted-foreground sm:px-4">밑줄 친 카테고리를 누르면 선택은 유지한 채 숨기거나 다시 표시합니다.</p>
   </section>;
 }
