@@ -1,0 +1,331 @@
+{
+  "date": "2026-10-23",
+  "scope": "본문 해석에 따른 서술 단계. 실제 변화율 아님. 미리보기 적용, 운영 미적용.",
+  "entries": [
+    {
+      "key": "note:7e08e719-9fc4-47e4-ad8e-ac091e47b6e9",
+      "title": "1차 대전의 전쟁 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "date": "1919-06-18",
+      "sourceTextSha256": "bb6851a7d7c3fb500bdd10b44bb98854def3ba96f4c66c145e7b13e48c716be7",
+      "balance": {
+        "money": 2,
+        "goods": -1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션"
+      },
+      "basis": "전시 통화·신용과 소비 확대, 군수·수출로 민간 물건 부족"
+    },
+    {
+      "key": "note:03463758-1025-40ad-972e-bf4a2b9bc4d2",
+      "title": "종전 이후 1920~21년 [침체형 디플레이션] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "date": "1920-05-19",
+      "sourceTextSha256": "7435673f29c229a09a8000df0eba308cd19ced20c5aa3879204adcca39a4d22d",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션"
+      },
+      "basis": "긴축·수요 위축과 생산 감소. 재고가 남는 것을 생산 증가로 표현하지 않음"
+    },
+    {
+      "key": "note:9914c4eb-9a68-4573-87d0-16eb24cf6316",
+      "title": "1920년대 대량생산, 할부확대=[겉보기 골디락스] 물건↑≈돈↑→물가 안정 생산 ↑",
+      "date": "1922-01-01",
+      "sourceTextSha256": "6a179b9ef4225d32b5e49b44cbad455559cc94a65561e11f3934c4b2e5a9c0c4",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "겉보기 골디락스"
+      },
+      "basis": "대량생산과 할부·신용 확대가 함께 진행"
+    },
+    {
+      "key": "note:a4bca5f6-e2b9-43b1-8209-591d88f1af4f",
+      "title": "경제 대공황 [침체형 디플레이션] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "date": "1929-10-24",
+      "sourceTextSha256": "61834a595949c83d6f1e96fe2e75f82083b5d64707aa819f0ddb8215fe53018f",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션"
+      },
+      "basis": "돈·신용과 생산 모두 감소. 수요 대비 재고 과잉은 별개의 관계"
+    },
+    {
+      "key": "note:f4be8491-a212-4f69-a8eb-58ad823331c7",
+      "title": "1차 뉴딜-경제회복 [인플레이션 반등 시작]",
+      "date": "1933-01-12",
+      "sourceTextSha256": "bb4ca632c0caf0c753250bff5c2b712f9abe004a5a3d80c5c88e8ee41fc29a72",
+      "balance": {
+        "money": 1,
+        "goods": -1,
+        "outcome": "inflation",
+        "outcomeLabel": "인플레이션 반등"
+      },
+      "basis": "금본위제 이탈·재정 확대와 정책적 공급 억제"
+    },
+    {
+      "key": "note:336e4234-f566-4f09-b571-d1924f75fbae",
+      "title": "2차 뉴딜(1) -사회보장 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "date": "1935-01-01",
+      "sourceTextSha256": "658f0d7e12b52b3973f8b9e1eeaeeb71f44731b5cd0d15e010a81d68a58268e2",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션"
+      },
+      "basis": "물건도 증가하나 돈이 더 빠르게 증가"
+    },
+    {
+      "key": "note:31eb2137-d123-4072-a600-5d70baf9165e",
+      "title": "2차 뉴딜(2)  [침체형 디플레이션] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "date": "1937-09-27",
+      "sourceTextSha256": "970b391c31605cdf2fb0f13c8550d8fae692951d89d9a4ac5cf06becf708a1c9",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션"
+      },
+      "basis": "세 갈래 긴축과 생산 감소. 상대적 재고 과잉을 물건 증가로 바꾸지 않음"
+    },
+    {
+      "key": "note:25f91680-5606-4640-ae49-90e78e1c4310",
+      "title": "회복기 [호황형 골디락스(약)] 돈 ↑ ≈ 물건 ↑ → 물가 정체 생산 ↑",
+      "date": "1938-04-01",
+      "sourceTextSha256": "5d28ab4edc8eb27088ab4d5b801757c87342e5a33db9f0a8b8d2cd3ca0b785cd",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스 · 약"
+      },
+      "basis": "재정 재확대와 유휴 설비의 생산 회복"
+    },
+    {
+      "key": "note:b51329ca-c92d-4389-bb5d-a2d86261d2a3",
+      "title": "2차 대전 발발(미국 참전 전) [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "date": "1939-09-01",
+      "sourceTextSha256": "c1148a611ab4bc36c26994e612176e92a2bb03ef3de537651aafa14de5f1aa9f",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스"
+      },
+      "basis": "전반 회복 후 후반 재무장 국면을 대표. 돈 확대와 민간 소비재 제약",
+      "inlineScenes": [
+        {
+          "id": "e9024a8a-7c2a-4c21-91c6-2a0aa1d3a901",
+          "title": "1940년 6월 이후 · 재무장 확대",
+          "afterHeading": "② 1940.6",
+          "balance": {
+            "money": 2,
+            "goods": -1,
+            "outcome": "inflation",
+            "outcomeLabel": "호황형 인플레이션"
+          }
+        }
+      ]
+    },
+    {
+      "key": "note:3d2de73c-8ac5-4268-ba33-27eeb835636d",
+      "title": "2차 대전 [호황형 인플레이션(억제)] 돈 ↑ → 물가↑(억눌림) 생산 ↑",
+      "date": "1941-12-08",
+      "sourceTextSha256": "9733b76da57dd877b241a11fc78551ce86c4f5e1559764d165d0c5539ade43e9",
+      "balance": {
+        "money": 2,
+        "goods": 0,
+        "outcome": "inflation",
+        "outcomeLabel": "인플레이션 · 가격통제"
+      },
+      "basis": "돈은 크게 늘고 민간 소비재는 대체로 제자리. 군수 GDP 증가와 구분"
+    },
+    {
+      "key": "note:eadb785f-77d7-4fc4-bac2-9f0df09ff7bb",
+      "title": "2차 대전 후 본격 부채 녹이기 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "date": "1945-09-01",
+      "sourceTextSha256": "bae87ffd4d4392d2f996e53d9fae3fa769a45792f48abdc4dac772fc6dc3e991",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "전후 인플레이션"
+      },
+      "basis": "민간 소비재도 늘지만 풀린 저축·신용이 더 빠르게 증가"
+    },
+    {
+      "key": "note:8fac4aef-9d8d-4884-99a2-5f077c9ae82b",
+      "title": "민간 생산 정상화 [침체형 디플레이션(약)] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "date": "1948-11-01",
+      "sourceTextSha256": "e1d5e9f1e27cd3849bfbe853301b7b9b34811a7d18660bdf2273423b002577e4",
+      "balance": {
+        "money": -1,
+        "goods": 1,
+        "outcome": "deflation",
+        "outcomeLabel": "디플레이션 · 약"
+      },
+      "basis": "본문의 민간 생산 정상화·풍작·수입 확대와 지출·신용 위축을 표현. 재고 조정 중 총생산 감소와 구분"
+    },
+    {
+      "key": "note:ad5054fb-1ee7-4835-aa39-a152e7e8af15",
+      "title": "한국 전쟁 발발 (냉전시대) [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 ↑",
+      "date": "1950-06-25",
+      "sourceTextSha256": "2f04f5df195610761338f668e7336b76c7c5665f8c19ea0974206c168222b2d3",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션"
+      },
+      "basis": "생산은 실제 증가. 사재기·수요 확대가 더 빨라 상대적으로 부족"
+    },
+    {
+      "key": "note:900956a4-9c53-430c-9a58-d50170f96681",
+      "title": "세금으로 치른 전쟁 [디스인플레이션→골디락스] 돈 ≈ 물건 → 물가 안정 생산 ↑",
+      "date": "1951-03-01",
+      "sourceTextSha256": "56c0e57a38508d0e8419c8cf21c605027a741fad133b0ef4638dd17831277e27",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스"
+      },
+      "basis": "돈은 느리게 늘고 생산도 증가하면서 균형으로 이동"
+    },
+    {
+      "key": "note:2ffae084-6720-4bd7-b65b-8c7d675827f1",
+      "title": "종전 침체 [침체형 디플레이션 (약)] 돈 ↓ → 물가 ↓ 생산 ↓",
+      "date": "1953-08-01",
+      "sourceTextSha256": "1cc13bfe993bd4e03bf4f4daed51a0f5c20b782114caf29691e70ae8c5c59c25",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "deflation",
+        "outcomeLabel": "침체형 디플레이션 · 약"
+      },
+      "basis": "국방·신용 수요 축소와 생산 감소. 재고 과잉은 생산 증가가 아님"
+    },
+    {
+      "key": "note:fe602338-1961-4944-bac6-acd76b99e592",
+      "title": "회복과 자동차 붐 [호황형 골디락스 (빈 식당형)] 돈 ↑ ≈ 물건 ↑ → 물가 정체 생산 ↑",
+      "date": "1954-06-01",
+      "sourceTextSha256": "2db2e8753d27e81a591492025cd0fc49f98b591985e19538f4f3e050651ee285",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스"
+      },
+      "basis": "완화·할부 확대와 유휴 설비 생산 증가"
+    },
+    {
+      "key": "note:d2cd00f8-062a-441e-b318-8731c863246c",
+      "title": "투자 붐 [호황형 인플레이션] 돈 ↑ → 물가 ↑ 생산 -",
+      "date": "1956-01-01",
+      "sourceTextSha256": "eca490856559153b5595b7e95680d7ec3646b679becbb439ebe28fde84c79515",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션"
+      },
+      "basis": "수요·투자 증가에 비해 생산은 완만하게 증가"
+    },
+    {
+      "key": "note:2e9d24d5-147d-49ac-bba1-d5bbcc51421e",
+      "title": "짧은 침체  → [침체형(겉보기 스태그)] 돈 ↓ → 생산 ↓, 물가는 ↑",
+      "date": "1957-08-01",
+      "sourceTextSha256": "4512e099256f866bcfeaafe1b745886e44a3e02ef6fd8ece5a5f8ac898df803c",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "stagflation",
+        "outcomeLabel": "스태그플레이션 · 단기"
+      },
+      "basis": "수요 위축과 생산 감소. 원가 때문에 물가 상승한 점은 본문에 남김",
+      "inlineScenes": [
+        {
+          "id": "f1804a8a-7c2a-4c21-91c6-2a0aa1d3a902",
+          "title": "완화정책 이후 · 생산 회복",
+          "afterHeading": "▼ 정책 전환과 회복",
+          "balance": {
+            "money": 1,
+            "goods": 1,
+            "outcome": "goldilocks",
+            "outcomeLabel": "회복 · 물가상승세 둔화"
+          }
+        }
+      ]
+    },
+    {
+      "key": "note:51cb7cbe-d8d5-477d-b72d-1173026f7510",
+      "title": "긴축 속의 회복 [호황형 골디락스 (약)] 돈 ↑ ≈ 물건 ↑ → 물가 정체 생산 ↑",
+      "date": "1958-07-01",
+      "sourceTextSha256": "0927c904014c9c1f9bba399f60c5c15c9be05e6e5b3ca6c4c3e937b501291af7",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스 · 약"
+      },
+      "basis": "완화 후 재긴축으로 억제된 돈 증가와 생산 회복"
+    },
+    {
+      "key": "note:53cb378a-2a76-4b51-b550-2dcb68166cf7",
+      "title": "긴축의 대가 [침체형 디플레이션 (약)] 돈 ↓ → 물가 정체 생산 ↓",
+      "date": "1960-04-01",
+      "sourceTextSha256": "0336e39401de4e61a2921ec7e044af6e7a4d413fac173d4a4e5860891c3f427d",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "stable",
+        "outcomeLabel": "침체 · 물가 정체"
+      },
+      "basis": "재정·통화 긴축과 생산 감소. 재고·설비 과잉은 상대적인 설명"
+    },
+    {
+      "key": "note:073514d3-af18-4c6e-92e6-8a11112b29c8",
+      "title": "저물가 고성장 황금기 [골디락스(강)] 돈 ↑ ≈ 물건 ↑ → 물가 안정 생산 ↑",
+      "date": "1961-03-01",
+      "sourceTextSha256": "dee512ddff66b21de42d4892e5c23bcc985d2f958de9cdc43f34ca0ecc47cadf",
+      "balance": {
+        "money": 1,
+        "goods": 1,
+        "outcome": "goldilocks",
+        "outcomeLabel": "호황형 골디락스"
+      },
+      "basis": "돈과 생산이 함께 증가하며 저물가 고성장"
+    },
+    {
+      "key": "note:178f59af-da08-4896-9878-acbaa34c28ef",
+      "title": "총과 버터 [호황형 인플레이션] 돈 ↑↑ → 물가 ↑ 생산 ↑",
+      "date": "1966-01-01",
+      "sourceTextSha256": "f88ce017bcba49f81023631b703cf92a9e698fe6948265447c1d05e7af1158fc",
+      "balance": {
+        "money": 2,
+        "goods": 1,
+        "outcome": "inflation",
+        "outcomeLabel": "호황형 인플레이션"
+      },
+      "basis": "물건도 증가하지만 재정·수요 확대가 더 빠름"
+    },
+    {
+      "key": "note:fc5753a1-d524-459d-8e88-cfe844764c71",
+      "title": "닉슨의 첫 긴축 [침체형 (겉보기 스태그)] 돈 ↓ → 생산 ↓, 물가는 ↑",
+      "date": "1969-12-01",
+      "sourceTextSha256": "8638266f4ab0795b546ba13c6b11bac0184d233a26eadecc4f1d725194ef1763",
+      "balance": {
+        "money": -2,
+        "goods": -1,
+        "outcome": "stagflation",
+        "outcomeLabel": "스태그플레이션"
+      },
+      "basis": "긴축·수요 위축과 생산 감소. 원가·기대 고착은 본문에 남김"
+    }
+  ]
+}

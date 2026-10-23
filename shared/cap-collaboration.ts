@@ -5,7 +5,7 @@ export type Document = { [key: string]: Json } | null;
 export interface Change { path: string[]; before: Json; after: Json }
 export interface Conflict extends Change { remote: Json }
 export interface Resource { key: string; version: number; doc: Document }
-export interface EditRequest { id: string; resource: string; editor: string; session: string; changes: Change[]; schemaVersion?: 2 }
+export interface EditRequest { id: string; resource: string; editor: string; session: string; changes: Change[]; schemaVersion?: 2; ifVersion?: number }
 export interface EditResult extends Resource { operation: string }
 export interface Peer { session: string; editor: string; resource: string | null; seenAt: number }
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value));

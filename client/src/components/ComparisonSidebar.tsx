@@ -2,20 +2,23 @@ import { activeSeriesIds } from "@/lib/comparison-series";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { CapRichText } from "./CapRichText";
-import { CapRichEditor } from "./CapRichEditor";
+import { ComparisonInsightBody } from "./ComparisonInsightBody";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { ComparisonQuoteTables } from "./ComparisonQuoteTables";
+import { ComparisonBalance } from "./ComparisonBalance";
+import { useComparisonBalanceMotion, type BalanceMotion } from "@/lib/use-comparison-balance-motion";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { collaboration } from "@/lib/cap-collab-client";
 import { useCapEditScope } from "@/lib/use-cap-edit-scope";
 import { restoredComparisonView, sameComparisonView } from "@/lib/comparison-axes";
 import { parseRich } from "@/lib/capitalism-richtext";
+import { insightProse, splitInsightScenes } from "../../../shared/comparison-scenes";
 import type { FlowDTO, FlowNodeDTO } from "@/lib/capitalism-types";
 import { comparisonInsightSchema, nearestDatedReference, type ComparisonInsight, type SavedInsight, type InsightContext, type Observation } from "../../../shared/cap-comparison";
 
 const field = "w-full min-w-0 rounded-md border bg-background px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500/30";
 const button = "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted disabled:opacity-40";
-const plain = (text: string) => parseRich(text).map(s => s.text).join("");
+const plain = (text: string) => parseRich(insightProse(text)).map(s => s.text).join("");
 const viewedStorageKey = "comparison-viewed-insights-v1";
 function readViewedInsights(): Set<string> {
   try {
@@ -38,6 +41,11 @@ type Props = {
 };
 
 export function ComparisonSidebar(p: Props) {
+  const chronological = [...p.notes].sort((a, b) => a.date.localeCompare(b.date) || a.sortOrder - b.sortOrder || b.id.localeCompare(a.id));
+  const prior = chronological[chronological.findIndex(n => n.id === p.selected?.id) - 1];
+  const lastSceneId = prior && splitInsightScenes(prior.text).at(-1)?.after;
+  const previousBalance = prior?.scenes?.find(s => s.id === lastSceneId)?.balance ?? prior?.balance;
+  const balanceMotion = useComparisonBalanceMotion(p.panel === "insights" ? p.selected?.balance : null, previousBalance);
   const [search, setSearch] = useState("");
   const [viewed, setViewed] = useState(readViewedInsights);
   useEffect(() => {
@@ -68,7 +76,7 @@ export function ComparisonSidebar(p: Props) {
     <div ref={content} style={{ maxHeight: panelHeight }} className="min-h-80 overflow-y-auto overscroll-contain" data-testid="comparison-sidebar-scroll">
       {p.panel === "reference" ? <ReferencePanel {...p} scrollContainer={content} /> : p.selected ? <div className="p-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={p.onCloseNote}><ArrowLeft size={14} />모든 기록</button><div className="flex items-center gap-1">{relatedHidden && <button className="rounded px-2 py-1 text-[11px] text-sky-600 hover:bg-muted" title="이 글의 그래프 또는 축 설정으로 돌아갑니다." onClick={() => p.onRestore(p.selected!.context!, p.selected!)}>관련 그래프 보기</button>}<button className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted" onClick={() => p.onView(p.selected!)}><Focus size={13} />이 기간 보기</button></div></div>
-        <InsightDocument key={p.selected.id + String(p.canEdit)} {...p} note={p.selected} />
+        <InsightDocument key={p.selected.id + String(p.canEdit)} {...p} note={p.selected} balanceMotion={balanceMotion} />
       </div> : <div className="p-4">
         <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="인사이트 검색" placeholder="제목, 내용, 날짜 검색" className={field + " pl-9 text-xs"} value={search} onChange={e => setSearch(e.target.value)} /></div>
         {p.loading ? <p className="py-8 text-center text-xs text-muted-foreground">인사이트 불러오는 중…</p> : !p.notes.length ? <div className="rounded-xl border border-dashed px-5 py-8 text-center"><Star size={25} className="mx-auto mb-3 text-red-400" /><h2 className="text-sm font-medium">발견한 흐름을 남겨보세요</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">날짜나 기간에 생각을 기록하세요.<br />어떤 지표를 보더라도 기록은 그 시간에 남습니다.</p>{p.canEdit && <button className={button + " mt-4"} onClick={p.onAdd}><Plus size={13} />첫 인사이트 작성</button>}</div> : <div className="space-y-2">
@@ -85,9 +93,11 @@ function InsightPagination({ notes, index, viewed, onSelect }: { notes: SavedIns
   const [open, setOpen] = useState(false);
   const list = useRef<HTMLDivElement>(null), current = useRef<HTMLButtonElement>(null);
   const last = notes.length - 1;
+  // The list is newest-first, while page numbers increase chronologically.
+  const previous = notes[index + 1], next = notes[index - 1];
   const control = "flex h-8 min-w-8 items-center justify-center rounded-md text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50";
   return <nav aria-label="인사이트 페이지" className="flex h-14 items-center justify-center gap-1 border-t bg-background px-2" data-testid="insight-pagination">
-    <button aria-label="이전 인사이트" disabled={index === 0} title={index > 0 ? notes[index - 1].title : "첫 인사이트입니다"} className={control + " mr-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => onSelect(notes[index - 1].id)}><ChevronLeft size={18} /></button>
+    <button aria-label="이전 인사이트" disabled={index === last} title={previous?.title ?? "첫 인사이트입니다"} className={control + " mr-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => { if (previous) onSelect(previous.id); }}><ChevronLeft size={18} /></button>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild><button aria-label={`인사이트 목차: ${notes.length - index} / ${notes.length}, ${notes[index].title}`} className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50" data-testid="insight-index-trigger"><span className="shrink-0 tabular-nums text-muted-foreground"><b className="font-semibold text-red-500">{notes.length - index}</b> / {notes.length}</span><span className="min-w-0 flex-1 truncate font-medium">{notes[index].title}</span><ChevronDown size={14} className={"shrink-0 text-muted-foreground " + (open ? "rotate-180" : "")} /></button></PopoverTrigger>
       <PopoverContent side="top" align="center" collisionPadding={12} className="w-[min(420px,calc(100vw-24px))] p-1.5" aria-label="인사이트 목차" onOpenAutoFocus={event => {
@@ -102,12 +112,12 @@ function InsightPagination({ notes, index, viewed, onSelect }: { notes: SavedIns
         </div>
       </PopoverContent>
     </Popover>
-    <button aria-label="다음 인사이트" disabled={index === last} title={index < last ? notes[index + 1].title : "마지막 인사이트입니다"} className={control + " ml-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => onSelect(notes[index + 1].id)}><ChevronRight size={18} /></button>
+    <button aria-label="다음 인사이트" disabled={index === 0} title={next?.title ?? "마지막 인사이트입니다"} className={control + " ml-1 hover:bg-muted disabled:pointer-events-none disabled:opacity-25"} onClick={() => { if (next) onSelect(next.id); }}><ChevronRight size={18} /></button>
     <span className="sr-only" aria-live="polite">전체 {notes.length}개 · {notes.length - index}번 인사이트</span>
   </nav>;
 }
 
-function InsightDocument(p: Props & { note: SavedInsight }) {
+function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: BalanceMotion }) {
   const { note } = p, key = "note:" + note.id, scope = useCapEditScope(key);
   const [error, setError] = useState(""), [settings, setSettings] = useState(false), [dates, setDates] = useState(false), [confirmDelete, setConfirmDelete] = useState(false);
   const save = (patch: Partial<ComparisonInsight>) => {
@@ -133,7 +143,12 @@ function InsightDocument(p: Props & { note: SavedInsight }) {
     </div>}
     {error && <p role="alert" className="my-2 text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
     <div className="flex items-start gap-1.5 border-b pb-2"><Star size={15} className="mt-1 shrink-0 fill-red-400 text-red-400" />{p.canEdit ? <BufferedInput label="제목" compact value={note.title} maxLength={160} save={value => save({ title: value })} /> : <h2 className="break-words text-sm font-semibold leading-6">{note.title}</h2>}</div>
-    {p.canEdit ? <div className="mt-3"><CapRichEditor ariaLabel="인사이트 본문" value={note.text} onChange={text => { save({ text }); }} onBlur={text => { save({ text }); }} commitOnUnmount rows={note.tables?.length ? 4 : 12} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="이 시기에 발견한 흐름과 생각을 적어보세요. 글자를 드래그하면 색·하이라이트를 넣을 수 있습니다." /></div> : <CapRichText text={note.text || (note.tables?.length ? "" : "아직 작성된 내용이 없습니다.")} onJump={p.onJump} className={"mt-3 block break-words text-sm leading-[22px] " + (note.tables?.length ? "" : "min-h-[280px]")} />}
+    <ComparisonBalance value={note.balance} motionValues={p.balanceMotion} canEdit={p.canEdit} onChange={patch => {
+      const current = comparisonInsightSchema.safeParse(collaboration.get(key));
+      if (!current.success) return false;
+      return save({ balance: patch === null ? null : { money: 0, goods: 0, outcome: null, ...current.data.balance, ...patch } });
+    }} />
+    <ComparisonInsightBody note={note} canEdit={p.canEdit} onJump={p.onJump} save={save} read={() => { const parsed = comparisonInsightSchema.safeParse(collaboration.get(key)); return parsed.success ? parsed.data : null; }} />
     {!!note.tables?.length && <div className="mt-4"><ComparisonQuoteTables tables={note.tables} onRemove={p.canEdit ? id => {
       const current = comparisonInsightSchema.safeParse(collaboration.get(key));
       if (current.success) save({ tables: current.data.tables?.filter(table => table.id !== id) ?? [] });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { alignmentSchema } from "./comparison-alignment.js";
+import { insightBalanceSchema } from "./comparison-balance.js";
+import { insightSceneSchema, splitInsightScenes } from "./comparison-scenes.js";
 
 export const PLOT_PREFIX = "comparison_node:";
 export const NOTE_PREFIX = "comparison_insight:";
@@ -49,7 +51,13 @@ export const comparisonInsightSchema = z.object({
   sortOrder: z.number().finite(),
   context: insightContextSchema.nullable().optional(),
   tables: z.array(comparisonQuoteTableSchema).max(100).optional(),
-}).strict().refine(p => !p.endDate || p.endDate >= p.date, "종료일은 시작일 이후여야 합니다.");
+  balance: insightBalanceSchema.nullable().optional(),
+  scenes: z.array(insightSceneSchema).max(30).optional(),
+}).strict().refine(p => !p.endDate || p.endDate >= p.date, "종료일은 시작일 이후여야 합니다.").refine(p => {
+  const ids = splitInsightScenes(p.text).flatMap(part => part.after ? [part.after] : []);
+  const scenes = p.scenes ?? [];
+  return ids.length === new Set(ids).size && scenes.length === new Set(scenes.map(s => s.id)).size && ids.length === scenes.length && scenes.every(s => ids.includes(s.id));
+}, "본문의 도표 위치와 도표 목록이 일치하지 않습니다. 새로고침 후 다시 시도해 주세요.");
 export type ComparisonInsight = z.infer<typeof comparisonInsightSchema>;
 export type SavedInsight = ComparisonInsight & { id: string };
 

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261023-inline-insight-scenes",
+  "title": "인사이트 본문 중간의 도표 장면",
+  "baseRef": "b767da3",
+  "requirement": "본문의 문단 뒤에 독립 도표를 추가하고 편집·이동·삭제한다. 원문과 리치텍스트를 보존한다. 로컬 9/18번 전환 지점에 적용한다. 목록에서 진입해도 이전 번호의 마지막 상태에서 애니메이션한다.",
+  "acceptanceCriteria": [
+    "커서 문단 뒤 삽입, 앞 도표 복사, 전환 제목, 막대·결과 편집, 위아래 이동·삭제",
+    "본문 중간 도표는 뷰포트에 들어올 때 앞 도표에서 한 번 전환하고 앞 도표는 유지",
+    "목록 진입은 이전 번호 마지막 도표에서 시작, 첫 기록·reduced-motion 처리",
+    "글/표/관련 그래프/색상 보존, 저장 재조회 및 구조 변경 충돌 확인",
+    "미리보기 스냅샷을 보존한 뒤 9/18번만 이행하며 운영 쓰기·배포 없음"
+  ],
+  "requiredChecks": ["npm.cmd run check", "npx.cmd vitest run tests/comparison-scenes.test.ts tests/comparison-balance.test.ts tests/cap-comparison.test.ts", "npm.cmd run build"],
+  "requiresEvaluationDatabase": false,
+  "notes": "로컬 메모리 API 통합 검증. 운영 DB 및 독립 리뷰는 포함하지 않음."
+}

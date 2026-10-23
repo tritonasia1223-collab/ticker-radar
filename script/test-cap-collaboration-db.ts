@@ -6,6 +6,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
 import { applyCollaborativeEdit, getResource, CollaborationConflict } from "../server/cap-collaboration.js";
 import { diff, flowDocument, copy, type Document, type EditRequest } from "../shared/cap-collaboration.js";
+import { insightForClient, InsightUpgradeRequired } from "../shared/comparison-compat.js";
+import { sceneMarker } from "../shared/comparison-scenes.js";
 const schema = `cap_collab_test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 if (!/^cap_collab_test_\d+_[a-z0-9]+$/.test(schema)) throw new Error("Unsafe test schema");
 const client = postgres(process.env.DATABASE_URL!, { prepare: false, max: 3, idle_timeout: 5, connect_timeout: 20 });
@@ -17,7 +19,9 @@ const initial = flowDocument({ title: "Synthetic collaboration test", date: "197
 const op = (key: string, before: Document, after: Document): EditRequest => ({ id: crypto.randomUUID(), resource: key, session: crypto.randomUUID(), editor: "Synthetic test", changes: diff(before, after), schemaVersion: 2 });
 let created = false;
 try {
+  console.log("Starting isolated collaboration DB test:", schema);
   await client.unsafe(`CREATE SCHEMA "${schema}"`); created = true;
+  console.log("Isolated schema created");
   await raw.transaction(async (tx) => {
     await tx.execute(sql.raw(`SET LOCAL search_path TO "${schema}"`));
     const definitions = [
@@ -31,6 +35,7 @@ try {
     for (const ddl of definitions) await tx.execute(sql.raw(ddl));
   });
   const key = "flow:synthetic";
+  console.log("Testing collaborative transactions");
   await applyCollaborativeEdit(op(key, null, initial), isolated);
   const blueBase = (await getResource(key, isolated)).doc!;
   const blue = copy(blueBase)!, yellow = copy(blueBase)!;
@@ -84,6 +89,7 @@ try {
   assert.equal((await getResource("meta:m1", isolated)).doc!.title, "ONE");
   // Time-only insights are isolated from legacy placements and source cards.
   const note = { title: "Currency comparison", date: "1997-01-01", endDate: "1998-12-31", text: "", caption: "", sortOrder: 1 };
+  console.log("Testing insight compatibility and guarded writes");
   await applyCollaborativeEdit(op("note:one", null, note), isolated);
   await Promise.all([
     applyCollaborativeEdit(op("note:one", note, { ...note, text: "Independent prose" }), isolated),
@@ -104,7 +110,33 @@ try {
   assert.equal(linkedNote.doc!.caption, "Period with linked graphs");
   await assert.rejects(() => applyCollaborativeEdit(op("note:one", linkedNote.doc, { ...linkedNote.doc, context: { ...context, spread: { a: "gs10", b: "gs10" } } }), isolated));
   assert.deepEqual((await getResource("note:one", isolated)).doc, linkedNote.doc);
-  await applyCollaborativeEdit(op("note:one", linkedNote.doc, null), isolated);
+  // New diagrams and already-open legacy editors share the same locked resource.
+  const balance = { money: 1, goods: -1, outcome: "inflation" };
+  await Promise.all([
+    applyCollaborativeEdit(op("note:one", linkedNote.doc, { ...linkedNote.doc, balance }), isolated),
+    applyCollaborativeEdit(op("note:one", linkedNote.doc, { ...linkedNote.doc, text: "Live author revision" }), isolated, true),
+  ]);
+  const withBalance = await getResource("note:one", isolated);
+  assert.equal(withBalance.doc!.text, "Live author revision");
+  assert.deepEqual(withBalance.doc!.balance, balance);
+  const legacyView = insightForClient(withBalance, false);
+  assert.equal(legacyView.doc!.balance, undefined);
+  await applyCollaborativeEdit(op("note:one", legacyView.doc, { ...legacyView.doc, title: "Old window title" }), isolated, true);
+  assert.deepEqual((await getResource("note:one", isolated)).doc!.balance, balance);
+  const latest = await getResource("note:one", isolated);
+  const guarded = { ...op("note:one", latest.doc, { ...latest.doc, balance: { ...balance, money: 2 } }), ifVersion: latest.version - 1 };
+  await assert.rejects(() => applyCollaborativeEdit(guarded, isolated), CollaborationConflict);
+  assert.deepEqual((await getResource("note:one", isolated)).doc, latest.doc);
+  const sceneId = crypto.randomUUID();
+  const inline = { ...latest.doc, text: latest.doc!.text + sceneMarker(sceneId), scenes: [{ id: sceneId, title: "Transition", balance }] };
+  await applyCollaborativeEdit(op("note:one", latest.doc, inline), isolated);
+  await assert.rejects(() => applyCollaborativeEdit(op("note:one", legacyView.doc, { ...legacyView.doc, text: "Old window new prose" }), isolated, true), InsightUpgradeRequired);
+  assert.deepEqual((await getResource("note:one", isolated)).doc, inline);
+  const staleSeed = op("note:one", latest.doc, { ...latest.doc, balance: { ...balance, money: 2 } });
+  staleSeed.changes.push({ path: ["text"], before: latest.doc!.text, after: latest.doc!.text });
+  await assert.rejects(() => applyCollaborativeEdit(staleSeed, isolated), CollaborationConflict);
+  assert.deepEqual((await getResource("note:one", isolated)).doc, inline);
+  await applyCollaborativeEdit(op("note:one", inline, null), isolated);
   const removedNote = await getResource("note:one", isolated);
   assert.equal(removedNote.doc, null); assert.ok(removedNote.version > written.version);
   assert.equal((await getResource("plot:two", isolated)).doc!.nodeKey, "b");
@@ -117,5 +149,5 @@ try {
 } finally {
   // Only this invocation's verified, freshly-created synthetic schema is removed.
   if (created) await client.unsafe(`DROP SCHEMA "${schema}" CASCADE`);
-  await client.end();
+  await client.end({ timeout: 5 });
 }

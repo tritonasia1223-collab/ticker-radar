@@ -9,7 +9,7 @@ it("loads comparison schemas in native Node ESM without a bundler", () => {
   const directory = mkdtempSync(join(process.cwd(), ".comparison-esm-"));
   try {
     writeFileSync(join(directory, "package.json"), '{"type":"module"}');
-    for (const name of ["cap-comparison", "comparison-alignment"]) {
+    for (const name of ["cap-comparison", "comparison-alignment", "comparison-balance", "comparison-scenes", "comparison-compat"]) {
       const source = readFileSync(join(process.cwd(), "shared", `${name}.ts`), "utf8");
       const { outputText } = ts.transpileModule(source, {
         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -18,7 +18,9 @@ it("loads comparison schemas in native Node ESM without a bundler", () => {
     }
     writeFileSync(join(directory, "check.mjs"), `
       import { comparisonInsightSchema } from "./cap-comparison.js";
+      import { insightForClient } from "./comparison-compat.js";
       if (typeof comparisonInsightSchema.safeParse !== "function") process.exit(1);
+      if (typeof insightForClient !== "function") process.exit(1);
     `);
     const result = spawnSync(process.execPath, [join(directory, "check.mjs")], {
       encoding: "utf8", timeout: 15000, env: { ...process.env, NODE_OPTIONS: "" },

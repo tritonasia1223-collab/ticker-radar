@@ -3,9 +3,10 @@ import { CollaborationEngine, indexedDraftStore, RemoteConflict, SaveRejected } 
 import { diff, documentFlow, flowDocument, metaDocument, type Resource, type Peer } from "../../../shared/cap-collaboration";
 import type { FlowDTO, CapMetaCard } from "./capitalism-types";
 import { rebuildEdges } from "./capitalism-flowops";
+import { DIAGRAM_HEADER } from "../../../shared/comparison-compat";
 
 export async function collabApi(path: string, body?: unknown) {
-  const response = await fetch(`/api/capitalism/collab/${path}`, { method: body === undefined ? "GET" : "POST", cache: "no-store", headers: body === undefined ? {} : { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+  const response = await fetch(`/api/capitalism/collab/${path}`, { method: body === undefined ? "GET" : "POST", cache: "no-store", headers: { [DIAGRAM_HEADER]: "1", ...(body === undefined ? {} : { "Content-Type": "application/json" }) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
   const result = await response.json().catch(() => ({ error: `서버 응답 ${response.status}` }));
   if (response.status === 409 && result.current) throw new RemoteConflict(result.current, result.conflicts);
   if ([400, 413, 428].includes(response.status)) throw new SaveRejected(result.error ?? "입력 형식 또는 용량을 확인해 주세요.");
