@@ -70,7 +70,7 @@ export function CapRichText({
       {lines.map((parts, li) => {
         // 줄 본문 평문(불릿 프리픽스 검사용) — 첫 조각이 마크 없는 일반 텍스트에 프리픽스가 담긴다.
         const lineText = parts.map((p) => p.text).join("");
-        if (lineText === DIVIDER_LINE) return <span key={`l-${li}`} role="separator" aria-label="구분선" style={{ display: "block", background: DIVIDER_BACKGROUND, color: "transparent" }}>{DIVIDER_LINE}</span>;
+        if (lineText === DIVIDER_LINE) return <span key={`l-${li}`} role="separator" aria-label="구분선" style={{ display: "block", background: DIVIDER_BACKGROUND, color: "transparent", paddingBlock: 6 }}>{DIVIDER_LINE}</span>;
         const meta = parseBulletLine(lineText);
 
         if (meta.bullet) {

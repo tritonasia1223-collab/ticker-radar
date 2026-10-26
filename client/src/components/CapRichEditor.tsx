@@ -90,6 +90,7 @@ function makeLineDiv(parts: LineSeg[]): HTMLDivElement {
   if (lineText === DIVIDER_LINE) {
     div.dataset.capDivider = "true";
     div.style.background = DIVIDER_BACKGROUND;
+    div.style.paddingBlock = "6px";
     div.style.color = "transparent";
     div.style.caretColor = "#6b7280";
     div.appendChild(document.createTextNode(DIVIDER_LINE));
@@ -377,7 +378,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     ref.current?.querySelectorAll<HTMLElement>("[data-cap-divider]").forEach(line => {
       if (stripZW(line.textContent || "") !== DIVIDER_LINE) {
         delete line.dataset.capDivider;
-        line.style.background = ""; line.style.color = ""; line.style.caretColor = "";
+        line.style.background = ""; line.style.color = ""; line.style.caretColor = ""; line.style.paddingBlock = "";
       }
     });
     if (placeholderRef.current) placeholderRef.current.hidden = !!stripZW(ref.current?.textContent || "");
