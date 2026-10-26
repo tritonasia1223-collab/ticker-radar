@@ -161,6 +161,36 @@ export function makeBulletLine(level: number, body: string): string {
   return "\t".repeat(lv) + BULLET_CHAR + " " + body;
 }
 
+// Match the five-space indentation authored in comparison insights 1–3.
+export const TEXT_INDENT = "     ";
+export function indentRichLines(raw: string, start: number, end = start, outdent = false) {
+  const text = plainText(raw);
+  const first = start === 0 ? 0 : text.lastIndexOf("\n", start - 1) + 1;
+  const last = end > start && text[end - 1] === "\n" ? end - 1 : end;
+  const edits: { offset: number; remove: number; insert: string }[] = [];
+  for (let offset = first; offset <= last;) {
+    const next = text.indexOf("\n", offset);
+    const line = text.slice(offset, next < 0 ? text.length : next);
+    const bullet = /^(\t*)• /.exec(line);
+    if (bullet) {
+      const level = Math.min(bullet[1].length, MAX_BULLET_LEVEL);
+      const target = Math.max(0, Math.min(MAX_BULLET_LEVEL, level + (outdent ? -1 : 1)));
+      if (target !== level) edits.push({ offset, remove: bullet[1].length, insert: "\t".repeat(target) });
+    } else if (line !== DIVIDER_LINE) {
+      const remove = outdent ? Math.min(TEXT_INDENT.length, /^[ \u00a0]*/.exec(line)![0].length) : 0;
+      if (!outdent || remove) edits.push({ offset, remove, insert: outdent ? "" : TEXT_INDENT });
+    }
+    if (next < 0) break;
+    offset = next + 1;
+  }
+  for (const edit of edits.reverse()) {
+    raw = splitRichTextAt(raw, edit.offset).before + edit.insert + splitRichTextAt(raw, edit.offset + edit.remove).after;
+    const shift = (position: number) => position < edit.offset ? position : Math.max(edit.offset, position - edit.remove) + edit.insert.length;
+    start = shift(start); end = shift(end);
+  }
+  return { text: raw, start, end };
+}
+
 // ── 인라인 자동치환 커맨드 (스페이스 트리거) ────────────────────────────────
 // 리치에디터(본문·인사이트)와 평문 메모(textarea) 가 같은 규칙을 쓰도록 여기 한 곳에 둔다(drift 방지).
 

@@ -5,7 +5,7 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback, useImperativ
 import { cn } from "@/lib/utils";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
-  DIVIDER_LINE, DIVIDER_BACKGROUND, insertRichDivider,
+  DIVIDER_LINE, DIVIDER_BACKGROUND, insertRichDivider, indentRichLines,
   parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, inlineFractionCommand, type RichSeg,
 } from "@/lib/capitalism-richtext";
 
@@ -846,17 +846,20 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
 
     if (ev.key === "Tab") {
       ev.preventDefault();
-      if (!info.bullet) {
-        if (info.caretInBody === 0) {
-          // 일반 줄 시작에서 Tab → 레벨0 불릿 시작(본문 유지).
-          replaceLine(info.index, makeBulletLine(0, info.bodyRaw), info.lineStartSerialize + 2 + info.caretInBody);
-        }
-        return;
+      const raw = serializeEl(el), selection = caretRange(el);
+      const next = indentRichLines(raw, selection.start, selection.end, ev.shiftKey);
+      if (next.text === raw) return;
+      renderToEl(el, next.text);
+      setCaretAtSerializeOffset(el, next.start);
+      const range = window.getSelection()?.getRangeAt(0).cloneRange();
+      if (range && next.end !== next.start) {
+        setCaretAtSerializeOffset(el, next.end);
+        const end = window.getSelection()?.getRangeAt(0);
+        if (end) range.setEnd(end.endContainer, end.endOffset);
+        window.getSelection()?.removeAllRanges(); window.getSelection()?.addRange(range);
       }
-      const delta = ev.shiftKey ? -1 : 1;
-      const newLevel = Math.max(0, Math.min(info.level + delta, MAX_BULLET_LEVEL));
-      if (newLevel === info.level) return;
-      replaceLine(info.index, makeBulletLine(newLevel, info.bodyRaw), info.lineStartSerialize + (newLevel + 2) + info.caretInBody);
+      setToolbar(null);
+      queueChange();
       return;
     }
 
