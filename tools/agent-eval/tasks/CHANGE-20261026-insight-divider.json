@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261026-insight-divider",
+  "title": "인사이트 연한 회색 구분선",
+  "baseRef": "19a6d6c",
+  "requirement": "인사이트 편집기에 연한 회색 구분선을 삽입할 수 있도록 한다.",
+  "acceptanceCriteria": ["커서 위치 삽입 버튼", "--- 뒤 Enter 단축 입력", "저장과 재조회 및 읽기 화면에서 선 유지", "본문·색상·하이라이트 보존", "Backspace로 제거"],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build", "로컬 합성 인사이트 브라우저 검증"],
+  "requiresEvaluationDatabase": false
+}

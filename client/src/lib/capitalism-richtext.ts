@@ -47,6 +47,16 @@ export interface RichSeg {
 
 // 링크 접두사. slug 에는 영숫자/하이픈/언더스코어만 허용(파이프·대괄호 충돌 방지).
 export const LINK_PREFIX = "link:";
+// A standalone line only. Plain text storage keeps old clients/copy/paste readable.
+export const DIVIDER_LINE = "───";
+export const DIVIDER_BACKGROUND = "linear-gradient(#d1d5db, #d1d5db) center / 100% 1px no-repeat";
+
+export function insertRichDivider(raw: string, offset: number) {
+  const { before, after } = splitRichTextAt(raw, offset);
+  const prefix = before + (before && !plainText(before).endsWith("\n") ? "\n" : "");
+  const tail = plainText(after).startsWith("\n") ? splitRichTextAt(after, 1).after : after;
+  return { text: prefix + DIVIDER_LINE + "\n" + tail, caret: plainText(prefix).length + DIVIDER_LINE.length + 1 };
+}
 // 키: hl-y, c-r 같은 고정키 또는 link:<slug>(slug는 a-z0-9-_ 만).
 const TOKEN = /\[\[((?:link:[A-Za-z0-9_-]+)|[a-z-]+)\|([^\]]*)\]\]/g;
 

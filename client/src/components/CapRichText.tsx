@@ -1,7 +1,7 @@
 // 마커가 포함된 텍스트를 색상/하이라이트/내부링크가 적용된 span으로 렌더.
 // 줄 단위로 말머리(불릿)를 인식해, 불릿 줄은 왼쪽 정렬 + 레벨별 기호로 표시하고
 // 일반 줄은 기존처럼 가운데 정렬한다.
-import { parseRich, MARK_BY_KEY, parseBulletLine, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, type RichSeg } from "@/lib/capitalism-richtext";
+import { parseRich, MARK_BY_KEY, parseBulletLine, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, DIVIDER_LINE, DIVIDER_BACKGROUND, type RichSeg } from "@/lib/capitalism-richtext";
 
 // 한 줄 분량의 (마크 유지) 세그먼트 조각.
 interface LineSeg { text: string; mark?: string; linkSlug?: string; }
@@ -70,6 +70,7 @@ export function CapRichText({
       {lines.map((parts, li) => {
         // 줄 본문 평문(불릿 프리픽스 검사용) — 첫 조각이 마크 없는 일반 텍스트에 프리픽스가 담긴다.
         const lineText = parts.map((p) => p.text).join("");
+        if (lineText === DIVIDER_LINE) return <span key={`l-${li}`} role="separator" aria-label="구분선" style={{ display: "block", background: DIVIDER_BACKGROUND, color: "transparent" }}>{DIVIDER_LINE}</span>;
         const meta = parseBulletLine(lineText);
 
         if (meta.bullet) {

@@ -5,6 +5,7 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback, useImperativ
 import { cn } from "@/lib/utils";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
+  DIVIDER_LINE, DIVIDER_BACKGROUND, insertRichDivider,
   parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, inlineFractionCommand, type RichSeg,
 } from "@/lib/capitalism-richtext";
 
@@ -86,6 +87,14 @@ function makeLineDiv(parts: LineSeg[]): HTMLDivElement {
   div.setAttribute("data-cap-line", "");
   // 줄 평문으로 불릿 프리픽스 판별(프리픽스는 첫 조각의 마크 없는 텍스트에 담김).
   const lineText = parts.map((p) => p.text).join("");
+  if (lineText === DIVIDER_LINE) {
+    div.dataset.capDivider = "true";
+    div.style.background = DIVIDER_BACKGROUND;
+    div.style.color = "transparent";
+    div.style.caretColor = "#6b7280";
+    div.appendChild(document.createTextNode(DIVIDER_LINE));
+    return div;
+  }
   const meta = parseBulletLine(lineText);
   if (meta.bullet) {
     const lvl = Math.min(meta.level, MAX_BULLET_LEVEL);
@@ -217,6 +226,7 @@ function serializeEl(el: HTMLElement): string {
 export interface LinkTarget { slug: string; year: number; title: string; }
 
 export interface CapRichEditorHandle {
+  insertDivider(): void;
   // 현재 캐럿 위치에서 본문을 둘로 분할(마크 보존). 캐럿이 이 에디터 밖이면 null.
   splitAtCaret(): { before: string; after: string; source: string } | null;
   splitAfterParagraph(): { before: string; after: string } | null;
@@ -235,13 +245,14 @@ export interface CapRichEditorProps {
   // Opt-in idle commits for long prose. Other editors retain their existing behavior.
   changeDelayMs?: number;
   onPendingChange?: () => void;
+  allowDivider?: boolean;
   // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
   linkTargets?: LinkTarget[];
   // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, linkTargets, align = "center",
+  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const committed = useRef(value);
@@ -273,6 +284,19 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
   // 외부(블록 스택)에서 '커서 위치 분할 삽입'을 위해 캐럿 분할/blur 노출.
   //   caretSerializeOffsetOf/serializeEl 은 동일 좌표계 → splitRichTextAt 로 마크 보존 분할.
   useImperativeHandle(forwardedRef, () => ({
+    insertDivider() {
+      const el = ref.current;
+      if (!el || composingRef.current) return;
+      const raw = serializeEl(el), selection = window.getSelection();
+      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+      const offset = range && el.contains(range.endContainer)
+        ? caretSerializeOffsetOf(el, range.endContainer, range.endOffset) : plainText(raw).length;
+      const next = insertRichDivider(raw, offset);
+      renderToEl(el, next.text);
+      el.focus({ preventScroll: true });
+      setCaretAtSerializeOffset(el, next.caret);
+      queueChange();
+    },
     splitAfterParagraph() {
       const el = ref.current, sel = window.getSelection();
       if (!el || composingRef.current || !sel?.rangeCount) return null;
@@ -349,6 +373,13 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     clearTimeout(timer.current);
   };
   const queueChange = () => {
+    // Editing/deleting a divider turns that line back into ordinary text.
+    ref.current?.querySelectorAll<HTMLElement>("[data-cap-divider]").forEach(line => {
+      if (stripZW(line.textContent || "") !== DIVIDER_LINE) {
+        delete line.dataset.capDivider;
+        line.style.background = ""; line.style.color = ""; line.style.caretColor = "";
+      }
+    });
     if (placeholderRef.current) placeholderRef.current.hidden = !!stripZW(ref.current?.textContent || "");
     if (!changeDelayMs) { emit(); return; }
     markPending();
@@ -796,6 +827,21 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
 
     const info = lineInfo(el);
     if (!info) return;
+
+    if (allowDivider && ev.key === "Enter" && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !info.bullet && (info.bodyRaw === "---" || info.bodyRaw === DIVIDER_LINE)) {
+      ev.preventDefault();
+      replaceLineThenInsert(info.index, DIVIDER_LINE, "", 0);
+      return;
+    }
+    if (ev.key === "Backspace" && info.bodyRaw === DIVIDER_LINE) {
+      ev.preventDefault(); replaceLine(info.index, "", info.lineStartSerialize); return;
+    }
+    if (ev.key === "Backspace" && info.caretInBody === 0 && info.index > 0) {
+      const previous = serializeEl(el).split("\n")[info.index - 1];
+      if (previous === DIVIDER_LINE) {
+        ev.preventDefault(); replaceLine(info.index - 1, null, info.lineStartSerialize - DIVIDER_LINE.length - 1); return;
+      }
+    }
 
     if (ev.key === "Tab") {
       ev.preventDefault();

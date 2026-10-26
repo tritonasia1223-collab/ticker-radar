@@ -1,7 +1,7 @@
 import { Fragment, forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useInView } from "framer-motion";
-import { ArrowUp, ArrowDown, Plus, Trash2, Move, X } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Trash2, Move, X, Minus } from "lucide-react";
 import { CapRichEditor, type CapRichEditorHandle, type CapRichEditorProps } from "./CapRichEditor";
 import { collaboration } from "@/lib/cap-collab-client";
 import { CapRichText } from "./CapRichText";
@@ -121,6 +121,7 @@ export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read
         </div>}
         {canEdit ? <div className="relative" data-testid="insight-text-section" data-insight-section={part.after ?? ""}>
           <div className="sticky top-0 z-10 flex justify-end bg-background/95 py-1">
+            <button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted" title="커서 위치에 구분선 삽입 · 빈 줄에서 --- 입력 후 Enter" onPointerDown={e => e.preventDefault()} onClick={() => editors.current.get(part.after ?? "lead")?.insertDivider()}><Minus size={12} />구분선</button>
             <button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-teal-700 hover:bg-teal-500/5 dark:text-teal-300 disabled:opacity-30" disabled={(note.scenes?.length ?? 0) >= 30} title="본문에서 원하는 위치를 선택해 도표를 넣습니다." onPointerDown={e => e.preventDefault()} onClick={() => beginPlacement("new")}><Plus size={12} />도표</button>
           </div>
           <BufferedInsightEditor resourceKey={resourceKey} ref={el => { if (el) editors.current.set(part.after ?? "lead", el); else editors.current.delete(part.after ?? "lead"); }} ariaLabel={index ? `인사이트 본문 ${index + 1}` : "인사이트 본문"} value={part.text} onChange={text => editText(part.after, text)} onBlur={text => editText(part.after, text)} commitOnUnmount rows={parts.length === 1 ? (note.tables?.length ? 4 : 12) : 2} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="흐름과 생각을 적어보세요. 문단 뒤에 도표를 넣어 변화를 이어갈 수 있습니다." />
@@ -137,7 +138,7 @@ const BufferedInsightEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps
   const finish = () => { const end = release.current; release.current = null; end?.(); };
   useLayoutEffect(() => () => { queueMicrotask(finish); }, [resourceKey]);
   const commit = (text: string) => { onChange(text); finish(); void collaboration.flush(resourceKey); };
-  return <CapRichEditor {...props} ref={ref} changeDelayMs={800}
+  return <CapRichEditor {...props} ref={ref} changeDelayMs={800} allowDivider
     onPendingChange={() => { release.current ??= collaboration.beginLocalEdit(resourceKey); }}
     onChange={commit} onBlur={text => { onBlur?.(text); finish(); void collaboration.flush(resourceKey); }} />;
 });
