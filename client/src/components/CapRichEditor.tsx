@@ -232,20 +232,29 @@ export interface CapRichEditorProps {
   autoFocus?: boolean;
   onBlur?: (value: string) => void; // blur 시 emit 한 '최신 값'을 넘긴다(IME 마지막 음절 보존).
   commitOnUnmount?: boolean;
+  // Opt-in idle commits for long prose. Other editors retain their existing behavior.
+  changeDelayMs?: number;
+  onPendingChange?: () => void;
   // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
   linkTargets?: LinkTarget[];
   // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, linkTargets, align = "center",
+  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const committed = useRef(value);
+  const placeholderRef = useRef<HTMLSpanElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const pending = useRef(false);
+  const latestCallbacks = useRef({ onChange, onPendingChange });
+  latestCallbacks.current = { onChange, onPendingChange };
   const blurCommit = useRef(onBlur); blurCommit.current = onBlur;
   useLayoutEffect(() => {
     const el = ref.current;
     return () => {
+      clearTimeout(timer.current);
       if (!commitOnUnmount || !el) return;
       const latest = serializeEl(el);
       if (latest !== committed.current) { committed.current = latest; blurCommit.current?.(latest); }
@@ -284,14 +293,17 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
       const source = serializeEl(el);
       return { ...splitRichTextAt(source, offset), source };
     },
-    blur() { ref.current?.blur(); },
+    blur() {
+      if (document.activeElement === ref.current) ref.current?.blur();
+      else if (pending.current) commitNow.current();
+    },
   }));
 
   // Own keystrokes already match the DOM. Apply actual remote changes even while focused:
   // leaving stale DOM here would re-submit old text on blur after the base advanced.
   useEffect(() => {
     const el = ref.current;
-    if (!el || composingRef.current || serializeEl(el) === (value || "")) return;
+    if (!el || pending.current || composingRef.current || serializeEl(el) === (value || "")) return;
     const focused = document.activeElement === el;
     const caret = focused ? caretRange(el).end : 0;
     renderToEl(el, value || "");
@@ -322,12 +334,44 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
   // 반환이 중요: 한글 IME 조합 중엔 onInput emit 을 막으므로 부모 state(value)가 조합분만큼 뒤처진다.
   // blur 커밋 때 부모가 stale state 대신 이 반환값을 써야 마지막 음절까지 저장된다.
   const emit = useCallback((): string => {
+    clearTimeout(timer.current);
     const el = ref.current;
     if (!el) return value;
     const out = serializeEl(el);
-    onChange(out);
+    pending.current = false;
+    latestCallbacks.current.onChange(out);
     return out;
-  }, [onChange, value]);
+  }, [value]);
+  const markPending = () => {
+    if (!changeDelayMs) return;
+    pending.current = true;
+    latestCallbacks.current.onPendingChange?.();
+    clearTimeout(timer.current);
+  };
+  const queueChange = () => {
+    if (placeholderRef.current) placeholderRef.current.hidden = !!stripZW(ref.current?.textContent || "");
+    if (!changeDelayMs) { emit(); return; }
+    markPending();
+    if (!composingRef.current) timer.current = setTimeout(() => emit(), changeDelayMs);
+  };
+  const commitNow = useRef(() => {});
+  commitNow.current = () => {
+    const text = emit();
+    committed.current = text;
+    blurCommit.current?.(text);
+  };
+  useEffect(() => {
+    if (!changeDelayMs) return;
+    const hide = () => { if (document.visibilityState === "hidden" && pending.current) commitNow.current(); };
+    const leave = (event: BeforeUnloadEvent) => {
+      if (!pending.current) return;
+      commitNow.current();
+      event.preventDefault(); event.returnValue = "";
+    };
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("beforeunload", leave);
+    return () => { document.removeEventListener("visibilitychange", hide); window.removeEventListener("beforeunload", leave); };
+  }, [changeDelayMs]);
 
   // 선택이 비어있지 않고 에디터 내부면 툴바 위치 계산(뷰포트 좌표 = fixed).
   const updateToolbar = useCallback(() => {
@@ -528,7 +572,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     const value = serializeEl(el);
     renderToEl(el, splitRichTextAt(value, start).before + insert + splitRichTextAt(value, end).after);
     setCaretAtSerializeOffset(el, start + plainText(insert).length);
-    emit();
+    queueChange();
   }
   function onCopy(e: ClipboardEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -546,7 +590,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     const value = serializeEl(el);
     renderToEl(el, splitRichTextAt(value, picked.start).before + splitRichTextAt(value, picked.end).after);
     setCaretAtSerializeOffset(el, picked.start);
-    emit();
+    queueChange();
   }
 
   // 현재 캐럿이 속한 최상위 줄 DIV 의 인덱스.
@@ -638,7 +682,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     renderToEl(el, out);
     setCaretAtSerializeOffset(el, caretSerializeOffset);
     setToolbar(null);
-    onChange(out);
+    queueChange();
   }
 
   // 현재 줄을 before 로 바꾸고 다음에 after 줄 삽입. 캐럿은 새 줄 본문 시작.
@@ -655,7 +699,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     caret += afterPrefixLen;
     setCaretAtSerializeOffset(el, caret);
     setToolbar(null);
-    onChange(out);
+    queueChange();
   }
 
   // 본문 마커 문자열을 평문 오프셋에서 앞/뒤로 분할(마크 보존).
@@ -855,7 +899,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     renderToEl(el, out);
     window.getSelection()?.removeAllRanges();
     setToolbar(null);
-    onChange(out);
+    queueChange();
   }
 
   // 에디터 전체 표식 초기화(평문화). 선택 없이도 동작.
@@ -866,7 +910,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     renderToEl(el, plain);
     window.getSelection()?.removeAllRanges();
     setToolbar(null);
-    onChange(plain);
+    queueChange();
   }
 
   // 링크 버튼 클릭 → 현재 선택 구간을 보관하고 카드 선택 패널 열기.
@@ -928,9 +972,11 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         onPaste={onPaste}
         onCopy={onCopy}
         onCut={onCut}
-        onInput={() => { emit(); }}
-        onCompositionStart={() => { composingRef.current = true; }}
-        onCompositionEnd={() => { composingRef.current = false; emit(); }}
+        data-cap-buffered-autosave={changeDelayMs ? "true" : undefined}
+        onBeforeInput={markPending}
+        onInput={queueChange}
+        onCompositionStart={() => { composingRef.current = true; markPending(); }}
+        onCompositionEnd={() => { composingRef.current = false; queueChange(); }}
         onBlur={() => {
           const v = emit();
           // 링크 패널 조작 중에는 편집 종료(커밋)를 미루다 — 패널 input 포커스로 인한 의도치 않은 blur 방지.
@@ -941,7 +987,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         data-richeditor
       />
       {isEmpty && placeholder ? (
-        <span className={`pointer-events-none absolute inset-x-2.5 top-2 text-xs text-muted-foreground ${align === "left" ? "text-left" : "text-center"}`}>
+        <span ref={placeholderRef} className={`pointer-events-none absolute inset-x-2.5 top-2 text-xs text-muted-foreground ${align === "left" ? "text-left" : "text-center"}`}>
           {placeholder}
         </span>
       ) : null}

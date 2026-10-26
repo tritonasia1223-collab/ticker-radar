@@ -148,7 +148,7 @@ function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: Balance
       if (!current.success) return false;
       return save({ balance: patch === null ? null : { money: 0, goods: 0, outcome: null, ...current.data.balance, ...patch } });
     }} />
-    <ComparisonInsightBody note={note} canEdit={p.canEdit} onJump={p.onJump} save={save} read={() => { const parsed = comparisonInsightSchema.safeParse(collaboration.get(key)); return parsed.success ? parsed.data : null; }} />
+    <ComparisonInsightBody resourceKey={key} note={note} canEdit={p.canEdit} onJump={p.onJump} save={save} read={() => { const parsed = comparisonInsightSchema.safeParse(collaboration.get(key)); return parsed.success ? parsed.data : null; }} />
     {!!note.tables?.length && <div className="mt-4"><ComparisonQuoteTables tables={note.tables} onRemove={p.canEdit ? id => {
       const current = comparisonInsightSchema.safeParse(collaboration.get(key));
       if (current.success) save({ tables: current.data.tables?.filter(table => table.id !== id) ?? [] });
@@ -156,7 +156,7 @@ function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: Balance
   </article>;
 }
 
-// Metadata commits on blur; prose journals immediately to protect long writing sessions.
+// Metadata commits on blur; prose commits after idle or immediately on blur.
 function BufferedInput({ label, value, save, type = "text", min, maxLength, compact = false }: { label: string; value: string; save: (value: string) => boolean; type?: string; min?: string; maxLength?: number; compact?: boolean }) {
   const [draft, setDraft] = useState(value);
   const pending = useRef({ draft, value, save }); pending.current = { draft, value, save };

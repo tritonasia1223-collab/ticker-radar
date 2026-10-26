@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useInView } from "framer-motion";
 import { ArrowUp, ArrowDown, Plus, Trash2, Move, X } from "lucide-react";
-import { CapRichEditor, type CapRichEditorHandle } from "./CapRichEditor";
+import { CapRichEditor, type CapRichEditorHandle, type CapRichEditorProps } from "./CapRichEditor";
+import { collaboration } from "@/lib/cap-collab-client";
 import { CapRichText } from "./CapRichText";
 import { ComparisonBalance } from "./ComparisonBalance";
 import { useComparisonBalanceMotion } from "@/lib/use-comparison-balance-motion";
@@ -11,10 +12,11 @@ import type { ComparisonInsight } from "../../../shared/cap-comparison";
 import type { InsightBalance } from "../../../shared/comparison-balance";
 
 type Props = {
+  resourceKey: string;
   note: ComparisonInsight; canEdit: boolean; onJump: (slug: string) => void;
   read: () => ComparisonInsight | null; save: (patch: Partial<ComparisonInsight>) => boolean;
 };
-export function ComparisonInsightBody({ note, canEdit, onJump, read, save }: Props) {
+export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read, save }: Props) {
   const editors = useRef(new Map<string, CapRichEditorHandle>());
   const [newId, setNewId] = useState<string | null>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -121,12 +123,24 @@ export function ComparisonInsightBody({ note, canEdit, onJump, read, save }: Pro
           <div className="sticky top-0 z-10 flex justify-end bg-background/95 py-1">
             <button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-teal-700 hover:bg-teal-500/5 dark:text-teal-300 disabled:opacity-30" disabled={(note.scenes?.length ?? 0) >= 30} title="본문에서 원하는 위치를 선택해 도표를 넣습니다." onPointerDown={e => e.preventDefault()} onClick={() => beginPlacement("new")}><Plus size={12} />도표</button>
           </div>
-          <CapRichEditor ref={el => { if (el) editors.current.set(part.after ?? "lead", el); else editors.current.delete(part.after ?? "lead"); }} ariaLabel={index ? `인사이트 본문 ${index + 1}` : "인사이트 본문"} value={part.text} onChange={text => editText(part.after, text)} onBlur={text => editText(part.after, text)} commitOnUnmount rows={parts.length === 1 ? (note.tables?.length ? 4 : 12) : 2} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="흐름과 생각을 적어보세요. 문단 뒤에 도표를 넣어 변화를 이어갈 수 있습니다." />
+          <BufferedInsightEditor resourceKey={resourceKey} ref={el => { if (el) editors.current.set(part.after ?? "lead", el); else editors.current.delete(part.after ?? "lead"); }} ariaLabel={index ? `인사이트 본문 ${index + 1}` : "인사이트 본문"} value={part.text} onChange={text => editText(part.after, text)} onBlur={text => editText(part.after, text)} commitOnUnmount rows={parts.length === 1 ? (note.tables?.length ? 4 : 12) : 2} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="흐름과 생각을 적어보세요. 문단 뒤에 도표를 넣어 변화를 이어갈 수 있습니다." />
         </div> : <CapRichText text={part.text || (parts.length === 1 && !note.tables?.length ? "아직 작성된 내용이 없습니다." : "")} onJump={onJump} className="block whitespace-pre-wrap break-words text-sm leading-[22px]" />}
       </Fragment>;
     })}
   </div>;
 }
+
+// Keep the collaboration base fixed only while DOM input is buffered. Releasing
+// after the synchronous commit also flushes immediately, without a second debounce.
+const BufferedInsightEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps & { resourceKey: string }>(function BufferedInsightEditor({ resourceKey, onChange, onBlur, ...props }, ref) {
+  const release = useRef<(() => void) | null>(null);
+  const finish = () => { const end = release.current; release.current = null; end?.(); };
+  useLayoutEffect(() => () => { queueMicrotask(finish); }, [resourceKey]);
+  const commit = (text: string) => { onChange(text); finish(); void collaboration.flush(resourceKey); };
+  return <CapRichEditor {...props} ref={ref} changeDelayMs={800}
+    onPendingChange={() => { release.current ??= collaboration.beginLocalEdit(resourceKey); }}
+    onChange={commit} onBlur={text => { onBlur?.(text); finish(); void collaboration.flush(resourceKey); }} />;
+});
 
 function InlineBalance({ scene, previous, canEdit, initiallyEditing, onChange }: {
   scene: InsightScene; previous?: InsightBalance | null; canEdit: boolean; initiallyEditing: boolean;
