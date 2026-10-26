@@ -247,13 +247,14 @@ export interface CapRichEditorProps {
   changeDelayMs?: number;
   onPendingChange?: () => void;
   allowDivider?: boolean;
+  showClearAll?: boolean;
   // 내부 링크 기능용 카드 목록. 없거나 빈 배열이면 링크 버튼 미노출.
   linkTargets?: LinkTarget[];
   // 본문 정렬 — 노드 카드는 가운데(기본), 인사이트 등 긴 글은 왼쪽.
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, linkTargets, align = "center",
+  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, showClearAll = true, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const committed = useRef(value);
@@ -1088,7 +1089,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
           >
             지움
           </button>
-          <button
+          {showClearAll && <button
             type="button"
             title="이 칸 전체 표식 초기화"
             className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-destructive hover:bg-muted"
@@ -1096,7 +1097,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
             data-testid="mark-clear-all"
           >
             전체초기화
-          </button>
+          </button>}
         </div>
       ) : null}
 

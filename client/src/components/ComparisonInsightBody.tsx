@@ -138,7 +138,7 @@ const BufferedInsightEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps
   const finish = () => { const end = release.current; release.current = null; end?.(); };
   useLayoutEffect(() => () => { queueMicrotask(finish); }, [resourceKey]);
   const commit = (text: string) => { onChange(text); finish(); void collaboration.flush(resourceKey); };
-  return <CapRichEditor {...props} ref={ref} changeDelayMs={800} allowDivider
+  return <CapRichEditor {...props} ref={ref} changeDelayMs={800} allowDivider showClearAll={false}
     onPendingChange={() => { release.current ??= collaboration.beginLocalEdit(resourceKey); }}
     onChange={commit} onBlur={text => { onBlur?.(text); finish(); void collaboration.flush(resourceKey); }} />;
 });
