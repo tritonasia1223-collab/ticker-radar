@@ -163,11 +163,30 @@ export function circledNumber(n: number): string | null {
   return null;
 }
 
+const FRACTION_SYMBOLS: Record<string, string> = {
+  "1/2": "½", "1/3": "⅓", "2/3": "⅔", "1/4": "¼", "3/4": "¾",
+  "1/5": "⅕", "2/5": "⅖", "3/5": "⅗", "4/5": "⅘", "1/6": "⅙", "5/6": "⅚",
+  "1/7": "⅐", "1/8": "⅛", "3/8": "⅜", "5/8": "⅝", "7/8": "⅞", "1/9": "⅑", "1/10": "⅒",
+};
+
+// Only complete fractions with a Unicode symbol; never replace a suffix of a date, URL or decimal.
+export function inlineFractionCommand(before: string, after = ""): { index: number; symbol: string } | null {
+  const match = /(\d+\/\d+)$/.exec(before);
+  if (!match || /[\dA-Za-z/._]/.test(before[match.index - 1] ?? "") || /^[\d/]/.test(after)) return null;
+  const symbol = FRACTION_SYMBOLS[match[0]];
+  return symbol ? { index: match.index, symbol } : null;
+}
+
 // 평문 문자열 + 캐럿 위치에서 스페이스 직전 커맨드를 치환. 매치 없으면 null.
 //   "->" → "→ " · "(n)" → "원문자 ". (평문 textarea 용 — 마크 없는 순수 문자열 연산)
 export function applyInlineTextCommand(text: string, caret: number): { text: string; caret: number } | null {
   const before = text.slice(0, caret);
   const after = text.slice(caret);
+  const fraction = inlineFractionCommand(before, after);
+  if (fraction) {
+    const head = before.slice(0, fraction.index) + fraction.symbol + " ";
+    return { text: head + after, caret: head.length };
+  }
   if (before.endsWith("->")) {
     const head = before.slice(0, -2) + "→ ";
     return { text: head + after, caret: head.length };

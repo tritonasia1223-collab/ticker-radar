@@ -5,7 +5,7 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback, useImperativ
 import { cn } from "@/lib/utils";
 import {
   MARK_STYLES, MARK_BY_KEY, parseRich, LINK_PREFIX, splitRichTextAt,
-  parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, type RichSeg,
+  parseBulletLine, makeBulletLine, plainText, BULLET_GLYPH, BULLET_OPACITY, MAX_BULLET_LEVEL, circledNumber, inlineFractionCommand, type RichSeg,
 } from "@/lib/capitalism-richtext";
 
 // 주어진 마크 키가 적용 가능한가? 고정키(hl-*/c-*) 또는 link:<slug>.
@@ -697,6 +697,24 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         // "-" 제거하고 레벨0 빈 불릿으로.
         replaceLine(info.index, makeBulletLine(0, ""), info.lineStartSerialize + 2);
         return;
+      }
+      // Fraction + space, keeping the surrounding text and the fraction's color/highlight.
+      if (info) {
+        const plain = plainText(info.bodyRaw);
+        const fraction = inlineFractionCommand(plain.slice(0, info.caretInBody), plain.slice(info.caretInBody));
+        if (fraction) {
+          ev.preventDefault();
+          const head = splitBodyAt(info.bodyRaw, fraction.index).before;
+          const tail = splitBodyAt(info.bodyRaw, info.caretInBody).after;
+          let offset = 0;
+          const seg = parseRich(info.bodyRaw).find(s => { offset += s.text.length; return offset > fraction.index; });
+          const mark = seg?.mark === "link" && seg.linkSlug ? `${LINK_PREFIX}${seg.linkSlug}` : seg?.mark;
+          const replacement = isKnownKey(mark) ? `[[${mark}|${fraction.symbol} ]]` : fraction.symbol + " ";
+          const body = head + replacement + tail;
+          replaceLine(info.index, info.bullet ? makeBulletLine(info.level, body) : body,
+            info.lineStartSerialize + (info.bullet ? info.level + 2 : 0) + fraction.index + 2);
+          return;
+        }
       }
       // '->' + 스페이스 → 화살표("→ "). 캐럿 바로 앞 평문 두 글자가 "->" 이면 치환(마크 보존).
       //   불릿 트리거(bodyRaw==="-")와 배타적: 화살표는 caretInBody>=2 라 겹치지 않는다.
