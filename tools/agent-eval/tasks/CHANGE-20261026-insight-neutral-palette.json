@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261026-insight-neutral-palette",
+  "title": "연회색 형광펜과 검은색 굵게 도구 및 1~8번 색상 대조 미리보기",
+  "baseRef": "e221a6d",
+  "requirement": "연회색 하이라이트와 검은색 볼드(B)를 팔레트에 추가한다. 운영 수정본 1~8번에서 중립/제목의 초록을 연회색/볼드로, 무역 부분을 초록으로 정리한다. 후속 사용자 승인으로 9~29번의 돈·물건 소제목 44개를 동일한 강조/UP·DOWN 표기로 통일하고 배포한다. 방향·강도·방향전환을 보존한다.",
+  "acceptanceCriteria": ["편집기와 읽기 화면에 동일한 신규 표식 적용", "1~8번 평문·공백·줄바꿈 불변", "9~29번 검토한 소제목 외 본문 불변", "도표·날짜·제목·순서·기타 필드와 원본 아카이브 보존", "글씨색 대신 검은색 굵게 B 도구", "코드 배포 확인 뒤 ifVersion 및 최신 원문 일치 시 본문 필드만 감사 이력 API로 적용"],
+  "requiredChecks": ["npm.cmd run check", "npx.cmd vitest run tests/cap-richtext-palette.test.ts", "npm.cmd run build", "미리보기 DOM 및 팔레트 브라우저 검증"],
+  "requiresEvaluationDatabase": false
+}

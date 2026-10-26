@@ -2,8 +2,8 @@
 // DB 스키마 변경 없이 text 필드 안에 마커를 직렬화한다.
 //   형식: [[키|텍스트]]   예) [[hl-y|중요]] , [[c-r|폭락]]
 // 키 종류:
-//   hl-*       : 형광펜(배경 하이라이트)   hl-y(노랑) hl-g(초록) hl-b(파랑) hl-p(분홍) hl-v(청보라)
-//   c-*        : 글자색                    c-r(빨강) c-b(파랑) c-g(초록) c-o(주황) c-v(청보라)
+//   hl-*       : 형광펜(배경 하이라이트)   hl-y(노랑) hl-g(초록) hl-b(파랑) hl-p(분홍) hl-v(청보라) hl-gray(연회색)
+//   c-*        : 글자색                    c-r(빨강) c-b(파랑) c-g(초록) c-o(주황) c-v(청보라), c-bold(검정 굵게)
 //   link:<slug>: 내부 링크 — 클릭 시 해당 카드(slug)의 시점으로 점프. 위키 스타일 파란 밑줄.
 //                예) [[link:1975-eurodollar|유로달러 폭발 시기]]
 // 알 수 없는 키는 무시(원문 텍스트만 표시)하여 안전하게 폴백.
@@ -27,12 +27,14 @@ export const MARK_STYLES: MarkStyle[] = [
   { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },
   { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },
   { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "#8b5cf6", style: { background: "rgba(139,92,246,0.28)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-gray", label: "연회색 형광", kind: "hl", swatch: "#d1d5db", style: { background: "rgba(156,163,175,0.22)", borderRadius: 3, padding: "0 2px" } },
   // 글자색 — 채도 높은 색. 키 순서는 기존 버튼 위치 유지를 위해 그대로 두고 신규만 뒤에 추가.
   { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#ff2e2e", style: { color: "#ff2e2e", fontWeight: 600 } },
   { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#146aff", style: { color: "#146aff", fontWeight: 600 } },
   { key: "c-g", label: "초록 글자", kind: "c", swatch: "#008738", style: { color: "#008738", fontWeight: 600 } },
   { key: "c-o", label: "주황 글자", kind: "c", swatch: "#ff7a00", style: { color: "#ff7a00", fontWeight: 600 } },
   { key: "c-v", label: "청보라 글자", kind: "c", swatch: "#8c4aff", style: { color: "#8c4aff", fontWeight: 600 } },
+  { key: "c-bold", label: "굵게 (검정)", kind: "c", swatch: "#111827", style: { color: "#111827", fontWeight: 700 } },
 ];
 
 export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(

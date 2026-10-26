@@ -1054,6 +1054,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
               key={m.key}
               type="button"
               title={m.label}
+              aria-label={m.label}
               className="h-5 w-5 rounded-sm border border-border/60 hover:scale-110 transition-transform"
               style={
                 m.kind === "hl"
@@ -1062,7 +1063,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
               }
               onClick={() => applyMark(m.key)}
             >
-              {m.kind === "c" ? "A" : ""}
+              {m.key === "c-bold" ? "B" : m.kind === "c" ? "A" : ""}
             </button>
           ))}
           {hasLinkTargets ? (

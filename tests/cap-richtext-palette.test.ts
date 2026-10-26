@@ -10,11 +10,13 @@ const PALETTE = [
   { key: "hl-b", kind: "hl", swatch: "#60a5fa", value: "rgba(96,165,250,0.30)" },
   { key: "hl-p", kind: "hl", swatch: "#f472b6", value: "rgba(244,114,182,0.32)" },
   { key: "hl-v", kind: "hl", swatch: "#8b5cf6", value: "rgba(139,92,246,0.28)" },
+  { key: "hl-gray", kind: "hl", swatch: "#d1d5db", value: "rgba(156,163,175,0.22)" },
   { key: "c-r", kind: "c", swatch: "#ff2e2e", value: "#ff2e2e" },
   { key: "c-b", kind: "c", swatch: "#146aff", value: "#146aff" },
   { key: "c-g", kind: "c", swatch: "#008738", value: "#008738" },
   { key: "c-o", kind: "c", swatch: "#ff7a00", value: "#ff7a00" },
   { key: "c-v", kind: "c", swatch: "#8c4aff", value: "#8c4aff" },
+  { key: "c-bold", kind: "c", swatch: "#111827", value: "#111827" },
 ] as const;
 
 describe("자본주의 리치텍스트 팔레트", () => {
@@ -30,11 +32,11 @@ describe("자본주의 리치텍스트 팔레트", () => {
     }
   });
 
-  // 새 키(hl-v/c-v)는 소문자+하이픈이라 기존 TOKEN 정규식이 수정 없이 받는다.
+  // 신규 표식도 저장·재조회에서 보존한다.
   it("마커가 파싱·직렬화 왕복에서 손실되지 않는다", () => {
-    const raw = "평시 [[c-v|청보라 글자]] 와 [[hl-v|청보라 형광]] 과 [[hl-y|노랑]] 끝";
+    const raw = "평시 [[c-v|청보라 글자]] 와 [[hl-v|청보라 형광]] 과 [[hl-y|노랑]] [[hl-gray|시기]] [[c-bold|골디락스]] 끝";
     const segs = parseRich(raw);
-    expect(segs.map((s) => s.mark).filter(Boolean)).toEqual(["c-v", "hl-v", "hl-y"]);
+    expect(segs.map((s) => s.mark).filter(Boolean)).toEqual(["c-v", "hl-v", "hl-y", "hl-gray", "c-bold"]);
     expect(serializeRich(segs)).toBe(raw);
   });
 
