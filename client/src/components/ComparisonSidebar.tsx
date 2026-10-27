@@ -2,7 +2,8 @@ import { activeSeriesIds } from "@/lib/comparison-series";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { CapRichText } from "./CapRichText";
-import { ComparisonInsightBody } from "./ComparisonInsightBody";
+import { ComparisonInsightBody, InlineBalance } from "./ComparisonInsightBody";
+import { parallelCivilWarScene } from "@/lib/comparison-parallel-balances";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { ComparisonQuoteTables } from "./ComparisonQuoteTables";
 import { ComparisonBalance } from "./ComparisonBalance";
@@ -119,6 +120,7 @@ function InsightPagination({ notes, index, viewed, onSelect }: { notes: SavedIns
 
 function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: BalanceMotion }) {
   const { note } = p, key = "note:" + note.id, scope = useCapEditScope(key);
+  const parallelScene = parallelCivilWarScene(note);
   const [error, setError] = useState(""), [settings, setSettings] = useState(false), [dates, setDates] = useState(false), [confirmDelete, setConfirmDelete] = useState(false);
   const save = (patch: Partial<ComparisonInsight>) => {
     const current = collaboration.get(key); if (!current) return false;
@@ -143,12 +145,26 @@ function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: Balance
     </div>}
     {error && <p role="alert" className="my-2 text-xs text-amber-600">{error} 입력 전 값으로 유지했습니다.</p>}
     <div className="flex items-start gap-1.5 border-b pb-2"><Star size={15} className="mt-1 shrink-0 fill-red-400 text-red-400" />{p.canEdit ? <BufferedInput label="제목" compact value={note.title} maxLength={160} save={value => save({ title: value })} /> : <h2 className="break-words text-sm font-semibold leading-6">{note.title}</h2>}</div>
-    <ComparisonBalance value={note.balance} motionValues={p.balanceMotion} canEdit={p.canEdit} onChange={patch => {
+    <div className={parallelScene ? "mt-3 grid grid-cols-2 gap-3" : undefined} data-testid={parallelScene ? "civil-war-balance-pair" : undefined}>
+    <div className="min-w-0">
+    {parallelScene && <h3 className="text-center text-xs font-semibold text-muted-foreground">북부</h3>}
+    <ComparisonBalance compact={!!parallelScene} value={note.balance} motionValues={p.balanceMotion} canEdit={p.canEdit} onChange={patch => {
       const current = comparisonInsightSchema.safeParse(collaboration.get(key));
       if (!current.success) return false;
       return save({ balance: patch === null ? null : { money: 0, goods: 0, outcome: null, ...current.data.balance, ...patch } });
     }} />
-    <ComparisonInsightBody resourceKey={key} note={note} canEdit={p.canEdit} onJump={p.onJump} save={save} read={() => { const parsed = comparisonInsightSchema.safeParse(collaboration.get(key)); return parsed.success ? parsed.data : null; }} />
+    </div>
+    {parallelScene && <div className="min-w-0" data-testid="civil-war-south-balance">
+      <h3 className="text-center text-xs font-semibold text-muted-foreground">남부</h3>
+      <InlineBalance compact scene={parallelScene} previous={parallelScene.balance} canEdit={p.canEdit} initiallyEditing={false} onChange={patch => {
+        const current = comparisonInsightSchema.safeParse(collaboration.get(key));
+        if (!current.success || !current.data.scenes?.some(s => s.id === parallelScene.id)) return false;
+        if (patch === null) return save({ text: current.data.text.replace(`[[balance:${parallelScene.id}]]`, ""), scenes: current.data.scenes.filter(s => s.id !== parallelScene.id) });
+        return save({ scenes: current.data.scenes.map(s => s.id === parallelScene.id ? { ...s, balance: { ...s.balance, ...patch } } : s) });
+      }} />
+    </div>}
+    </div>
+    <ComparisonInsightBody resourceKey={key} note={note} topSceneId={parallelScene?.id} canEdit={p.canEdit} onJump={p.onJump} save={save} read={() => { const parsed = comparisonInsightSchema.safeParse(collaboration.get(key)); return parsed.success ? parsed.data : null; }} />
     {!!note.tables?.length && <div className="mt-4"><ComparisonQuoteTables tables={note.tables} onRemove={p.canEdit ? id => {
       const current = comparisonInsightSchema.safeParse(collaboration.get(key));
       if (current.success) save({ tables: current.data.tables?.filter(table => table.id !== id) ?? [] });

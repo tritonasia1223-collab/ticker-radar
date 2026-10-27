@@ -8,11 +8,12 @@ type Props = {
   value: InsightBalance | null | undefined;
   canEdit: boolean;
   initiallyEditing?: boolean;
+  compact?: boolean;
   motionValues: BalanceMotion;
   onChange: (patch: Partial<InsightBalance> | null) => boolean;
 };
 
-export function ComparisonBalance({ value, canEdit, onChange, motionValues, initiallyEditing = false }: Props) {
+export function ComparisonBalance({ value, canEdit, onChange, motionValues, initiallyEditing = false, compact = false }: Props) {
   const [editing, setEditing] = useState(initiallyEditing);
   const [resultLines, setResultLines] = useState(1);
   const [moneyLines, setMoneyLines] = useState(1), [goodsLines, setGoodsLines] = useState(1);
@@ -28,23 +29,25 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
   const result = value.outcomeLabel ?? (value.outcome ? BALANCE_OUTCOMES[value.outcome].detail : "");
   const gap = value.money - value.goods;
   const comparison = gap >= 2 ? ">>" : gap > 0 ? ">" : gap <= -2 ? "<<" : gap < 0 ? "<" : "≈";
-  const extra = (Math.max(moneyLines, goodsLines) - 1) * 24;
+  // Reserve two label lines in the paired view so both regions share a zero line.
+  const extra = (Math.max(compact ? 2 : 1, moneyLines, goodsLines) - 1) * 24;
   const topPad = extra ? 10 : 0;
   const chartHeight = 214 + extra + topPad + (resultLines - 1) * 21;
+  const center = compact ? 130 : 195;
   return <section ref={section} className="relative mt-3" aria-label="돈과 물건의 변화" data-testid="insight-balance">
     {canEdit && <button aria-label="돈·물건 도표 수정" aria-expanded={editing} className="absolute right-0 top-0 z-10 rounded p-1 text-muted-foreground/60 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-sky-400" onClick={() => editing ? closeEditor() : setEditing(true)}>{editing ? <X size={13} /> : <Pencil size={13} />}</button>}
-    <svg viewBox={`0 ${-topPad} 360 ${chartHeight}`} className="mx-auto block w-full max-w-[440px]" style={{ height: chartHeight * 194 / 214, ...(editing && canEdit ? { touchAction: "none" } : {}) }} role={editing && canEdit ? "group" : "img"} aria-label={`돈 ${value.moneyLabel || BALANCE_LEVELS.find(l => l.value === value.money)!.label}, 물건 ${value.goodsLabel || BALANCE_LEVELS.find(l => l.value === value.goods)!.label}. ${relation}${result ? `. ${result}` : ""}`}>
+    <svg viewBox={`0 ${-topPad} ${compact ? 260 : 360} ${chartHeight}`} className="mx-auto block w-full max-w-[440px]" style={{ ...(compact ? { height: "auto", aspectRatio: `260 / ${chartHeight}` } : { height: chartHeight * 194 / 214 }), ...(editing && canEdit ? { touchAction: "none" } : {}) }} role={editing && canEdit ? "group" : "img"} aria-label={`돈 ${value.moneyLabel || BALANCE_LEVELS.find(l => l.value === value.money)!.label}, 물건 ${value.goodsLabel || BALANCE_LEVELS.find(l => l.value === value.goods)!.label}. ${relation}${result ? `. ${result}` : ""}`}>
       <title>본문의 증감 방향과 강도를 나타낸 도표 · 실제 통계값이 아닙니다</title>
       {editing && canEdit && BALANCE_LEVELS.map(step => <g key={step.value} aria-hidden="true">
-        <line x1="94" x2="338" y1={82 - step.value * 24} y2={82 - step.value * 24} className="stroke-foreground/10" strokeDasharray="2 4" />
-        <text x="84" y={86 - step.value * 24} textAnchor="end" fontSize="9" className="fill-muted-foreground">{step.label}</text>
+        <line x1={compact ? 40 : 94} x2={compact ? 245 : 338} y1={82 - step.value * 24} y2={82 - step.value * 24} className="stroke-foreground/10" strokeDasharray="2 4" />
+        <text x={compact ? 32 : 84} y={86 - step.value * 24} textAnchor="end" fontSize="9" className="fill-muted-foreground">{step.label}</text>
       </g>)}
-      <line x1={editing && canEdit ? 94 : 38} x2="338" y1="82" y2="82" className="stroke-foreground/35" strokeDasharray="3 4" />
-      {!editing && <text x="25" y="86" fontSize="11" className="fill-muted-foreground">0</text>}
-      <BalanceBar id="money" label="돈" x={128} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} onLines={setMoneyLines} extra={extra} />
-      <BalanceBar id="goods" label="물건" x={263} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} onLines={setGoodsLines} extra={extra} />
-      <motion.text data-testid="balance-comparison-symbol" x="195" y={165 + extra} textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
-      <BalanceResult text={result} opacity={motionValues.resultOpacity} editing={editing && canEdit} onLines={setResultLines} extra={extra} onCommit={outcomeLabel => onChange({ outcomeLabel })} />
+      <line x1={compact ? (editing && canEdit ? 40 : 15) : (editing && canEdit ? 94 : 38)} x2={compact ? 245 : 338} y1="82" y2="82" className="stroke-foreground/35" strokeDasharray="3 4" />
+      {!editing && <text x={compact ? 4 : 25} y="86" fontSize="11" className="fill-muted-foreground">0</text>}
+      <BalanceBar id="money" label="돈" x={compact ? 75 : 128} labelWidth={compact ? 100 : 124} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} onLines={setMoneyLines} extra={extra} />
+      <BalanceBar id="goods" label="물건" x={compact ? 185 : 263} labelWidth={compact ? 100 : 124} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} onLines={setGoodsLines} extra={extra} />
+      <motion.text data-testid="balance-comparison-symbol" x={center} y={165 + extra} textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
+      <BalanceResult center={center} width={compact ? 240 : 280} text={result} opacity={motionValues.resultOpacity} editing={editing && canEdit} onLines={setResultLines} extra={extra} onCommit={outcomeLabel => onChange({ outcomeLabel })} />
     </svg>
     {editing && canEdit && <div className="mt-1 px-2" data-testid="balance-controls">
       <p className="text-center text-[11px] text-muted-foreground">막대는 드래그 · 문구는 클릭해서 수정</p>
@@ -53,14 +56,14 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
   </section>;
 }
 
-function BalanceResult({ text, opacity, editing, onCommit, onLines, extra }: { text: string; opacity: MotionValue<number>; editing: boolean; onCommit: (text: string) => boolean; onLines: (count: number) => void; extra: number }) {
+function BalanceResult({ center, width, text, opacity, editing, onCommit, onLines, extra }: { center: number; width: number; text: string; opacity: MotionValue<number>; editing: boolean; onCommit: (text: string) => boolean; onLines: (count: number) => void; extra: number }) {
   return <motion.g opacity={editing ? 1 : opacity}>
-    <InlineChartText testId="balance-result" text={text} placeholder={editing ? "결과 문구 입력" : ""} x={195} y={201 + extra} inputY={201 + extra} width={280} fontSize={15} className="fill-teal-700 dark:fill-teal-300" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} onLines={onLines} highlight />
+    <InlineChartText testId="balance-result" text={text} placeholder={editing ? "결과 문구 입력" : ""} x={center} y={201 + extra} inputY={201 + extra} width={width} fontSize={15} className="fill-teal-700 dark:fill-teal-300" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} onLines={onLines} highlight />
   </motion.g>;
 }
 
-function BalanceBar({ id, label, x, color, edge, text, target, wording, level: animatedLevel, labelOpacity, editing, onCommit, onWording, onLines, extra }: {
-  id: string; label: string; x: number; color: string; edge: string; text: string; target: InsightBalance["money"]; wording?: string; level: MotionValue<number>;
+function BalanceBar({ id, label, x, labelWidth, color, edge, text, target, wording, level: animatedLevel, labelOpacity, editing, onCommit, onWording, onLines, extra }: {
+  id: string; label: string; x: number; labelWidth: number; color: string; edge: string; text: string; target: InsightBalance["money"]; wording?: string; level: MotionValue<number>;
   labelOpacity: MotionValue<number>; editing: boolean; onCommit: (value: InsightBalance["money"]) => boolean; onWording: (text: string) => boolean;
   onLines: (count: number) => void; extra: number;
 }) {
@@ -142,7 +145,7 @@ function BalanceBar({ id, label, x, color, edge, text, target, wording, level: a
     </>}
     <text x={x} y={163 + extra} textAnchor="middle" fontSize="13" fontWeight="600" className="fill-foreground">{label}</text>
   </g>
-    <InlineChartText testId={`balance-label-${id}`} text={labelText} x={x} y={labelY} inputY={82 - step * 24 + (step < 0 ? 15 : -8)} width={124} fontSize={12} className={text} opacity={editing ? 1 : labelOpacity} editable={editing} ariaLabel={`${label} 막대 설명`} maxLength={20} onCommit={onWording} above={target >= 0} onLines={onLines} />
+    <InlineChartText testId={`balance-label-${id}`} text={labelText} x={x} y={labelY} inputY={82 - step * 24 + (step < 0 ? 15 : -8)} width={labelWidth} fontSize={12} className={text} opacity={editing ? 1 : labelOpacity} editable={editing} ariaLabel={`${label} 막대 설명`} maxLength={20} onCommit={onWording} above={target >= 0} onLines={onLines} />
   </g>;
 }
 
@@ -173,7 +176,7 @@ function InlineChartText({ text, placeholder = "", x, y, inputY, width, fontSize
         let end = start + 1;
         while (end <= chars.length && widthOf(chars.slice(start, end).join("")) <= width) end++;
         end = Math.max(start + 1, end - 1);
-        if (fontSize === 15 && end < chars.length) {
+        if ((fontSize === 15 || width < 124) && end < chars.length) {
           const space = chars.lastIndexOf(" ", end - 1);
           if (space > start) end = space + 1;
         }

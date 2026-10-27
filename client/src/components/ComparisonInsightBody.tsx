@@ -15,8 +15,9 @@ type Props = {
   resourceKey: string;
   note: ComparisonInsight; canEdit: boolean; onJump: (slug: string) => void;
   read: () => ComparisonInsight | null; save: (patch: Partial<ComparisonInsight>) => boolean;
+  topSceneId?: string;
 };
-export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read, save }: Props) {
+export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read, save, topSceneId }: Props) {
   const editors = useRef(new Map<string, CapRichEditorHandle>());
   const [newId, setNewId] = useState<string | null>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -100,10 +101,12 @@ export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read
       <button className="rounded bg-teal-600 px-3 py-2 text-xs font-medium text-white hover:bg-teal-700" onClick={() => insert(target.after)}>{placing === "new" ? "여기에 도표 삽입" : "여기로 도표 이동"}</button><button aria-label="도표 배치 취소" className="rounded p-2 text-muted-foreground hover:bg-muted" onClick={() => setPlacing(null)}><X size={14} /></button>
     </div>, document.body)}
     {parts.map((part, index) => {
+      // The paired card's empty lead and scene controls would otherwise separate its diagrams.
+      if (topSceneId && index === 0 && !part.text.trim()) return null;
       const scene = note.scenes?.find(s => s.id === part.after);
       const preceding = index > 1 ? note.scenes?.find(s => s.id === parts[index - 1].after)?.balance : note.balance;
       return <Fragment key={part.after ?? "lead"}>
-        {scene && <div id={`insight-scene-${scene.id}`} className="group my-5" data-testid="insight-scene" data-scene-id={scene.id}>
+        {scene && scene.id !== topSceneId && <div id={`insight-scene-${scene.id}`} className="group my-5" data-testid="insight-scene" data-scene-id={scene.id}>
           <div className="flex items-center gap-2">
             {canEdit ? <input key={scene.title} defaultValue={scene.title} aria-label="도표 전환 제목" placeholder="전환 계기 (선택)" maxLength={100} className="min-w-0 flex-1 rounded bg-transparent px-1 py-1 text-sm font-semibold outline-none focus:ring-1 focus:ring-teal-500/40" onBlur={e => { if (e.target.value !== scene.title && !update(scene.id, { title: e.target.value })) e.target.value = scene.title; }} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /> : scene.title && <h3 className="flex-1 text-sm font-semibold">{scene.title}</h3>}
             {canEdit && <div className="ml-auto flex gap-1 text-muted-foreground">
@@ -143,12 +146,12 @@ const BufferedInsightEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps
     onChange={commit} onBlur={text => { onBlur?.(text); finish(); void collaboration.flush(resourceKey); }} />;
 });
 
-function InlineBalance({ scene, previous, canEdit, initiallyEditing, onChange }: {
-  scene: InsightScene; previous?: InsightBalance | null; canEdit: boolean; initiallyEditing: boolean;
+export function InlineBalance({ scene, previous, canEdit, initiallyEditing, onChange, compact = false }: {
+  scene: InsightScene; previous?: InsightBalance | null; canEdit: boolean; initiallyEditing: boolean; compact?: boolean;
   onChange: (patch: Partial<InsightBalance> | null) => boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const visible = useInView(ref, { once: true, amount: .35 });
   const motion = useComparisonBalanceMotion(visible ? scene.balance : null, previous ?? { money: 0, goods: 0, outcome: null });
-  return <div ref={ref}><ComparisonBalance value={scene.balance} motionValues={motion} canEdit={canEdit} initiallyEditing={initiallyEditing} onChange={onChange} /></div>;
+  return <div ref={ref}><ComparisonBalance compact={compact} value={scene.balance} motionValues={motion} canEdit={canEdit} initiallyEditing={initiallyEditing} onChange={onChange} /></div>;
 }
