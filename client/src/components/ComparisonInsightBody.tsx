@@ -146,7 +146,7 @@ const BufferedInsightEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps
     onChange={commit} onBlur={text => { onBlur?.(text); finish(); void collaboration.flush(resourceKey); }} />;
 });
 
-export function InlineBalance({ scene, previous, canEdit, initiallyEditing, onChange, compact = false }: {
+function InlineBalance({ scene, previous, canEdit, initiallyEditing, onChange, compact = false }: {
   scene: InsightScene; previous?: InsightBalance | null; canEdit: boolean; initiallyEditing: boolean; compact?: boolean;
   onChange: (patch: Partial<InsightBalance> | null) => boolean;
 }) {

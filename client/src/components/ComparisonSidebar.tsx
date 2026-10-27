@@ -2,7 +2,7 @@ import { activeSeriesIds } from "@/lib/comparison-series";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Search, Star, Trash2, Focus, MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { CapRichText } from "./CapRichText";
-import { ComparisonInsightBody, InlineBalance } from "./ComparisonInsightBody";
+import { ComparisonInsightBody } from "./ComparisonInsightBody";
 import { parallelCivilWarScene } from "@/lib/comparison-parallel-balances";
 import { ComparisonInsightContext } from "./ComparisonInsightContext";
 import { ComparisonQuoteTables } from "./ComparisonQuoteTables";
@@ -121,6 +121,11 @@ function InsightPagination({ notes, index, viewed, onSelect }: { notes: SavedIns
 function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: BalanceMotion }) {
   const { note } = p, key = "note:" + note.id, scope = useCapEditScope(key);
   const parallelScene = parallelCivilWarScene(note);
+  // Both regions enter from neutral; the South follows the North's 1.1s movement
+  // and label/result reveal. They are simultaneous regions, not a historical transition.
+  const neutral = { money: 0, goods: 0, outcome: null } as const;
+  const northMotion = useComparisonBalanceMotion(parallelScene ? note.balance : null, neutral);
+  const southMotion = useComparisonBalanceMotion(parallelScene?.balance, neutral, 1.55);
   const [error, setError] = useState(""), [settings, setSettings] = useState(false), [dates, setDates] = useState(false), [confirmDelete, setConfirmDelete] = useState(false);
   const save = (patch: Partial<ComparisonInsight>) => {
     const current = collaboration.get(key); if (!current) return false;
@@ -148,7 +153,7 @@ function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: Balance
     <div className={parallelScene ? "mt-3 grid grid-cols-2 gap-3" : undefined} data-testid={parallelScene ? "civil-war-balance-pair" : undefined}>
     <div className="min-w-0">
     {parallelScene && <h3 className="text-center text-xs font-semibold text-muted-foreground">북부</h3>}
-    <ComparisonBalance compact={!!parallelScene} value={note.balance} motionValues={p.balanceMotion} canEdit={p.canEdit} onChange={patch => {
+    <ComparisonBalance compact={!!parallelScene} value={note.balance} motionValues={parallelScene ? northMotion : p.balanceMotion} canEdit={p.canEdit} onChange={patch => {
       const current = comparisonInsightSchema.safeParse(collaboration.get(key));
       if (!current.success) return false;
       return save({ balance: patch === null ? null : { money: 0, goods: 0, outcome: null, ...current.data.balance, ...patch } });
@@ -156,7 +161,7 @@ function InsightDocument(p: Props & { note: SavedInsight; balanceMotion: Balance
     </div>
     {parallelScene && <div className="min-w-0" data-testid="civil-war-south-balance">
       <h3 className="text-center text-xs font-semibold text-muted-foreground">남부</h3>
-      <InlineBalance compact scene={parallelScene} previous={parallelScene.balance} canEdit={p.canEdit} initiallyEditing={false} onChange={patch => {
+      <ComparisonBalance compact value={parallelScene.balance} motionValues={southMotion} canEdit={p.canEdit} onChange={patch => {
         const current = comparisonInsightSchema.safeParse(collaboration.get(key));
         if (!current.success || !current.data.scenes?.some(s => s.id === parallelScene.id)) return false;
         if (patch === null) return save({ text: current.data.text.replace(`[[balance:${parallelScene.id}]]`, ""), scenes: current.data.scenes.filter(s => s.id !== parallelScene.id) });

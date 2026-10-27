@@ -3,7 +3,7 @@ import { animate, useMotionValue, useReducedMotion } from "framer-motion";
 import type { InsightBalance } from "../../../shared/comparison-balance";
 
 // Owned by the sidebar: changing the keyed prose editor must not reset the bars.
-export function useComparisonBalanceMotion(value: InsightBalance | null | undefined, initialFrom?: InsightBalance | null) {
+export function useComparisonBalanceMotion(value: InsightBalance | null | undefined, initialFrom?: InsightBalance | null, entryDelay = 0) {
   const money = useMotionValue<number>(value?.money ?? initialFrom?.money ?? 0), goods = useMotionValue<number>(value?.goods ?? initialFrom?.goods ?? 0);
   const labelOpacity = useMotionValue(1);
   const comparisonOpacity = useMotionValue(1), resultOpacity = useMotionValue(1);
@@ -25,7 +25,7 @@ export function useComparisonBalanceMotion(value: InsightBalance | null | undefi
     if (!connect || !moving) { money.set(value!.money); goods.set(value!.goods); showResult(); return; }
     // Animate from current rendered values, in either direction, including interruptions.
     // Give the reader time to follow the zero crossing, rather than settling immediately.
-    const transition = { type: "tween" as const, duration: 1.1, ease: [0.45, 0, 0.55, 1] as const };
+    const transition = { type: "tween" as const, duration: 1.1, delay: entering ? entryDelay : 0, ease: [0.45, 0, 0.55, 1] as const };
     labelOpacity.set(0);
     comparisonOpacity.set(0); resultOpacity.set(0);
     let active = true;
@@ -40,7 +40,7 @@ export function useComparisonBalanceMotion(value: InsightBalance | null | undefi
       if (active) animate(resultOpacity, 1, reveal);
     });
     return () => { active = false; a.stop(); b.stop(); labelOpacity.stop(); comparisonOpacity.stop(); resultOpacity.stop(); };
-  }, [visible, value?.money, value?.goods, reduced, money, goods, labelOpacity, comparisonOpacity, resultOpacity, initialFrom?.money, initialFrom?.goods]);
+  }, [visible, value?.money, value?.goods, reduced, money, goods, labelOpacity, comparisonOpacity, resultOpacity, initialFrom?.money, initialFrom?.goods, entryDelay]);
   return { money, goods, labelOpacity, comparisonOpacity, resultOpacity };
 }
 export type BalanceMotion = ReturnType<typeof useComparisonBalanceMotion>;
