@@ -20,7 +20,7 @@ const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
 const ids: Record<string, string> = { real_gdp: "GDPC1", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", net_exports_gdp: "NETEXP", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
-  { id: "cpi_level", label: "미국 소비자물가 수준(CPI)", unit: "idx", color: "#e0c267", cadence: 1, category: "economy", note: "CPIAUCNS · 월간 · 비계절조정 · 1982~1984=100 · 전년비가 아닌 물가 수준", url: "https://fred.stlouisfed.org/series/CPIAUCNS" },
+  { id: "cpi_level", label: "미국 소비자물가 수준(CPI)", unit: "idx", color: "#e0c267", cadence: 1, category: "economy", note: "1860~1912 역사 추정·연간 / 1913~ BLS·월간·비계절조정 · 1913년 연평균 기준 연결 · 1982~1984=100 · 상승률 아닌 물가 수준", url: "https://fred.stlouisfed.org/series/CPIAUCNS" },
   ...PANELS.filter(p => !excludedIds.has(p.id)).map(p => ({ id: p.series, label: p.label,
     unit: p.unit, color: p.color, category: ["real_tb3ms", "usd_purchasing_power"].includes(p.id) ? "money" : p.cat,
     cadence: ["real_gdp", "debt_gdp", "mktcap", "net_exports_gdp"].includes(p.id) ? 3 : 1,

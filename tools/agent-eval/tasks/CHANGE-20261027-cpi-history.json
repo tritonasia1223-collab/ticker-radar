@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261027-cpi-history",
+  "title": "Extend CPI levels to 1860 with documented annual history",
+  "baseRef": "HEAD",
+  "requirement": "기존 CPI에 1860~1912 연간 역사 추정 물가 수준을 연결. 상승률 변환 없이 1913 연평균 배율만 적용. 점선·출처·경계 표시. 로컬 작업만 수행.",
+  "acceptanceCriteria": ["53 annual historical observations; official monthly CPI unchanged", "All other stored series and insight documents unchanged", "Annual dashed segment, 1913 source boundary, historical hover label", "History survives normal refresh and source notes distinguish modern data"],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build"],
+  "requiresEvaluationDatabase": false
+}

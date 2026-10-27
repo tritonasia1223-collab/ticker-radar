@@ -1,6 +1,7 @@
 import { independentDomain, referenceValue, referenceLabel, focusedReferenceId, tooltipUnit } from "@/lib/comparison-independent";
 import { comparisonSegments, visiblePathPoints, isAnnualObservation } from "@/lib/comparison-paths";
 import { tradeObservationLabel } from "../../../shared/trade-history";
+import { isHistoricalCpi, CPI_HISTORY_NOTE, CPI_MODERN_FROM } from "../../../shared/cpi-history";
 import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { lineSegments, simplifyExtrema, moveRange, zoomRange, calendarTicks, type SavedInsight, type TrendSection } from "../../../shared/cap-comparison";
@@ -19,6 +20,8 @@ const DAY = 86400000;
 const fmt = (v: number) => v.toLocaleString("ko", { maximumFractionDigits: 2 });
 export const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
+const observationLabel = (id: string, date: string) => isHistoricalCpi(id, date)
+  ? "역사 추정·연간" : tradeObservationLabel(id, date) || (isAnnualObservation(id, date.slice(0, 7)) ? "연간" : "");
 
 export const CompareChart = memo(function CompareChart({ series, range, extent, axes, onRange, phases, events, onEvents, simplifyMonths, notes, showBadges, selectedNote, onNote, onCreate, tool, onCancelTool, resetAxes, layoutKey, spread, onRemoveSpread, summary, focusedSeries, onClearFocus }: {
   focusedSeries: string | null; onClearFocus: () => void;
@@ -236,6 +239,11 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
         {[spreadShape.lo, 0, spreadShape.hi].map((v, i) => <text key={i} x={left - 7} y={spreadShape.y(v) + 3} textAnchor="end" fontSize={9} fill="#8b5cf6">{fmt(v)}</text>)}
         {!spreadShape.points.length && <text x={width / 2} y={(axisBottom + spreadTop) / 2} textAnchor="middle" fontSize={11} fill="currentColor">이 구간에 두 금리의 공통 관측값이 없습니다.</text>}
       </g>}
+      {series.some(s => ["cpi_level", "usd_purchasing_power"].includes(s.def.id)) && from < Date.parse(CPI_MODERN_FROM) && to > Date.parse(CPI_MODERN_FROM) && <g data-testid="cpi-source-boundary">
+        <title>{CPI_HISTORY_NOTE}</title>
+        <line x1={x(Date.parse(CPI_MODERN_FROM))} x2={x(Date.parse(CPI_MODERN_FROM))} y1={plotTop} y2={plotBottom} stroke="currentColor" strokeOpacity={.25} strokeDasharray="2 5" />
+        <text x={clamp(x(Date.parse(CPI_MODERN_FROM)), left + 62, right - 62)} y={plotTop - 9} textAnchor="middle" fontSize={10} fill="currentColor" opacity={.65}>1913 · CPI 출처 전환</text>
+      </g>}
       {jumpTime !== null && jumpTime >= from && jumpTime <= to && <g pointerEvents="none" data-testid="date-jump-marker"><line x1={x(jumpTime)} x2={x(jumpTime)} y1={plotTop} y2={axisBottom} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" /><text x={clamp(x(jumpTime), left + 35, right - 35)} y={plotTop + 15} textAnchor="middle" fontSize={10} fill="#d97706">{iso(jumpTime)}</text></g>}
       {cursor !== null && <line data-testid="compare-cursor" x1={x(cursor)} x2={x(cursor)} y1={plotTop} y2={axisBottom} stroke="currentColor" strokeDasharray="3 4" opacity={.3} pointerEvents="none" />}
       {nearby.map(hit => <circle key={hit.id} data-testid={"hover-marker-" + hit.id} cx={hit.x} cy={hit.y} r={4} stroke={hit.color} strokeWidth={2} className="fill-background" pointerEvents="none" />)}
@@ -250,7 +258,7 @@ export const CompareChart = memo(function CompareChart({ series, range, extent, 
     </svg>
     {pointer && !!nearby.length && createPortal(<div role="tooltip" aria-label="커서 주변 지표 값" data-testid="compare-hover" className="pointer-events-none fixed z-50 grid grid-flow-col gap-x-4 overflow-hidden rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md" style={{ width: tooltipLayout.width, height: tooltipLayout.height, gridTemplateColumns: `repeat(${tooltipLayout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${tooltipLayout.rows}, 24px)`, left: clamp(pointer.clientX + 16 + tooltipLayout.width <= viewport.width - 8 ? pointer.clientX + 16 : pointer.clientX - tooltipLayout.width - 16, 8, viewport.width - tooltipLayout.width - 8), top: clamp(pointer.clientY - 12, 8, viewport.height - tooltipLayout.height - 8) }}>
       {nearby.map(hit => <div key={hit.id} data-testid={"hover-value-" + hit.id} className="flex min-w-0 items-center gap-2">
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="min-w-0 truncate">{hit.label}{(tradeObservationLabel(hit.id, hit.point.date) || (isAnnualObservation(hit.id, hit.point.month) ? "연간" : "")) && <small className="ml-1 text-[9px] text-muted-foreground">{(tradeObservationLabel(hit.id, hit.point.date) || (isAnnualObservation(hit.id, hit.point.month) ? "연간" : ""))}</small>}</span><span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)} <small className="text-[10px] font-normal text-muted-foreground">{tooltipUnit(hit.unit)}</small></span>
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: hit.color }} /><span className="min-w-0 truncate">{hit.label}</span>{observationLabel(hit.id, hit.point.date) && <small className="shrink-0 text-[9px] text-muted-foreground">{observationLabel(hit.id, hit.point.date)}</small>}<span className="ml-auto shrink-0 font-semibold tabular-nums">{fmt(hit.point.raw)} <small className="text-[10px] font-normal text-muted-foreground">{tooltipUnit(hit.unit)}</small></span>
       </div>)}
     </div>, document.body)}
     </div>

@@ -40,7 +40,7 @@ describe("dollar indicator replacement", () => {
     expect(rebased.series[0].points.map(p => p.value)).toEqual([125, 100]);
     expect(viewingSeriesIds(["inflation", "cpi_level", "usd_purchasing_power", "dxy"])).toEqual(["cpi_level", "usd_purchasing_power", "dxy"]);
     expect(activeSeriesIds(["inflation", "cpi_level"])).toEqual(["cpi_level"]); // Saved YoY notes are not reinterpreted as levels.
-    expect(sourcePeriods("usd_purchasing_power")[0].id).toBe("CPIAUCNS");
+    expect(sourcePeriods("usd_purchasing_power").at(-1)?.id).toBe("CPIAUCNS");
   });
   it("keeps three distinct identities, sources, historical coverage and indexable axes", () => {
     expect(data.dollar).toBeUndefined();
@@ -50,10 +50,11 @@ describe("dollar indicator replacement", () => {
     expect(seriesLabel("dxy")).toContain("명목");
     expect(seriesLabel("reer")).toContain("실질");
     expect(data.dxy[0]).toEqual(["1973-03-01", 101.17]);
-    expect(data.cpi_level[0]).toEqual(["1913-01-01", 9.8]);
+    expect(data.cpi_level[0][0]).toBe("1860-01-01");
+    expect(data.cpi_level.find(([d]) => d === "1913-01-01")).toEqual(["1913-01-01", 9.8]);
     expect(data.reer[0][0]).toBe("1973-01-01");
     expect(sourcePeriods("dxy")[0].id).toBe("DX-Y.NYB");
-    expect(sourcePeriods("cpi_level")[0].id).toBe("CPIAUCNS");
+    expect(sourcePeriods("cpi_level").at(-1)?.id).toBe("CPIAUCNS");
     const ratio = sources.reer.segments[0].factor;
     expect(ratio).toBeCloseTo(88.66 / 91.3648, 12);
     expect(data.reer[0][1]).toBe(Number((107.6163 * ratio).toFixed(3)));

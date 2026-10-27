@@ -4,6 +4,7 @@ import { smoothComparison, type Crossing } from "./comparison-smoothing";
 // Explicit source frequency boundaries: missing monthly/quarterly data must not
 // be mistaken for annual data just because observations happen to be far apart.
 const annualUntil: Record<string, string> = {
+  cpi_level: "1913-01", usd_purchasing_power: "1913-01",
   debt_gdp: "1966-01", gdp_growth: "1947-04", real_gdp: "1947-01", trade: "1947-01", net_exports_gdp: "1947-01", trade_bal: "1992-01",
 };
 export const isAnnualObservation = (id: string, month: string) => !!annualUntil[id] && month < annualUntil[id];

@@ -1,6 +1,7 @@
 // 거시지표 과거 확장의 출처 구간 메타데이터(script/extend-capitalism-history.ts 가 생성).
 //   modernFrom = 현행 시리즈가 시작하는 관측일. 그 앞 segments 는 정의·주기가 다른 옛 출처라 화면에서 점선·경계·출처 라벨로 구분한다.
 import SOURCES from "@/data/capitalism-series-sources.json";
+import { CPI_HISTORY_NOTE } from "../../../shared/cpi-history";
 
 export interface HistorySegment {
   from: string; to: string; source: string; short: string; id: string; url: string; note: string;
@@ -40,9 +41,11 @@ const SPECIAL: Record<string, SourcePeriod[]> = {
     { from: "1948-01-01", source: "3개월 T-bill − CPI 전년비(계절조정)", id: "TB3MS − CPIAUCSL YoY", url: "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL", note: "동월 금리 − 물가상승률 · 실질금리 근사치." },
   ],
   usd_purchasing_power: [
+    { from: "1860-01-01", to: "1912-01-01", source: "역사 추정 CPI 기반 달러 구매력 · 연간", id: "10000 / linked historical CPI", url: "https://www.measuringworth.com/datasets/uscpi/", note: "연결한 역사 CPI의 역수. " + CPI_HISTORY_NOTE },
     { from: "1913-01-01", source: "미국 CPI 기반 달러 구매력", id: "CPIAUCNS", url: fred("CPIAUCNS"), note: "CPI 역수 · 1982~1984=100. 하락하면 미국 내 구매력 감소." },
   ],
   cpi_level: [
+    { from: "1860-01-01", to: "1912-01-01", source: "MeasuringWorth 역사 추정 CPI · 연간", id: "MeasuringWorth US CPI", url: "https://www.measuringworth.com/datasets/uscpi/", note: CPI_HISTORY_NOTE },
     { from: "1913-01-01", source: "미국 소비자물가지수 · 비계절조정", id: "CPIAUCNS", url: fred("CPIAUCNS"), note: "1982~1984=100. 상승하면 고정된 달러의 국내 구매력은 하락." },
   ],
   dxy: [
