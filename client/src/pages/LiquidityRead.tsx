@@ -437,7 +437,7 @@ export default function LiquidityRead() {
                   <Pill active={auctionMode === "nobills"} onClick={() => setAuctionMode("nobills")}>단기채 빼고 보기</Pill>
                   <Cap>최근 {cmp}주</Cap>
                 </div>
-              </div>) : undefined} aside={<ReadingOpinion id="s4-auctions" title="국채 입찰" paragraphs={treasuryReading.auctions} />}>
+              </div>) : undefined} aside={<ReadingOpinion id="s4-auctions" title="국채 입찰" paragraphs={treasuryReading.auctions} note={weeklyEditorialNote('auctions', selDate)} />}>
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>

@@ -1,0 +1,5097 @@
+{
+  "asOf": "2026-10-28",
+  "previousAsOf": "2026-10-21",
+  "units": {
+    "fed": "millions USD levels; 억달러 deltas",
+    "credit": "native series units; H8 billions USD"
+  },
+  "fed": [
+    {
+      "weeks": 1,
+      "from": "2026-10-21",
+      "net": -702.02,
+      "levels": {
+        "current": 5404166,
+        "previous": 5474368
+      },
+      "delta": {
+        "total": -79.69,
+        "treast": 39.28,
+        "mbs": -116.55,
+        "agency": 0,
+        "soma": -77.27,
+        "discount": 3.69,
+        "repo": -0.61,
+        "swap": -0.14,
+        "reserves": -742.86,
+        "rrp": -82.46,
+        "tga": 704.79,
+        "currency": 6.95,
+        "liabResidual": 33.89
+      }
+    },
+    {
+      "weeks": 4,
+      "from": "2026-09-30",
+      "net": 70.64,
+      "levels": {
+        "current": 5404166,
+        "previous": 5397102
+      },
+      "delta": {
+        "total": 26.04,
+        "treast": 124.21,
+        "mbs": -145.67,
+        "agency": 0,
+        "soma": -21.46,
+        "discount": 8,
+        "repo": -11.94,
+        "swap": -0.51,
+        "reserves": 135.45,
+        "rrp": -360.46,
+        "tga": 315.86,
+        "currency": 30.52,
+        "liabResidual": -95.33
+      }
+    },
+    {
+      "weeks": 13,
+      "from": "2026-07-29",
+      "net": -265.31,
+      "levels": {
+        "current": 5404166,
+        "previous": 5430697
+      },
+      "delta": {
+        "total": 74.45,
+        "treast": 569.28,
+        "mbs": -473.33,
+        "agency": 0,
+        "soma": 95.95,
+        "discount": 30.32,
+        "repo": 0.03,
+        "swap": 0.24,
+        "reserves": -493.08,
+        "rrp": -112.14,
+        "tga": 451.9,
+        "currency": 134.71,
+        "liabResidual": 93.06
+      }
+    },
+    {
+      "weeks": 26,
+      "from": "2026-04-29",
+      "net": 150.29,
+      "levels": {
+        "current": 5404166,
+        "previous": 5389137
+      },
+      "delta": {
+        "total": 456.85,
+        "treast": 1508.45,
+        "mbs": -975.38,
+        "agency": 0,
+        "soma": 533.07,
+        "discount": 34.33,
+        "repo": 0.05,
+        "swap": 1.36,
+        "reserves": -239.21,
+        "rrp": 31.26,
+        "tga": 275.3,
+        "currency": 304.22,
+        "liabResidual": 85.28
+      }
+    },
+    {
+      "weeks": 52,
+      "from": "2025-10-29",
+      "net": 1684.04,
+      "levels": {
+        "current": 5404166,
+        "previous": 5235762
+      },
+      "delta": {
+        "total": 1586.01,
+        "treast": 3798.43,
+        "mbs": -1864.41,
+        "agency": 0,
+        "soma": 1934.02,
+        "discount": 16.44,
+        "repo": -103.05,
+        "swap": 1.3,
+        "reserves": 673.26,
+        "rrp": -415.76,
+        "tga": 317.73,
+        "currency": 668.19,
+        "liabResidual": 342.59
+      }
+    },
+    {
+      "weeks": 104,
+      "from": "2024-10-30",
+      "net": -1351.8,
+      "levels": {
+        "current": 5404166,
+        "previous": 5539346
+      },
+      "delta": {
+        "total": -2678.55,
+        "treast": 2187.57,
+        "mbs": -3824.41,
+        "agency": 0,
+        "soma": -1636.84,
+        "discount": 80.33,
+        "repo": -0.25,
+        "swap": -0.01,
+        "reserves": -3205.58,
+        "rrp": -3011.7,
+        "tga": 1684.95,
+        "currency": 1288.33,
+        "liabResidual": 565.45
+      }
+    }
+  ],
+  "roll": [
+    {
+      "weeks": 4,
+      "removedWeek": {
+        "from": "2026-09-23",
+        "to": "2026-09-30",
+        "net": -825.6,
+        "tgaEffect": -367.29
+      },
+      "addedWeek": {
+        "from": "2026-10-21",
+        "to": "2026-10-28",
+        "net": -702.02,
+        "tgaEffect": -704.79
+      }
+    },
+    {
+      "weeks": 13,
+      "removedWeek": {
+        "from": "2026-07-22",
+        "to": "2026-07-29",
+        "net": -1285.61,
+        "tgaEffect": -1350.25
+      },
+      "addedWeek": {
+        "from": "2026-10-21",
+        "to": "2026-10-28",
+        "net": -702.02,
+        "tgaEffect": -704.79
+      }
+    }
+  ],
+  "context": [
+    {
+      "key": "gdp",
+      "current": {
+        "date": "2026-07-01",
+        "value": 33010036
+      },
+      "previous": {
+        "date": "2026-07-01",
+        "value": 33010036
+      },
+      "previousFrozen": {
+        "date": "2026-04-01",
+        "value": 32563030
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-04-01",
+            "value": 32563030
+          },
+          "change": 447006,
+          "pct": 1.3727408045258738
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2025-10-01",
+            "value": 31462523
+          },
+          "change": 1547513,
+          "pct": 4.91859155732679
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-07-01",
+            "value": 31180493
+          },
+          "change": 1829543,
+          "pct": 5.867588431010384
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-07-01",
+            "value": 29568256
+          },
+          "change": 3441780,
+          "pct": 11.640118375598485
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2Liquid",
+      "current": {
+        "date": "2026-09-01",
+        "value": 10444100
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 10444100
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 10473500
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 10363500
+          },
+          "change": 80600,
+          "pct": 0.7777295315289257
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 10228500
+          },
+          "change": 215600,
+          "pct": 2.1078359485750653
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 10866200
+          },
+          "change": -422100,
+          "pct": -3.8845226482118855
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 10558600
+          },
+          "change": -114500,
+          "pct": -1.0844240713731024
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2Currency",
+      "current": {
+        "date": "2026-09-01",
+        "value": 2397200
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 2397200
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 2389700
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 2376600
+          },
+          "change": 20600,
+          "pct": 0.8667844820331672
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 2358900
+          },
+          "change": 38300,
+          "pct": 1.6236381364195251
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 2324600
+          },
+          "change": 72600,
+          "pct": 3.1231179557773325
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 2268200
+          },
+          "change": 129000,
+          "pct": 5.687329159686105
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2Time",
+      "current": {
+        "date": "2026-09-01",
+        "value": 1506000
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 1506000
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 1505600
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 1495600
+          },
+          "change": 10400,
+          "pct": 0.6953730944102787
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 1490300
+          },
+          "change": 15700,
+          "pct": 1.0534791652687447
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 1522800
+          },
+          "change": -16800,
+          "pct": -1.1032308904649346
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 1625500
+          },
+          "change": -119500,
+          "pct": -7.351584127960631
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "pcepilfe",
+      "current": {
+        "date": "2026-09-01",
+        "value": 130.902
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 130.902
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 130.455
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 129.969
+          },
+          "change": 0.9329999999999927,
+          "pct": 0.7178634905246506
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 129.03
+          },
+          "change": 1.8719999999999857,
+          "pct": 1.450825389444299
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 126.94
+          },
+          "change": 3.961999999999989,
+          "pct": 3.1211596029620203
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 123.462
+          },
+          "change": 7.4399999999999835,
+          "pct": 6.026145696651586
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2RetirementDeposits",
+      "current": {
+        "date": "2026-09-01",
+        "value": 477500
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 477500
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 477700
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 477500
+          },
+          "change": 0,
+          "pct": 0
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 478400
+          },
+          "change": -900,
+          "pct": -0.1881270903010046
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 466600
+          },
+          "change": 10900,
+          "pct": 2.3360480068581158
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 453000
+          },
+          "change": 24500,
+          "pct": 5.408388520971297
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2Retail",
+      "current": {
+        "date": "2026-09-01",
+        "value": 3085000
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 3085000
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 3073900
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 3047200
+          },
+          "change": 37800,
+          "pct": 1.2404830664216382
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 2970700
+          },
+          "change": 114300,
+          "pct": 3.847578011916375
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 2934100
+          },
+          "change": 150900,
+          "pct": 5.14297399543302
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 2540000
+          },
+          "change": 545000,
+          "pct": 21.456692913385833
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2",
+      "current": {
+        "date": "2026-09-01",
+        "value": 23413900
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 23413900
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 23342800
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 23077700
+          },
+          "change": 336200,
+          "pct": 1.4568176204734495
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 22613900
+          },
+          "change": 800000,
+          "pct": 3.537647199288929
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 22149200
+          },
+          "change": 1264700,
+          "pct": 5.709912773373316
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 21249900
+          },
+          "change": 2164000,
+          "pct": 10.183577334481564
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2Retirement",
+      "current": {
+        "date": "2026-09-01",
+        "value": 1238200
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 1238200
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 1227900
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 1236200
+          },
+          "change": 2000,
+          "pct": 0.16178611875101723
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 1228300
+          },
+          "change": 9900,
+          "pct": 0.8059920214931182
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 1191500
+          },
+          "change": 46700,
+          "pct": 3.919429290809906
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 1061900
+          },
+          "change": 176300,
+          "pct": 16.60231660231659
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "hy",
+      "current": {
+        "date": "2026-10-28",
+        "value": 3.14
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 3.27
+      },
+      "previousFrozen": {
+        "date": "2026-10-21",
+        "value": 3.27
+      },
+      "delta": -0.1299999999999999,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-29",
+            "value": 2.87
+          },
+          "change": 0.27,
+          "pct": 9.40766550522647
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-29",
+            "value": 2.82
+          },
+          "change": 0.3200000000000003,
+          "pct": 11.34751773049647
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-28",
+            "value": 2.82
+          },
+          "change": 0.3200000000000003,
+          "pct": 11.34751773049647
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-28",
+            "value": 2.82
+          },
+          "change": 0.3200000000000003,
+          "pct": 11.34751773049647
+        }
+      ],
+      "newPoints": [
+        {
+          "date": "2026-10-22",
+          "value": 3.4
+        },
+        {
+          "date": "2026-10-23",
+          "value": 3.38
+        },
+        {
+          "date": "2026-10-26",
+          "value": 3.3
+        },
+        {
+          "date": "2026-10-27",
+          "value": 3.18
+        },
+        {
+          "date": "2026-10-28",
+          "value": 3.14
+        }
+      ],
+      "missingValues": []
+    },
+    {
+      "key": "unrate",
+      "current": {
+        "date": "2026-09-01",
+        "value": 4.2
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 4.2
+      },
+      "previousFrozen": {
+        "date": "2026-09-01",
+        "value": 4.2
+      },
+      "delta": 0,
+      "newObservation": false,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 4.2
+          },
+          "change": 0,
+          "pct": 0
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 4.3
+          },
+          "change": -0.09999999999999964,
+          "pct": -2.3255813953488302
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 4.4
+          },
+          "change": -0.20000000000000018,
+          "pct": -4.545454545454552
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 4.1
+          },
+          "change": 0.10000000000000053,
+          "pct": 2.4390243902439046
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "indpro",
+      "current": {
+        "date": "2026-09-01",
+        "value": 103.9506
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 103.9506
+      },
+      "previousFrozen": {
+        "date": "2026-09-01",
+        "value": 103.9506
+      },
+      "delta": 0,
+      "newObservation": false,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 102.961
+          },
+          "change": 0.9895999999999958,
+          "pct": 0.9611406260622957
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 101.7336
+          },
+          "change": 2.2169999999999987,
+          "pct": 2.179221024322353
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 101.668
+          },
+          "change": 2.282599999999988,
+          "pct": 2.2451508832670886
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 99.8084
+          },
+          "change": 4.142199999999988,
+          "pct": 4.150151690639259
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "m2Demand",
+      "current": {
+        "date": "2026-09-01",
+        "value": 7219900
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 7219900
+      },
+      "previousFrozen": {
+        "date": "2026-08-01",
+        "value": 7128000
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 7031000
+          },
+          "change": 188900,
+          "pct": 2.6866733039397017
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 6793800
+          },
+          "change": 426100,
+          "pct": 6.271894963054558
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 5693100
+          },
+          "change": 1526800,
+          "pct": 26.818429326728843
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 5319600
+          },
+          "change": 1900300,
+          "pct": 35.72261072261072
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "cpi",
+      "current": {
+        "date": "2026-09-01",
+        "value": 336.94
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 336.94
+      },
+      "previousFrozen": {
+        "date": "2026-09-01",
+        "value": 336.94
+      },
+      "delta": 0,
+      "newObservation": false,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-06-01",
+            "value": 333.952
+          },
+          "change": 2.9879999999999995,
+          "pct": 0.8947393637408929
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 330.213
+          },
+          "change": 6.726999999999975,
+          "pct": 2.0371699478821226
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 324.8
+          },
+          "change": 12.139999999999986,
+          "pct": 3.737684729064039
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-09-01",
+            "value": 315.301
+          },
+          "change": 21.63900000000001,
+          "pct": 6.862965864364523
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "iorb",
+      "current": {
+        "date": "2026-10-28",
+        "value": 3.9
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 3.9
+      },
+      "previousFrozen": {
+        "date": "2026-10-21",
+        "value": 3.9
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-29",
+            "value": 3.65
+          },
+          "change": 0.25,
+          "pct": 6.849315068493156
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-29",
+            "value": 3.65
+          },
+          "change": 0.25,
+          "pct": 6.849315068493156
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-28",
+            "value": 4.15
+          },
+          "change": -0.25000000000000044,
+          "pct": -6.024096385542177
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-28",
+            "value": 4.9
+          },
+          "change": -1.0000000000000004,
+          "pct": -20.408163265306133
+        }
+      ],
+      "newPoints": [
+        {
+          "date": "2026-10-22",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-23",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-24",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-25",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-26",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-27",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-28",
+          "value": 3.9
+        }
+      ],
+      "missingValues": []
+    },
+    {
+      "key": "nfci",
+      "current": {
+        "date": "2026-10-23",
+        "value": -0.487
+      },
+      "previous": {
+        "date": "2026-10-16",
+        "value": -0.494
+      },
+      "previousFrozen": {
+        "date": "2026-10-16",
+        "value": -0.496
+      },
+      "delta": 0.007000000000000006,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-24",
+            "value": -0.538
+          },
+          "change": 0.051000000000000045,
+          "pct": -9.479553903345728
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-24",
+            "value": -0.497
+          },
+          "change": 0.010000000000000009,
+          "pct": -2.012072434607648
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-17",
+            "value": -0.52
+          },
+          "change": 0.03300000000000003,
+          "pct": -6.346153846153857
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-18",
+            "value": -0.439
+          },
+          "change": -0.04799999999999999,
+          "pct": 10.93394077448746
+        }
+      ],
+      "newPoints": [
+        {
+          "date": "2026-10-23",
+          "value": -0.487
+        }
+      ],
+      "missingValues": []
+    },
+    {
+      "key": "deposits",
+      "current": {
+        "date": "2026-10-14",
+        "value": 19810336.8
+      },
+      "previous": {
+        "date": "2026-10-14",
+        "value": 19810336.8
+      },
+      "previousFrozen": {
+        "date": "2026-10-07",
+        "value": 19771474.900000002
+      },
+      "delta": 0,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-15",
+            "value": 19470560
+          },
+          "change": 339776.80000000075,
+          "pct": 1.745079751173062
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-15",
+            "value": 19086936.5
+          },
+          "change": 723400.3000000007,
+          "pct": 3.7900283264420187
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-08",
+            "value": 18442834.200000003
+          },
+          "change": 1367502.5999999978,
+          "pct": 7.414818054374739
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-09",
+            "value": 17747421.7
+          },
+          "change": 2062915.1000000015,
+          "pct": 11.623745324088407
+        }
+      ],
+      "newPoints": [],
+      "missingValues": []
+    },
+    {
+      "key": "sofr",
+      "current": {
+        "date": "2026-10-28",
+        "value": 3.94
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 3.88
+      },
+      "previousFrozen": {
+        "date": "2026-10-21",
+        "value": 3.88
+      },
+      "delta": 0.06000000000000005,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-29",
+            "value": 3.65
+          },
+          "change": 0.29000000000000004,
+          "pct": 7.9452054794520555
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-29",
+            "value": 3.63
+          },
+          "change": 0.31000000000000005,
+          "pct": 8.539944903581276
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-28",
+            "value": 4.31
+          },
+          "change": -0.36999999999999966,
+          "pct": -8.584686774941986
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-28",
+            "value": 4.82
+          },
+          "change": -0.8800000000000003,
+          "pct": -18.257261410788384
+        }
+      ],
+      "newPoints": [
+        {
+          "date": "2026-10-22",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-23",
+          "value": 3.92
+        },
+        {
+          "date": "2026-10-26",
+          "value": 3.93
+        },
+        {
+          "date": "2026-10-27",
+          "value": 3.95
+        },
+        {
+          "date": "2026-10-28",
+          "value": 3.94
+        }
+      ],
+      "missingValues": []
+    },
+    {
+      "key": "dfii10",
+      "current": {
+        "date": "2026-10-28",
+        "value": 2.67
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 2.76
+      },
+      "previousFrozen": {
+        "date": "2026-10-21",
+        "value": 2.76
+      },
+      "delta": -0.08999999999999986,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-29",
+            "value": 2.41
+          },
+          "change": 0.2599999999999998,
+          "pct": 10.788381742738572
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-29",
+            "value": 1.96
+          },
+          "change": 0.71,
+          "pct": 36.224489795918366
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-28",
+            "value": 1.71
+          },
+          "change": 0.96,
+          "pct": 56.14035087719298
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-28",
+            "value": 1.99
+          },
+          "change": 0.6799999999999999,
+          "pct": 34.170854271356774
+        }
+      ],
+      "newPoints": [
+        {
+          "date": "2026-10-22",
+          "value": 2.64
+        },
+        {
+          "date": "2026-10-23",
+          "value": 2.66
+        },
+        {
+          "date": "2026-10-26",
+          "value": 2.66
+        },
+        {
+          "date": "2026-10-27",
+          "value": 2.64
+        },
+        {
+          "date": "2026-10-28",
+          "value": 2.67
+        }
+      ],
+      "missingValues": []
+    },
+    {
+      "key": "dtwexbgs",
+      "current": {
+        "date": "2026-10-23",
+        "value": 121.3202
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 121.3422
+      },
+      "previousFrozen": {
+        "date": "2026-10-16",
+        "value": 121.4048
+      },
+      "delta": -0.02200000000000557,
+      "newObservation": true,
+      "long": [
+        {
+          "days": 91,
+          "previous": {
+            "date": "2026-07-24",
+            "value": 120.7105
+          },
+          "change": 0.6097000000000037,
+          "pct": 0.5050927632641811
+        },
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-24",
+            "value": 118.7294
+          },
+          "change": 2.5908000000000015,
+          "pct": 2.1821048535577647
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-23",
+            "value": 120.9531
+          },
+          "change": 0.36709999999999354,
+          "pct": 0.30350606970801497
+        },
+        {
+          "days": 730,
+          "previous": {
+            "date": "2024-10-23",
+            "value": 124.6931
+          },
+          "change": -3.3729000000000013,
+          "pct": -2.7049612207892815
+        }
+      ],
+      "newPoints": [
+        {
+          "date": "2026-10-22",
+          "value": 121.3531
+        },
+        {
+          "date": "2026-10-23",
+          "value": 121.3202
+        }
+      ],
+      "missingValues": []
+    }
+  ],
+  "credit": [
+    {
+      "id": "sloos_ci_standards",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "DRTSCILM",
+          "current": {
+            "date": "2026-07-01",
+            "value": 0
+          },
+          "previous": {
+            "date": "2026-07-01",
+            "value": 0
+          },
+          "previousFrozen": {
+            "date": "2026-07-01",
+            "value": 0
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-04-01",
+                "value": 8.1
+              },
+              "change": -8.1,
+              "pct": -100
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2025-10-01",
+                "value": 6.5
+              },
+              "change": -6.5,
+              "pct": -100
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-07-01",
+                "value": 9.5
+              },
+              "change": -9.5,
+              "pct": -100
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-07-01",
+                "value": 7.9
+              },
+              "change": -7.9,
+              "pct": -100
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "h8_ci_loans",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "TOTCI",
+          "current": {
+            "date": "2026-10-14",
+            "value": 2992.6109
+          },
+          "previous": {
+            "date": "2026-10-14",
+            "value": 2992.6109
+          },
+          "previousFrozen": {
+            "date": "2026-10-07",
+            "value": 2987.85
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-15",
+                "value": 2886.0447
+              },
+              "change": 106.56620000000021,
+              "pct": 3.692465331531425
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-15",
+                "value": 2851.2176
+              },
+              "change": 141.39330000000018,
+              "pct": 4.959049775787028
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-08",
+                "value": 2692.416
+              },
+              "change": 300.19489999999996,
+              "pct": 11.149647751313307
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-09",
+                "value": 2775.7015
+              },
+              "change": 216.9094,
+              "pct": 7.814579485582285
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "sloos_ci_demand",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "DRSDCILM",
+          "current": {
+            "date": "2026-07-01",
+            "value": 16.1
+          },
+          "previous": {
+            "date": "2026-07-01",
+            "value": 16.1
+          },
+          "previousFrozen": {
+            "date": "2026-07-01",
+            "value": 16.1
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-04-01",
+                "value": 4.8
+              },
+              "change": 11.3,
+              "pct": 235.41666666666669
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2025-10-01",
+                "value": 11.5
+              },
+              "change": 4.600000000000001,
+              "pct": 40.000000000000014
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-07-01",
+                "value": -28.6
+              },
+              "change": 44.7,
+              "pct": -156.2937062937063
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-07-01",
+                "value": 0
+              },
+              "change": 16.1,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "h8_loans_to_nondepository",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "LNFACBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 2105.7796
+          },
+          "previous": {
+            "date": "2026-10-14",
+            "value": 2105.7796
+          },
+          "previousFrozen": {
+            "date": "2026-10-07",
+            "value": 2097.9713
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-15",
+                "value": 2024.0695
+              },
+              "change": 81.71009999999978,
+              "pct": 4.036921657087356
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-15",
+                "value": 1969.1251
+              },
+              "change": 136.65449999999987,
+              "pct": 6.93985872202838
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-08",
+                "value": 1748.7832
+              },
+              "change": 356.99639999999977,
+              "pct": 20.413988423493535
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-09",
+                "value": 1116.7441
+              },
+              "change": 989.0355,
+              "pct": 88.56420195101097
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "h8_large_vs_small_banks",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "DPSLCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 12466.2441
+          },
+          "previous": {
+            "date": "2026-10-14",
+            "value": 12466.2441
+          },
+          "previousFrozen": {
+            "date": "2026-10-07",
+            "value": 12441.0143
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-15",
+                "value": 12241.7631
+              },
+              "change": 224.48099999999977,
+              "pct": 1.8337309598810858
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-15",
+                "value": 12078.5895
+              },
+              "change": 387.65459999999985,
+              "pct": 3.2094360024405244
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-08",
+                "value": 11585.1504
+              },
+              "change": 881.0936999999994,
+              "pct": 7.605371269068706
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-09",
+                "value": 11169.6354
+              },
+              "change": 1296.6087000000007,
+              "pct": 11.608335040192985
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "DPSSCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 5695.3555
+          },
+          "previous": {
+            "date": "2026-10-14",
+            "value": 5695.3555
+          },
+          "previousFrozen": {
+            "date": "2026-10-07",
+            "value": 5688.2881
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-15",
+                "value": 5662.2027
+              },
+              "change": 33.15279999999984,
+              "pct": 0.5855106529478293
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-15",
+                "value": 5587.0564
+              },
+              "change": 108.29909999999927,
+              "pct": 1.9383928180857213
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-08",
+                "value": 5457.3293
+              },
+              "change": 238.02619999999933,
+              "pct": 4.361587635915609
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-09",
+                "value": 5255.5556
+              },
+              "change": 439.7999,
+              "pct": 8.368285552910915
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "LLBLCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 7999.7196
+          },
+          "previous": {
+            "date": "2026-10-14",
+            "value": 7999.7196
+          },
+          "previousFrozen": {
+            "date": "2026-10-07",
+            "value": 7983.4472
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-15",
+                "value": 7822.8963
+              },
+              "change": 176.82330000000002,
+              "pct": 2.2603303587189316
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-15",
+                "value": 7725.3122
+              },
+              "change": 274.40740000000005,
+              "pct": 3.552055799117082
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-08",
+                "value": 7395.2353
+              },
+              "change": 604.4843000000001,
+              "pct": 8.173969799175973
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-09",
+                "value": 7041.019
+              },
+              "change": 958.7006000000001,
+              "pct": 13.615935420711134
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "LLBSCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 4772.6208
+          },
+          "previous": {
+            "date": "2026-10-14",
+            "value": 4772.6208
+          },
+          "previousFrozen": {
+            "date": "2026-10-07",
+            "value": 4768.5131
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-15",
+                "value": 4701.2721
+              },
+              "change": 71.34869999999955,
+              "pct": 1.5176466812035772
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-15",
+                "value": 4642.1371
+              },
+              "change": 130.48369999999977,
+              "pct": 2.810854078394187
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-08",
+                "value": 4509.3671
+              },
+              "change": 263.2536999999993,
+              "pct": 5.837930116623213
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-09",
+                "value": 4344.8084
+              },
+              "change": 427.8123999999998,
+              "pct": 9.846519353994987
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "hy_oas",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "BAMLH0A0HYM2",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.14
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.27
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.27
+          },
+          "delta": -0.1299999999999999,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 2.87
+              },
+              "change": 0.27,
+              "pct": 9.40766550522647
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 2.82
+              },
+              "change": 0.3200000000000003,
+              "pct": 11.34751773049647
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 2.82
+              },
+              "change": 0.3200000000000003,
+              "pct": 11.34751773049647
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 2.82
+              },
+              "change": 0.3200000000000003,
+              "pct": 11.34751773049647
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.4
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.38
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.3
+            },
+            {
+              "date": "2026-10-27",
+              "value": 3.18
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.14
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "BAMLH0A0HYM2EY",
+          "current": {
+            "date": "2026-10-28",
+            "value": 7.94
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 8.17
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 8.17
+          },
+          "delta": -0.22999999999999954,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 7.21
+              },
+              "change": 0.7300000000000004,
+              "pct": 10.124826629680994
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 6.86
+              },
+              "change": 1.08,
+              "pct": 15.74344023323615
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 6.4
+              },
+              "change": 1.54,
+              "pct": 24.062500000000007
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 6.93
+              },
+              "change": 1.0100000000000007,
+              "pct": 14.574314574314595
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 8.14
+            },
+            {
+              "date": "2026-10-23",
+              "value": 8.14
+            },
+            {
+              "date": "2026-10-26",
+              "value": 8.07
+            },
+            {
+              "date": "2026-10-27",
+              "value": 7.96
+            },
+            {
+              "date": "2026-10-28",
+              "value": 7.94
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        }
+      ]
+    },
+    {
+      "id": "cp_spread",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "cp_spread",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.39000000000000057
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.1999999999999993
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.1999999999999993
+          },
+          "delta": 0.19000000000000128,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.29000000000000004
+              },
+              "change": 0.10000000000000053,
+              "pct": 34.482758620689836
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-23",
+                "value": 0.3799999999999999
+              },
+              "change": 0.010000000000000675,
+              "pct": 2.631578947368607
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 0.38000000000000034
+              },
+              "change": 0.010000000000000231,
+              "pct": 2.6315789473684736
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-17",
+                "value": 0.20999999999999996
+              },
+              "change": 0.1800000000000006,
+              "pct": 85.714285714286
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.2599999999999998
+            },
+            {
+              "date": "2026-10-23",
+              "value": 0.3099999999999996
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.33999999999999986
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.33999999999999986
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.39000000000000057
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "RIFSPPNA2P2D90NB",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.4
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 4.27
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 4.27
+          },
+          "delta": 0.13000000000000078,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.99
+              },
+              "change": 0.41000000000000014,
+              "pct": 10.275689223057638
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-23",
+                "value": 3.98
+              },
+              "change": 0.4200000000000004,
+              "pct": 10.552763819095489
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 4.11
+              },
+              "change": 0.29000000000000004,
+              "pct": 7.055961070559613
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-17",
+                "value": 4.75
+              },
+              "change": -0.34999999999999964,
+              "pct": -7.368421052631568
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 4.3
+            },
+            {
+              "date": "2026-10-23",
+              "value": 4.35
+            },
+            {
+              "date": "2026-10-26",
+              "value": 4.39
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.39
+            },
+            {
+              "date": "2026-10-28",
+              "value": 4.4
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        },
+        {
+          "key": "DTB3",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.01
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 4.07
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 4.07
+          },
+          "delta": -0.0600000000000005,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.7
+              },
+              "change": 0.3099999999999996,
+              "pct": 8.37837837837836
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-23",
+                "value": 3.6
+              },
+              "change": 0.4099999999999997,
+              "pct": 11.388888888888872
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.73
+              },
+              "change": 0.2799999999999998,
+              "pct": 7.506702412868638
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-17",
+                "value": 4.54
+              },
+              "change": -0.5300000000000002,
+              "pct": -11.674008810572689
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 4.04
+            },
+            {
+              "date": "2026-10-23",
+              "value": 4.04
+            },
+            {
+              "date": "2026-10-26",
+              "value": 4.05
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.05
+            },
+            {
+              "date": "2026-10-28",
+              "value": 4.01
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        }
+      ]
+    },
+    {
+      "id": "ccc_oas",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "BAMLH0A3HYC",
+          "current": {
+            "date": "2026-10-28",
+            "value": 13.07
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 13.07
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 13.07
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 10.13
+              },
+              "change": 2.9399999999999995,
+              "pct": 29.022704837117463
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 9.09
+              },
+              "change": 3.9800000000000004,
+              "pct": 43.7843784378438
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 8.29
+              },
+              "change": 4.780000000000001,
+              "pct": 57.65983112183355
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 7.59
+              },
+              "change": 5.48,
+              "pct": 72.20026350461133
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 13.4
+            },
+            {
+              "date": "2026-10-23",
+              "value": 13.56
+            },
+            {
+              "date": "2026-10-26",
+              "value": 13.45
+            },
+            {
+              "date": "2026-10-27",
+              "value": 13.21
+            },
+            {
+              "date": "2026-10-28",
+              "value": 13.07
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "BAMLH0A3HYCEY",
+          "current": {
+            "date": "2026-10-28",
+            "value": 17.73
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 17.82
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 17.82
+          },
+          "delta": -0.08999999999999986,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 14.4
+              },
+              "change": 3.33,
+              "pct": 23.124999999999996
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 13.06
+              },
+              "change": 4.67,
+              "pct": 35.75803981623278
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 11.79
+              },
+              "change": 5.940000000000001,
+              "pct": 50.38167938931299
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 11.67
+              },
+              "change": 6.0600000000000005,
+              "pct": 51.9280205655527
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 17.99
+            },
+            {
+              "date": "2026-10-23",
+              "value": 18.17
+            },
+            {
+              "date": "2026-10-26",
+              "value": 18.08
+            },
+            {
+              "date": "2026-10-27",
+              "value": 17.86
+            },
+            {
+              "date": "2026-10-28",
+              "value": 17.73
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        }
+      ]
+    },
+    {
+      "id": "bdc_price_to_nav",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "price:ARCC",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.959606457102305,
+            "publishedAt": "2026-10-27",
+            "effectiveAt": "2026-10-28",
+            "basis": "2026-09-30"
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.9528741387120805,
+            "publishedAt": "2026-10-27",
+            "effectiveAt": "2026-10-28",
+            "basis": "2026-09-30"
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.95090437305066,
+            "publishedAt": "2026-07-29",
+            "effectiveAt": "2026-07-30",
+            "basis": "2026-06-30"
+          },
+          "delta": 0.006732318390224479,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.9669250172854085,
+                "publishedAt": "2026-07-29",
+                "effectiveAt": "2026-07-30",
+                "basis": "2026-06-30"
+              },
+              "change": -0.007318560183103506,
+              "pct": -0.7568901468337219
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 0.9530372678046934,
+                "publishedAt": "2026-04-28",
+                "effectiveAt": "2026-04-29",
+                "basis": "2026-03-31"
+              },
+              "change": 0.006569189297611522,
+              "pct": 0.6892898651008172
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 1.0279859917453382,
+                "publishedAt": "2026-10-27",
+                "effectiveAt": "2026-10-28",
+                "basis": "2025-09-30"
+              },
+              "change": -0.06837953464303326,
+              "pct": -6.6517963466541925
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 1.0961052137730878,
+                "publishedAt": "2025-10-28",
+                "effectiveAt": "2025-10-29",
+                "basis": "2024-09-30"
+              },
+              "change": -0.13649875667078282,
+              "pct": -12.453070650117382
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.9730709951075787,
+              "publishedAt": "2026-10-27",
+              "effectiveAt": "2026-10-28",
+              "basis": "2026-09-30"
+            },
+            {
+              "date": "2026-10-23",
+              "value": 0.9653029202303697,
+              "publishedAt": "2026-10-27",
+              "effectiveAt": "2026-10-28",
+              "basis": "2026-09-30"
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.9637493842750681,
+              "publishedAt": "2026-10-27",
+              "effectiveAt": "2026-10-28",
+              "basis": "2026-09-30"
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.9585707006153205,
+              "publishedAt": "2026-10-27",
+              "effectiveAt": "2026-10-28",
+              "basis": "2026-09-30"
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.959606457102305,
+              "publishedAt": "2026-10-27",
+              "effectiveAt": "2026-10-28",
+              "basis": "2026-09-30"
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "price:OBDC",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.7110799679749477,
+            "publishedAt": "2026-08-05",
+            "effectiveAt": "2026-08-06",
+            "basis": "2026-06-30"
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.6928471328499942,
+            "publishedAt": "2026-08-05",
+            "effectiveAt": "2026-08-06",
+            "basis": "2026-06-30"
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.6928471328499942,
+            "publishedAt": "2026-08-05",
+            "effectiveAt": "2026-08-06",
+            "basis": "2026-06-30"
+          },
+          "delta": 0.01823283512495344,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.7559607105870401,
+                "publishedAt": "2026-08-05",
+                "effectiveAt": "2026-08-06",
+                "basis": "2026-06-30"
+              },
+              "change": -0.044880742612092406,
+              "pct": -5.9369147078080715
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 0.7820957985956747,
+                "publishedAt": "2026-05-06",
+                "effectiveAt": "2026-05-07",
+                "basis": "2026-03-31"
+              },
+              "change": -0.07101583062072703,
+              "pct": -9.080195897771414
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 0.889187358705048,
+                "publishedAt": "2025-11-05",
+                "effectiveAt": "2025-11-06",
+                "basis": "2025-09-30"
+              },
+              "change": -0.1781073907301003,
+              "pct": -20.03035569348217
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 1.0019633782471662,
+                "publishedAt": "2025-11-05",
+                "effectiveAt": "2025-11-06",
+                "basis": "2024-09-30"
+              },
+              "change": -0.29088341027221853,
+              "pct": -29.031341522789955
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.7131837360654941,
+              "publishedAt": "2026-08-05",
+              "effectiveAt": "2026-08-06",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-23",
+              "value": 0.7047685968257268,
+              "publishedAt": "2026-08-05",
+              "effectiveAt": "2026-08-06",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.6991585039992152,
+              "publishedAt": "2026-08-05",
+              "effectiveAt": "2026-08-06",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.7124824577427846,
+              "publishedAt": "2026-08-05",
+              "effectiveAt": "2026-08-06",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.7110799679749477,
+              "publishedAt": "2026-08-05",
+              "effectiveAt": "2026-08-06",
+              "basis": "2026-06-30"
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "price:FSK",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.5852459037238783,
+            "publishedAt": "2026-08-06",
+            "effectiveAt": "2026-08-07",
+            "basis": "2026-06-30"
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.5508196679620795,
+            "publishedAt": "2026-08-06",
+            "effectiveAt": "2026-08-07",
+            "basis": "2026-06-30"
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.5508196679620795,
+            "publishedAt": "2026-08-06",
+            "effectiveAt": "2026-08-07",
+            "basis": "2026-06-30"
+          },
+          "delta": 0.03442623576179882,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.587431693989071,
+                "publishedAt": "2026-08-06",
+                "effectiveAt": "2026-08-07",
+                "basis": "2026-06-30"
+              },
+              "change": -0.002185790265192722,
+              "pct": -0.3720926684002479
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 0.567180048070939,
+                "publishedAt": "2026-05-11",
+                "effectiveAt": "2026-05-12",
+                "basis": "2026-03-31"
+              },
+              "change": 0.018065855652939278,
+              "pct": 3.185206481501579
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 0.6980445830591054,
+                "publishedAt": "2025-11-05",
+                "effectiveAt": "2025-11-06",
+                "basis": "2025-09-30"
+              },
+              "change": -0.11279867933522714,
+              "pct": -16.159237113609425
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 0.8702770588680239,
+                "publishedAt": "2025-11-05",
+                "effectiveAt": "2025-11-06",
+                "basis": "2024-09-30"
+              },
+              "change": -0.28503115514414556,
+              "pct": -32.75177166164621
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.5754098214738356,
+              "publishedAt": "2026-08-06",
+              "effectiveAt": "2026-08-07",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-23",
+              "value": 0.5704917803488142,
+              "publishedAt": "2026-08-06",
+              "effectiveAt": "2026-08-07",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.5683059900836215,
+              "publishedAt": "2026-08-06",
+              "effectiveAt": "2026-08-07",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.5825136528640497,
+              "publishedAt": "2026-08-06",
+              "effectiveAt": "2026-08-07",
+              "basis": "2026-06-30"
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.5852459037238783,
+              "publishedAt": "2026-08-06",
+              "effectiveAt": "2026-08-07",
+              "basis": "2026-06-30"
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "ig_oas",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "BAMLC0A0CM",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.86
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.88
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.88
+          },
+          "delta": -0.020000000000000018,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.81
+              },
+              "change": 0.04999999999999993,
+              "pct": 6.1728395061728225
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 0.81
+              },
+              "change": 0.04999999999999993,
+              "pct": 6.1728395061728225
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 0.76
+              },
+              "change": 0.09999999999999998,
+              "pct": 13.157894736842103
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 0.84
+              },
+              "change": 0.020000000000000018,
+              "pct": 2.3809523809523725
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.89
+            },
+            {
+              "date": "2026-10-23",
+              "value": 0.91
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.9
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.88
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.86
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "BAMLC0A0CMEY",
+          "current": {
+            "date": "2026-10-28",
+            "value": 5.83
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 5.92
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 5.92
+          },
+          "delta": -0.08999999999999986,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 5.41
+              },
+              "change": 0.41999999999999993,
+              "pct": 7.763401109057311
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 5.13
+              },
+              "change": 0.7000000000000002,
+              "pct": 13.645224171539972
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 4.67
+              },
+              "change": 1.1600000000000001,
+              "pct": 24.839400428265535
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 5.14
+              },
+              "change": 0.6900000000000004,
+              "pct": 13.424124513618697
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 5.79
+            },
+            {
+              "date": "2026-10-23",
+              "value": 5.84
+            },
+            {
+              "date": "2026-10-26",
+              "value": 5.83
+            },
+            {
+              "date": "2026-10-27",
+              "value": 5.82
+            },
+            {
+              "date": "2026-10-28",
+              "value": 5.83
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        }
+      ]
+    },
+    {
+      "id": "corporate_bond_issuance",
+      "status": "partial",
+      "lines": [
+        {
+          "key": "sifma:issuance:total",
+          "current": {
+            "date": "2026-09-30",
+            "value": 269.84901,
+            "basis": "gross_issuance_all_corporates",
+            "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+          },
+          "previous": {
+            "date": "2026-09-30",
+            "value": 269.84901,
+            "basis": "gross_issuance_all_corporates",
+            "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+          },
+          "previousFrozen": {
+            "date": "2026-09-30",
+            "value": 269.84901,
+            "basis": "gross_issuance_all_corporates",
+            "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-06-30",
+                "value": 279.96696,
+                "basis": "gross_issuance_all_corporates",
+                "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+              },
+              "change": -10.11794999999995,
+              "pct": -3.6139800210710393
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 287.21247,
+                "basis": "gross_issuance_all_corporates",
+                "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+              },
+              "change": -17.363459999999975,
+              "pct": -6.045510489151107
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 299.29400999999996,
+                "basis": "gross_issuance_all_corporates",
+                "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+              },
+              "change": -29.444999999999936,
+              "pct": -9.838152123391964
+            },
+            {
+              "days": 730,
+              "change": null,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:issuance:IG",
+          "delta": null,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 182,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 365,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 730,
+              "change": null,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:issuance:HY",
+          "delta": null,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 182,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 365,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 730,
+              "change": null,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "cp_outstanding",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "COMPOUT",
+          "current": {
+            "date": "2026-10-28",
+            "value": 1498.953515625
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 1502.567023438
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 1502.567023438
+          },
+          "delta": -3.6135078130000693,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 1396.240889701
+              },
+              "change": 102.7126259239999,
+              "pct": 7.356368566601379
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 1422.346902145
+              },
+              "change": 76.60661347999985,
+              "pct": 5.385930349654622
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-22",
+                "value": 1320.565398923
+              },
+              "change": 178.38811670199993,
+              "pct": 13.508465150418614
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-23",
+                "value": 1157.257258301
+              },
+              "change": 341.6962573239998,
+              "pct": 29.526387056379598
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-28",
+              "value": 1498.953515625
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "bdc_credit_quality",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "manual:ARCC:nonaccrual_fv",
+          "current": {
+            "date": "2026-09-30",
+            "value": 1.4,
+            "publishedAt": "2026-10-27",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "previous": {
+            "date": "2026-09-30",
+            "value": 1.4,
+            "publishedAt": "2026-10-27",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 1.4,
+            "publishedAt": "2026-07-29",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm"
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-06-30",
+                "value": 1.4,
+                "publishedAt": "2026-07-29",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm"
+              },
+              "change": 0,
+              "pct": 0
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 1.2,
+                "publishedAt": "2026-04-28",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026027688/arcc-20260331.htm"
+              },
+              "change": 0.19999999999999996,
+              "pct": 16.666666666666675
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 1,
+                "publishedAt": "2025-10-28",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000128775025000046/arcc-20250930.htm"
+              },
+              "change": 0.3999999999999999,
+              "pct": 39.99999999999999
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-09-30",
+                "value": 0.6,
+                "publishedAt": "2024-10-30",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000128775024000054/arcc-20240930.htm"
+              },
+              "change": 0.7999999999999999,
+              "pct": 133.33333333333334
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:ARCC:nonaccrual_cost",
+          "current": {
+            "date": "2026-09-30",
+            "value": 2.4,
+            "publishedAt": "2026-10-27",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "previous": {
+            "date": "2026-09-30",
+            "value": 2.4,
+            "publishedAt": "2026-10-27",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 2.4,
+            "publishedAt": "2026-07-29",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm"
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-06-30",
+                "value": 2.4,
+                "publishedAt": "2026-07-29",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm"
+              },
+              "change": 0,
+              "pct": 0
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 2.1,
+                "publishedAt": "2026-04-28",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026027688/arcc-20260331.htm"
+              },
+              "change": 0.2999999999999998,
+              "pct": 14.28571428571428
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 1.8000000000000003,
+                "publishedAt": "2025-10-28",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000128775025000046/arcc-20250930.htm"
+              },
+              "change": 0.5999999999999996,
+              "pct": 33.3333333333333
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-09-30",
+                "value": 1.3,
+                "publishedAt": "2024-10-30",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000128775024000054/arcc-20240930.htm"
+              },
+              "change": 1.0999999999999999,
+              "pct": 84.6153846153846
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:ARCC:pik",
+          "current": {
+            "date": "2026-09-30",
+            "value": 16.382699868938403,
+            "publishedAt": "2026-10-27",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm",
+            "components": {
+              "numerator": 125000000,
+              "denominator": 763000000
+            }
+          },
+          "previous": {
+            "date": "2026-09-30",
+            "value": 16.382699868938403,
+            "publishedAt": "2026-10-27",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm",
+            "components": {
+              "numerator": 125000000,
+              "denominator": 763000000
+            }
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 15.755208333333334,
+            "publishedAt": "2026-07-29",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm",
+            "components": {
+              "numerator": 121000000,
+              "denominator": 768000000
+            }
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-06-30",
+                "value": 15.755208333333334,
+                "publishedAt": "2026-07-29",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm",
+                "components": {
+                  "numerator": 121000000,
+                  "denominator": 768000000
+                }
+              },
+              "change": 0.6274915356050688,
+              "pct": 3.982756192931336
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 15.203145478374836,
+                "publishedAt": "2026-04-28",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026027688/arcc-20260331.htm",
+                "components": {
+                  "numerator": 116000000,
+                  "denominator": 763000000
+                }
+              },
+              "change": 1.1795543905635668,
+              "pct": 7.758620689655182
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 15.473145780051151,
+                "publishedAt": "2025-10-28",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000128775025000046/arcc-20250930.htm",
+                "components": {
+                  "numerator": 121000000,
+                  "denominator": 782000000
+                }
+              },
+              "change": 0.9095540888872513,
+              "pct": 5.878275186031656
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-09-30",
+                "value": 15.354838709677418,
+                "publishedAt": "2024-10-30",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000128775024000054/arcc-20240930.htm",
+                "components": {
+                  "numerator": 119000000,
+                  "denominator": 775000000
+                }
+              },
+              "change": 1.0278611592609845,
+              "pct": 6.694053768296326
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:OBDC:nonaccrual_fv",
+          "current": {
+            "date": "2026-06-30",
+            "value": 0.8,
+            "publishedAt": "2026-08-05",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "previous": {
+            "date": "2026-06-30",
+            "value": 0.8,
+            "publishedAt": "2026-08-05",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 0.8,
+            "publishedAt": "2026-08-05",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 1,
+                "publishedAt": "2026-05-06",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000033/obdc-20260331.htm"
+              },
+              "change": -0.19999999999999996,
+              "pct": -19.999999999999996
+            },
+            {
+              "days": 182,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 365,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 730,
+              "change": null,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:OBDC:nonaccrual_cost",
+          "current": {
+            "date": "2026-06-30",
+            "value": 2.8,
+            "publishedAt": "2026-08-05",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "previous": {
+            "date": "2026-06-30",
+            "value": 2.8,
+            "publishedAt": "2026-08-05",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 2.8,
+            "publishedAt": "2026-08-05",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 2,
+                "publishedAt": "2026-05-06",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000033/obdc-20260331.htm"
+              },
+              "change": 0.7999999999999998,
+              "pct": 39.99999999999999
+            },
+            {
+              "days": 182,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 365,
+              "change": null,
+              "pct": null
+            },
+            {
+              "days": 730,
+              "change": null,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:OBDC:pik",
+          "current": {
+            "date": "2026-06-30",
+            "value": 10.673689770818903,
+            "publishedAt": "2026-08-05",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm",
+            "components": {
+              "numerator": 42838000,
+              "denominator": 401342000
+            }
+          },
+          "previous": {
+            "date": "2026-06-30",
+            "value": 10.673689770818903,
+            "publishedAt": "2026-08-05",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm",
+            "components": {
+              "numerator": 42838000,
+              "denominator": 401342000
+            }
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 10.673689770818903,
+            "publishedAt": "2026-08-05",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm",
+            "components": {
+              "numerator": 42838000,
+              "denominator": 401342000
+            }
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 11.69078619062741,
+                "publishedAt": "2026-05-06",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000033/obdc-20260331.htm",
+                "components": {
+                  "numerator": 46386000,
+                  "denominator": 396774000
+                }
+              },
+              "change": -1.0170964198085066,
+              "pct": -8.699983074054686
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 9.53196561199828,
+                "publishedAt": "2025-11-05",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588825000024/obdc-20250930.htm",
+                "components": {
+                  "numerator": 43186000,
+                  "denominator": 453065000
+                }
+              },
+              "change": 1.1417241588206242,
+              "pct": 11.977845968972956
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-06-30",
+                "value": 9.126610859886835,
+                "publishedAt": "2025-08-06",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588825000020/obdc-20250630.htm",
+                "components": {
+                  "numerator": 44341000,
+                  "denominator": 485843000
+                }
+              },
+              "change": 1.5470789109320684,
+              "pct": 16.951296978506768
+            },
+            {
+              "days": 730,
+              "change": null,
+              "pct": null
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:FSK:nonaccrual_fv",
+          "current": {
+            "date": "2026-06-30",
+            "value": 3.8,
+            "publishedAt": "2026-08-06",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "previous": {
+            "date": "2026-06-30",
+            "value": 3.8,
+            "publishedAt": "2026-08-06",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 3.8,
+            "publishedAt": "2026-08-06",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 4.2,
+                "publishedAt": "2026-05-11",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926058250/tm2614112d1_ex99-1.htm"
+              },
+              "change": -0.40000000000000036,
+              "pct": -9.523809523809534
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 2.9,
+                "publishedAt": "2025-11-05",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465925107029/tm2530215d1_ex99-1.htm"
+              },
+              "change": 0.8999999999999999,
+              "pct": 31.034482758620683
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-06-30",
+                "value": 3,
+                "publishedAt": "2025-08-06",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465925074744/tm2522661d1_ex99-1.htm"
+              },
+              "change": 0.7999999999999998,
+              "pct": 26.66666666666666
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-06-30",
+                "value": 1.8,
+                "publishedAt": "2024-08-06",
+                "basis": "fair_value",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000119312524194987/d862028dex991.htm"
+              },
+              "change": 1.9999999999999998,
+              "pct": 111.11111111111111
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:FSK:nonaccrual_cost",
+          "current": {
+            "date": "2026-06-30",
+            "value": 7.1,
+            "publishedAt": "2026-08-06",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "previous": {
+            "date": "2026-06-30",
+            "value": 7.1,
+            "publishedAt": "2026-08-06",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 7.1,
+            "publishedAt": "2026-08-06",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 8.1,
+                "publishedAt": "2026-05-11",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926058250/tm2614112d1_ex99-1.htm"
+              },
+              "change": -1,
+              "pct": -12.345679012345679
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 5,
+                "publishedAt": "2025-11-05",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465925107029/tm2530215d1_ex99-1.htm"
+              },
+              "change": 2.0999999999999996,
+              "pct": 41.99999999999999
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-06-30",
+                "value": 5.3,
+                "publishedAt": "2025-08-06",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465925074744/tm2522661d1_ex99-1.htm"
+              },
+              "change": 1.7999999999999998,
+              "pct": 33.96226415094339
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-06-30",
+                "value": 4.3,
+                "publishedAt": "2024-08-06",
+                "basis": "amortized_cost",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000119312524194987/d862028dex991.htm"
+              },
+              "change": 2.8,
+              "pct": 65.11627906976744
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "manual:FSK:pik",
+          "current": {
+            "date": "2026-06-30",
+            "value": 14.482758620689657,
+            "publishedAt": "2026-08-06",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026053783/fsk-20260630.htm",
+            "components": {
+              "numerator": 42000000,
+              "denominator": 290000000
+            }
+          },
+          "previous": {
+            "date": "2026-06-30",
+            "value": 14.482758620689657,
+            "publishedAt": "2026-08-06",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026053783/fsk-20260630.htm",
+            "components": {
+              "numerator": 42000000,
+              "denominator": 290000000
+            }
+          },
+          "previousFrozen": {
+            "date": "2026-06-30",
+            "value": 14.482758620689657,
+            "publishedAt": "2026-08-06",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026053783/fsk-20260630.htm",
+            "components": {
+              "numerator": 42000000,
+              "denominator": 290000000
+            }
+          },
+          "delta": 0,
+          "newObservation": false,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-03-31",
+                "value": 12.5,
+                "publishedAt": "2026-05-11",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026033118/fsk-20260331.htm",
+                "components": {
+                  "numerator": 38000000,
+                  "denominator": 304000000
+                }
+              },
+              "change": 1.9827586206896566,
+              "pct": 15.86206896551725
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2025-09-30",
+                "value": 14.209115281501342,
+                "publishedAt": "2025-11-05",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828025049617/fsk-20250930.htm",
+                "components": {
+                  "numerator": 53000000,
+                  "denominator": 373000000
+                }
+              },
+              "change": 0.2736433391883146,
+              "pct": 1.9258295380611523
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-06-30",
+                "value": 13.06532663316583,
+                "publishedAt": "2025-08-06",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828025038368/fsk-20250630.htm",
+                "components": {
+                  "numerator": 52000000,
+                  "denominator": 398000000
+                }
+              },
+              "change": 1.4174319875238268,
+              "pct": 10.848806366047747
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-06-30",
+                "value": 8.656036446469248,
+                "publishedAt": "2024-08-06",
+                "basis": "pik_income_over_total_investment_income",
+                "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828024035234/fsk-20240630.htm",
+                "components": {
+                  "numerator": 38000000,
+                  "denominator": 439000000
+                }
+              },
+              "change": 5.826722174220409,
+              "pct": 67.31397459165159
+            }
+          ],
+          "newPoints": [],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "leveraged_loans",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "price:BKLN",
+          "current": {
+            "date": "2026-10-28",
+            "value": 20.440000534057617
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 20.31999969482422
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 20.31999969482422
+          },
+          "delta": 0.12000083923339844,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 20.031169891357422
+              },
+              "change": 0.4088306427001953,
+              "pct": 2.0409723691504844
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 19.932432174682617
+              },
+              "change": 0.507568359375,
+              "pct": 2.546444683352256
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 19.62442398071289
+              },
+              "change": 0.8155765533447266,
+              "pct": 4.155926075314542
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 18.380502700805664
+              },
+              "change": 2.059497833251953,
+              "pct": 11.204796010076912
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 20.290000915527344
+            },
+            {
+              "date": "2026-10-23",
+              "value": 20.260000228881836
+            },
+            {
+              "date": "2026-10-26",
+              "value": 20.299999237060547
+            },
+            {
+              "date": "2026-10-27",
+              "value": 20.3799991607666
+            },
+            {
+              "date": "2026-10-28",
+              "value": 20.440000534057617
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "price:SRLN",
+          "current": {
+            "date": "2026-10-28",
+            "value": 40.11000061035156
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 39.93000030517578
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 39.93000030517578
+          },
+          "delta": 0.18000030517578125,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 39.6168327331543
+              },
+              "change": 0.4931678771972656,
+              "pct": 1.2448442825277795
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 39.170265197753906
+              },
+              "change": 0.9397354125976562,
+              "pct": 2.3991040342804304
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 38.63547897338867
+              },
+              "change": 1.4745216369628906,
+              "pct": 3.816496329652108
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 36.09413528442383
+              },
+              "change": 4.015865325927734,
+              "pct": 11.126088197660057
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 39.86000061035156
+            },
+            {
+              "date": "2026-10-23",
+              "value": 39.79999923706055
+            },
+            {
+              "date": "2026-10-26",
+              "value": 39.81999969482422
+            },
+            {
+              "date": "2026-10-27",
+              "value": 40.02000045776367
+            },
+            {
+              "date": "2026-10-28",
+              "value": 40.11000061035156
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        }
+      ]
+    },
+    {
+      "id": "cp_credit_spread",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "cp_credit_spread",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.19999999999999973
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.19999999999999973
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.19999999999999973
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.25
+              },
+              "change": -0.050000000000000266,
+              "pct": -20.000000000000107
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 0.3500000000000001
+              },
+              "change": -0.15000000000000036,
+              "pct": -42.85714285714295
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 0.1900000000000004
+              },
+              "change": 0.009999999999999343,
+              "pct": 5.263157894736481
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 0.13999999999999968
+              },
+              "change": 0.06000000000000005,
+              "pct": 42.857142857142996
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.21999999999999975
+            },
+            {
+              "date": "2026-10-23",
+              "value": 0.2599999999999998
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.20000000000000018
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.1900000000000004
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.19999999999999973
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "RIFSPPNA2P2D30NB",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.18
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.97
+              },
+              "change": 0.20999999999999952,
+              "pct": 5.2896725440805925
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 4.03
+              },
+              "change": 0.14999999999999947,
+              "pct": 3.722084367245637
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 4.15
+              },
+              "change": 0.02999999999999936,
+              "pct": 0.7228915662650381
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.85
+              },
+              "change": -0.6699999999999999,
+              "pct": -13.814432989690717
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 4.17
+            },
+            {
+              "date": "2026-10-23",
+              "value": 4.18
+            },
+            {
+              "date": "2026-10-26",
+              "value": 4.19
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.2
+            },
+            {
+              "date": "2026-10-28",
+              "value": 4.18
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.72
+              },
+              "change": 0.2599999999999998,
+              "pct": 6.989247311827951
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 3.68
+              },
+              "change": 0.2999999999999998,
+              "pct": 8.15217391304348
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.96
+              },
+              "change": 0.020000000000000018,
+              "pct": 0.5050505050504972
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.71
+              },
+              "change": -0.73,
+              "pct": -15.49893842887473
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.95
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.92
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.99
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.01
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.98
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        },
+        {
+          "key": "RIFSPPNA2P2D30NB",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.18
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.97
+              },
+              "change": 0.20999999999999952,
+              "pct": 5.2896725440805925
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 4.03
+              },
+              "change": 0.14999999999999947,
+              "pct": 3.722084367245637
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 4.15
+              },
+              "change": 0.02999999999999936,
+              "pct": 0.7228915662650381
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.85
+              },
+              "change": -0.6699999999999999,
+              "pct": -13.814432989690717
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 4.17
+            },
+            {
+              "date": "2026-10-23",
+              "value": 4.18
+            },
+            {
+              "date": "2026-10-26",
+              "value": 4.19
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.2
+            },
+            {
+              "date": "2026-10-28",
+              "value": 4.18
+            }
+          ],
+          "missingValues": [],
+          "group": "rawRateLines"
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.72
+              },
+              "change": 0.2599999999999998,
+              "pct": 6.989247311827951
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 3.68
+              },
+              "change": 0.2999999999999998,
+              "pct": 8.15217391304348
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.96
+              },
+              "change": 0.020000000000000018,
+              "pct": 0.5050505050504972
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.71
+              },
+              "change": -0.73,
+              "pct": -15.49893842887473
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.95
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.92
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.99
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.01
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.98
+            }
+          ],
+          "missingValues": [],
+          "group": "rawRateLines"
+        }
+      ]
+    },
+    {
+      "id": "cp_treasury_spread",
+      "status": "ok",
+      "lines": [
+        {
+          "key": "cp_treasury_spread",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.08000000000000007
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 0.06000000000000005
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 0.06000000000000005
+          },
+          "delta": 0.020000000000000018,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 0.11000000000000032
+              },
+              "change": -0.03000000000000025,
+              "pct": -27.272727272727415
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 0.10000000000000009
+              },
+              "change": -0.020000000000000018,
+              "pct": -19.999999999999996
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 0.04999999999999982
+              },
+              "change": 0.03000000000000025,
+              "pct": 60.00000000000072
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 0.04999999999999982
+              },
+              "change": 0.03000000000000025,
+              "pct": 60.00000000000072
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 0.010000000000000231
+            },
+            {
+              "date": "2026-10-23",
+              "value": -0.020000000000000018
+            },
+            {
+              "date": "2026-10-26",
+              "value": 0.050000000000000266
+            },
+            {
+              "date": "2026-10-27",
+              "value": 0.07999999999999963
+            },
+            {
+              "date": "2026-10-28",
+              "value": 0.08000000000000007
+            }
+          ],
+          "missingValues": [],
+          "group": "lines"
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.72
+              },
+              "change": 0.2599999999999998,
+              "pct": 6.989247311827951
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 3.68
+              },
+              "change": 0.2999999999999998,
+              "pct": 8.15217391304348
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.96
+              },
+              "change": 0.020000000000000018,
+              "pct": 0.5050505050504972
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.71
+              },
+              "change": -0.73,
+              "pct": -15.49893842887473
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.95
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.92
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.99
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.01
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.98
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        },
+        {
+          "key": "DTB4WK",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.9
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "delta": -0.020000000000000018,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.61
+              },
+              "change": 0.29000000000000004,
+              "pct": 8.033240997229928
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 3.58
+              },
+              "change": 0.31999999999999984,
+              "pct": 8.93854748603351
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.91
+              },
+              "change": -0.010000000000000231,
+              "pct": -0.2557544757033292
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.66
+              },
+              "change": -0.7600000000000002,
+              "pct": -16.30901287553649
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.94
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.94
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.94
+            },
+            {
+              "date": "2026-10-27",
+              "value": 3.93
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.9
+            }
+          ],
+          "missingValues": [],
+          "group": "comparisonLines"
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.72
+              },
+              "change": 0.2599999999999998,
+              "pct": 6.989247311827951
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 3.68
+              },
+              "change": 0.2999999999999998,
+              "pct": 8.15217391304348
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.96
+              },
+              "change": 0.020000000000000018,
+              "pct": 0.5050505050504972
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.71
+              },
+              "change": -0.73,
+              "pct": -15.49893842887473
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.95
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.92
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.99
+            },
+            {
+              "date": "2026-10-27",
+              "value": 4.01
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.98
+            }
+          ],
+          "missingValues": [],
+          "group": "rawRateLines"
+        },
+        {
+          "key": "DTB4WK",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.9
+          },
+          "previous": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "previousFrozen": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "delta": -0.020000000000000018,
+          "newObservation": true,
+          "long": [
+            {
+              "days": 91,
+              "previous": {
+                "date": "2026-07-29",
+                "value": 3.61
+              },
+              "change": 0.29000000000000004,
+              "pct": 8.033240997229928
+            },
+            {
+              "days": 182,
+              "previous": {
+                "date": "2026-04-29",
+                "value": 3.58
+              },
+              "change": 0.31999999999999984,
+              "pct": 8.93854748603351
+            },
+            {
+              "days": 365,
+              "previous": {
+                "date": "2025-10-28",
+                "value": 3.91
+              },
+              "change": -0.010000000000000231,
+              "pct": -0.2557544757033292
+            },
+            {
+              "days": 730,
+              "previous": {
+                "date": "2024-10-28",
+                "value": 4.66
+              },
+              "change": -0.7600000000000002,
+              "pct": -16.30901287553649
+            }
+          ],
+          "newPoints": [
+            {
+              "date": "2026-10-22",
+              "value": 3.94
+            },
+            {
+              "date": "2026-10-23",
+              "value": 3.94
+            },
+            {
+              "date": "2026-10-26",
+              "value": 3.94
+            },
+            {
+              "date": "2026-10-27",
+              "value": 3.93
+            },
+            {
+              "date": "2026-10-28",
+              "value": 3.9
+            }
+          ],
+          "missingValues": [],
+          "group": "rawRateLines"
+        }
+      ]
+    }
+  ],
+  "debt": {
+    "currentFlow1": {
+      "from": "2026-10-21",
+      "start": "2026-10-22",
+      "end": "2026-10-28",
+      "weeks": 1,
+      "baselineDate": "2026-10-21",
+      "observedThrough": "2026-10-28",
+      "issues": 640068,
+      "redemptions": 537253,
+      "inflation": 1527,
+      "billsNet": 96666,
+      "net": 104342
+    },
+    "currentFlow4": {
+      "from": "2026-09-30",
+      "start": "2026-10-01",
+      "end": "2026-10-28",
+      "weeks": 4,
+      "baselineDate": "2026-09-30",
+      "observedThrough": "2026-10-28",
+      "issues": 2595956,
+      "redemptions": 2352751,
+      "inflation": 5944,
+      "billsNet": 223836,
+      "net": 249149
+    },
+    "currentFlow13": {
+      "from": "2026-07-29",
+      "start": "2026-07-30",
+      "end": "2026-10-28",
+      "weeks": 13,
+      "baselineDate": "2026-07-29",
+      "observedThrough": "2026-10-28",
+      "issues": 8805095,
+      "redemptions": 8125299,
+      "inflation": -135,
+      "billsNet": 391600,
+      "net": 679661
+    },
+    "previousFlow1": {
+      "from": "2026-10-14",
+      "start": "2026-10-15",
+      "end": "2026-10-21",
+      "weeks": 1,
+      "baselineDate": "2026-10-14",
+      "observedThrough": "2026-10-21",
+      "issues": 718805,
+      "redemptions": 638430,
+      "inflation": 1531,
+      "billsNet": 53814,
+      "net": 81906
+    },
+    "previousFlow4": {
+      "from": "2026-09-23",
+      "start": "2026-09-24",
+      "end": "2026-10-21",
+      "weeks": 4,
+      "baselineDate": "2026-09-23",
+      "observedThrough": "2026-10-21",
+      "issues": 2746315,
+      "redemptions": 2556610,
+      "inflation": 4364,
+      "billsNet": 94827,
+      "net": 194069
+    },
+    "previousFlow13": {
+      "from": "2026-07-22",
+      "start": "2026-07-23",
+      "end": "2026-10-21",
+      "weeks": 13,
+      "baselineDate": "2026-07-22",
+      "observedThrough": "2026-10-21",
+      "issues": 8759095,
+      "redemptions": 8065821,
+      "inflation": 1353,
+      "billsNet": 402733,
+      "net": 694627
+    }
+  },
+  "dts": {
+    "Deposits:Public Debt Cash Issues (Table IIIB)": 646079,
+    "Withdrawals:Public Debt Cash Redemp. (Table IIIB)": 547104,
+    "Treasury General Account Total Deposits": 746302,
+    "Treasury General Account Total Withdrawals": 675824
+  },
+  "auctions": {
+    "count": 17,
+    "skipped": 5,
+    "lastIncludedAuction": "2026-10-15",
+    "matrix": {
+      "bills": {
+        "soma": 90079.84810000002,
+        "dealer": 420081.72,
+        "direct": 85003.18000000001,
+        "indirect": 758441.1689,
+        "noncomp": 33080.172099999996
+      },
+      "notes": {
+        "soma": 2303.85,
+        "dealer": 7105.4375,
+        "direct": 24665.81,
+        "indirect": 63889.728,
+        "noncomp": 984.0574
+      },
+      "bonds": {
+        "soma": 522.5226,
+        "dealer": 1490.5,
+        "direct": 4583.0441,
+        "indirect": 15866.0595,
+        "noncomp": 60.4091
+      },
+      "tips": {
+        "soma": 0,
+        "dealer": 0,
+        "direct": 0,
+        "indirect": 0,
+        "noncomp": 0
+      },
+      "frn": {
+        "soma": 0,
+        "dealer": 0,
+        "direct": 0,
+        "indirect": 0,
+        "noncomp": 0
+      }
+    },
+    "previous": {
+      "bills": {
+        "soma": 138595.3211,
+        "dealer": 600930.1575,
+        "direct": 117836.80500000002,
+        "indirect": 1088577.0246000001,
+        "noncomp": 46966.523700000005
+      },
+      "notes": {
+        "soma": 8928.045399999999,
+        "dealer": 12552.9875,
+        "direct": 37829.52,
+        "indirect": 88759.27249999999,
+        "noncomp": 1503.308
+      },
+      "bonds": {
+        "soma": 522.5226,
+        "dealer": 1490.5,
+        "direct": 4583.0441,
+        "indirect": 15866.0595,
+        "noncomp": 60.4091
+      },
+      "tips": {
+        "soma": 0,
+        "dealer": 0,
+        "direct": 0,
+        "indirect": 0,
+        "noncomp": 0
+      },
+      "frn": {
+        "soma": 0,
+        "dealer": 0,
+        "direct": 0,
+        "indirect": 0,
+        "noncomp": 0
+      }
+    }
+  },
+  "previousTextStatus": "revision-004 is AI macro rewrite requested by user, not sentence-approved or deployed; deployed revision-003 retained separately"
+}

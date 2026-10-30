@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+const dir = new URL('./',import.meta.url);
+const load = p => JSON.parse(fs.readFileSync(new URL(p,dir),'utf8'));
+const packet=load('inputs.json'),d=packet.data,old=load('../2026-10-21/inputs.json').data;
+const at=(a,date)=>a.filter(p=>p.date<=date&&Number.isFinite(p.value)).at(-1);
+const shifted=(date,days)=>new Date(Date.parse(date)-days*86400000).toISOString().slice(0,10);
+const net=p=>p.total-p.rrp-p.tga;
+const weeks=d.overview.weeks; const curr=weeks.find(p=>p.date===packet.asOf);
+const fed=[1,4,13,26,52,104].map(n=>{const prev=weeks.filter(p=>p.date<=shifted(curr.date,n*7)).at(-1);return {weeks:n,from:prev.date,net:(net(curr)-net(prev))/100,levels:{current:net(curr),previous:net(prev)},delta:Object.fromEntries(Object.keys(curr).filter(k=>Number.isFinite(curr[k])&&Number.isFinite(prev[k])).map(k=>[k,(curr[k]-prev[k])/100]))};});
+function seriesReport(key,a,b,priorFrozen){const current=at(a,packet.asOf),previous=at(b,packet.previousAsOf);return {key,current,previous,previousFrozen:priorFrozen,delta:current&&previous?current.value-previous.value:null,newObservation:current?.date!==priorFrozen?.date,long:[91,182,365,730].map(days=>{const p=current&&at(a,shifted(current.date,days));return {days,previous:p,change:p&&current?current.value-p.value:null,pct:p?.value?(current.value/p.value-1)*100:null}}),newPoints:a.filter(p=>p.date>packet.previousAsOf&&p.date<=packet.asOf),missingValues:a.filter(p=>p.date>packet.previousAsOf&&p.date<=packet.asOf&&!Number.isFinite(p.value))};}
+const context=Object.entries(d.context.series).map(([k,a])=>seriesReport(k,a,a,at(old.context.series[k]??[],packet.previousAsOf)));
+const credit=d.credit.indicators.map(i=>({id:i.id,status:i.status,lines:['lines','comparisonLines','rawRateLines'].flatMap(group=>(i[group]??[]).map(l=>{const prev=d.previousCredit.indicators.find(x=>x.id===i.id)?.[group]?.find(x=>x.key===l.key)?.points??[];const prior=old.credit.indicators.find(x=>x.id===i.id)?.[group]?.find(x=>x.key===l.key)?.points??[];return {...seriesReport(l.key,l.points,prev,at(prior,packet.previousAsOf)),group};}))}));
+const debt=Object.fromEntries(Object.entries(d).filter(([k])=>k.includes('Flow')).map(([k,v])=>[k,v.flow]));
+const dw=load('deposits_withdrawals_operating_cash.json').data;
+const sums={};for(const r of dw){if(/Total Deposits|Total Withdrawals|Public Debt Cash/.test(r.transaction_catg)){const k=r.transaction_type+':'+r.transaction_catg;sums[k]=(sums[k]??0)+Number(r.transaction_today_amt);}}
+for(const r of dw) if(/Total Deposits|Total Withdrawals/.test(r.account_type)) sums[r.account_type]=(sums[r.account_type]??0)+Number(r.transaction_today_amt);
+const auction=d.auctions.agg; const roll=[4,13].map(n=>{const end=weeks.find(p=>p.date===shifted(curr.date,n*7));const start=weeks.find(p=>p.date===shifted(curr.date,(n+1)*7));return {weeks:n,removedWeek:{from:start.date,to:end.date,net:(net(end)-net(start))/100,tgaEffect:-(end.tga-start.tga)/100},addedWeek:{from:packet.previousAsOf,to:packet.asOf,net:fed[0].net,tgaEffect:-fed[0].delta.tga}};});
+const audit={asOf:packet.asOf,previousAsOf:packet.previousAsOf,units:{fed:'millions USD levels; 억달러 deltas',credit:'native series units; H8 billions USD'},fed,roll,context,credit,debt,dts:sums,auctions:{count:auction.counted,skipped:auction.skipped,lastIncludedAuction:auction.rows.map(r=>r.auctionDate).sort().at(-1),matrix:auction.matrix,previous:d.previousAuctions.agg.matrix},previousTextStatus:'revision-004 is AI macro rewrite requested by user, not sentence-approved or deployed; deployed revision-003 retained separately'};
+fs.writeFileSync(new URL('comparison.json',dir),JSON.stringify(audit,null,2)+'\n');
+console.log(JSON.stringify({fed,roll,dts:sums,debt,context:context.filter(x=>['m2','nfci','sofr','iorb'].includes(x.key)).map(x=>({key:x.key,current:x.current,previous:x.previous,old:x.previousFrozen,long:x.long.slice(1,3),new:x.newPoints})),credit:credit.map(i=>({id:i.id,lines:i.lines.map(l=>({key:l.key,current:l.current,prev:l.previous,old:l.previousFrozen,delta:l.delta,year:l.long[2].pct}))}))},null,2));

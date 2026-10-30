@@ -1,0 +1,1440 @@
+{
+  "fed": [
+    {
+      "weeks": 1,
+      "from": "2026-10-21",
+      "net": -702.02,
+      "levels": {
+        "current": 5404166,
+        "previous": 5474368
+      },
+      "delta": {
+        "total": -79.69,
+        "treast": 39.28,
+        "mbs": -116.55,
+        "agency": 0,
+        "soma": -77.27,
+        "discount": 3.69,
+        "repo": -0.61,
+        "swap": -0.14,
+        "reserves": -742.86,
+        "rrp": -82.46,
+        "tga": 704.79,
+        "currency": 6.95,
+        "liabResidual": 33.89
+      }
+    },
+    {
+      "weeks": 4,
+      "from": "2026-09-30",
+      "net": 70.64,
+      "levels": {
+        "current": 5404166,
+        "previous": 5397102
+      },
+      "delta": {
+        "total": 26.04,
+        "treast": 124.21,
+        "mbs": -145.67,
+        "agency": 0,
+        "soma": -21.46,
+        "discount": 8,
+        "repo": -11.94,
+        "swap": -0.51,
+        "reserves": 135.45,
+        "rrp": -360.46,
+        "tga": 315.86,
+        "currency": 30.52,
+        "liabResidual": -95.33
+      }
+    },
+    {
+      "weeks": 13,
+      "from": "2026-07-29",
+      "net": -265.31,
+      "levels": {
+        "current": 5404166,
+        "previous": 5430697
+      },
+      "delta": {
+        "total": 74.45,
+        "treast": 569.28,
+        "mbs": -473.33,
+        "agency": 0,
+        "soma": 95.95,
+        "discount": 30.32,
+        "repo": 0.03,
+        "swap": 0.24,
+        "reserves": -493.08,
+        "rrp": -112.14,
+        "tga": 451.9,
+        "currency": 134.71,
+        "liabResidual": 93.06
+      }
+    },
+    {
+      "weeks": 26,
+      "from": "2026-04-29",
+      "net": 150.29,
+      "levels": {
+        "current": 5404166,
+        "previous": 5389137
+      },
+      "delta": {
+        "total": 456.85,
+        "treast": 1508.45,
+        "mbs": -975.38,
+        "agency": 0,
+        "soma": 533.07,
+        "discount": 34.33,
+        "repo": 0.05,
+        "swap": 1.36,
+        "reserves": -239.21,
+        "rrp": 31.26,
+        "tga": 275.3,
+        "currency": 304.22,
+        "liabResidual": 85.28
+      }
+    },
+    {
+      "weeks": 52,
+      "from": "2025-10-29",
+      "net": 1684.04,
+      "levels": {
+        "current": 5404166,
+        "previous": 5235762
+      },
+      "delta": {
+        "total": 1586.01,
+        "treast": 3798.43,
+        "mbs": -1864.41,
+        "agency": 0,
+        "soma": 1934.02,
+        "discount": 16.44,
+        "repo": -103.05,
+        "swap": 1.3,
+        "reserves": 673.26,
+        "rrp": -415.76,
+        "tga": 317.73,
+        "currency": 668.19,
+        "liabResidual": 342.59
+      }
+    },
+    {
+      "weeks": 104,
+      "from": "2024-10-30",
+      "net": -1351.8,
+      "levels": {
+        "current": 5404166,
+        "previous": 5539346
+      },
+      "delta": {
+        "total": -2678.55,
+        "treast": 2187.57,
+        "mbs": -3824.41,
+        "agency": 0,
+        "soma": -1636.84,
+        "discount": 80.33,
+        "repo": -0.25,
+        "swap": -0.01,
+        "reserves": -3205.58,
+        "rrp": -3011.7,
+        "tga": 1684.95,
+        "currency": 1288.33,
+        "liabResidual": 565.45
+      }
+    }
+  ],
+  "roll": [
+    {
+      "weeks": 4,
+      "removedWeek": {
+        "from": "2026-09-23",
+        "to": "2026-09-30",
+        "net": -825.6,
+        "tgaEffect": -367.29
+      },
+      "addedWeek": {
+        "from": "2026-10-21",
+        "to": "2026-10-28",
+        "net": -702.02,
+        "tgaEffect": -704.79
+      }
+    },
+    {
+      "weeks": 13,
+      "removedWeek": {
+        "from": "2026-07-22",
+        "to": "2026-07-29",
+        "net": -1285.61,
+        "tgaEffect": -1350.25
+      },
+      "addedWeek": {
+        "from": "2026-10-21",
+        "to": "2026-10-28",
+        "net": -702.02,
+        "tgaEffect": -704.79
+      }
+    }
+  ],
+  "dts": {
+    "Deposits:Public Debt Cash Issues (Table IIIB)": 646079,
+    "Withdrawals:Public Debt Cash Redemp. (Table IIIB)": 547104,
+    "Treasury General Account Total Deposits": 746302,
+    "Treasury General Account Total Withdrawals": 675824
+  },
+  "debt": {
+    "currentFlow1": {
+      "from": "2026-10-21",
+      "start": "2026-10-22",
+      "end": "2026-10-28",
+      "weeks": 1,
+      "baselineDate": "2026-10-21",
+      "observedThrough": "2026-10-28",
+      "issues": 640068,
+      "redemptions": 537253,
+      "inflation": 1527,
+      "billsNet": 96666,
+      "net": 104342
+    },
+    "currentFlow4": {
+      "from": "2026-09-30",
+      "start": "2026-10-01",
+      "end": "2026-10-28",
+      "weeks": 4,
+      "baselineDate": "2026-09-30",
+      "observedThrough": "2026-10-28",
+      "issues": 2595956,
+      "redemptions": 2352751,
+      "inflation": 5944,
+      "billsNet": 223836,
+      "net": 249149
+    },
+    "currentFlow13": {
+      "from": "2026-07-29",
+      "start": "2026-07-30",
+      "end": "2026-10-28",
+      "weeks": 13,
+      "baselineDate": "2026-07-29",
+      "observedThrough": "2026-10-28",
+      "issues": 8805095,
+      "redemptions": 8125299,
+      "inflation": -135,
+      "billsNet": 391600,
+      "net": 679661
+    },
+    "previousFlow1": {
+      "from": "2026-10-14",
+      "start": "2026-10-15",
+      "end": "2026-10-21",
+      "weeks": 1,
+      "baselineDate": "2026-10-14",
+      "observedThrough": "2026-10-21",
+      "issues": 718805,
+      "redemptions": 638430,
+      "inflation": 1531,
+      "billsNet": 53814,
+      "net": 81906
+    },
+    "previousFlow4": {
+      "from": "2026-09-23",
+      "start": "2026-09-24",
+      "end": "2026-10-21",
+      "weeks": 4,
+      "baselineDate": "2026-09-23",
+      "observedThrough": "2026-10-21",
+      "issues": 2746315,
+      "redemptions": 2556610,
+      "inflation": 4364,
+      "billsNet": 94827,
+      "net": 194069
+    },
+    "previousFlow13": {
+      "from": "2026-07-22",
+      "start": "2026-07-23",
+      "end": "2026-10-21",
+      "weeks": 13,
+      "baselineDate": "2026-07-22",
+      "observedThrough": "2026-10-21",
+      "issues": 8759095,
+      "redemptions": 8065821,
+      "inflation": 1353,
+      "billsNet": 402733,
+      "net": 694627
+    }
+  },
+  "context": [
+    {
+      "key": "m2",
+      "current": {
+        "date": "2026-09-01",
+        "value": 23413900
+      },
+      "previous": {
+        "date": "2026-09-01",
+        "value": 23413900
+      },
+      "old": {
+        "date": "2026-08-01",
+        "value": 23342800
+      },
+      "long": [
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-03-01",
+            "value": 22613900
+          },
+          "change": 800000,
+          "pct": 3.537647199288929
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-09-01",
+            "value": 22149200
+          },
+          "change": 1264700,
+          "pct": 5.709912773373316
+        }
+      ],
+      "new": []
+    },
+    {
+      "key": "iorb",
+      "current": {
+        "date": "2026-10-28",
+        "value": 3.9
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 3.9
+      },
+      "old": {
+        "date": "2026-10-21",
+        "value": 3.9
+      },
+      "long": [
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-29",
+            "value": 3.65
+          },
+          "change": 0.25,
+          "pct": 6.849315068493156
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-28",
+            "value": 4.15
+          },
+          "change": -0.25000000000000044,
+          "pct": -6.024096385542177
+        }
+      ],
+      "new": [
+        {
+          "date": "2026-10-22",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-23",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-24",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-25",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-26",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-27",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-28",
+          "value": 3.9
+        }
+      ]
+    },
+    {
+      "key": "nfci",
+      "current": {
+        "date": "2026-10-23",
+        "value": -0.487
+      },
+      "previous": {
+        "date": "2026-10-16",
+        "value": -0.494
+      },
+      "old": {
+        "date": "2026-10-16",
+        "value": -0.496
+      },
+      "long": [
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-24",
+            "value": -0.497
+          },
+          "change": 0.010000000000000009,
+          "pct": -2.012072434607648
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-17",
+            "value": -0.52
+          },
+          "change": 0.03300000000000003,
+          "pct": -6.346153846153857
+        }
+      ],
+      "new": [
+        {
+          "date": "2026-10-23",
+          "value": -0.487
+        }
+      ]
+    },
+    {
+      "key": "sofr",
+      "current": {
+        "date": "2026-10-28",
+        "value": 3.94
+      },
+      "previous": {
+        "date": "2026-10-21",
+        "value": 3.88
+      },
+      "old": {
+        "date": "2026-10-21",
+        "value": 3.88
+      },
+      "long": [
+        {
+          "days": 182,
+          "previous": {
+            "date": "2026-04-29",
+            "value": 3.63
+          },
+          "change": 0.31000000000000005,
+          "pct": 8.539944903581276
+        },
+        {
+          "days": 365,
+          "previous": {
+            "date": "2025-10-28",
+            "value": 4.31
+          },
+          "change": -0.36999999999999966,
+          "pct": -8.584686774941986
+        }
+      ],
+      "new": [
+        {
+          "date": "2026-10-22",
+          "value": 3.9
+        },
+        {
+          "date": "2026-10-23",
+          "value": 3.92
+        },
+        {
+          "date": "2026-10-26",
+          "value": 3.93
+        },
+        {
+          "date": "2026-10-27",
+          "value": 3.95
+        },
+        {
+          "date": "2026-10-28",
+          "value": 3.94
+        }
+      ]
+    }
+  ],
+  "credit": [
+    {
+      "id": "sloos_ci_standards",
+      "lines": [
+        {
+          "key": "DRTSCILM",
+          "current": {
+            "date": "2026-07-01",
+            "value": 0
+          },
+          "prev": {
+            "date": "2026-07-01",
+            "value": 0
+          },
+          "old": {
+            "date": "2026-07-01",
+            "value": 0
+          },
+          "delta": 0,
+          "year": -100
+        }
+      ]
+    },
+    {
+      "id": "h8_ci_loans",
+      "lines": [
+        {
+          "key": "TOTCI",
+          "current": {
+            "date": "2026-10-14",
+            "value": 2992.6109
+          },
+          "prev": {
+            "date": "2026-10-14",
+            "value": 2992.6109
+          },
+          "old": {
+            "date": "2026-10-07",
+            "value": 2987.85
+          },
+          "delta": 0,
+          "year": 11.149647751313307
+        }
+      ]
+    },
+    {
+      "id": "sloos_ci_demand",
+      "lines": [
+        {
+          "key": "DRSDCILM",
+          "current": {
+            "date": "2026-07-01",
+            "value": 16.1
+          },
+          "prev": {
+            "date": "2026-07-01",
+            "value": 16.1
+          },
+          "old": {
+            "date": "2026-07-01",
+            "value": 16.1
+          },
+          "delta": 0,
+          "year": -156.2937062937063
+        }
+      ]
+    },
+    {
+      "id": "h8_loans_to_nondepository",
+      "lines": [
+        {
+          "key": "LNFACBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 2105.7796
+          },
+          "prev": {
+            "date": "2026-10-14",
+            "value": 2105.7796
+          },
+          "old": {
+            "date": "2026-10-07",
+            "value": 2097.9713
+          },
+          "delta": 0,
+          "year": 20.413988423493535
+        }
+      ]
+    },
+    {
+      "id": "h8_large_vs_small_banks",
+      "lines": [
+        {
+          "key": "DPSLCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 12466.2441
+          },
+          "prev": {
+            "date": "2026-10-14",
+            "value": 12466.2441
+          },
+          "old": {
+            "date": "2026-10-07",
+            "value": 12441.0143
+          },
+          "delta": 0,
+          "year": 7.605371269068706
+        },
+        {
+          "key": "DPSSCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 5695.3555
+          },
+          "prev": {
+            "date": "2026-10-14",
+            "value": 5695.3555
+          },
+          "old": {
+            "date": "2026-10-07",
+            "value": 5688.2881
+          },
+          "delta": 0,
+          "year": 4.361587635915609
+        },
+        {
+          "key": "LLBLCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 7999.7196
+          },
+          "prev": {
+            "date": "2026-10-14",
+            "value": 7999.7196
+          },
+          "old": {
+            "date": "2026-10-07",
+            "value": 7983.4472
+          },
+          "delta": 0,
+          "year": 8.173969799175973
+        },
+        {
+          "key": "LLBSCBW027SBOG",
+          "current": {
+            "date": "2026-10-14",
+            "value": 4772.6208
+          },
+          "prev": {
+            "date": "2026-10-14",
+            "value": 4772.6208
+          },
+          "old": {
+            "date": "2026-10-07",
+            "value": 4768.5131
+          },
+          "delta": 0,
+          "year": 5.837930116623213
+        }
+      ]
+    },
+    {
+      "id": "hy_oas",
+      "lines": [
+        {
+          "key": "BAMLH0A0HYM2",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.14
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.27
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.27
+          },
+          "delta": -0.1299999999999999,
+          "year": 11.34751773049647
+        },
+        {
+          "key": "BAMLH0A0HYM2EY",
+          "current": {
+            "date": "2026-10-28",
+            "value": 7.94
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 8.17
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 8.17
+          },
+          "delta": -0.22999999999999954,
+          "year": 24.062500000000007
+        }
+      ]
+    },
+    {
+      "id": "cp_spread",
+      "lines": [
+        {
+          "key": "cp_spread",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.39000000000000057
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.1999999999999993
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.1999999999999993
+          },
+          "delta": 0.19000000000000128,
+          "year": 2.6315789473684736
+        },
+        {
+          "key": "RIFSPPNA2P2D90NB",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.4
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 4.27
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 4.27
+          },
+          "delta": 0.13000000000000078,
+          "year": 7.055961070559613
+        },
+        {
+          "key": "DTB3",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.01
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 4.07
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 4.07
+          },
+          "delta": -0.0600000000000005,
+          "year": 7.506702412868638
+        }
+      ]
+    },
+    {
+      "id": "ccc_oas",
+      "lines": [
+        {
+          "key": "BAMLH0A3HYC",
+          "current": {
+            "date": "2026-10-28",
+            "value": 13.07
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 13.07
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 13.07
+          },
+          "delta": 0,
+          "year": 57.65983112183355
+        },
+        {
+          "key": "BAMLH0A3HYCEY",
+          "current": {
+            "date": "2026-10-28",
+            "value": 17.73
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 17.82
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 17.82
+          },
+          "delta": -0.08999999999999986,
+          "year": 50.38167938931299
+        }
+      ]
+    },
+    {
+      "id": "bdc_price_to_nav",
+      "lines": [
+        {
+          "key": "price:ARCC",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.959606457102305,
+            "publishedAt": "2026-10-27",
+            "effectiveAt": "2026-10-28",
+            "basis": "2026-09-30"
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.9528741387120805,
+            "publishedAt": "2026-10-27",
+            "effectiveAt": "2026-10-28",
+            "basis": "2026-09-30"
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.95090437305066,
+            "publishedAt": "2026-07-29",
+            "effectiveAt": "2026-07-30",
+            "basis": "2026-06-30"
+          },
+          "delta": 0.006732318390224479,
+          "year": -6.6517963466541925
+        },
+        {
+          "key": "price:OBDC",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.7110799679749477,
+            "publishedAt": "2026-08-05",
+            "effectiveAt": "2026-08-06",
+            "basis": "2026-06-30"
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.6928471328499942,
+            "publishedAt": "2026-08-05",
+            "effectiveAt": "2026-08-06",
+            "basis": "2026-06-30"
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.6928471328499942,
+            "publishedAt": "2026-08-05",
+            "effectiveAt": "2026-08-06",
+            "basis": "2026-06-30"
+          },
+          "delta": 0.01823283512495344,
+          "year": -20.03035569348217
+        },
+        {
+          "key": "price:FSK",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.5852459037238783,
+            "publishedAt": "2026-08-06",
+            "effectiveAt": "2026-08-07",
+            "basis": "2026-06-30"
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.5508196679620795,
+            "publishedAt": "2026-08-06",
+            "effectiveAt": "2026-08-07",
+            "basis": "2026-06-30"
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.5508196679620795,
+            "publishedAt": "2026-08-06",
+            "effectiveAt": "2026-08-07",
+            "basis": "2026-06-30"
+          },
+          "delta": 0.03442623576179882,
+          "year": -16.159237113609425
+        }
+      ]
+    },
+    {
+      "id": "ig_oas",
+      "lines": [
+        {
+          "key": "BAMLC0A0CM",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.86
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.88
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.88
+          },
+          "delta": -0.020000000000000018,
+          "year": 13.157894736842103
+        },
+        {
+          "key": "BAMLC0A0CMEY",
+          "current": {
+            "date": "2026-10-28",
+            "value": 5.83
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 5.92
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 5.92
+          },
+          "delta": -0.08999999999999986,
+          "year": 24.839400428265535
+        }
+      ]
+    },
+    {
+      "id": "corporate_bond_issuance",
+      "lines": [
+        {
+          "key": "sifma:issuance:total",
+          "current": {
+            "date": "2026-09-30",
+            "value": 269.84901,
+            "basis": "gross_issuance_all_corporates",
+            "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+          },
+          "prev": {
+            "date": "2026-09-30",
+            "value": 269.84901,
+            "basis": "gross_issuance_all_corporates",
+            "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+          },
+          "old": {
+            "date": "2026-09-30",
+            "value": 269.84901,
+            "basis": "gross_issuance_all_corporates",
+            "sourceUrl": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx"
+          },
+          "delta": 0,
+          "year": -9.838152123391964
+        },
+        {
+          "key": "manual:issuance:IG",
+          "delta": null,
+          "year": null
+        },
+        {
+          "key": "manual:issuance:HY",
+          "delta": null,
+          "year": null
+        }
+      ]
+    },
+    {
+      "id": "cp_outstanding",
+      "lines": [
+        {
+          "key": "COMPOUT",
+          "current": {
+            "date": "2026-10-28",
+            "value": 1498.953515625
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 1502.567023438
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 1502.567023438
+          },
+          "delta": -3.6135078130000693,
+          "year": 13.508465150418614
+        }
+      ]
+    },
+    {
+      "id": "bdc_credit_quality",
+      "lines": [
+        {
+          "key": "manual:ARCC:nonaccrual_fv",
+          "current": {
+            "date": "2026-09-30",
+            "value": 1.4,
+            "publishedAt": "2026-10-27",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "prev": {
+            "date": "2026-09-30",
+            "value": 1.4,
+            "publishedAt": "2026-10-27",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 1.4,
+            "publishedAt": "2026-07-29",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm"
+          },
+          "delta": 0,
+          "year": 39.99999999999999
+        },
+        {
+          "key": "manual:ARCC:nonaccrual_cost",
+          "current": {
+            "date": "2026-09-30",
+            "value": 2.4,
+            "publishedAt": "2026-10-27",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "prev": {
+            "date": "2026-09-30",
+            "value": 2.4,
+            "publishedAt": "2026-10-27",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm"
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 2.4,
+            "publishedAt": "2026-07-29",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm"
+          },
+          "delta": 0,
+          "year": 33.3333333333333
+        },
+        {
+          "key": "manual:ARCC:pik",
+          "current": {
+            "date": "2026-09-30",
+            "value": 16.382699868938403,
+            "publishedAt": "2026-10-27",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm",
+            "components": {
+              "numerator": 125000000,
+              "denominator": 763000000
+            }
+          },
+          "prev": {
+            "date": "2026-09-30",
+            "value": 16.382699868938403,
+            "publishedAt": "2026-10-27",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm",
+            "components": {
+              "numerator": 125000000,
+              "denominator": 763000000
+            }
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 15.755208333333334,
+            "publishedAt": "2026-07-29",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026050307/arcc-20260630.htm",
+            "components": {
+              "numerator": 121000000,
+              "denominator": 768000000
+            }
+          },
+          "delta": 0,
+          "year": 5.878275186031656
+        },
+        {
+          "key": "manual:OBDC:nonaccrual_fv",
+          "current": {
+            "date": "2026-06-30",
+            "value": 0.8,
+            "publishedAt": "2026-08-05",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "prev": {
+            "date": "2026-06-30",
+            "value": 0.8,
+            "publishedAt": "2026-08-05",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 0.8,
+            "publishedAt": "2026-08-05",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "delta": 0,
+          "year": null
+        },
+        {
+          "key": "manual:OBDC:nonaccrual_cost",
+          "current": {
+            "date": "2026-06-30",
+            "value": 2.8,
+            "publishedAt": "2026-08-05",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "prev": {
+            "date": "2026-06-30",
+            "value": 2.8,
+            "publishedAt": "2026-08-05",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 2.8,
+            "publishedAt": "2026-08-05",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm"
+          },
+          "delta": 0,
+          "year": null
+        },
+        {
+          "key": "manual:OBDC:pik",
+          "current": {
+            "date": "2026-06-30",
+            "value": 10.673689770818903,
+            "publishedAt": "2026-08-05",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm",
+            "components": {
+              "numerator": 42838000,
+              "denominator": 401342000
+            }
+          },
+          "prev": {
+            "date": "2026-06-30",
+            "value": 10.673689770818903,
+            "publishedAt": "2026-08-05",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm",
+            "components": {
+              "numerator": 42838000,
+              "denominator": 401342000
+            }
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 10.673689770818903,
+            "publishedAt": "2026-08-05",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1655888/000165588826000056/obdc-20260630.htm",
+            "components": {
+              "numerator": 42838000,
+              "denominator": 401342000
+            }
+          },
+          "delta": 0,
+          "year": 16.951296978506768
+        },
+        {
+          "key": "manual:FSK:nonaccrual_fv",
+          "current": {
+            "date": "2026-06-30",
+            "value": 3.8,
+            "publishedAt": "2026-08-06",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "prev": {
+            "date": "2026-06-30",
+            "value": 3.8,
+            "publishedAt": "2026-08-06",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 3.8,
+            "publishedAt": "2026-08-06",
+            "basis": "fair_value",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "delta": 0,
+          "year": 26.66666666666666
+        },
+        {
+          "key": "manual:FSK:nonaccrual_cost",
+          "current": {
+            "date": "2026-06-30",
+            "value": 7.1,
+            "publishedAt": "2026-08-06",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "prev": {
+            "date": "2026-06-30",
+            "value": 7.1,
+            "publishedAt": "2026-08-06",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 7.1,
+            "publishedAt": "2026-08-06",
+            "basis": "amortized_cost",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000110465926091572/tm2622260d1_ex99-1.htm"
+          },
+          "delta": 0,
+          "year": 33.96226415094339
+        },
+        {
+          "key": "manual:FSK:pik",
+          "current": {
+            "date": "2026-06-30",
+            "value": 14.482758620689657,
+            "publishedAt": "2026-08-06",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026053783/fsk-20260630.htm",
+            "components": {
+              "numerator": 42000000,
+              "denominator": 290000000
+            }
+          },
+          "prev": {
+            "date": "2026-06-30",
+            "value": 14.482758620689657,
+            "publishedAt": "2026-08-06",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026053783/fsk-20260630.htm",
+            "components": {
+              "numerator": 42000000,
+              "denominator": 290000000
+            }
+          },
+          "old": {
+            "date": "2026-06-30",
+            "value": 14.482758620689657,
+            "publishedAt": "2026-08-06",
+            "basis": "pik_income_over_total_investment_income",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1422183/000162828026053783/fsk-20260630.htm",
+            "components": {
+              "numerator": 42000000,
+              "denominator": 290000000
+            }
+          },
+          "delta": 0,
+          "year": 10.848806366047747
+        }
+      ]
+    },
+    {
+      "id": "leveraged_loans",
+      "lines": [
+        {
+          "key": "price:BKLN",
+          "current": {
+            "date": "2026-10-28",
+            "value": 20.440000534057617
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 20.31999969482422
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 20.31999969482422
+          },
+          "delta": 0.12000083923339844,
+          "year": 4.155926075314542
+        },
+        {
+          "key": "price:SRLN",
+          "current": {
+            "date": "2026-10-28",
+            "value": 40.11000061035156
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 39.93000030517578
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 39.93000030517578
+          },
+          "delta": 0.18000030517578125,
+          "year": 3.816496329652108
+        }
+      ]
+    },
+    {
+      "id": "cp_credit_spread",
+      "lines": [
+        {
+          "key": "cp_credit_spread",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.19999999999999973
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.19999999999999973
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.19999999999999973
+          },
+          "delta": 0,
+          "year": 5.263157894736481
+        },
+        {
+          "key": "RIFSPPNA2P2D30NB",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.18
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "delta": 0,
+          "year": 0.7228915662650381
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "year": 0.5050505050504972
+        },
+        {
+          "key": "RIFSPPNA2P2D30NB",
+          "current": {
+            "date": "2026-10-28",
+            "value": 4.18
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 4.18
+          },
+          "delta": 0,
+          "year": 0.7228915662650381
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "year": 0.5050505050504972
+        }
+      ]
+    },
+    {
+      "id": "cp_treasury_spread",
+      "lines": [
+        {
+          "key": "cp_treasury_spread",
+          "current": {
+            "date": "2026-10-28",
+            "value": 0.08000000000000007
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 0.06000000000000005
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 0.06000000000000005
+          },
+          "delta": 0.020000000000000018,
+          "year": 60.00000000000072
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "year": 0.5050505050504972
+        },
+        {
+          "key": "DTB4WK",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.9
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "delta": -0.020000000000000018,
+          "year": -0.2557544757033292
+        },
+        {
+          "key": "DCPN30",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.98
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.98
+          },
+          "delta": 0,
+          "year": 0.5050505050504972
+        },
+        {
+          "key": "DTB4WK",
+          "current": {
+            "date": "2026-10-28",
+            "value": 3.9
+          },
+          "prev": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "old": {
+            "date": "2026-10-21",
+            "value": 3.92
+          },
+          "delta": -0.020000000000000018,
+          "year": -0.2557544757033292
+        }
+      ]
+    }
+  ]
+}

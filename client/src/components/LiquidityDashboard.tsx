@@ -73,7 +73,7 @@ export function LiquidityDashboard({ how, periods, from, to, who, flow, flowTren
           </details>
         </ReviewRow>
       </>}
-      {!who ? <p className="py-4 text-sm text-[#5F5C54]">이번 주 국채 입찰 자료를 확인하지 못했습니다.</p> : <>
+      {!who || who.totalReported <= 0 ? <p className="py-4 text-sm text-[#5F5C54]">이번 주 국채 입찰 자료를 확인하지 못했습니다.</p> : <>
         <ReviewRow question="입찰에서는 누가 받아갔나?" dashed>
           <ReviewText text={`이번 주 입찰에서 낙찰된 ${fmt.amount(who.totalReported)} 달러어치 국채 가운데,\n${topicAmount(who.byBidder.indirect)} 간접 입찰자가,\n${topicAmount(who.byBidder.dealer)} 프라이머리 딜러가 가져갔습니다.\n이외에도 직접 입찰자(${fmt.amount(who.byBidder.direct)}), 연준의 만기 재투자(${fmt.amount(who.byBidder.soma)})도 있습니다.`} />
           <p className="text-xs text-[#918D83]">{who.start} → {who.end} · 입찰일 기준입니다. 결제 시점이 달라 위 발행·상환 금액과 차이가 날 수 있습니다.</p>

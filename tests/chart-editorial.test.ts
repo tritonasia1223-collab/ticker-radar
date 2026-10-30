@@ -9,7 +9,7 @@ it('2주차 문안은 다른 주차로 번지지 않고 기존 H.8 해설을 유
   }
   for (const id of ['bond-dashboard', 'cp-dashboard', 'bdc_price_to_nav']) {
     expect(chartEditorial(id, '2026-10-14', 4).length).toBeGreaterThan(0);
-    expect(chartEditorial(id, '2026-10-28', 4)).toEqual([]);
+    expect(chartEditorial(id, '2026-11-04', 4)).toEqual([]);
     expect(chartEditorial(id, '2026-10-14', 13)).toEqual([]);
   }
   for (const id of ['overview', 'source', 'destination', 'ownership']) {
