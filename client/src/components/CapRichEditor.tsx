@@ -766,6 +766,27 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
     const el = ref.current;
     if (!el || composingRef.current) return;
 
+    // Native Ctrl/Cmd+B creates browser-only <b> markup that our serializer drops.
+    // Use the toolbar's persisted mark and retain the selection for keyboard editing.
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === "b") {
+      ev.preventDefault();
+      const off = selectionOffsets(el);
+      if (!off || off.start === off.end) return;
+      const selected = splitBodyAt(splitBodyAt(serializeEl(el), off.end).before, off.start).after;
+      const marked = parseRich(selected).filter(s => s.text.replace(/\n/g, "").length > 0);
+      applyMark(marked.length > 0 && marked.every(s => s.mark === "c-bold") ? null : "c-bold", off);
+      setCaretAtSerializeOffset(el, off.start);
+      const range = window.getSelection()?.getRangeAt(0).cloneRange();
+      setCaretAtSerializeOffset(el, off.end);
+      const end = window.getSelection()?.getRangeAt(0);
+      if (range && end) {
+        range.setEnd(end.endContainer, end.endOffset);
+        window.getSelection()?.removeAllRanges();
+        window.getSelection()?.addRange(range);
+      }
+      return;
+    }
+
     // '- ' 입력 감지: 스페이스 키 직전 줄 본문이 정확히 "-" 이면 불릿화.
     if (ev.key === " ") {
       const info = lineInfo(el);
