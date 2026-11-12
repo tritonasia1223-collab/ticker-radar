@@ -350,7 +350,7 @@ export function InsightsCollection({
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8 py-2">
+    <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-8 py-2" data-testid="insights-collection">
       <MetaCards cards={metaCards} onSave={onSaveMetaCards} onJump={onJump} editable={editable} />
 
       {items.length === 0 ? (
