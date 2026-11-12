@@ -270,12 +270,24 @@ export function BlockStack({
   const renderBlock = (b: CapBlock, i: number) => {
     if (b.type === "text") {
       return editing ? (
+        <div className="space-y-1">
+          {allow.divider && <div className="flex justify-end">
+            <button type="button" onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editorRefs.current.get(i)?.insertDivider()}
+              className="flex items-center gap-1 rounded border border-border/60 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+              title="커서 위치에 구분선 삽입 (빈 줄에서 --- 입력 후 Enter도 가능)"
+              data-testid={`text-insert-divider-${i}`}>
+              <Minus className="h-3.5 w-3.5" /> 구분선 삽입
+            </button>
+          </div>}
         <CapRichEditor
           ref={(h) => { editorRefs.current.set(i, h); }}
           value={b.text} onChange={(t) => setTextAt(i, t)}
           onBlur={(v) => onChange(blocks.map((bb, idx) => (idx === i && bb.type === "text" ? { ...bb, text: v } : bb)), true)}
-          rows={5} align="left" placeholder="인사이트를 적어보세요. (드래그로 색·하이라이트 · '- '로 불릿 · '->'로 화살표)"
+          allowDivider={allow.divider}
+          rows={5} align="left" placeholder="인사이트를 적어보세요. (Tab: 5칸 들여쓰기 · Shift+Tab: 내어쓰기 · '---' 후 Enter: 구분선)"
         />
+        </div>
       ) : b.text.trim() ? (
         <CapRichText text={b.text} className="block text-[13.5px] leading-relaxed text-foreground" onJump={onJump} />
       ) : null;
