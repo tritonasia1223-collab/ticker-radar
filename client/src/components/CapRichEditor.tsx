@@ -237,6 +237,7 @@ export interface CapRichEditorHandle {
 export interface CapRichEditorProps {
   value: string;
   ariaLabel?: string;
+  inline?: boolean;
   className?: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -255,7 +256,7 @@ export interface CapRichEditorProps {
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, ariaLabel, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, showClearAll = true, linkTargets, align = "center",
+  value, ariaLabel, inline = false, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, showClearAll = true, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const committed = useRef(value);
@@ -1040,8 +1041,8 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         role="textbox"
         aria-label={ariaLabel}
         aria-multiline="true"
-        className={cn(`w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words ${align === "left" ? "text-left" : "text-center"}`, className)}
-        style={{ minHeight: `${rows * 1.4 + 1}rem` }}
+        className={cn(`w-full ${inline ? "border-0 bg-transparent p-0" : "rounded-md border border-border bg-background px-2.5 py-2"} text-xs leading-relaxed outline-none focus:ring-1 focus:ring-primary/50 whitespace-pre-wrap break-words ${align === "left" ? "text-left" : "text-center"}`, className)}
+        style={{ minHeight: `${rows * 1.4 + (inline ? 0 : 1)}rem` }}
         onKeyDown={handleKeyDown}
         onPaste={onPaste}
         onCopy={onCopy}
@@ -1061,7 +1062,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
         data-richeditor
       />
       {isEmpty && placeholder ? (
-        <span ref={placeholderRef} className={`pointer-events-none absolute inset-x-2.5 top-2 text-xs text-muted-foreground ${align === "left" ? "text-left" : "text-center"}`}>
+        <span ref={placeholderRef} className={`pointer-events-none absolute ${inline ? "inset-x-0 top-0" : "inset-x-2.5 top-2"} text-xs text-muted-foreground ${align === "left" ? "text-left" : "text-center"}`}>
           {placeholder}
         </span>
       ) : null}

@@ -21,6 +21,7 @@ const Congress = lazy(() => import("@/pages/Congress"));
 const Insider = lazy(() => import("@/pages/Insider"));
 const Interest = lazy(() => import("@/pages/Interest"));
 const Capitalism = lazy(() => import("@/pages/Capitalism"));
+const InternationalTimeline = lazy(() => import("@/pages/InternationalTimeline"));
 const GraphCompare = lazy(() => import("@/pages/GraphCompare"));
 const Fed = lazy(() => import("@/pages/Fed"));
 const LiquidityBeta = lazy(() => import("@/pages/LiquidityBeta")); // 미국 유동성 A안(구 베타) — Recharts Sankey 포함, 코드 스플릿
@@ -64,6 +65,7 @@ function AppRouter() {
         <Route path="/insider" component={Insider} />
         <Route path="/interest" component={Interest} />
         <Route path="/capitalism" component={Capitalism} />
+        <Route path="/international-timeline" component={InternationalTimeline} />
         <Route path="/graph-compare" component={GraphCompare} />
         <Route path="/graph-compare-experiment"><Redirect to="/graph-compare" replace /></Route>
         <Route path="/fed" component={Fed} />

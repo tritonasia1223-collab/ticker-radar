@@ -10,6 +10,7 @@ import GlobalTooltip from "@/components/GlobalTooltip";
 const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar; sub?: boolean }[] }[] = [
   { group: "매크로", items: [
     { href: "/capitalism", label: "자본주의 경제사", icon: History },
+    { href: "/international-timeline", label: "국제 연표", icon: Globe },
     { href: "/graph-compare", label: "그래프 비교(베타)", icon: Layers },
     { href: "/fed", label: "미국 유동성", icon: Building2 },
     { href: "/liquidity", label: "A안", icon: Building2, sub: true },
@@ -110,7 +111,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
       </aside>
-      <main className="flex-1 min-h-0 overflow-auto">{children}</main>
+      <main className="flex-1 min-w-0 min-h-0 overflow-auto">{children}</main>
       <GlobalTooltip />
     </div>
   );
