@@ -227,6 +227,7 @@ function serializeEl(el: HTMLElement): string {
 export interface LinkTarget { slug: string; year: number; title: string; }
 
 export interface CapRichEditorHandle {
+  getValue(): string;
   insertDivider(): void;
   // 현재 캐럿 위치에서 본문을 둘로 분할(마크 보존). 캐럿이 이 에디터 밖이면 null.
   splitAtCaret(): { before: string; after: string; source: string } | null;
@@ -286,6 +287,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
   // 외부(블록 스택)에서 '커서 위치 분할 삽입'을 위해 캐럿 분할/blur 노출.
   //   caretSerializeOffsetOf/serializeEl 은 동일 좌표계 → splitRichTextAt 로 마크 보존 분할.
   useImperativeHandle(forwardedRef, () => ({
+    getValue() { return ref.current ? serializeEl(ref.current) : value; },
     insertDivider() {
       const el = ref.current;
       if (!el || composingRef.current) return;

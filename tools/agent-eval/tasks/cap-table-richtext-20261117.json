@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "cap-table-richtext-20261117",
+  "title": "인사이트 표 셀에 본문과 동일한 텍스트 서식 적용",
+  "baseRef": "6d76d99",
+  "requirement": "경제사 인사이트 모아보기 표 안에서도 글자색, 하이라이트 등 본문 텍스트 편집 기능을 사용하고 저장·열람할 수 있도록 수정 후 배포한다.",
+  "acceptanceCriteria": [
+    "셀의 선택한 텍스트에 본문과 동일한 색상·강조 툴바가 표시된다.",
+    "기존 일반 텍스트 표를 보존하고, 새 서식은 기존 문자열 저장 형식으로 왕복한다.",
+    "편집 종료·새로고침 후 서식과 줄바꿈이 유지된다.",
+    "행·열 추가/삭제, 표 삭제와 편집 중 종료 시 내용이 손실되거나 삭제된 표가 복원되지 않는다."
+  ],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build", "격리된 로컬 인사이트 표 브라우저 검증"],
+  "requiresEvaluationDatabase": false,
+  "notes": "DB·API·스키마 변경 없음. 기존 문자열 직렬화 사용. 실제 사용자 자료를 편집하지 않는 로컬 저장 fixture에서 검증."
+}

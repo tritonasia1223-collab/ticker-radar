@@ -45,6 +45,7 @@
 | `cap_settings` | 도메인 app-level 키-값 | `key` PK, `value` — 현재 메타 카드는 `insight_overview_v2`, `insight_overview`는 레거시 |
 
 - **`insight` JSON** = `{ text, charts, tables?, blocks? }`. `blocks`가 있으면 텍스트·표·이미지·그래프·HTML·구분선의 순서를 결정합니다. 레거시 필드는 호환용입니다.
+- **표 셀 서식** — 인사이트 및 노드 표는 본문과 같은 `CapRichEditor` / `CapRichText`를 사용합니다. 셀에서 글자를 선택하면 글자색·하이라이트·굵게를 지정할 수 있습니다. `cells: string[][]` 안에 기존 `[[키|텍스트]]` 형식으로 저장하므로 스키마 변경 없이 일반 텍스트 표와 호환됩니다.
 - **`tableData` JSON** = `{ title?, widths[], cells[][] }`. 노드 메모(`ref`)와 **같은 층위**(별도 열 아님).
 - 노드 본문/메모는 **리치텍스트 마커 문자열**로 직렬화: `[[hl-y|텍스트]]`(하이라이트)·`[[c-r|텍스트]]`(색)·`[[link:slug|텍스트]]`(내부링크), 불릿은 `\t`×레벨 + `• `.
 

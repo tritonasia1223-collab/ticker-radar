@@ -1,10 +1,12 @@
-// 노드별 표(메모와 같은 열에 함께 표시). 일반 텍스트 셀.
+// 노드별 표(메모와 같은 열에 함께 표시). 본문과 동일한 리치텍스트 문자열 셀.
 //  - 열 너비 = flex 비율(weight). 표 전체 너비는 컨테이너에 고정 → 열을 추가해도 총 너비는
 //    그대로이고 각 열이 1/N 로 균등 분할된다. 드래그(열 경계)는 이웃 두 열끼리 너비를 주고받는다.
 //  - 행 높이는 내용에 따라 자동.
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import type { CapTableData, FlowNodeDTO } from "@/lib/capitalism-types";
+import { CapRichEditor, type CapRichEditorHandle } from "./CapRichEditor";
+import { CapRichText } from "./CapRichText";
 
 const MIN_COL_W = 32;      // 열 최소 픽셀 너비(드래그 클램프 기준)
 const ROW_DELETE_W = 14;   // 좌측 행삭제 거터 폭
@@ -16,12 +18,6 @@ export function makeDefaultTable(): CapTableData {
 
 function cloneTable(t: CapTableData): CapTableData {
   return { title: t.title, widths: [...t.widths], cells: t.cells.map((r) => [...r]) };
-}
-
-// textarea 내용에 맞춰 높이 자동 조절(열 너비만 사용자 조절, 행 높이는 자동).
-function autoGrow(el: HTMLTextAreaElement) {
-  el.style.height = "auto";
-  el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
 }
 
 export function TableCard({
@@ -39,6 +35,7 @@ export function TableCard({
   const [t, setT] = useState<CapTableData>(() => node.table ?? makeDefaultTable());
   const tableRef = useRef(t); tableRef.current = t;
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const cellEditors = useRef(new Map<string, CapRichEditorHandle>());
   const draggingRef = useRef(false);
   const editingRef = useRef(false);
   const dirty = useRef(false);
@@ -51,14 +48,13 @@ export function TableCard({
       const next = cloneTable(tableRef.current);
       const title = host?.querySelector<HTMLInputElement>('input');
       if (title) next.title = title.value;
-      host?.querySelectorAll<HTMLTextAreaElement>('textarea[data-row][data-col]').forEach(el => {
-        const r = Number(el.dataset.row), c = Number(el.dataset.col);
-        if (next.cells[r]) next.cells[r][c] = el.value;
+      cellEditors.current.forEach((editor, key) => {
+        const [r, c] = key.split(":").map(Number);
+        if (next.cells[r]?.[c] !== undefined) next.cells[r][c] = editor.getValue();
       });
       save.current(node.id, next);
     };
-  }, [node.id]);
-  const firstCellRef = useRef<HTMLTextAreaElement | null>(null);
+  }, [node.id, editable]);
 
   // 외부(서버) 변경 동기화 — 드래그/입력 포커스 중이 아닐 때만(클로버 방지).
   useEffect(() => {
@@ -66,12 +62,6 @@ export function TableCard({
     setT(node.table ?? makeDefaultTable());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.table]);
-
-  // 생성 직후 첫 셀 포커스.
-  useEffect(() => {
-    if (autoEdit) firstCellRef.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const cols = t.widths.length;
   const rows = t.cells.length;
@@ -99,19 +89,24 @@ export function TableCard({
     commit(next);
   };
   const delCol = (c: number) => {
-    if (cols <= 1) { onCommit(node.id, null); onEditDone?.(node.id); return; } // 마지막 열 삭제 = 표 삭제
+    if (cols <= 1) { deleteTable(); return; } // 마지막 열 삭제 = 표 삭제
     const next = cloneTable(t);
     next.widths.splice(c, 1);
     next.cells.forEach((row) => row.splice(c, 1));
     commit(next); // 남은 열의 비율은 유지(컨테이너를 다시 가득 채움)
   };
   const delRow = (r: number) => {
-    if (rows <= 1) { onCommit(node.id, null); onEditDone?.(node.id); return; }
+    if (rows <= 1) { deleteTable(); return; }
     const next = cloneTable(t);
     next.cells.splice(r, 1);
     commit(next);
   };
-  const deleteTable = () => { onCommit(node.id, null); onEditDone?.(node.id); };
+  const deleteTable = () => {
+    dirty.current = false;
+    editingRef.current = false;
+    onCommit(node.id, null);
+    onEditDone?.(node.id);
+  };
 
   // 열 경계 드래그 — 이웃 두 열(c, c+1)끼리 너비(weight)를 주고받는다. 총합 불변 → 표 너비 고정.
   const startResize = (c: number, e: React.PointerEvent) => {
@@ -217,20 +212,29 @@ export function TableCard({
                 ) : null}
 
                 {editable ? (
-                  <textarea
-                    ref={(el) => { if (el) autoGrow(el); if (r === 0 && c === 0) firstCellRef.current = el; }}
-                    value={cell}
-                    data-row={r}
-                    data-col={c}
-                    rows={1}
-                    onFocus={() => { editingRef.current = true; }}
-                    onChange={(e) => { setCell(r, c, e.target.value); autoGrow(e.target); }}
-                    onBlur={(e) => { editingRef.current = false; commit(setCell(r, c, e.currentTarget.value)); }}
-                    className="block w-full resize-none overflow-hidden bg-transparent px-1 py-0.5 text-[11.5px] leading-snug text-foreground outline-none focus:bg-background/60"
+                  <div
+                    onFocusCapture={() => { editingRef.current = true; }}
                     data-testid={`cell-${node.id}-${r}-${c}`}
-                  />
+                  >
+                    <CapRichEditor
+                      ref={(editor) => {
+                        const key = `${r}:${c}`;
+                        if (editor) cellEditors.current.set(key, editor);
+                        else cellEditors.current.delete(key);
+                      }}
+                      value={cell}
+                      ariaLabel={`표 ${r + 1}행 ${c + 1}열`}
+                      rows={1}
+                      align="left"
+                      autoFocus={!!autoEdit && r === 0 && c === 0}
+                      onPendingChange={() => { dirty.current = true; }}
+                      onChange={(value) => { setCell(r, c, value); }}
+                      onBlur={(value) => { editingRef.current = false; commit(setCell(r, c, value)); }}
+                      className="rounded-none border-0 bg-transparent px-1 py-0.5 text-[11.5px] leading-snug text-foreground focus:bg-background/60"
+                    />
+                  </div>
                 ) : (
-                  <div className="whitespace-pre-wrap px-1 py-0.5 text-[11.5px] leading-snug text-foreground">{cell || "​"}</div>
+                  <div className="whitespace-pre-wrap break-words px-1 py-0.5 text-[11.5px] leading-snug text-foreground"><CapRichText text={cell || "\u200b"} /></div>
                 )}
 
                 {/* 열 경계 드래그 핸들 — 마지막 열 제외(이웃과 너비 교환), 첫 행에만 표시(열 전체 작용) */}
