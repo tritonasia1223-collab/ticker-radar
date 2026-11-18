@@ -1,4 +1,7 @@
 import { mergeUsTimeline } from "../client/src/lib/international-timeline-us";
+import { readTimelineDraft, deleteTimelineEvent, restoreTimelineEvent } from "../client/src/lib/international-timeline-draft";
+import { eventLabels } from "../client/src/lib/international-timeline";
+import { parseTimelineDate, withTimelineDate } from "../client/src/lib/international-timeline-date";
 import { US_SOURCE_EVENTS, US_TIMELINE_REVISION } from "../client/src/data/international-timeline-us";
 import { applyPointEventRevision, POINT_EVENT_REVISION } from "../client/src/lib/international-timeline-point-events";
 import { formatTimelineSource } from "../client/src/lib/international-timeline-format";
@@ -372,5 +375,75 @@ describe("incremental US source import", () => {
     expect([range.year, range.month, range.endYear, range.endMonth]).toEqual([1981, 7, 1982, 11]);
     expect(US_SOURCE_EVENTS.find(e => e.title.includes("MMF"))?.month).toBeNull();
     expect(US_SOURCE_EVENTS.find(e => e.title.includes("401(k)"))?.month).toBeNull();
+  });
+});
+
+describe("editable labels and recoverable deletion", () => {
+  it("keeps label overrides separate from source metadata, including explicitly no labels", () => {
+    const event = { ...REVISED_EVENTS[5], labels: ["프랑스"] };
+    expect(eventLabels(event)).toEqual(["프랑스"]);
+    expect(eventLabels({ ...event, labels: [] })).toEqual([]);
+    expect(eventLabels(REVISED_EVENTS[5])).toEqual(["독일", "프랑스"]);
+    const draft = { ...readTimelineDraft(null), events: [event] };
+    const reloaded = readTimelineDraft(JSON.stringify(draft));
+    expect(reloaded.events[0]).toEqual(event);
+    expect(reloaded.events[0].country).toBe(REVISED_EVENTS[5].country);
+  });
+  it("migrates old array drafts without losing edits and keeps deleted entries across reload", () => {
+    const old = mergeTimelineRevision().map(e => ({ ...e, body: e.body + "\n[[c-r|내 메모]]" }));
+    const draft = readTimelineDraft(JSON.stringify(old));
+    expect(draft.events).toEqual(old);
+    const first = draft.events[0];
+    const removed = deleteTimelineEvent(draft, first.id);
+    const reloaded = readTimelineDraft(JSON.stringify(removed));
+    expect(reloaded.events.some(e => e.id === first.id)).toBe(false);
+    expect(reloaded.deleted[0].event).toEqual(first);
+    const restored = restoreTimelineEvent(reloaded, first.id);
+    expect(restored.events.find(e => e.id === first.id)).toEqual(first);
+    expect(restored.deleted).toHaveLength(0);
+    expect(restoreTimelineEvent(restored, first.id)).toEqual(restored);
+    expect(draft.events).toEqual(old);
+  });
+  it("does not reset an empty collection and restores a major event without altering newer edits", () => {
+    const event = mergeTimelineRevision().find(e => e.scope === "global")!;
+    const one = { ...readTimelineDraft(null), events: [event] };
+    const empty = deleteTimelineEvent(one, event.id);
+    expect(readTimelineDraft(JSON.stringify(empty)).events).toEqual([]);
+    const custom = { ...REVISED_EVENTS[0], id: "custom-after-delete", body: "새 사건" };
+    const restored = restoreTimelineEvent({ ...empty, events: [custom] }, event.id);
+    expect(restored.events).toEqual([custom, event]);
+    expect(readTimelineDraft(JSON.stringify(restored))).toEqual(restored);
+  });
+  it("rejects malformed drafts instead of silently replacing saved work", () => {
+    expect(() => readTimelineDraft('{broken')).toThrow();
+    expect(() => readTimelineDraft(JSON.stringify({ schemaVersion: 1, events: [], deleted: [{ event: null }] }))).toThrow();
+    expect(() => readTimelineDraft(JSON.stringify({ schemaVersion: 1, events: [{ ...REVISED_EVENTS[0], labels: [7] }], deleted: [] }))).toThrow();
+  });
+});
+
+describe("timeline date editing", () => {
+  it("accepts annual, monthly and exact dates, including valid leap days", () => {
+    expect(parseTimelineDate("1971")).toMatchObject({ year: 1971, month: null, date: "1971", endYear: null });
+    expect(parseTimelineDate(" 1971.08.15 ")).toMatchObject({ year: 1971, month: 8, date: "1971.8.15" });
+    expect(parseTimelineDate("1980.2.29")?.date).toBe("1980.2.29");
+    for (const date of ["1971.2.29", "1980.13", "1980.0", "1980.4.31", "1799", "2101", "1980.1.0", "날짜 없음"]) expect(parseTimelineDate(date)).toBeNull();
+  });
+  it("supports short and full range endpoints and rejects backwards periods", () => {
+    expect(parseTimelineDate("1981.7~82.11")).toMatchObject({ date: "1981.7~1982.11", endYear: 1982, endMonth: 11 });
+    expect(parseTimelineDate("1980.3~7")).toMatchObject({ date: "1980.3~1980.7", endYear: 1980, endMonth: 7 });
+    expect(parseTimelineDate("1970.12~71")).toMatchObject({ endYear: 1971, endMonth: null });
+    expect(parseTimelineDate("1976~78")).toMatchObject({ year: 1976, month: null, endYear: 1978 });
+    expect(parseTimelineDate("1999~2001")?.endYear).toBe(2001);
+    for (const date of ["1981.7~6", "1981~80", "1980.3.1~1980.2", "1980.3.2~1980.3.1", "1980.1~1980.13"]) expect(parseTimelineDate(date)).toBeNull();
+  });
+  it("moves a record to its new year/month and preserves rich text and dates inside the body", () => {
+    const original = { ...REVISED_EVENTS[2], body: "1971.1~5\n[[c-r|제목\n1971.1은 본문 메모]]" };
+    const changed = withTimelineDate(original, parseTimelineDate("1982.8.12")!);
+    expect(changed.body).toBe("1982.8.12\n[[c-r|제목\n1971.1은 본문 메모]]");
+    expect(changed.endYear).toBeNull();
+    expect(documentTimeline([changed])[0]).toMatchObject({ year: 1982, items: [{ month: 8 }] });
+    const custom = { ...original, date: "", body: "사용자가 직접 쓴 내용" };
+    expect(withTimelineDate(custom, parseTimelineDate("1982")!).body).toBe(custom.body);
+    expect(readTimelineDraft(JSON.stringify({ schemaVersion: 1, events: [changed], deleted: [] })).events[0]).toEqual(changed);
   });
 });

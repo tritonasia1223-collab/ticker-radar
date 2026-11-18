@@ -145,6 +145,15 @@
 .it-band-detail { margin-top: 3px; }
 .it-global-event .it-description [contenteditable] > div:first-child, .it-global-event .it-read-description > span:first-child { text-indent: 0; font-size: 14.5px; }
 .it-note .it-actions { margin-top: 12px; flex-wrap: wrap; }
+.it-event-editable .it-description { padding-right: 24px; }
+.it-event-menu { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; color: var(--it-soft); background: var(--it-bg); border-radius: 4px; opacity: .45; }
+.it-event > .it-event-menu { position: absolute; top: 0; right: 0; z-index: 2; }
+.it-event-menu:hover, .it-event-menu:focus-visible, .it-event-menu[data-state="open"] { opacity: 1; background: var(--it-line); }
+.it-band-heading { display: flex; align-items: center; gap: 6px; }
+.it-band-heading .it-band-toggle { flex: 1; min-width: 0; }
+.it-band-heading .it-event-menu { flex-shrink: 0; }
+.it-undo { position: fixed; z-index: 50; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--it-rule); border-radius: 8px; background: var(--it-bg); color: var(--it-ink); box-shadow: 0 4px 20px #0002; font-size: 12px; white-space: nowrap; }
+.it-undo button { color: var(--it-turn); font-weight: 700; }
 @container international (max-width: 760px) {
   .it-toolbar h1 { font-size: 20px; }
   .it-controls { margin-left: 0; }

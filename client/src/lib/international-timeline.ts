@@ -144,3 +144,8 @@ export function descriptionView(event: TimelineEvent) {
 export function europeanLabels(country: string): string[] {
   return [...new Set(countryTags(country).map(tag => tag === "서독" ? "독일" : tag).filter(tag => ["독일", "영국", "프랑스"].includes(tag)))];
 }
+
+/** Explicit empty labels override the source country without erasing its metadata. */
+export function eventLabels(event: TimelineEvent): string[] {
+  return event.labels ?? (event.region === "europe" ? europeanLabels(event.country) : countryTags(event.country));
+}
