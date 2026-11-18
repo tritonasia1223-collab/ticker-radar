@@ -1,3 +1,4 @@
+import { formatTimelineSource } from "../client/src/lib/international-timeline-format";
 import { readFileSync } from "node:fs";
 import { REVISED_EVENTS, TIMELINE_REVISION } from "../client/src/data/international-timeline-revision";
 import { mergeTimelineRevision, documentTimeline, descriptionView, europeanLabels } from "../client/src/lib/international-timeline";
@@ -149,24 +150,35 @@ it("does not allocate a common row as visible regions increase", () => {
 
 
 describe("supplied 1970–1990 revision", () => {
-  it("preserves the complete text of all 80 supplied entries", () => {
-    const entries = revisionSource.replace(/\r/g, "").split(/(?=^\*\*\d{4})/m).slice(1);
+  it("imports exactly the 80 replacement entries, retaining all wording in headings and details", () => {
+    const entries = [...revisionSource.matchAll(/^\*\*([^*]+)\*\*\s*(.+)$/gm)];
     expect(REVISED_EVENTS).toHaveLength(80);
     expect(entries).toHaveLength(80);
     entries.forEach((entry, index) => {
-      const content = entry.replace(/^\*\*([^*]+)\*\*\s*/, "$1\n").replace(/^##.*$/gm, "").trim();
-      expect(REVISED_EVENTS[index].body).toBe(content);
+      const date = entry[1].replace(" (일본)", "");
+      const body = entry[2].trim();
+      expect(REVISED_EVENTS[index].body).toBe(`${date}\n${formatTimelineSource(body)}`);
+      // Moving annotations may change order/spacing, never lose words or numeric data.
+      const characters = (text: string) => [...text.replace(/[\s*—ㅡ]/g, "")].sort().join("");
+      expect(characters(descriptionView(REVISED_EVENTS[index]).text)).toBe(characters(body));
+      if (entry[1].includes("(일본)")) expect(REVISED_EVENTS[index].region).toBe("japan");
     });
   });
-  it("replaces overlapping source events once and retains unrelated notes", () => {
-    const custom = { ...INITIAL_EVENTS[3], body: "사용자 추가 메모" };
-    const merged = mergeTimelineRevision([custom]);
-    expect(merged).toHaveLength(87);
-    expect(new Set(merged.map(e => e.id)).size).toBe(87);
-    expect(merged.filter(e => e.revision === TIMELINE_REVISION)).toHaveLength(80);
-    expect(merged.find(e => e.id === custom.id)?.body).toContain("사용자 추가 메모");
-    expect(merged.find(e => e.id === INITIAL_EVENTS[0].id)?.body).toBe(REVISED_EVENTS[0].body);
-    expect(merged.some(e => e.id === "source-20261117-7" || e.id === "source-20261117-9")).toBe(false);
+  it("replaces the entire previous collection once, including old-only and custom notes", () => {
+    const saved = [...INITIAL_EVENTS, { ...INITIAL_EVENTS[0], id: "old-custom", body: "이전 사용자 메모" }];
+    const original = JSON.stringify(saved);
+    const merged = mergeTimelineRevision(saved);
+    expect(merged).toEqual(REVISED_EVENTS);
+    expect(merged).toHaveLength(80);
+    expect(new Set(merged.map(e => e.id)).size).toBe(80);
+    expect(merged.every(e => e.revision === TIMELINE_REVISION)).toBe(true);
+    expect(JSON.stringify(saved)).toBe(original); // Still available for browser backup.
+    expect(merged.some(e => e.id.startsWith("source-") || e.id === "old-custom")).toBe(false);
+  });
+  it("preserves new additions and subsequent deletions after applying the replacement", () => {
+    const current = mergeTimelineRevision().slice(1);
+    current.push({ ...INITIAL_EVENTS[0], id: "new-custom", body: "새 메모" });
+    expect(mergeTimelineRevision(current)).toEqual(current);
   });
   it("keeps subsequent inline edits intact on reload", () => {
     const edited = mergeTimelineRevision().map((e, index) => index === 0 ? { ...e, body: "직접 수정한 설명" } : e);
@@ -230,6 +242,29 @@ describe("European display labels", () => {
     const before = JSON.stringify(events);
     events.forEach(e => europeanLabels(e.country));
     expect(JSON.stringify(events)).toBe(before);
-    expect(events).toHaveLength(87);
+    expect(events).toHaveLength(80);
+  });
+});
+
+
+describe("source title and small-print formatting", () => {
+  it("moves dash explanations below the headline and keeps arrows in the headline", () => {
+    expect(formatTimelineSource("정책 전환 → 효과 ㅡ 부연 설명")).toBe("정책 전환 → 효과\n부연 설명");
+    expect(formatTimelineSource("핫머니 유입 — 달러 매입(마르크 공급) → 인플레")).toBe("핫머니 유입\n달러 매입(마르크 공급) → 인플레");
+  });
+  it("moves heading parentheses below without breaking the rest of the sentence", () => {
+    expect(formatTimelineSource("외국인 쿠폰세(25%) 폐지")).toBe("외국인 쿠폰세 폐지\n(25%)");
+    expect(formatTimelineSource("바르데포트 도입(40%) — 무이자 예치")).toBe("바르데포트 도입\n(40%)\n무이자 예치");
+  });
+  it("preserves nested parentheses, internal dashes, and uncertainty notes", () => {
+    expect(formatTimelineSource("생산 정점 (266만 배럴 — 수출 2할)")).toBe("생산 정점\n(266만 배럴 — 수출 2할)");
+    expect(formatTimelineSource("정책(범위(세부)) 전환 *(출전 확인 필요)*")).toBe("정책 전환\n(범위(세부))\n(출전 확인 필요)");
+    expect(formatTimelineSource("열린 괄호(확인 필요")).toBe("열린 괄호(확인 필요");
+  });
+  it("keeps unspecified months unspecified and retains exact source ranges", () => {
+    expect(REVISED_EVENTS.find(e => e.date === "1980말~81초")?.month).toBeNull();
+    expect(REVISED_EVENTS.find(e => e.date === "1973 하반기")?.month).toBeNull();
+    expect(REVISED_EVENTS.find(e => e.date === "1986.10.27")?.month).toBe(10);
+    expect(REVISED_EVENTS.filter(e => e.scope === "global")).toHaveLength(6);
   });
 });

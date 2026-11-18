@@ -1,5 +1,5 @@
 import { REVISED_EVENTS, TIMELINE_REVISION } from "@/data/international-timeline-revision";
-import { INITIAL_EVENTS, type Region, type TimelineEvent } from "@/data/international-timeline";
+import { type Region, type TimelineEvent } from "@/data/international-timeline";
 
 const NON_COUNTRIES = new Set(["국제 통화체제", "국제은행", "유럽", "유럽 공동체", "미분류"]);
 export function countryTags(country: string): string[] {
@@ -102,17 +102,10 @@ export function timelineLayout(events: TimelineEvent[], regions: Region[] = ["us
   return { dates, blocks, bands, years, rowCount: nextRow - 1 };
 }
 
-/** Apply the supplied revision once; subsequent local edits take precedence. */
+/** Replace the previous collection once; after that, keep all local edits/additions. */
 export function mergeTimelineRevision(saved: TimelineEvent[] = []): TimelineEvent[] {
-  const byId = new Map([...INITIAL_EVENTS, ...saved].map(event => [event.id, event]));
-  for (const id of ["source-20261117-7", "source-20261117-9"]) byId.delete(id);
-  for (const event of REVISED_EVENTS) {
-    if (byId.get(event.id)?.revision !== TIMELINE_REVISION) byId.set(event.id, event);
-  }
-  return [...byId.values()].map(event => normalizeEvent(event.descriptionOnly ? event : {
-    ...event, descriptionOnly: true,
-    body: event.body.startsWith(event.title) ? event.body : [event.title, event.body].filter(Boolean).join("\n\n"),
-  }));
+  const current = saved.some(event => event.revision === TIMELINE_REVISION);
+  return (current ? saved : REVISED_EVENTS).map(event => ({ ...event }));
 }
 
 

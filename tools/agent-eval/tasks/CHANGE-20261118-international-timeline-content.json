@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261118-international-timeline-content",
+  "title": "국제 연표 수정본 전체 교체",
+  "baseRef": "master",
+  "requirement": "첨부한 수정본 80개로 기존 연표를 교체하고 대시 설명과 제목 괄호 내용을 아래 작은 글씨로 표시한다.",
+  "acceptanceCriteria": [
+    "첨부의 80개 항목만 반영하고 이전 전용 사건은 남기지 않는다.",
+    "국가·날짜·기간·대사건 분류 및 원문 수치/불확실성 메모를 보존한다.",
+    "대시와 괄호 설명을 작은 본문으로 분리하고 인라인 편집을 유지한다.",
+    "기존 브라우저 자료를 별도 백업하고 최초 교체 이후의 수정을 보존한다.",
+    "관련 테스트·타입·빌드와 브라우저 확인 후 운영에 반영한다."
+  ],
+  "requiredChecks": [
+    "npm run check",
+    "npm run build",
+    "국제 연표 테스트 및 브라우저 교체/편집 유지 검증"
+  ],
+  "requiresEvaluationDatabase": false,
+  "notes": "앞선 명시 배포 요청에 이어 운영 국제 연표 내용을 교체하는 작업."
+}

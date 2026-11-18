@@ -11,7 +11,7 @@ import sourceText from "@/data/international-timeline-mark-revision.txt?raw";
 import "./InternationalTimeline.css";
 
 const STORAGE = "fiscus-international-timeline-v1";
-const BACKUP = "fiscus-international-timeline-before-mark-revision-v2";
+const BACKUP = "fiscus-international-timeline-before-mark-revision-v3";
 function countryColor(country: string, region: Region = "europe") {
   if (/서독|독일/.test(country)) return "de";
   if (country === "영국") return "uk";
@@ -45,7 +45,7 @@ function TimelineEntry({ event, editable, patch, global = false }: {
     observer.observe(labelRef.current);
     return () => observer.disconnect();
   }, []);
-  const date = rangeLabel(event) || event.date;
+  const date = event.date || rangeLabel(event);
   const dateLabel = date && /^\d{4}/.test(date) && date !== `${event.year}.${eventMonth(event)}` && date !== String(event.year) ? date : "";
   return <article data-event-id={event.id} className={`it-event ${global ? "it-global-event" : ""}`} style={{ ...ink(countryColor(event.country, event.region)), "--it-label-width": `${labelWidth ? labelWidth + 8 : 0}px` } as CSSProperties}>
     <div ref={labelRef} className="it-event-meta">
@@ -160,7 +160,7 @@ export default function InternationalTimeline() {
           {year.items.map(item => item.kind === "band" ? <div key={item.key} className="it-band" data-global-marker={item.events[0].id}><div />
             <div className="it-band-content">{item.events.map(event => <div key={event.id}>
               <button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; })}>
-                <span className="it-band-date">{rangeLabel(event) || `${event.year}${eventMonth(event) ? `.${eventMonth(event)}` : ""}`}</span>
+                <span className="it-band-date">{event.date || rangeLabel(event) || `${event.year}${eventMonth(event) ? `.${eventMonth(event)}` : ""}`}</span>
                 <span className="it-band-title">{openBands.has(event.id) ? "설명 접기" : plainText(descriptionView(event).text).split("\n")[0] || "새 대사건"}</span>
               </button>
               {openBands.has(event.id) && <div id={`band-${event.id}`} className="it-band-detail"><TimelineEntry event={event} global editable={canEdit} patch={body => patch(event.id, body)} /></div>}
