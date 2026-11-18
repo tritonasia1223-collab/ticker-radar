@@ -1,4 +1,5 @@
 import type { TimelineEvent } from "./international-timeline";
+import { applyPointEventRevision } from "@/lib/international-timeline-point-events";
 import { formatTimelineSource } from "@/lib/international-timeline-format";
 
 export const TIMELINE_REVISION = "mark-europe-1970-1990-v3";
@@ -1160,7 +1161,9 @@ const sourceEvents: TimelineEvent[] = [
   }
 ];
 
-export const REVISED_EVENTS: TimelineEvent[] = sourceEvents.map(event => {
+export const SOURCE_REVISION_EVENTS: TimelineEvent[] = sourceEvents.map(event => {
   const formatted = formatTimelineSource(event.body);
   return { ...event, title: formatted.split("\n")[0], body: `${event.date}\n${formatted}` };
 });
+
+export const REVISED_EVENTS = SOURCE_REVISION_EVENTS.map(applyPointEventRevision);

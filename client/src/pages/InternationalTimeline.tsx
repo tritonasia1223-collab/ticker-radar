@@ -11,7 +11,7 @@ import sourceText from "@/data/international-timeline-mark-revision.txt?raw";
 import "./InternationalTimeline.css";
 
 const STORAGE = "fiscus-international-timeline-v1";
-const BACKUP = "fiscus-international-timeline-before-mark-revision-v3";
+const BACKUP = "fiscus-international-timeline-before-point-dates-20261118";
 function countryColor(country: string, region: Region = "europe") {
   if (/서독|독일/.test(country)) return "de";
   if (country === "영국") return "uk";
@@ -158,7 +158,7 @@ export default function InternationalTimeline() {
         {years.map(year => <section key={year.year} data-year-section={year.year} className="it-year-section">
           <h3 data-year-heading={year.year} className="it-year-heading"><span>{year.year}</span><small>{year.count}건</small><button className="it-year-top" aria-label="연표 맨 위로" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}><ArrowUp size={12} /></button></h3>
           {year.items.map(item => item.kind === "band" ? <div key={item.key} className="it-band" data-global-marker={item.events[0].id}>
-            <div className="it-gutter it-band-gutter" title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}</div>
+            <div className="it-gutter it-band-gutter" title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}{/^\d{4}\.\d{1,2}\.\d{1,2}$/.test(item.events[0].date) && <small className="it-band-day">{Number(item.events[0].date.split(".")[2])}일</small>}</div>
             <div className="it-band-content">{item.events.map(event => <div key={event.id}>
               <button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; })}>
                 <span className="it-band-title">{openBands.has(event.id) ? "설명 접기" : plainText(descriptionView(event).text).split("\n")[0] || "새 대사건"}</span>

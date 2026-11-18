@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261118-international-timeline-point-dates",
+  "title": "기간 대사건의 결정일 확정",
+  "baseRef": "master",
+  "requirement": "빨간 기간 대사건 2개를 검증된 역사적 결정일로 표시한다.",
+  "acceptanceCriteria": [
+    "오일쇼크 1973.10.17 감산 결정 및 볼커 1979.10.6 정책 전환 출처 확인",
+    "기간 종료값 제거 및 10월 행으로 이동, 왼쪽 월/일 표시",
+    "이후 영향은 본문에 분리하고 다른 항목과 사용자 메모 보존",
+    "일회성 선택 갱신·후속 편집 유지 검증 및 운영 반영"
+  ],
+  "requiredChecks": [
+    "타입 검사",
+    "관련 테스트",
+    "운영 빌드",
+    "브라우저 날짜·펼침·이동 확인"
+  ],
+  "requiresEvaluationDatabase": false
+}

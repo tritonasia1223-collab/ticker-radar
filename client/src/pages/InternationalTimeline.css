@@ -140,6 +140,7 @@
 .it-band-toggle { display: flex; gap: 10px; align-items: center; width: 100%; padding: 0; background: none; color: var(--it-shock); }
 .it-band-toggle::before, .it-band-toggle::after { content: ""; flex: 1; height: 2px; background: currentColor; min-width: 24px; }
 .it-band-gutter { white-space: nowrap; }
+.it-band-day { display: block; font-size: 10px; line-height: 1.3; }
 .it-band-title { font-size: 14.5px; font-weight: 700; min-width: 0; }
 .it-band-detail { margin-top: 3px; }
 .it-global-event .it-description [contenteditable] > div:first-child, .it-global-event .it-read-description > span:first-child { text-indent: 0; font-size: 14.5px; }

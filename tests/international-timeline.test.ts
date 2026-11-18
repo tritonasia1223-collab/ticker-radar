@@ -1,6 +1,7 @@
+import { applyPointEventRevision, POINT_EVENT_REVISION } from "../client/src/lib/international-timeline-point-events";
 import { formatTimelineSource } from "../client/src/lib/international-timeline-format";
 import { readFileSync } from "node:fs";
-import { REVISED_EVENTS, TIMELINE_REVISION } from "../client/src/data/international-timeline-revision";
+import { REVISED_EVENTS, SOURCE_REVISION_EVENTS, TIMELINE_REVISION } from "../client/src/data/international-timeline-revision";
 import { mergeTimelineRevision, documentTimeline, descriptionView, europeanLabels } from "../client/src/lib/international-timeline";
 const revisionSource = readFileSync(new URL("../client/src/data/international-timeline-mark-revision.txt", import.meta.url), "utf8");
 import { describe, expect, it } from "vitest";
@@ -157,10 +158,10 @@ describe("supplied 1970–1990 revision", () => {
     entries.forEach((entry, index) => {
       const date = entry[1].replace(" (일본)", "");
       const body = entry[2].trim();
-      expect(REVISED_EVENTS[index].body).toBe(`${date}\n${formatTimelineSource(body)}`);
+      expect(SOURCE_REVISION_EVENTS[index].body).toBe(`${date}\n${formatTimelineSource(body)}`);
       // Moving annotations may change order/spacing, never lose words or numeric data.
       const characters = (text: string) => [...text.replace(/[\s*—ㅡ]/g, "")].sort().join("");
-      expect(characters(descriptionView(REVISED_EVENTS[index]).text)).toBe(characters(body));
+      expect(characters(descriptionView(SOURCE_REVISION_EVENTS[index]).text)).toBe(characters(body));
       if (entry[1].includes("(일본)")) expect(REVISED_EVENTS[index].region).toBe("japan");
     });
   });
@@ -267,4 +268,50 @@ describe("source title and small-print formatting", () => {
     expect(REVISED_EVENTS.find(e => e.date === "1986.10.27")?.month).toBe(10);
     expect(REVISED_EVENTS.filter(e => e.scope === "global")).toHaveLength(6);
   });
+});
+
+
+describe("dated major events", () => {
+  it("anchors the two broad periods to documented decisions, retaining later effects as details", () => {
+    const oil = REVISED_EVENTS.find(e => e.sourceIndex === 12)!;
+    const volcker = REVISED_EVENTS.find(e => e.sourceIndex === 29)!;
+    expect([oil.date, volcker.date]).toEqual(["1973.10.17", "1979.10.6"]);
+    expect([oil.title, volcker.title]).toEqual(["1차 오일쇼크 · OAPEC 감산 결정", "볼커 긴축 전환"]);
+    for (const event of [oil, volcker]) {
+      expect(event.month).toBe(10);
+      expect(event.endYear).toBeNull();
+      expect(event.endMonth).toBeNull();
+      expect(event.pointRevision).toBe(POINT_EVENT_REVISION);
+    }
+    expect(oil.body).toContain("이후 영향 (1973~75)");
+    expect(volcker.body).toContain("이후 유럽 3국의 상황 (1979~82)");
+    expect(REVISED_EVENTS.filter(e => e.scope === "global" && e.endYear != null)).toHaveLength(0);
+  });
+  it("migrates only these two saved entries without losing edited details or unrelated edits", () => {
+    const old = SOURCE_REVISION_EVENTS.map(e => ({ ...e, body: e.body + "\n[[c-r|직접 추가한 메모]]" }));
+    const before = JSON.stringify(old);
+    const migrated = mergeTimelineRevision(old);
+    expect(migrated).toHaveLength(old.length);
+    expect(migrated.filter((e, i) => JSON.stringify(e) !== JSON.stringify(old[i]))).toHaveLength(2);
+    expect(migrated.every(e => e.body.includes("[[c-r|직접 추가한 메모]]"))).toBe(true);
+    expect(JSON.stringify(old)).toBe(before);
+    const edited = migrated.map(e => ({ ...e, body: e.body + "\n후속 편집" }));
+    expect(mergeTimelineRevision(edited)).toEqual(edited);
+    expect(applyPointEventRevision(edited[12])).toEqual(edited[12]);
+  });
+  it("places the oil shock after June and the Fed decision in October", () => {
+    const years = documentTimeline(REVISED_EVENTS);
+    const items = years.find(y => y.year === 1973)!.items;
+    expect(items.findIndex(i => i.month === 10)).toBeGreaterThan(items.findIndex(i => i.month === 6));
+    const volcker = years.find(y => y.year === 1979)!.items.find(i => i.events.some(e => e.sourceIndex === 29))!;
+    expect(volcker.month).toBe(10);
+    expect(volcker.kind).toBe("band");
+  });
+});
+
+it("preserves formatting that spans the old heading and explanatory text", () => {
+  const old = { ...SOURCE_REVISION_EVENTS[12], body: "1973~75\n[[c-r|오일쇼크 여파\n직접 표시한 설명]]" };
+  const next = applyPointEventRevision(old);
+  expect(next.body).toContain("[[c-r|직접 표시한 설명]]");
+  expect(next.body).not.toContain("오일쇼크 여파");
 });
