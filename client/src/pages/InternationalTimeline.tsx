@@ -157,10 +157,10 @@ export default function InternationalTimeline() {
         <div ref={headRef} className="it-lane-head"><div aria-hidden="true" />{visibleRegions.map(r => <div key={r.id} data-region-heading={r.id}><h2>{r.name}</h2>{r.id === "europe" && filters()}</div>)}</div>
         {years.map(year => <section key={year.year} data-year-section={year.year} className="it-year-section">
           <h3 data-year-heading={year.year} className="it-year-heading"><span>{year.year}</span><small>{year.count}건</small><button className="it-year-top" aria-label="연표 맨 위로" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}><ArrowUp size={12} /></button></h3>
-          {year.items.map(item => item.kind === "band" ? <div key={item.key} className="it-band" data-global-marker={item.events[0].id}><div />
+          {year.items.map(item => item.kind === "band" ? <div key={item.key} className="it-band" data-global-marker={item.events[0].id}>
+            <div className="it-gutter it-band-gutter" title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}</div>
             <div className="it-band-content">{item.events.map(event => <div key={event.id}>
               <button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; })}>
-                <span className="it-band-date">{event.date || rangeLabel(event) || `${event.year}${eventMonth(event) ? `.${eventMonth(event)}` : ""}`}</span>
                 <span className="it-band-title">{openBands.has(event.id) ? "설명 접기" : plainText(descriptionView(event).text).split("\n")[0] || "새 대사건"}</span>
               </button>
               {openBands.has(event.id) && <div id={`band-${event.id}`} className="it-band-detail"><TimelineEntry event={event} global editable={canEdit} patch={body => patch(event.id, body)} /></div>}
