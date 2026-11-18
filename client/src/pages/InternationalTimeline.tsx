@@ -8,7 +8,7 @@ import { CapRichEditor } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
 import { useEditMode } from "@/components/EditModeProvider";
 import { REGIONS, type Region, type TimelineEvent } from "@/data/international-timeline";
-import { rangeLabel, documentTimeline, descriptionView, eventLabels } from "@/lib/international-timeline";
+import { rangeLabel, documentTimeline, descriptionView, eventLabels, bandText } from "@/lib/international-timeline";
 import { plainText } from "@/lib/capitalism-richtext";
 import usSourceText from "@/data/international-timeline-us-source.txt?raw";
 import sourceText from "@/data/international-timeline-mark-revision.txt?raw";
@@ -28,15 +28,18 @@ function readDraft(): { draft: TimelineDraft; error: string } {
   catch { return { draft: readTimelineDraft(null), error: "기존 로컬 초안을 읽지 못했습니다. 원본을 보존하기 위해 저장을 잠갔습니다." }; }
 }
 
-function EventMenu({ event, labels, remove, changeDate }: { event: TimelineEvent; labels: (next: string[]) => void; remove: () => void; changeDate: (date: NonNullable<ReturnType<typeof parseTimelineDate>>) => void }) {
+function EventMenu({ event, labels, remove, changeDate, patch }: { event: TimelineEvent; labels: (next: string[]) => void; remove: () => void; changeDate: (date: NonNullable<ReturnType<typeof parseTimelineDate>>) => void; patch: (body: string) => void }) {
   const [open, setOpen] = useState(false);
   const [dateText, setDateText] = useState("");
   const [dateError, setDateError] = useState("");
+  const menuRef = useRef<HTMLDivElement>(null);
   const selected = eventLabels(event);
+  const band = bandText(event);
   const choices = event.region === "europe" ? ["독일", "영국", "프랑스"] : [REGIONS.find(r => r.id === event.region)!.name];
   return <Popover open={open} onOpenChange={next => { if (next) { setDateText(event.date || `${event.year}${event.month ? `.${event.month}` : ""}`); setDateError(""); } setOpen(next); }}>
     <PopoverTrigger asChild><button className="it-event-menu" aria-label={`${event.id} 사건 메뉴`} title="날짜 · 라벨 · 삭제"><MoreHorizontal size={16} /></button></PopoverTrigger>
-    <PopoverContent align="end" className="w-64 p-3">
+    <PopoverContent ref={menuRef} align="end" className="w-64 p-3" onOpenAutoFocus={e => { if (event.scope === "global") { e.preventDefault(); requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>("[data-richeditor]")?.focus()); } }}>
+      {event.scope === "global" && <div className="it-band-title-edit mb-3"><p className="mb-1 text-xs text-muted-foreground">제목</p><CapRichEditor spellCheck={false} align="left" rows={1} ariaLabel="대사건 제목" value={band.title} placeholder="제목 입력" onChange={title => patch(band.prefix + title + (band.details ? `\n${band.details}` : ""))} /></div>}
       <form className="mb-3 border-b pb-3" onSubmit={e => { e.preventDefault(); const parsed = parseTimelineDate(dateText); if (!parsed) { setDateError("유효한 날짜나 기간을 입력해 주세요."); return; } changeDate(parsed); setOpen(false); }}>
         <label htmlFor={`date-${event.id}`} className="mb-1 block text-xs text-muted-foreground">날짜</label>
         <div className="flex gap-1.5"><input id={`date-${event.id}`} type="text" spellCheck={false} className="min-w-0 flex-1 rounded border bg-background px-2 py-1 text-xs" value={dateText} onChange={e => { setDateText(e.target.value); setDateError(""); }} aria-invalid={!!dateError} aria-describedby={`date-hint-${event.id}`} /><button type="submit" className="rounded border px-2 text-xs">적용</button></div>
@@ -60,6 +63,18 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
 }) {
   const view = descriptionView(event);
   const tags = eventLabels(event);
+  const band = bandText(event);
+  const editorText = global ? band.details : view.text;
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const editor = descriptionRef.current?.querySelector<HTMLElement>("[data-richeditor]");
+    if (!editor) return;
+    const sync = () => { editor.dataset.titleRoot = String(!!editor.firstChild && !(editor.firstChild instanceof HTMLElement && ["DIV", "P"].includes(editor.firstChild.tagName))); };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(editor, { childList: true });
+    return () => observer.disconnect();
+  }, [editable]);
   const labelRef = useRef<HTMLDivElement>(null);
   const [labelWidth, setLabelWidth] = useState(0);
   useEffect(() => {
@@ -69,14 +84,14 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
     return () => observer.disconnect();
   }, []);
   return <article data-event-id={event.id} className={`it-event ${global ? "it-global-event" : ""} ${editable && !global ? "it-event-editable" : ""}`} style={{ ...ink(countryColor(event.country, event.region)), "--it-label-width": `${labelWidth ? labelWidth + 8 : 0}px` } as CSSProperties}>
-    {editable && !global && <EventMenu event={event} labels={labels} remove={remove} changeDate={changeDate} />}
+    {editable && !global && <EventMenu event={event} labels={labels} remove={remove} changeDate={changeDate} patch={patch} />}
     <div ref={labelRef} className="it-event-meta">
       {!global && <span className="it-mobile-region">{REGIONS.find(r => r.id === event.region)?.name}</span>}
       {!global && tags.map(tag => <span key={tag} data-country-label className="it-tag" style={ink(countryColor(tag, event.region))}>{tag}</span>)}
     </div>
-    <div className="it-description">
-      {editable ? <CapRichEditor inline spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={view.text} onChange={body => patch(view.prefix + body)} onBlur={body => patch(view.prefix + body)} placeholder="설명 입력 · 글을 선택해 색과 하이라이트 적용" />
-        : <CapRichText text={view.text} className="it-read-description" />}
+    <div ref={descriptionRef} className="it-description">
+      {editable ? <CapRichEditor inline spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={editorText} onChange={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} onBlur={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} placeholder={global ? "설명 입력" : "제목 입력"} />
+        : <CapRichText text={editorText} className="it-read-description" />}
     </div>
   </article>;
 }
@@ -166,7 +181,8 @@ export default function InternationalTimeline() {
     requestAnimationFrame(() => {
       const entry = document.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(id)}"]`);
       entry?.scrollIntoView({ behavior: "smooth", block: "center" });
-      entry?.querySelector<HTMLElement>("[contenteditable]")?.focus({ preventScroll: true });
+      if (scope === "global") scrollRef.current?.querySelector<HTMLElement>(`[data-global-marker="${CSS.escape(id)}"] .it-event-menu`)?.click();
+      else entry?.querySelector<HTMLElement>("[contenteditable]")?.focus({ preventScroll: true });
     });
   }
   function exportDraft() {
@@ -208,8 +224,8 @@ export default function InternationalTimeline() {
             <div className="it-gutter it-band-gutter" title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}{/^\d{4}\.\d{1,2}\.\d{1,2}$/.test(item.events[0].date) && <small className="it-band-day">{Number(item.events[0].date.split(".")[2])}일</small>}</div>
             <div className="it-band-content">{item.events.map(event => <div key={event.id}>
               <div className="it-band-heading"><button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; })}>
-                <span className="it-band-title">{openBands.has(event.id) ? "설명 접기" : plainText(descriptionView(event).text).split("\n")[0] || "새 대사건"}</span>
-              </button>{canEdit && <EventMenu event={event} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} />}</div>
+                <span className="it-band-title">{plainText(bandText(event).title) || "새 대사건"}</span>
+              </button>{canEdit && <EventMenu event={event} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} patch={body => patch(event.id, body)} />}</div>
               {openBands.has(event.id) && <div id={`band-${event.id}`} className="it-band-detail"><TimelineEntry event={event} global editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></div>}
             </div>)}</div>
           </div> : <div key={item.key} className="it-slice" data-date-key={item.key}>

@@ -1,4 +1,5 @@
 import { applyPointEventRevision } from "./international-timeline-point-events";
+import { plainText, splitRichTextAt } from "./capitalism-richtext";
 import { mergeUsTimeline } from "./international-timeline-us";
 import { REVISED_EVENTS, TIMELINE_REVISION } from "@/data/international-timeline-revision";
 import { type Region, type TimelineEvent } from "@/data/international-timeline";
@@ -137,6 +138,15 @@ export function descriptionView(event: TimelineEvent) {
   // Move an exact source date prefix to the small date label; restore it on every edit.
   const prefix = event.date && event.body.startsWith(`${event.date}\n`) ? `${event.date}\n` : "";
   return { prefix, text: event.body.slice(prefix.length) };
+}
+
+/** Separate the band heading without dropping marks spanning the first newline. */
+export function bandText(event: TimelineEvent) {
+  const view = descriptionView(event);
+  const newline = plainText(view.text).indexOf("\n");
+  return { prefix: view.prefix,
+    title: newline < 0 ? view.text : splitRichTextAt(view.text, newline).before,
+    details: newline < 0 ? "" : splitRichTextAt(view.text, newline + 1).after };
 }
 
 

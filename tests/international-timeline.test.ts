@@ -1,6 +1,7 @@
 import { mergeUsTimeline } from "../client/src/lib/international-timeline-us";
 import { readTimelineDraft, deleteTimelineEvent, restoreTimelineEvent } from "../client/src/lib/international-timeline-draft";
 import { eventLabels } from "../client/src/lib/international-timeline";
+import { bandText } from "../client/src/lib/international-timeline";
 import { parseTimelineDate, withTimelineDate } from "../client/src/lib/international-timeline-date";
 import { US_SOURCE_EVENTS, US_TIMELINE_REVISION } from "../client/src/data/international-timeline-us";
 import { applyPointEventRevision, POINT_EVENT_REVISION } from "../client/src/lib/international-timeline-point-events";
@@ -446,4 +447,11 @@ describe("timeline date editing", () => {
     expect(withTimelineDate(custom, parseTimelineDate("1982")!).body).toBe(custom.body);
     expect(readTimelineDraft(JSON.stringify({ schemaVersion: 1, events: [changed], deleted: [] })).events[0]).toEqual(changed);
   });
+});
+
+it("separates a band heading and details without losing marks spanning the newline", () => {
+  const event = { ...REVISED_EVENTS[9], body: "1973.3\n[[c-r|브레턴우즈 종료\n직접 강조한 설명]]\n추가 설명" };
+  expect(bandText(event)).toEqual({ prefix: "1973.3\n", title: "[[c-r|브레턴우즈 종료]]", details: "[[c-r|직접 강조한 설명]]\n추가 설명" });
+  expect(bandText({ ...event, body: "제목만" })).toEqual({ prefix: "", title: "제목만", details: "" });
+  expect(bandText({ ...event, body: "" })).toEqual({ prefix: "", title: "", details: "" });
 });

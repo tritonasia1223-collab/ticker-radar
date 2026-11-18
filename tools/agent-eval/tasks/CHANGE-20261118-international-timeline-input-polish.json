@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261118-international-timeline-input-polish",
+  "title": "신규 사건 제목 입력·대사건 제목 유지",
+  "baseRef": "master",
+  "requirement": "빈 입력 겹침 제거, 제목 크기 유지, 대사건 설명만 붉은색으로 펼침",
+  "acceptanceCriteria": [
+    "라벨·안내 간격 및 빈 입력 높이 확보",
+    "첫 줄 제목 14px, 이후 설명 12.8px",
+    "펼침 시 제목 1회 유지, 설명 기본 은은한 붉은색",
+    "기존 리치텍스트 보존 및 제목 수정 가능"
+  ],
+  "requiredChecks": [
+    "타입 검사",
+    "관련 테스트",
+    "브라우저 실제 타이핑·재로딩",
+    "빌드"
+  ],
+  "requiresEvaluationDatabase": false
+}
