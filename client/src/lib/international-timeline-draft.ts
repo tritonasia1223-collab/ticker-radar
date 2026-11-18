@@ -2,7 +2,7 @@ import { REGIONS, type TimelineEvent } from "@/data/international-timeline";
 import { mergeTimelineRevision, validEnd } from "./international-timeline";
 
 export type DeletedTimelineEvent = { event: TimelineEvent; deletedAt: string };
-export type TimelineDraft = { schemaVersion: 1; events: TimelineEvent[]; deleted: DeletedTimelineEvent[] };
+export type TimelineDraft = { schemaVersion: 1; events: TimelineEvent[]; deleted: DeletedTimelineEvent[]; imports?: string[] };
 
 function validEvent(e: TimelineEvent) {
   return e && typeof e.id === "string" && Number.isInteger(e.year) && e.year >= 1800 && e.year <= 2100
@@ -10,6 +10,7 @@ function validEvent(e: TimelineEvent) {
     && (e.scope == null || e.scope === "regional" || e.scope === "global")
     && (e.groupId == null || typeof e.groupId === "string") && (e.endYear == null || validEnd(e))
     && REGIONS.some(r => r.id === e.region) && [e.date, e.country, e.title, e.body].every(v => typeof v === "string")
+    && (e.lane === undefined || ["us", "de", "fr", "uk", "jp", "eu", "emerging", "oil"].includes(e.lane))
     && (e.labels === undefined || Array.isArray(e.labels) && e.labels.every(v => typeof v === "string"));
 }
 function validEvents(value: unknown): value is TimelineEvent[] {
@@ -22,6 +23,7 @@ export function readTimelineDraft(raw: string | null): TimelineDraft {
   // Old array drafts receive the completed source migrations once before being wrapped.
   if (validEvents(value)) return { schemaVersion: 1, events: mergeTimelineRevision(value), deleted: [] };
   if (value?.schemaVersion !== 1 || !validEvents(value.events) || !Array.isArray(value.deleted)
+    || (value.imports !== undefined && (!Array.isArray(value.imports) || !value.imports.every((v: unknown) => typeof v === "string")))
     || !value.deleted.every((d: DeletedTimelineEvent) => d && validEvent(d.event) && typeof d.deletedAt === "string")
     || !validEvents(value.deleted.map((d: DeletedTimelineEvent) => d.event))
     || value.deleted.some((d: DeletedTimelineEvent) => value.events.some((e: TimelineEvent) => e.id === d.event.id))) throw new Error("Invalid timeline draft");
