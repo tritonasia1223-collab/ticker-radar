@@ -237,6 +237,7 @@ export interface CapRichEditorHandle {
 export interface CapRichEditorProps {
   value: string;
   ariaLabel?: string;
+  spellCheck?: boolean;
   inline?: boolean;
   className?: string;
   onChange: (v: string) => void;
@@ -256,7 +257,7 @@ export interface CapRichEditorProps {
   align?: "left" | "center";
 }
 export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>(function CapRichEditor({
-  value, ariaLabel, inline = false, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, showClearAll = true, linkTargets, align = "center",
+  value, ariaLabel, inline = false, spellCheck, className, onChange, placeholder, rows = 2, autoFocus = false, onBlur, commitOnUnmount = false, changeDelayMs = 0, onPendingChange, allowDivider = false, showClearAll = true, linkTargets, align = "center",
 }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const committed = useRef(value);
@@ -1037,6 +1038,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
       <div
         ref={ref}
         contentEditable
+        spellCheck={spellCheck}
         suppressContentEditableWarning
         role="textbox"
         aria-label={ariaLabel}

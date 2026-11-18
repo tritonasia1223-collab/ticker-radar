@@ -45,18 +45,15 @@ function TimelineEntry({ event, editable, patch, global = false }: {
     observer.observe(labelRef.current);
     return () => observer.disconnect();
   }, []);
-  const date = event.date || rangeLabel(event);
-  const dateLabel = date && /^\d{4}/.test(date) && date !== `${event.year}.${eventMonth(event)}` && date !== String(event.year) ? date : "";
   return <article data-event-id={event.id} className={`it-event ${global ? "it-global-event" : ""}`} style={{ ...ink(countryColor(event.country, event.region)), "--it-label-width": `${labelWidth ? labelWidth + 8 : 0}px` } as CSSProperties}>
     <div ref={labelRef} className="it-event-meta">
       {!global && <span className="it-mobile-region">{REGIONS.find(r => r.id === event.region)?.name}</span>}
       {!global && tags.map(tag => <span key={tag} data-country-label className="it-tag" style={ink(countryColor(tag, event.region))}>{tag}</span>)}
     </div>
     <div className="it-description">
-      {editable ? <CapRichEditor inline align="left" rows={1} ariaLabel={`${event.id} 설명`} value={view.text} onChange={body => patch(view.prefix + body)} onBlur={body => patch(view.prefix + body)} placeholder="설명 입력 · 글을 선택해 색과 하이라이트 적용" />
+      {editable ? <CapRichEditor inline spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={view.text} onChange={body => patch(view.prefix + body)} onBlur={body => patch(view.prefix + body)} placeholder="설명 입력 · 글을 선택해 색과 하이라이트 적용" />
         : <CapRichText text={view.text} className="it-read-description" />}
     </div>
-    {!global && dateLabel && <span className="it-event-date">{dateLabel}</span>}
   </article>;
 }
 
