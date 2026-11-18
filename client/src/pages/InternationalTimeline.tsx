@@ -7,11 +7,12 @@ import { useEditMode } from "@/components/EditModeProvider";
 import { REGIONS, type Region, type TimelineEvent } from "@/data/international-timeline";
 import { countryTags, eventMonth, validEnd, rangeLabel, mergeTimelineRevision, documentTimeline, descriptionView, europeanLabels } from "@/lib/international-timeline";
 import { plainText } from "@/lib/capitalism-richtext";
+import usSourceText from "@/data/international-timeline-us-source.txt?raw";
 import sourceText from "@/data/international-timeline-mark-revision.txt?raw";
 import "./InternationalTimeline.css";
 
 const STORAGE = "fiscus-international-timeline-v1";
-const BACKUP = "fiscus-international-timeline-before-point-dates-20261118";
+const BACKUP = "fiscus-international-timeline-before-us-20261118";
 function countryColor(country: string, region: Region = "europe") {
   if (/서독|독일/.test(country)) return "de";
   if (country === "영국") return "uk";
@@ -183,6 +184,6 @@ export default function InternationalTimeline() {
         </div>
       </footer>
     </div>
-    <Dialog open={showSource} onOpenChange={setShowSource}><DialogContent className="max-h-[85vh] overflow-auto sm:max-w-3xl"><DialogHeader><DialogTitle>참고 원문 · 1970–1990</DialogTitle><DialogDescription>기존에 제공한 수정본입니다. 리디자인 샘플의 내용은 가져오지 않았습니다.</DialogDescription></DialogHeader><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{sourceText}</pre></DialogContent></Dialog>
+    <Dialog open={showSource} onOpenChange={setShowSource}><DialogContent className="max-h-[85vh] overflow-auto sm:max-w-3xl"><DialogHeader><DialogTitle>참고 원문 · 1970–1990</DialogTitle><DialogDescription>제공하신 유럽·일본 수정본과 미국 추가 자료입니다.</DialogDescription></DialogHeader><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{sourceText + "\n\n" + usSourceText}</pre></DialogContent></Dialog>
   </div>;
 }

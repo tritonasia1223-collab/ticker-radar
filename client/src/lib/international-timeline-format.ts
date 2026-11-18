@@ -18,6 +18,7 @@ export function formatTimelineSource(source: string): string {
   let title = "", cursor = 0;
   for (let i = 0; i < heading.length; i++) {
     if (heading[i] !== "(") continue;
+    if (heading.slice(Math.max(0, i - 3), i + 3) === "401(k)") continue;
     let end = i + 1, nesting = 1;
     for (; end < heading.length && nesting; end++) {
       if (heading[end] === "(") nesting++;

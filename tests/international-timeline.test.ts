@@ -1,3 +1,5 @@
+import { mergeUsTimeline } from "../client/src/lib/international-timeline-us";
+import { US_SOURCE_EVENTS, US_TIMELINE_REVISION } from "../client/src/data/international-timeline-us";
 import { applyPointEventRevision, POINT_EVENT_REVISION } from "../client/src/lib/international-timeline-point-events";
 import { formatTimelineSource } from "../client/src/lib/international-timeline-format";
 import { readFileSync } from "node:fs";
@@ -169,9 +171,9 @@ describe("supplied 1970–1990 revision", () => {
     const saved = [...INITIAL_EVENTS, { ...INITIAL_EVENTS[0], id: "old-custom", body: "이전 사용자 메모" }];
     const original = JSON.stringify(saved);
     const merged = mergeTimelineRevision(saved);
-    expect(merged).toEqual(REVISED_EVENTS);
-    expect(merged).toHaveLength(80);
-    expect(new Set(merged.map(e => e.id)).size).toBe(80);
+    expect(merged).toEqual(mergeUsTimeline(REVISED_EVENTS));
+    expect(merged).toHaveLength(98);
+    expect(new Set(merged.map(e => e.id)).size).toBe(98);
     expect(merged.every(e => e.revision === TIMELINE_REVISION)).toBe(true);
     expect(JSON.stringify(saved)).toBe(original); // Still available for browser backup.
     expect(merged.some(e => e.id.startsWith("source-") || e.id === "old-custom")).toBe(false);
@@ -243,7 +245,7 @@ describe("European display labels", () => {
     const before = JSON.stringify(events);
     events.forEach(e => europeanLabels(e.country));
     expect(JSON.stringify(events)).toBe(before);
-    expect(events).toHaveLength(80);
+    expect(events).toHaveLength(98);
   });
 });
 
@@ -290,13 +292,13 @@ describe("dated major events", () => {
   it("migrates only these two saved entries without losing edited details or unrelated edits", () => {
     const old = SOURCE_REVISION_EVENTS.map(e => ({ ...e, body: e.body + "\n[[c-r|직접 추가한 메모]]" }));
     const before = JSON.stringify(old);
-    const migrated = mergeTimelineRevision(old);
+    const migrated = old.map(applyPointEventRevision);
     expect(migrated).toHaveLength(old.length);
     expect(migrated.filter((e, i) => JSON.stringify(e) !== JSON.stringify(old[i]))).toHaveLength(2);
     expect(migrated.every(e => e.body.includes("[[c-r|직접 추가한 메모]]"))).toBe(true);
     expect(JSON.stringify(old)).toBe(before);
     const edited = migrated.map(e => ({ ...e, body: e.body + "\n후속 편집" }));
-    expect(mergeTimelineRevision(edited)).toEqual(edited);
+    expect(edited.map(applyPointEventRevision)).toEqual(edited);
     expect(applyPointEventRevision(edited[12])).toEqual(edited[12]);
   });
   it("places the oil shock after June and the Fed decision in October", () => {
@@ -314,4 +316,61 @@ it("preserves formatting that spans the old heading and explanatory text", () =>
   const next = applyPointEventRevision(old);
   expect(next.body).toContain("[[c-r|직접 표시한 설명]]");
   expect(next.body).not.toContain("오일쇼크 여파");
+});
+
+describe("incremental US source import", () => {
+  it("keeps all 25 supplied entries, splitting Black Monday into a dated band", () => {
+    const source = readFileSync(new URL("../client/src/data/international-timeline-us-source.txt", import.meta.url), "utf8");
+    const entries = [...source.matchAll(/^\*\*([^*]+)\*\*\s*(.+)$/gm)];
+    expect(entries).toHaveLength(25);
+    expect(US_SOURCE_EVENTS).toHaveLength(26);
+    entries.forEach((entry, index) => {
+      const events = index === 23 ? US_SOURCE_EVENTS.slice(23, 25) : [US_SOURCE_EVENTS[index > 23 ? index + 1 : index]];
+      const original = entry[2].replace(/🔴\s*/g, "").replace(/\s*\(대사건\)/g, "").replace(/\(대사건, G5\)/g, "(G5)").replace(" → 10.19 ", "");
+      const characters = (value: string) => [...value.replace(/[\s—ㅡ]/g, "")].sort().join("");
+      expect(characters(events.map(e => descriptionView(e).text).join(""))).toBe(characters(original));
+    });
+    const merged = mergeTimelineRevision();
+    expect(merged).toHaveLength(98);
+    expect(new Set(merged.map(e => e.id)).size).toBe(98);
+    expect(merged.filter(e => e.scope === "global")).toHaveLength(9);
+    expect(merged.filter(e => e.region === "us" && e.scope !== "global")).toHaveLength(18);
+    expect(merged.filter(e => e.region === "japan")).toHaveLength(19);
+    for (const [date, title] of [["1971.8.15", "닉슨 쇼크"], ["1980.9.22", "이란-이라크 전쟁 발발"], ["1987.10.19", "블랙 먼데이"]]) {
+      expect(merged.filter(e => e.scope === "global" && e.date === date)).toHaveLength(1);
+      expect(merged.find(e => e.date === date)?.title).toBe(title);
+    }
+    expect(merged.find(e => e.id.endsWith("-49"))?.date).toBe("1985.9.22");
+    expect(merged.find(e => e.id.endsWith("-57"))?.date).toBe("1987.2.22");
+    expect(merged.filter(e => e.title.includes("엔달러위원회"))).toHaveLength(1);
+    expect(merged.find(e => e.title.includes("엔달러위원회"))?.region).toBe("japan");
+  });
+
+  it("preserves existing rich edits, custom records and deleted entries during migration", () => {
+    const saved = REVISED_EVENTS.filter(e => e.sourceIndex !== 23).map(e => ({ ...e, body: `${e.body}\n[[c-r|직접 수정\n여러 줄]]` }));
+    saved.push({ ...saved[0], id: "custom", body: "사용자 추가 사건" });
+    const before = JSON.stringify(saved);
+    const merged = mergeTimelineRevision(saved);
+    for (const event of saved) {
+      const updated = merged.find(e => e.id === event.id)!;
+      expect(updated.body).toContain(descriptionView(event).text);
+      if (event.region === "europe" && event.scope !== "global") expect(updated.body).toBe(event.body);
+      if (event.region === "japan" && event.sourceIndex !== 42) expect(updated.body).toBe(event.body);
+    }
+    expect(merged.some(e => e.sourceIndex === 23)).toBe(false);
+    expect(JSON.stringify(saved)).toBe(before);
+    const later = merged.filter(e => e.id !== "us-source-20261118-2").map(e => ({ ...e, body: e.body + "\n후속 수정" }));
+    expect(mergeTimelineRevision(later)).toEqual(later);
+    expect(later.every(e => e.usRevision === US_TIMELINE_REVISION)).toBe(true);
+  });
+
+  it("retains user dates and source ranges without inventing months or altering 401(k)", () => {
+    const changed = REVISED_EVENTS.map(e => e.sourceIndex === 49 ? { ...e, date: "1985.9.23", body: "사용자가 날짜와 본문 수정" } : e);
+    expect(mergeUsTimeline(changed).find(e => e.sourceIndex === 49)?.date).toBe("1985.9.23");
+    expect(formatTimelineSource("401(k) 조항 신설 (1978) — 설명")).toBe("401(k) 조항 신설\n(1978)\n설명");
+    const range = US_SOURCE_EVENTS.find(e => e.date === "1981.7~82.11")!;
+    expect([range.year, range.month, range.endYear, range.endMonth]).toEqual([1981, 7, 1982, 11]);
+    expect(US_SOURCE_EVENTS.find(e => e.title.includes("MMF"))?.month).toBeNull();
+    expect(US_SOURCE_EVENTS.find(e => e.title.includes("401(k)"))?.month).toBeNull();
+  });
 });

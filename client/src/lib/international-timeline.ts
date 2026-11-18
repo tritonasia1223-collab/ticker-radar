@@ -1,4 +1,5 @@
 import { applyPointEventRevision } from "./international-timeline-point-events";
+import { mergeUsTimeline } from "./international-timeline-us";
 import { REVISED_EVENTS, TIMELINE_REVISION } from "@/data/international-timeline-revision";
 import { type Region, type TimelineEvent } from "@/data/international-timeline";
 
@@ -106,7 +107,7 @@ export function timelineLayout(events: TimelineEvent[], regions: Region[] = ["us
 /** Replace the previous collection once; after that, keep all local edits/additions. */
 export function mergeTimelineRevision(saved: TimelineEvent[] = []): TimelineEvent[] {
   const current = saved.some(event => event.revision === TIMELINE_REVISION);
-  return (current ? saved : REVISED_EVENTS).map(applyPointEventRevision);
+  return mergeUsTimeline((current ? saved : REVISED_EVENTS).map(applyPointEventRevision));
 }
 
 

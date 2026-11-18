@@ -6,7 +6,7 @@ export const REGIONS = [
   { id: "oil", name: "산유국", subtitle: "원유 · 달러 순환", color: "#b49539" },
 ] as const;
 export type Region = typeof REGIONS[number]["id"];
-export type TimelineEvent = { id: string; year: number; month?: number | null; date: string; region: Region; country: string; title: string; body: string; scope?: "regional" | "global"; groupId?: string; endYear?: number | null; endMonth?: number | null; descriptionOnly?: boolean; revision?: string; pointRevision?: string; sourceIndex?: number };
+export type TimelineEvent = { id: string; year: number; month?: number | null; date: string; region: Region; country: string; title: string; body: string; scope?: "regional" | "global"; groupId?: string; endYear?: number | null; endMonth?: number | null; descriptionOnly?: boolean; revision?: string; pointRevision?: string; usRevision?: string; sourceIndex?: number };
 // 사용자 제공 자료를 지역별로 나눈 편집 초안. 사실 검증·경제사 원본 동기화와는 별개.
 // 날짜·인과관계 등은 원문 보존 파일과 대조해 후속 편집한다.
 const entries: Omit<TimelineEvent, "id">[] = [
