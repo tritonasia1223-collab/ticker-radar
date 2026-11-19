@@ -17,6 +17,7 @@ import { REGIONS, type Region, type TimelineEvent, type TimelineLane } from "@/d
 import { COUNTRY_LANES, eventLanes, eventLaneSpan } from "@/lib/international-timeline-lanes";
 import { mergeInsightTimeline } from "@/lib/international-timeline-insights";
 import { mergeClassifiedTimeline, CLASSIFIED_BACKUP, CLASSIFIED_REVISION } from "@/lib/international-timeline-classified";
+import { mergeSupplementTimeline, SUPPLEMENT_BACKUP, SUPPLEMENT_REVISION } from "@/lib/international-timeline-supplement";
 import classifiedSourceText from "@/data/international-timeline-classified-source.txt?raw";
 import { searchTimeline, timelineTypes } from "@/lib/international-timeline-search";
 import insightSourceText from "@/data/international-timeline-insights.txt?raw";
@@ -42,7 +43,8 @@ function readDraft(): { draft: TimelineDraft; error: string } {
     // Back up the exact saved text before applying the user's priority import.
     // If the backup cannot be written, the catch locks saving and keeps the original intact.
     if (raw && !draft.imports?.includes(CLASSIFIED_REVISION) && !localStorage.getItem(CLASSIFIED_BACKUP)) localStorage.setItem(CLASSIFIED_BACKUP, raw);
-    return { draft: mergeClassifiedTimeline(mergeInsightTimeline(draft)), error: "" };
+    if (raw && !draft.imports?.includes(SUPPLEMENT_REVISION) && !localStorage.getItem(SUPPLEMENT_BACKUP)) localStorage.setItem(SUPPLEMENT_BACKUP, raw);
+    return { draft: mergeSupplementTimeline(mergeClassifiedTimeline(mergeInsightTimeline(draft))), error: "" };
   }
   catch { return { draft: readTimelineDraft(null), error: "기존 로컬 초안을 읽지 못했습니다. 원본을 보존하기 위해 저장을 잠갔습니다." }; }
 }

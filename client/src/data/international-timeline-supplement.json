@@ -1,0 +1,842 @@
+{
+  "additions": [
+    {
+      "event": {
+        "id": "supplement-20261119-textiles",
+        "year": 1969,
+        "month": 11,
+        "date": "1969.11",
+        "lane": "jp",
+        "type": "policy",
+        "country": "일본",
+        "region": "japan",
+        "title": "미일 섬유 협상, 통상마찰의 출발",
+        "body": "1969.11\n미일 섬유 협상, 통상마찰의 출발\n미국은 일본산 모직·합성섬유 수입 제한을 요구. 엔 절상 문제가 전면화되기 전, 수출 제한이 양국 협상의 주요 쟁점이 됨.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1969-76v19p2/d30"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-mca",
+        "year": 1971,
+        "month": 5,
+        "date": "1971.5",
+        "lane": "eu",
+        "type": "policy",
+        "country": "유럽 공동",
+        "region": "europe",
+        "title": "환율 차이를 농산물 통화보상금으로 조정",
+        "body": "1971.5\n환율 차이를 농산물 통화보상금으로 조정\n독일·프랑스의 서로 다른 환율 조정이 공동농업정책(CAP)의 가격 체계를 흔듦. 통화보상금(MCA)으로 국경 거래의 가격 차이를 보정.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A61973CC0005"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-fr-hours",
+        "year": 1982,
+        "month": null,
+        "date": "1982",
+        "lane": "fr",
+        "type": "policy",
+        "country": "프랑스",
+        "region": "europe",
+        "title": "법정 근로시간 40시간 → 39시간",
+        "body": "1982\n법정 근로시간 40시간 → [[c-b|39시간]]\n주당 근로시간을 줄이고 유급휴가를 5주로 확대. 1981년 미테랑 정부의 개혁 구상이 실제 제도로 이어짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.insee.fr/fr/statistiques/1281175"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-baker",
+        "year": 1985,
+        "month": 10,
+        "date": "1985.10",
+        "lane": "us",
+        "type": "policy",
+        "country": "미국",
+        "region": "us",
+        "title": "베이커 플랜 · 신규 대출로 외채위기 대응",
+        "body": "1985.10\n베이커 플랜 · 신규 대출로 외채위기 대응\n채무국의 구조개혁과 은행·국제기구의 추가 대출을 결합. 원금 감면 없이 회복을 도모했으나 성과가 제한돼, 1989년 브래디 플랜의 채무 감면으로 방향 전환.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.imf.org/external/np/exr/center/mm/eng/dt_sub_3.htm"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-bony",
+        "year": 1985,
+        "month": 11,
+        "date": "1985.11.21",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "뉴욕은행 전산 장애, 국채 결제 마비",
+        "body": "1985.11.21\n뉴욕은행 전산 장애, 국채 결제 마비\n증권을 보내고 대금을 받는 절차가 멈추면서 거액의 자금 부족 발생. 뉴욕 연준의 긴급 대출로 결제를 지원 — 결제망 장애도 유동성 위기로 번질 수 있음을 보여줌.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.richmondfed.org/publications/research/economic_brief/2015/eb_15-05"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-oil-collapse",
+        "year": 1986,
+        "month": 1,
+        "date": "1986.1",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "유가 급락 시작",
+        "body": "1986.1\n유가 급락 시작\n산유국의 생산 경쟁으로 고유가 국면이 꺾임. 수입국의 물가 부담은 줄지만 산유국 수입·외채 상환 여력과 석유 관련 대출은 악화.",
+        "scope": "global",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.imf.org/external/pubs/ft/oil/2000/index.htm"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-sterling-oil",
+        "year": 1986,
+        "month": 1,
+        "date": "1986.1",
+        "lane": "uk",
+        "type": "stat",
+        "country": "영국",
+        "region": "europe",
+        "title": "유가 급락이 파운드를 압박",
+        "body": "1986.1\n유가 급락이 파운드를 압박\n북해유전 때문에 석유통화로 여겨지던 파운드가 약세. 연초에는 환율 방어로 금리가 오르기도 해, 유가 하락이 곧바로 금리 인하로 이어진 것은 아님.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.bankofengland.co.uk/quarterly-bulletin/1986/q1/operation-of-monetary-policy"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-fslic",
+        "year": 1986,
+        "month": null,
+        "date": "1986",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "S&L 부실이 예금보험기금까지 잠식",
+        "body": "1986\nS&L 부실이 예금보험기금까지 잠식\n저축대부조합의 손실이 쌓이며 FSLIC의 지급 능력이 무너짐. 1987년 기금 확충을 거쳐 1989년 FIRREA의 정리·감독 개편으로 이어짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.fdic.gov/publications/sl-crisis-chrono-bibliography"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-frn",
+        "year": 1986,
+        "month": 12,
+        "date": "1986.12.3",
+        "lane": "uk",
+        "type": "event",
+        "country": "영국",
+        "region": "europe",
+        "title": "영구 변동금리채(FRN) 거래 경색",
+        "body": "1986.12.3\n영구 변동금리채(FRN) 거래 경색\n은행 자본 확충에 쓰이던 만기 없는 채권의 가격과 유동성을 재평가. 가격 하락에 매수자가 사라지며 시장 거래가 일시 중단됨.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.bankofengland.co.uk/-/media/boe/files/quarterly-bulletin/1987/international-financial-developments-qb-1987-q1.pdf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-capital-draft",
+        "year": 1987,
+        "month": 12,
+        "date": "1987.12",
+        "lane": "us",
+        "type": "policy",
+        "country": "미국",
+        "region": "us",
+        "title": "바젤 자본규제 초안 공개",
+        "body": "1987.12\n바젤 자본규제 초안 공개\n미·영의 위험기준 자기자본 협력에 이어 국제 공통 기준을 제안. 각국 은행의 경쟁 조건과 외채 손실 대응을 함께 다루며 1988년 바젤Ⅰ로 연결.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.bis.org/committees/bcbs/history"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-citi-provision",
+        "year": 1987,
+        "month": 5,
+        "date": "1987.5",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "씨티, 개도국 대출 손실을 충당금에 반영",
+        "body": "1987.5\n씨티, 개도국 대출 손실을 충당금에 반영\n외채를 만기 연장만으로 버티던 은행들이 손실을 인정하기 시작. 다른 대형 은행도 충당금을 쌓으며 이후 채무 감면을 받아들일 여지가 커짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://archive.fdic.gov/view/fdic/9770/fdic_9770_DS1.pdf",
+        "https://www.imf.org/external/np/exr/center/mm/eng/dt_sub_3.htm"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-semiconductor",
+        "year": 1987,
+        "month": 4,
+        "date": "1987.4.17",
+        "lane": "jp",
+        "type": "policy",
+        "country": "일본",
+        "region": "japan",
+        "title": "미국, 반도체 협정 위반에 보복관세",
+        "body": "1987.4.17\n미국, 반도체 협정 위반에 보복관세\n미국은 일본이 반도체 협정을 지키지 않았다고 판단해 일부 일본산 전자제품 등에 관세를 인상. 엔고 속 수출기업에 통상 압력까지 겹침.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.reaganlibrary.gov/archives/speech/memorandum-tariff-increases-japanese-semiconductor-products"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-hanover",
+        "year": 1988,
+        "month": 6,
+        "date": "1988.6",
+        "lane": "eu",
+        "type": "policy",
+        "country": "유럽 공동",
+        "region": "europe",
+        "title": "하노버 정상회의, 들로르 위원회 설치",
+        "body": "1988.6\n하노버 정상회의, 들로르 위원회 설치\n단일통화로 가는 구체적인 경로를 검토하도록 위임. 1989년 들로르 보고서의 3단계 경제통화동맹 구상으로 이어짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.ecb.europa.eu/ecb/history-arts-culture/archives/delors/html/index.en.html"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-bruges",
+        "year": 1988,
+        "month": 9,
+        "date": "1988.9.20",
+        "lane": "uk",
+        "type": "policy",
+        "country": "영국",
+        "region": "europe",
+        "title": "대처의 브뤼헤 연설",
+        "body": "1988.9.20\n대처의 브뤼헤 연설\n유럽 협력과 단일시장은 지지하되 권력이 초국가적 중앙기구로 집중되는 데 반대. 통화통합을 추진하는 대륙과 영국의 입장 차이가 뚜렷해짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.margaretthatcher.org/archive/Bruges"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-fx-report",
+        "year": 1988,
+        "month": 10,
+        "date": "1988.10",
+        "lane": "us",
+        "type": "policy",
+        "country": "미국",
+        "region": "us",
+        "title": "첫 환율보고서, 한국·대만 지정",
+        "body": "1988.10\n첫 환율보고서, 한국·대만 지정\n재무부가 한국·대만의 환율 운용을 문제 삼고 협상을 추진. 종합무역법의 환율 감시가 실제 대외 압박 수단으로 작동.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://home.treasury.gov/system/files/136/archive-documents/js2308.pdf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-sii-start",
+        "year": 1989,
+        "month": 7,
+        "date": "1989.7",
+        "lane": "jp",
+        "type": "policy",
+        "country": "일본",
+        "region": "japan",
+        "title": "미일 구조협의(SII) 개시 합의",
+        "body": "1989.7\n미일 구조협의(SII) 개시 합의\n무역 불균형의 원인을 관세·환율뿐 아니라 저축·투자, 유통, 토지와 기업 관행에서 찾는 협의. 미국의 시장 개방 요구가 일본 국내 제도까지 확대.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.mof.go.jp/english/pri/publication/policy_1972-1990/Chapter3-3.pdf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-firrea",
+        "year": 1989,
+        "month": 8,
+        "date": "1989.8.9",
+        "lane": "us",
+        "type": "policy",
+        "country": "미국",
+        "region": "us",
+        "title": "FIRREA · S&L 정리와 감독 개편",
+        "body": "1989.8.9\nFIRREA · S&L 정리와 감독 개편\n부실 저축대부조합을 정리할 RTC를 설립하고 FSLIC를 폐지. 금융 자유화 뒤 누적된 손실을 공적 정리와 강화된 감독으로 수습.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.fdic.gov/history/1980-1989"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-sii-report",
+        "year": 1990,
+        "month": 6,
+        "date": "1990.6.28",
+        "lane": "jp",
+        "type": "policy",
+        "country": "일본",
+        "region": "japan",
+        "title": "미일 구조협의 타결, 내수 확대 약속",
+        "body": "1990.6.28\n미일 구조협의 타결, 내수 확대 약속\n일본은 1991~2000년 공공투자 430조 엔 계획과 유통·경쟁정책 개편을 제시. 수출 중심 불균형을 국내 투자와 시장 개방으로 줄이려는 구상.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.mof.go.jp/english/pri/publication/policy_1972-1990/Chapter3-3.pdf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-kuwait",
+        "year": 1990,
+        "month": 8,
+        "date": "1990.8.2",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "이라크의 쿠웨이트 침공",
+        "body": "1990.8.2\n이라크의 쿠웨이트 침공\n걸프 지역의 석유 공급과 안보가 동시에 흔들림. 제재와 다국적군 배치에 이어 1991년 전쟁으로 확대.",
+        "scope": "global",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://dcas.dmdc.osd.mil/dcas/conflictCasualties/gulf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-gulf-war",
+        "year": 1991,
+        "month": 1,
+        "date": "1991.1.17",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "걸프전 · 다국적군 공습 개시",
+        "body": "1991.1.17\n걸프전 · 다국적군 공습 개시\n쿠웨이트 해방을 위한 군사작전 시작. 전쟁 수행과 전후 대응 비용을 놓고 미국·유럽·일본의 역할 분담 문제가 부상.",
+        "scope": "global",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://dcas.dmdc.osd.mil/dcas/conflictCasualties/gulf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-japan-gulf",
+        "year": 1991,
+        "month": null,
+        "date": "1991",
+        "lane": "jp",
+        "type": "policy",
+        "country": "일본",
+        "region": "japan",
+        "title": "걸프 위기에 130억 달러 재정 기여",
+        "body": "1991\n걸프 위기에 130억 달러 재정 기여\n다국적군과 피해국을 지원하기 위해 재정을 부담. 경제적 지원 규모와 별개로 국제 안보에서 일본의 역할을 둘러싼 논쟁이 커짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.mofa.go.jp/policy/other/bluebook/1991/1991-1-2.htm"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-bcci",
+        "year": 1991,
+        "month": 7,
+        "date": "1991.7.5",
+        "lane": "uk",
+        "type": "event",
+        "country": "영국",
+        "region": "europe",
+        "title": "BCCI 폐쇄 · 국경 간 감독 공백",
+        "body": "1991.7.5\nBCCI 폐쇄 · 국경 간 감독 공백\n여러 나라에 법인·지점을 둔 은행의 부실과 위법행위가 드러남. 그룹 전체를 누가 감독할지의 문제가 1992년 바젤 최소기준 강화로 이어짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/235718/0198.pdf",
+        "https://www.bis.org/committees/bcbs/history"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-salomon",
+        "year": 1991,
+        "month": 8,
+        "date": "1991.8.9",
+        "lane": "us",
+        "type": "event",
+        "country": "미국",
+        "region": "us",
+        "title": "살로몬의 국채 입찰 위반 공개",
+        "body": "1991.8.9\n살로몬의 국채 입찰 위반 공개\n고객 명의를 이용한 입찰 등으로 낙찰 한도를 우회한 사실이 드러남. 국채시장 신뢰와 딜러 관리·입찰 규칙을 재점검하는 계기.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.newyorkfed.org/medialibrary/media/markets/omo/omo91.pdf"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-denmark",
+        "year": 1992,
+        "month": 6,
+        "date": "1992.6.2",
+        "lane": "eu",
+        "type": "event",
+        "country": "유럽 공동",
+        "region": "europe",
+        "title": "덴마크, 마스트리히트 조약 부결",
+        "body": "1992.6.2\n덴마크, 마스트리히트 조약 부결\n국민투표 결과가 통화통합의 정치적 불확실성을 키움. 독일 고금리와 주변국 침체가 겹친 상황에서 ERM의 지속 가능성에 대한 의심도 커짐.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=LEGISSUM%3Al25061"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-basel-minimum",
+        "year": 1992,
+        "month": 7,
+        "date": "1992.7",
+        "lane": "uk",
+        "type": "policy",
+        "country": "영국",
+        "region": "europe",
+        "title": "BCCI 이후 국제은행 감독 최소기준",
+        "body": "1992.7\nBCCI 이후 국제은행 감독 최소기준\n국제 은행그룹 전체를 연결해 감독하고 본국·진출국 감독당국이 정보를 공유하도록 기준 강화. 자본비율뿐 아니라 감독 책임의 공백을 메우려는 조치.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.bis.org/committees/bcbs/history"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-us-uk-capital",
+        "year": 1987,
+        "month": 1,
+        "date": "1987.1.8",
+        "lane": "uk",
+        "type": "policy",
+        "country": "영국",
+        "region": "europe",
+        "title": "미·영, 은행 자기자본 공통안 제시",
+        "body": "1987.1.8\n미·영, 은행 자기자본 공통안 제시\n대출의 위험에 따라 필요한 자본을 계산하는 방식을 공동 제안. 두 금융 중심지의 협력이 국제 협상으로 확대되며 바젤Ⅰ의 기반이 됨.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.bankofengland.co.uk/quarterly-bulletin/1987/q1/agreed-proposal-of-the-us-federal-banking-supervisory-authorities-and-the-boe"
+      ]
+    },
+    {
+      "event": {
+        "id": "supplement-20261119-super301",
+        "year": 1989,
+        "month": 5,
+        "date": "1989.5",
+        "lane": "us",
+        "type": "policy",
+        "country": "미국",
+        "region": "us",
+        "title": "수퍼301로 일본 시장 개방 압박",
+        "body": "1989.5\n수퍼301로 일본 시장 개방 압박\n일본을 우선협상 대상에 포함해 위성·슈퍼컴퓨터·임산물 관련 장벽을 문제 삼음. 별도의 구조협의도 제안하며 통상협상의 범위를 넓힘.",
+        "scope": "regional",
+        "descriptionOnly": true
+      },
+      "sources": [
+        "https://www.mofa.go.jp/policy/other/bluebook/1989/1989-3-3.htm"
+      ]
+    }
+  ],
+  "amendments": [
+    {
+      "id": "mark-revision-20261118-24",
+      "expectedTitle": "EMS 출범",
+      "expectedBody": "1979.3.13\nEMS 출범",
+      "title": "EMS 출범",
+      "body": "1979.3.13\nEMS 출범\n스네이크에서 남은 마르크 중심의 환율 협력을 프랑스 등과 다시 확대. 공동 환율 방어로 달러 변동의 충격을 줄이려 했지만 독일 통화정책의 영향도 커짐.",
+      "sources": [
+        "https://www.elibrary.imf.org/display/book/9781557750631/C1.xml"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-12",
+      "expectedTitle": "1차 오일쇼크",
+      "expectedBody": "1973.10\n1차 오일쇼크",
+      "title": "1차 오일쇼크",
+      "body": "1973.10\n1차 오일쇼크\n산유국의 감산·금수로 석유 공급이 줄며 비용과 물가가 상승. 원유 수입국의 경기 침체와 산유국의 달러 수입 증가가 동시에 진행.",
+      "sources": [
+        "https://www.imf.org/external/pubs/ft/oil/2000/index.htm"
+      ]
+    },
+    {
+      "id": "classified-20261119-band-4",
+      "expectedTitle": "이란 혁명 → 2차 오일쇼크",
+      "expectedBody": "1979.1\n이란 혁명 → 2차 오일쇼크",
+      "title": "이란 혁명 → 2차 오일쇼크",
+      "body": "1979.1\n이란 혁명 → 2차 오일쇼크\n이란의 정정 불안과 생산 차질이 석유 공급을 압박. 1차 충격 뒤 안정되던 물가가 다시 흔들리고 주요국의 긴축 부담이 커짐.",
+      "sources": [
+        "https://www.imf.org/external/pubs/ft/oil/2000/index.htm"
+      ]
+    },
+    {
+      "id": "insight-20261118-78",
+      "expectedTitle": "테헤란 미 대사관 인질 사건(11.4) → 이란 자산 동결(11.14)",
+      "expectedBody": "1979.11\n테헤란 미 대사관 인질 사건(11.4) → 이란 자산 동결(11.14)\n금 500달러.",
+      "title": "테헤란 미 대사관 인질 사건(11.4) → 이란 자산 동결(11.14)",
+      "body": "1979.11\n테헤란 미 대사관 인질 사건(11.4) → 이란 자산 동결(11.14)\n금 500달러.\n미국인이 소유·관리하는 해외 법인에 있는 이란 정부 자산도 동결 대상. 미국 밖의 달러 예금도 미국 관할 금융기관을 거치면 제재에서 자유롭지 않음.",
+      "sources": [
+        "https://www.archives.gov/federal-register/codification/executive-order/12170.html"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-36",
+      "expectedTitle": "미테랑 당선, 사회실험 개시",
+      "expectedBody": "1981.5\n미테랑 당선, 사회실험 개시\n국유화·주35시간·최저임금 인상·재정 부양 → 자본 유출. 10월 프랑 3% 절하.",
+      "title": "미테랑 당선, 사회실험 개시",
+      "body": "1981.5\n미테랑 당선, 사회실험 개시\n국유화·근로시간 단축 추진·최저임금 인상·재정 부양 → 자본 유출. 10월 프랑 3% 절하.",
+      "sources": [
+        "https://www.insee.fr/fr/statistiques/1281175"
+      ]
+    },
+    {
+      "id": "classified-20261119-event-54",
+      "expectedTitle": "성장 −1%, 슈미트 재정 부양",
+      "expectedBody": "1975 연간\n성장 −1%, 슈미트 재정 부양\n분데스방크는 긴축 유지. 수출로 흑자 유지 — 산유국들이 기계·설비 수입.",
+      "title": "성장 −1%, 슈미트 재정 부양",
+      "body": "1975 연간\n성장 −1%, 슈미트 재정 부양\n금리는 내리되 통화량 증가 목표를 두고 물가를 관리. 수출로 흑자 유지 — 산유국들이 기계·설비 수입.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-74",
+      "expectedTitle": "동서독 통화통합",
+      "expectedBody": "1990.7.1\n동서독 통화통합\n동독에 서독 마르크 도입. 통일 비용과 수요 확대가 이후 재정 부담·물가 압력으로 이어짐.",
+      "title": "동서독 통화통합",
+      "body": "1990.7.1\n동서독 통화통합\n동독에 서독 마르크 도입. 통일 비용과 수요 확대가 이후 재정 부담·물가 압력으로 이어짐.\n임금·연금은 1:1로 전환했지만 예금은 일정 한도만 1:1, 나머지는 원칙적으로 2:1. 모든 자산을 같은 비율로 바꾼 것은 아님.",
+      "sources": [
+        "https://www.bundesbank.de/en/tasks/topics/dates-of-the-german-monetary-policy-detailed-version--626908"
+      ]
+    },
+    {
+      "id": "insight-20261118-159",
+      "expectedTitle": "고금리 유지, 유럽 환율 압박",
+      "expectedBody": "1992.7\n고금리 유지, 유럽 환율 압박\n통일 뒤 물가를 잡으려 긴축 지속. 침체국은 함께 금리를 낮추기 어려워 ERM의 균열이 커짐.",
+      "title": "고금리 유지, 유럽 환율 압박",
+      "body": "1992.7\n고금리 유지, 유럽 환율 압박\n통일 뒤 물가를 잡으려 긴축 지속. 침체국은 함께 금리를 낮추기 어려워 ERM의 균열이 커짐.\n7월 재할인율 8% → [[c-r|8.75%]], 롬바르트 금리는 9.75% 유지. 미국의 9월 연방기금금리 3%와 대조.",
+      "sources": [
+        "https://www.bundesbank.de/resource/blob/705452/4442ab340ff0b2dbd29ba582debef849/mL/1992-09-monthly-report-data.pdf"
+      ]
+    },
+    {
+      "id": "insight-20261118-158",
+      "expectedTitle": "연방기금금리 3%",
+      "expectedBody": "1992.9\n연방기금금리 3%\n경기 회복을 위해 낮은 금리를 유지. 독일 고금리와의 격차가 자본 이동과 달러 약세를 자극.",
+      "title": "연방기금금리 3.25% → 3%",
+      "body": "1992.9\n연방기금금리 3.25% → [[c-b|3%]]\n경기 회복을 위해 낮은 금리를 유지. 독일 고금리와의 격차가 자본 이동과 달러 약세를 자극.\n금리차는 저금리 달러를 빌려 더 높은 금리의 자산에 투자할 유인도 만듦. 다만 환율이 반대로 움직이면 손실이 날 수 있음.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json",
+        "https://www.federalreserve.gov/pubs/feds/2004/200466/200466pap.pdf"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-10",
+      "expectedTitle": "독일 재할인율 7%",
+      "expectedBody": "1973.6\n독일 재할인율 7%\n(단기시장금리 15.8% 도달)",
+      "title": "독일 재할인율 5% → 7%",
+      "body": "1973.6\n독일 재할인율 5% → [[c-r|7%]]\n(단기시장금리 15.8% 도달)",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-18",
+      "expectedTitle": "금리 인하, 통화량 관리는 유지",
+      "expectedBody": "1975.9\n금리 인하, 통화량 관리는 유지\n경기 침체에 대응해 재할인율을 3.5%로 인하. 정부의 재정 부양과 물가 안정 목표를 병행.",
+      "title": "금리 인하, 통화량 관리는 유지",
+      "body": "1975.9\n금리 인하, 통화량 관리는 유지\n경기 침체에 대응해 재할인율을 6% → [[c-b|3.5%]]로 인하. 정부의 재정 부양과 물가 안정 목표를 병행.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-21",
+      "expectedTitle": "독일 재할인율 3%",
+      "expectedBody": "1977.12\n독일 재할인율 3%\n각국 중앙은행, 마르크를 준비자산으로 축적 개시",
+      "title": "독일 재할인율 3.5% → 3%",
+      "body": "1977.12\n독일 재할인율 3.5% → [[c-b|3%]]\n각국 중앙은행, 마르크를 준비자산으로 축적 개시",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "insight-20261118-13",
+      "expectedTitle": "Reg M 20%로 인상 + 해외지점용 특별증권",
+      "expectedBody": "1971.1\nReg M 20%로 인상 + 해외지점용 특별증권\n달러 회수 시도 — 실패.",
+      "title": "Reg M 지준 10% → 20%로 인상 + 해외지점용 특별증권",
+      "body": "1971.1\nReg M 지준 10% → [[c-r|20%]]로 인상 + 해외지점용 특별증권\n달러 회수 시도 — 실패.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-08",
+      "expectedTitle": "비거주자 주식 매입 허가제",
+      "expectedBody": "1973.2\n비거주자 주식 매입 허가제\n같은 달 바르데포트 50%로 최종 강화.",
+      "title": "비거주자 주식 매입 허가제",
+      "body": "1973.2\n비거주자 주식 매입 허가제\n같은 달 바르데포트 예치율 40% → [[c-r|50%]]로 최종 강화.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "us-source-20261118-1",
+      "expectedTitle": "번즈 취임, 금리 인하 개시",
+      "expectedBody": "1970.2\n번즈 취임, 금리 인하 개시\n9% → 연말 4%대. 은행들은 런던 빚 상환 시작.",
+      "title": "번즈 취임, 금리 인하 개시",
+      "body": "1970.2\n번즈 취임, 금리 인하 개시\n9% → [[c-b|연말 4%대]]. 은행들은 런던 빚 상환 시작.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "insight-20261118-18",
+      "expectedTitle": "독일 이탈 후 투기 표적화",
+      "expectedBody": "1971.5~8\n독일 이탈 후 투기 표적화\n보유고 40억→80억 달러로 늘려가며 360엔 사수.",
+      "title": "독일 이탈 후 투기 표적화",
+      "body": "1971.5~8\n독일 이탈 후 투기 표적화\n보유고 40억 → [[c-r|80억 달러]]로 늘려가며 360엔 사수.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-30",
+      "expectedTitle": "독일 재할인율 7→7.5%",
+      "expectedBody": "1980.2~5\n독일 재할인율 7→7.5%\n(물가 + 국제수지 방어)",
+      "title": "독일 재할인율 7% → 7.5%",
+      "body": "1980.2~5\n독일 재할인율 7% → [[c-r|7.5%]]\n(물가 + 국제수지 방어)",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-25",
+      "expectedTitle": "재할인율 3→6% 연쇄 인상",
+      "expectedBody": "1979 연간\n재할인율 3→6% 연쇄 인상\n오일쇼크로 경상적자 전환.",
+      "title": "재할인율 3% → 6% 연쇄 인상",
+      "body": "1979 연간\n재할인율 3% → [[c-r|6%]] 연쇄 인상\n오일쇼크로 경상적자 전환.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-67",
+      "expectedTitle": "독일 재할인율 4→6%",
+      "expectedBody": "1989.1~10\n독일 재할인율 4→6%",
+      "title": "독일 재할인율 4% → 6%",
+      "body": "1989.1~10\n독일 재할인율 4% → [[c-r|6%]]",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-39",
+      "expectedTitle": "멕시코 모라토리엄",
+      "expectedBody": "1982.8.12~20\n멕시코 모라토리엄\nBIS 브릿지론 + IMF \"강제 신규 대출\". LIBOR 16→10%, 유로달러 시장 성장 급감",
+      "title": "멕시코 모라토리엄",
+      "body": "1982.8.12~20\n멕시코 모라토리엄\nBIS 브릿지론 + IMF \"강제 신규 대출\". LIBOR 16% → [[c-b|10%]], 유로달러 시장 성장 급감",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-32",
+      "expectedTitle": "엔 일시 회복",
+      "expectedBody": "1980말~81초\n엔 일시 회복\n(260→202)\n3단 방어 + 볼커 일시 완화(1980.4~7)",
+      "title": "엔 일시 회복",
+      "body": "1980말~81초\n엔 일시 회복\n(260엔 → [[c-b|202엔]])\n3단 방어 + 볼커 일시 완화(1980.4~7)",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-38",
+      "expectedTitle": "볼커 재긴축, 미-일 스프레드 10%p 이상 → 엔 재약세",
+      "expectedBody": "1981~82\n볼커 재긴축, 미-일 스프레드 10%p 이상 → 엔 재약세\n(202→271)",
+      "title": "볼커 재긴축, 미-일 스프레드 10%p 이상 → 엔 재약세",
+      "body": "1981~82\n볼커 재긴축, 미-일 스프레드 10%p 이상 → 엔 재약세\n(202엔 → [[c-r|271엔]])",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-43",
+      "expectedTitle": "엔 환율 안정기",
+      "expectedBody": "1983~84\n엔 환율 안정기\n단 저변동일 뿐 약세 지속 (233→242)",
+      "title": "엔 환율 안정기",
+      "body": "1983~84\n엔 환율 안정기\n단 저변동일 뿐 약세 지속 (233엔 → [[c-r|242엔]])",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-48",
+      "expectedTitle": "유로마르크 자유화 (외국계 주간사 허용)",
+      "expectedBody": "1985.5\n유로마르크 자유화 (외국계 주간사 허용)\n플라자 서명. 마르크 3.47→2.45. 흑자 170억.",
+      "title": "유로마르크 자유화 (외국계 주간사 허용)",
+      "body": "1985.5\n유로마르크 자유화 (외국계 주간사 허용)\n플라자 서명. 마르크 3.47마르크 → [[c-b|2.45마르크]]. 흑자 170억.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "insight-20261118-114",
+      "expectedTitle": "플라자에서 다케시타, 엔 절상 동의",
+      "expectedBody": "1985.9\n플라자에서 다케시타, 엔 절상 동의\n엔 240→200. 10월 일시 긴축. 대미 흑자 460억 — 미국채 최대 매수국.",
+      "title": "플라자에서 다케시타, 엔 절상 동의",
+      "body": "1985.9\n플라자에서 다케시타, 엔 절상 동의\n달러당 240엔 → [[c-b|200엔]]. 10월 일시 긴축. 대미 흑자 460억 — 미국채 최대 매수국.",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-73",
+      "expectedTitle": "영국 가계 담보부채 비율 31.1% → 67.7%",
+      "expectedBody": "1989\n영국 가계 담보부채 비율 31.1% → 67.7%\n(80)\n(분모 기준 확인 필요)",
+      "title": "영국 가계 담보부채 비율 31.1% → 67.7%",
+      "body": "1989\n영국 가계 담보부채 비율 31.1% → [[c-r|67.7%]]\n(80)\n(분모 기준 확인 필요)",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-77",
+      "expectedTitle": "마르크 준비자산 비중 19.0% 정점",
+      "expectedBody": "1990\n마르크 준비자산 비중 19.0% 정점\n(8.7%→14.8%→19.0%)",
+      "title": "마르크 준비자산 비중 19.0% 정점",
+      "body": "1990\n마르크 준비자산 비중 19.0% 정점\n(8.7% → [[c-r|14.8%]] → [[c-r|19.0%]])",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-79",
+      "expectedTitle": "보험사 해외증권 비율 29.9%",
+      "expectedBody": "1990\n보험사 해외증권 비율 29.9%\n(8.1→23.2→29.9%)\n해외투자 확대는 바젤Ⅰ 이전부터",
+      "title": "보험사 해외증권 비율 29.9%",
+      "body": "1990\n보험사 해외증권 비율 29.9%\n(8.1% → [[c-r|23.2%]] → [[c-r|29.9%]])\n해외투자 확대는 바젤Ⅰ 이전부터",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "us-source-20261118-2",
+      "expectedTitle": "세계 첫 MMF \"리저브 펀드\" 설립",
+      "expectedBody": "1971\n세계 첫 MMF \"리저브 펀드\" 설립\n(운용 개시 1972)\n레귤레이션 Q 밖에서 시장금리를 주는 우회로: 1970년대 말 고금리기에 폭발 성장(1977년 40억 → 1982년 2,300억 달러), 은행 예금 이탈의 주범이자 예금금리 자유화의 압력원",
+      "title": "세계 첫 MMF \"리저브 펀드\" 설립",
+      "body": "1971\n세계 첫 MMF \"리저브 펀드\" 설립\n(운용 개시 1972)\n레귤레이션 Q 밖에서 시장금리를 주는 우회로: 1970년대 말 고금리기에 폭발 성장(1977년 40억 → 1982년 [[c-r|2,300억 달러]]), 은행 예금 이탈의 주범이자 예금금리 자유화의 압력원",
+      "sources": [
+        "docs/audits/international-timeline-20261119/source-card.json"
+      ]
+    },
+    {
+      "id": "mark-revision-20261118-58",
+      "expectedTitle": "2.5% 저금리 장기화",
+      "expectedBody": "1987.2\n2.5% 저금리 장기화\n엔고 충격을 줄이려 낮춘 금리를 오래 유지. 자산가격 상승→담보 증가→대출 확대가 주식·부동산 버블을 키움.",
+      "title": "공정할인율 3% → 2.5%, 저금리 장기화",
+      "body": "1987.2\n공정할인율 3% → [[c-b|2.5%]], 저금리 장기화\n엔고 충격을 줄이려 낮춘 금리를 오래 유지. 자산가격 상승→담보 증가→대출 확대가 주식·부동산 버블을 키움.",
+      "sources": [
+        "https://www.imes.boj.or.jp/research/papers/japanese/kk19-4-8.pdf"
+      ]
+    },
+    {
+      "id": "insight-20261118-22",
+      "expectedTitle": "2주 더 버티다 변동 이행",
+      "expectedBody": "1971.8\n2주 더 버티다 변동 이행\n8.16~27 40억 달러 추가 매입 후 8.28 변동 — 12월 스미스소니언에서 16.9% 절상(308엔), 참가국 최대 폭.",
+      "title": "2주 더 버티다 변동 이행",
+      "body": "1971.8\n2주 더 버티다 변동 이행\n8.16~27 40억 달러 추가 매입 후 8.28 변동 — 12월 스미스소니언에서 16.9% 절상(308엔), 참가국 최대 폭.\n미국은 수입부가세 철회를 협상 카드로 삼아 엔 절상을 요구. 환율 협상과 수출시장 접근이 연결됨.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1969-76v03/d203"
+      ]
+    },
+    {
+      "id": "insight-20261118-135",
+      "expectedTitle": "자산 버블과 은행의 국제 팽창",
+      "expectedBody": "1988\n자산 버블과 은행의 국제 팽창\n주식·땅값 상승을 바탕으로 대출이 확대. 바젤 자본규제는 주가 하락 시 은행의 대출 여력을 제약할 요인이 됨.",
+      "title": "자산 버블과 은행의 국제 팽창",
+      "body": "1988\n자산 버블과 은행의 국제 팽창\n주식·땅값 상승을 바탕으로 대출이 확대. 바젤 자본규제는 주가 하락 시 은행의 대출 여력을 제약할 요인이 됨.\n보유 증권 평가이익의 45%를 보완자본에 산입할 수 있어 주가 상승은 대출 여력을 키우고, 하락은 반대로 자본을 줄이는 구조.",
+      "sources": [
+        "https://www.imes.boj.or.jp/research/papers/english/20-E-06.pdf"
+      ]
+    }
+  ]
+}
