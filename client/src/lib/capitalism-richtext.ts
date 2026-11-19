@@ -25,12 +25,14 @@ export const MARK_STYLES: MarkStyle[] = [
   { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "var(--editor-hl-b)", style: { background: "var(--editor-hl-b-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
   { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "var(--editor-hl-p)", style: { background: "var(--editor-hl-p-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
   { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "var(--editor-hl-v)", style: { background: "var(--editor-hl-v-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
+  { key: "hl-gray", label: "연회색 형광", kind: "hl", swatch: "var(--editor-hl-gray)", style: { background: "var(--editor-hl-gray-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
   // 글자색 — 채도 높은 색. 키 순서는 기존 버튼 위치 유지를 위해 그대로 두고 신규만 뒤에 추가.
   { key: "c-r", label: "빨강 글자", kind: "c", swatch: "var(--editor-c-r)", style: { color: "var(--editor-c-r-value)", fontWeight: 600 } },
   { key: "c-b", label: "파랑 글자", kind: "c", swatch: "var(--editor-c-b)", style: { color: "var(--editor-c-b-value)", fontWeight: 600 } },
   { key: "c-g", label: "초록 글자", kind: "c", swatch: "var(--editor-c-g)", style: { color: "var(--editor-c-g-value)", fontWeight: 600 } },
   { key: "c-o", label: "주황 글자", kind: "c", swatch: "var(--editor-c-o)", style: { color: "var(--editor-c-o-value)", fontWeight: 600 } },
   { key: "c-v", label: "청보라 글자", kind: "c", swatch: "var(--editor-c-v)", style: { color: "var(--editor-c-v-value)", fontWeight: 600 } },
+  { key: "c-bold", label: "굵게 (검정)", kind: "c", swatch: "var(--editor-c-bold)", style: { color: "var(--editor-c-bold-value)", fontWeight: 700 } },
 ];
 
 export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(

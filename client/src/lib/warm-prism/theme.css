@@ -423,6 +423,10 @@
   --type-leading-8xl: 1;
   --type-9xl: 8rem;
   --type-leading-9xl: 1;
+  --editor-hl-gray: #d1d5db;
+  --editor-hl-gray-value: rgba(156,163,175,0.22);
+  --editor-c-bold: #111827;
+  --editor-c-bold-value: #111827;
   --editor-hl-y: #facc15;
   --editor-hl-y-value: rgba(250,204,21,0.32);
   --editor-hl-g: #4ade80;
