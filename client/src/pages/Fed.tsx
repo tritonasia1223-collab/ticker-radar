@@ -230,7 +230,7 @@ function FlowSummary({ prev, now, phase }: { prev: WeekPoint; now: WeekPoint; ph
 
 function Legend({ items }: { items: [string, string][] }) {
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">
+    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">
       {items.map(([n, c]) => <span key={n} className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm" style={{ background: c }} />{n}</span>)}
     </div>
   );
@@ -429,7 +429,7 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
           </Hint>
         </div>
         <div className="text-right text-[length:var(--font-size-11px)] text-muted-foreground shrink-0">
-          12개월 흡수율 <b className="text-[length:var(--font-size-12_5px)] tabular-nums" style={{ color: A_SOMA }}>{Number.isFinite(flow12) ? pct(flow12) : "—"}</b>
+          12개월 흡수율 <b className="text-[length:var(--font-size-12-5px)] tabular-nums" style={{ color: A_SOMA }}>{Number.isFinite(flow12) ? pct(flow12) : "—"}</b>
         </div>
       </div>
 
@@ -487,17 +487,17 @@ function SupplyDemandFlow({ t, selDate }: { t: Treasury; selDate?: string }) {
       <div className="mt-2 flex items-center justify-center gap-1.5 border-t border-border/40 pt-1.5 text-center">
         <span className="w-11 shrink-0 text-right text-[length:var(--font-size-11px)] tabular-nums text-muted-foreground">{centerRow?.real ? fym(centerRow.date) : ""}</span>
         <div className="flex w-[110px] flex-col items-center leading-tight">
-          <span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">재무부 순발행</span>
+          <span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">재무부 순발행</span>
           <b className="text-[length:var(--font-size-13px)] tabular-nums" style={{ color: centerRow?.real ? (centerRow.sup >= 0 ? "var(--tone-indigo-400)" : "var(--tone-orange-500)") : undefined }}>{centerRow?.real ? signed(centerRow.sup) : "—"}</b>
         </div>
         <span className="shrink-0 text-muted-foreground">→</span>
         <div className="flex w-[110px] flex-col items-center leading-tight">
-          <span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">연준 보유증감</span>
+          <span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">연준 보유증감</span>
           <b className="text-[length:var(--font-size-13px)] tabular-nums" style={{ color: centerRow?.real ? A_SOMA : undefined }}>{centerRow?.real ? signed(centerRow.fed) : "—"}</b>
         </div>
         <span className="shrink-0 text-muted-foreground">+</span>
         <div className="flex w-[110px] flex-col items-center leading-tight">
-          <span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">민간·해외 보유증감</span>
+          <span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">민간·해외 보유증감</span>
           <b className="text-[length:var(--font-size-13px)] tabular-nums">{centerRow?.real ? signed(centerRow.res) : "—"}</b>
         </div>
       </div>
@@ -555,8 +555,8 @@ function TreasuryIssuance({ t, selDate }: { t: Treasury; selDate?: string }) {
 
       {/* 종류별 잔액 스택 + 절대액/구성비 토글 */}
       <div className="mt-0.5 flex items-center justify-between gap-2">
-        <div className="text-[length:var(--font-size-12px)] font-semibold">종류별 잔액 <span className="text-[length:var(--font-size-10_5px)] font-normal text-muted-foreground">{active ? `${active.label} 궤적 · ${tm[0]?.date.slice(0, 4)} ${T((tm[0] as any)[active.k])} → 현재 ${T((last as any)[active.k])}` : pctMode ? "구성비(%) · 단기화 여부" : "시장성 국채 잔액"}</span></div>
-        <div className="flex rounded border border-border overflow-hidden text-[length:var(--font-size-10_5px)]">
+        <div className="text-[length:var(--font-size-12px)] font-semibold">종류별 잔액 <span className="text-[length:var(--font-size-10-5px)] font-normal text-muted-foreground">{active ? `${active.label} 궤적 · ${tm[0]?.date.slice(0, 4)} ${T((tm[0] as any)[active.k])} → 현재 ${T((last as any)[active.k])}` : pctMode ? "구성비(%) · 단기화 여부" : "시장성 국채 잔액"}</span></div>
+        <div className="flex rounded border border-border overflow-hidden text-[length:var(--font-size-10-5px)]">
           <button type="button" onClick={() => setPctMode(false)} className={`px-1.5 py-0.5 ${!pctMode ? "bg-muted font-semibold" : "text-muted-foreground"}`}>절대액</button>
           <button type="button" onClick={() => setPctMode(true)} className={`px-1.5 py-0.5 border-l border-border ${pctMode ? "bg-muted font-semibold" : "text-muted-foreground"}`}>구성비%</button>
         </div>
@@ -671,7 +671,7 @@ export default function Fed() {
 
           {/* 우측: 날짜 + ◀ 슬라이더(고정폭·오른쪽 고정) ▶ + 현재로(과거 모드) */}
           <span className="flex items-center gap-1.5 shrink-0 ml-auto">
-            <span className={`text-[length:var(--font-size-11_5px)] tabular-nums shrink-0 ${isPast ? "text-amber-700 font-semibold" : "text-muted-foreground"}`}>
+            <span className={`text-[length:var(--font-size-11-5px)] tabular-nums shrink-0 ${isPast ? "text-amber-700 font-semibold" : "text-muted-foreground"}`}>
               {sel ? `${sel.date.slice(0, 4)}년 ${weekLabel(sel.date)}` : ""}
             </span>
             <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" title="이전 주"
@@ -684,7 +684,7 @@ export default function Fed() {
               className="shrink-0 px-0.5 text-[length:var(--font-size-13px)] leading-none text-foreground/70 hover:text-foreground disabled:opacity-25 disabled:cursor-default">▶</button>
             {/* 현재로: 폭을 항상 예약(invisible) → 과거 전환 시 슬라이더가 밀리지 않게 */}
             <button type="button" onClick={() => setIdx(-1)} title="현재(최신 주)로" aria-hidden={!isPast} tabIndex={isPast ? 0 : -1}
-              className={`shrink-0 rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] hover:bg-amber-500/10 ${isPast ? "" : "invisible pointer-events-none"}`}>현재로</button>
+              className={`shrink-0 rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] hover:bg-amber-500/10 ${isPast ? "" : "invisible pointer-events-none"}`}>현재로</button>
           </span>
         </div>
       </div>

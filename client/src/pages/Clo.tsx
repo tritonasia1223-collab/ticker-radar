@@ -76,7 +76,7 @@ function EtfCard({ e, selected, onSelect }: { e: EtfView; selected: boolean; onS
           </div>
           <div className="mt-1.5"><JoinBadge join={e.join} /></div>
           {e.join?.nportAsOf && (
-            <div className="text-[length:var(--font-size-10_5px)] text-muted-foreground/70 mt-0.5">N-PORT asOf {e.join.nportAsOf}</div>
+            <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground/70 mt-0.5">N-PORT asOf {e.join.nportAsOf}</div>
           )}
         </>
       )}
@@ -105,9 +105,9 @@ function MacroCard({ s }: { s: MacroSeries }) {
     <Card className={`p-3.5 ${s.primary ? "ring-1 ring-[color:var(--ring)]" : ""}`} style={s.primary ? { boxShadow: "var(--shadow-chart-emphasis)" } : undefined} data-testid={`macro-${s.id}`}>
       <div className="flex items-center gap-1.5">
         <span className="text-[length:var(--font-size-12px)] font-semibold">{s.label}</span>
-        {s.primary && <span className="text-[length:var(--font-size-9_5px)] px-1 py-0.5 rounded" style={{ background: `color-mix(in srgb, ${CCC_COL} 13.33%, transparent)`, color: CCC_COL }}>CLO 직결</span>}
+        {s.primary && <span className="text-[length:var(--font-size-9-5px)] px-1 py-0.5 rounded" style={{ background: `color-mix(in srgb, ${CCC_COL} 13.33%, transparent)`, color: CCC_COL }}>CLO 직결</span>}
       </div>
-      <div className="text-[length:var(--font-size-10_5px)] text-muted-foreground mt-0.5">{s.note}</div>
+      <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground mt-0.5">{s.note}</div>
       <div className="mt-2 flex items-baseline gap-1.5">
         <span className="text-2xl font-bold tabular-nums" style={{ color: col }}>{s.latest}</span>
         <span className="text-[length:var(--font-size-11px)] text-muted-foreground">% OAS</span>
@@ -121,7 +121,7 @@ function MacroCard({ s }: { s: MacroSeries }) {
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
           <div className="h-full rounded-full" style={{ width: `${Math.round(pos * 100)}%`, background: col }} />
         </div>
-        <div className="flex justify-between text-[length:var(--font-size-9_5px)] text-muted-foreground/70 mt-0.5 tabular-nums">
+        <div className="flex justify-between text-[length:var(--font-size-9-5px)] text-muted-foreground/70 mt-0.5 tabular-nums">
           <span>{s.windowMin}</span><span>3년 범위</span><span>{s.windowMax}</span>
         </div>
       </div>
@@ -187,7 +187,7 @@ function MacroStrip() {
               </ResponsiveContainer>
             </Card>
           )}
-          <div className="text-[length:var(--font-size-10_5px)] text-muted-foreground/70 mt-1.5">출처 {data.source} · 키 불요 공개 CSV · 6시간 캐시</div>
+          <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground/70 mt-1.5">출처 {data.source} · 키 불요 공개 CSV · 6시간 캐시</div>
         </>
       )}
     </section>
@@ -256,7 +256,7 @@ export default function Clo() {
                 )}
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-[length:var(--font-size-12_5px)]">
+                <table className="w-full text-[length:var(--font-size-12-5px)]">
                   <thead>
                     <tr className="text-[length:var(--font-size-11px)] text-muted-foreground border-b">
                       <th className="text-left font-medium px-4 py-1.5 w-8">#</th>
@@ -272,7 +272,7 @@ export default function Clo() {
                       <tr key={h.cusip + i} className="border-b border-border/40 hover:bg-muted/30">
                         <td className="px-4 py-1.5 text-muted-foreground tabular-nums">{i + 1}</td>
                         <td className="px-2 py-1.5 font-medium">{h.dealName}</td>
-                        <td className="px-2 py-1.5 font-mono text-[length:var(--font-size-11_5px)] text-muted-foreground">{h.cusip}</td>
+                        <td className="px-2 py-1.5 font-mono text-[length:var(--font-size-11-5px)] text-muted-foreground">{h.cusip}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(h.marketValue)}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{h.weightPct ? `${h.weightPct}%` : "—"}</td>
                         <td className="px-4 py-1.5 text-center">

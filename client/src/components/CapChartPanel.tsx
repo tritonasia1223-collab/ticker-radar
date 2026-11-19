@@ -97,7 +97,7 @@ export function PanelChart({
 
   if (empty) {
     return (
-      <div className="flex items-center justify-center text-[length:var(--font-size-11_5px)] text-muted-foreground" style={{ height }}>
+      <div className="flex items-center justify-center text-[length:var(--font-size-11-5px)] text-muted-foreground" style={{ height }}>
         이 구간 데이터 없음
       </div>
     );
@@ -126,7 +126,7 @@ export function PanelChart({
             if (v == null) return null;
             const seg = history ? segmentAt(history.segments, Number(label)) : null;
             return (
-              <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] leading-tight text-popover-foreground shadow-sm glass">
+              <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] leading-tight text-popover-foreground shadow-sm glass">
                 <span className="text-muted-foreground tabular-nums">{fracYearToLabel(Number(label))}</span>
                 {" · "}
                 <span className="font-semibold tabular-nums" style={{ color: panel.color }}>{Number(v).toLocaleString("ko", { maximumFractionDigits: 2 })}</span>
@@ -214,14 +214,14 @@ export function CapChartPanel({
           <button
             type="button"
             onClick={() => setKrw((k) => !k)}
-            className="rounded px-1 text-[length:var(--font-size-10_5px)] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
+            className="rounded px-1 text-[length:var(--font-size-10-5px)] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
             title={`클릭하면 ${krw ? "달러" : "원화"}로 전환 (고정 환율 1$=${USD_KRW.toLocaleString("ko")}원)`}
             data-testid={`panel-unit-${panel.id}`}
           >
             {displayUnit} · {fullRange ? fullRange[0] : panel.start}~
           </button>
         ) : (
-          <span className="text-[length:var(--font-size-10_5px)] text-muted-foreground tabular-nums">{panel.unit} · {fullRange ? fullRange[0] : panel.start}~</span>
+          <span className="text-[length:var(--font-size-10-5px)] text-muted-foreground tabular-nums">{panel.unit} · {fullRange ? fullRange[0] : panel.start}~</span>
         )}
       </div>
 

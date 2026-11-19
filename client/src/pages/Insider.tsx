@@ -114,7 +114,7 @@ function TierLegend() {
   return (
     <div className="flex flex-wrap items-center gap-1 mb-2.5">
       <span className="text-[length:var(--font-size-10px)] text-muted-foreground mr-0.5">직책 티어(시그널 순):</span>
-      {items.map((i) => <span key={i.label} className={`text-[length:var(--font-size-9_5px)] font-bold border rounded px-1.5 py-0.5 ${i.cls}`}>{i.label}</span>)}
+      {items.map((i) => <span key={i.label} className={`text-[length:var(--font-size-9-5px)] font-bold border rounded px-1.5 py-0.5 ${i.cls}`}>{i.label}</span>)}
     </div>
   );
 }
@@ -147,8 +147,8 @@ function TierGuide() {
                 <span className="text-[length:var(--font-size-9px)] text-muted-foreground/70 tabular-nums mt-0.5">{t.w}</span>
               </div>
               <div className="min-w-0">
-                <div className="text-[length:var(--font-size-11_5px)] font-medium leading-snug">{t.ex}</div>
-                <div className="text-[length:var(--font-size-10_5px)] text-muted-foreground leading-snug">{t.why}</div>
+                <div className="text-[length:var(--font-size-11-5px)] font-medium leading-snug">{t.ex}</div>
+                <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground leading-snug">{t.why}</div>
               </div>
             </div>
           ))}
@@ -199,7 +199,7 @@ function InsiderRow({ r, color, sign, ctx }: { r: InsiderGroup; color: string; s
         <RoleBadges role={r.role} className="mt-0.5" />
       </div>
       <span className="text-[length:var(--font-size-12px)] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
-      <span className="text-[length:var(--font-size-12_5px)] font-bold tabular-nums shrink-0" style={{ color }}>{sign}{fmtMoney(r.value)}</span>
+      <span className="text-[length:var(--font-size-12-5px)] font-bold tabular-nums shrink-0" style={{ color }}>{sign}{fmtMoney(r.value)}</span>
     </div>
   );
 }
@@ -218,8 +218,8 @@ function InsiderListBox({ title, subtitle, color, sign, rows, ctx, dim, collapsi
       >
         {collapsible && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} style={{ color }} />}
         <span className="text-xs font-bold" style={{ color }}>{title} ({rows.length})</span>
-        {subtitle && <span className="text-[length:var(--font-size-10_5px)] font-normal text-muted-foreground ml-1">{subtitle}</span>}
-        {collapsible && !open && <span className="ml-auto text-[length:var(--font-size-10_5px)] text-muted-foreground/70">펼치기</span>}
+        {subtitle && <span className="text-[length:var(--font-size-10-5px)] font-normal text-muted-foreground ml-1">{subtitle}</span>}
+        {collapsible && !open && <span className="ml-auto text-[length:var(--font-size-10-5px)] text-muted-foreground/70">펼치기</span>}
       </div>
       {open && (
         <div className="px-2.5 pb-2.5">
@@ -254,7 +254,7 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} />
         ⚪ 보상·옵션행사·세금 등
         <span className="font-normal">({groups.length}명 · {others.length}건)</span>
-        <span className="ml-auto font-normal text-[length:var(--font-size-10_5px)] text-muted-foreground/70">매매 신호 아님 · 펼치기</span>
+        <span className="ml-auto font-normal text-[length:var(--font-size-10-5px)] text-muted-foreground/70">매매 신호 아님 · 펼치기</span>
       </button>
       {open && (
         <div className="px-2.5 pb-2.5 space-y-2">
@@ -272,7 +272,7 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
               </div>
               <div className="mt-1 ml-1">
                 {[...g.list].sort((a, b) => b.txnDate - a.txnDate).map((t) => (
-                  <div key={t.id} className="grid items-center gap-2 py-0.5 text-[length:var(--font-size-11_5px)] text-muted-foreground" style={{ gridTemplateColumns: "78px 60px 1fr 84px" }}>
+                  <div key={t.id} className="grid items-center gap-2 py-0.5 text-[length:var(--font-size-11-5px)] text-muted-foreground" style={{ gridTemplateColumns: "78px 60px 1fr 84px" }}>
                     <span className="tabular-nums">{ymd(t.txnDate)}</span>
                     <span><span className="text-[length:var(--font-size-10px)] px-1.5 py-0.5 rounded font-bold bg-muted/60 text-muted-foreground">{SIDE_KO[t.side] || t.side}</span></span>
                     <span className="tabular-nums">{fmtShares(t.shares)}주{t.price ? ` @ $${t.price.toFixed(2)}` : ""}</span>
@@ -315,7 +315,7 @@ function FlagInfo({ label, cls, tip }: { label: string; cls: string; tip: string
           {label}<Info className="h-2.5 w-2.5 opacity-70" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-60 text-[length:var(--font-size-11_5px)] leading-snug p-2.5">{tip}</PopoverContent>
+      <PopoverContent side="top" align="start" className="w-60 text-[length:var(--font-size-11-5px)] leading-snug p-2.5">{tip}</PopoverContent>
     </Popover>
   );
 }
@@ -336,11 +336,11 @@ function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (s
       </div>
       {/* 메타: 한 줄을 라벨 단 칩으로 — 각 숫자가 '뭔지'를 달고 있음 */}
       <div className="flex flex-wrap items-center gap-1 mt-1.5">
-        <span className="text-[length:var(--font-size-9_5px)] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
-        <span className="text-[length:var(--font-size-9_5px)] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
+        <span className="text-[length:var(--font-size-9-5px)] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
+        <span className="text-[length:var(--font-size-9-5px)] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
         {/* #3 동기간 반대매도(falsification): 매수클러스터인데 같은 창에 유의미한 재량 매도가 있으면 경고 — 매수≥0.5배 & ≥$1M */}
         {c.side === "buy" && (c.opposingSellValue ?? 0) >= Math.max(1e6, 0.5 * c.totalValue) && (
-          <span className="text-[length:var(--font-size-9_5px)] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 font-semibold" title="같은 윈도우에 같은 종목 인사이더의 재량 매도(10b5 플랜 제외)가 있습니다. 매수 신호가 net 관점에서 희석될 수 있어요.">⚠ 동기간 반대매도 {fmtMoney(c.opposingSellValue!)}</span>
+          <span className="text-[length:var(--font-size-9-5px)] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 font-semibold" title="같은 윈도우에 같은 종목 인사이더의 재량 매도(10b5 플랜 제외)가 있습니다. 매수 신호가 net 관점에서 희석될 수 있어요.">⚠ 동기간 반대매도 {fmtMoney(c.opposingSellValue!)}</span>
         )}
       </div>
       {/* 컬럼 헤더 */}
@@ -356,7 +356,7 @@ function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (s
             <div key={p.slug} className="flex items-center gap-1 text-[length:var(--font-size-11px)] px-0.5">
               <span className="truncate max-w-[64px] shrink-0">{p.name}</span>
               <RoleBadges role={p.role} />
-              <span className={`ml-auto w-[58px] text-right text-[length:var(--font-size-9_5px)] tabular-nums shrink-0 ${sem.cls}`} title="거래 직전 보유 대비 거래 비중">{sem.label}</span>
+              <span className={`ml-auto w-[58px] text-right text-[length:var(--font-size-9-5px)] tabular-nums shrink-0 ${sem.cls}`} title="거래 직전 보유 대비 거래 비중">{sem.label}</span>
               <span className="w-[50px] text-right text-[length:var(--font-size-10px)] tabular-nums text-muted-foreground/80 shrink-0">{fmtMoney(p.value)}</span>
             </div>
           );
@@ -373,7 +373,7 @@ function ClusterSection({ title, subtitle, accent, clusters, onPick }: { title: 
     <Card className="p-4">
       <div className="flex items-baseline gap-2 mb-2 flex-wrap">
         <h2 className="text-sm font-semibold" style={{ color: accent }}>{title} <span className="text-xs font-normal text-muted-foreground">· {clusters.length}건</span></h2>
-        <span className="text-[length:var(--font-size-11_5px)] text-muted-foreground">{subtitle}</span>
+        <span className="text-[length:var(--font-size-11-5px)] text-muted-foreground">{subtitle}</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {clusters.map((c, i) => <ClusterCard key={c.symbol + c.side} c={c} rank={i + 1} onPick={onPick} />)}
@@ -476,7 +476,7 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
               <div key={t.id} className="grid items-center gap-2.5 px-1.5 py-2 border-b border-border/50 last:border-0 text-[length:var(--font-size-13px)]" style={{ gridTemplateColumns: "90px 80px 56px 1fr 110px 110px" }}>
                 <span className="text-muted-foreground tabular-nums">{ymd(t.txnDate)}</span>
                 <span className="font-bold cursor-pointer" style={{ color: tickerColor(t.symbol) }} onClick={() => ctx.openTicker(t.symbol)}>{t.symbol}</span>
-                <span><span className="text-[length:var(--font-size-10_5px)] px-1.5 py-0.5 rounded font-bold" style={{ background: t.side === "buy" ? "var(--alpha-tone-green-500-150)" : t.side === "sell" ? "var(--alpha-tone-red-400-150)" : "var(--alpha-ink-soft-150)", color: t.side === "buy" ? BUY : t.side === "sell" ? SELL : "var(--muted-foreground)" }}>{SIDE_KO[t.side] || t.side}</span></span>
+                <span><span className="text-[length:var(--font-size-10-5px)] px-1.5 py-0.5 rounded font-bold" style={{ background: t.side === "buy" ? "var(--alpha-tone-green-500-150)" : t.side === "sell" ? "var(--alpha-tone-red-400-150)" : "var(--alpha-ink-soft-150)", color: t.side === "buy" ? BUY : t.side === "sell" ? SELL : "var(--muted-foreground)" }}>{SIDE_KO[t.side] || t.side}</span></span>
                 <span className="tabular-nums">{fmtShares(t.shares)}</span>
                 <span className="text-right tabular-nums text-muted-foreground">{t.price ? `$${t.price.toFixed(2)}` : "—"}</span>
                 <span className="text-right tabular-nums">{t.value ? fmtMoney(t.value) : "—"}</span>
@@ -576,7 +576,7 @@ export default function Insider() {
               <h2 className="text-sm font-semibold text-muted-foreground">{period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</h2>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="종목/회사 검색" className="h-8 w-44 rounded-md border bg-background px-2.5 text-[length:var(--font-size-13px)]" />
             </div>
-            <p className="text-[length:var(--font-size-11_5px)] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
+            <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
             <div className="grid items-center gap-2.5 px-2 py-1.5 text-[length:var(--font-size-11px)] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 110px 1fr 96px 52px" }}>
               <div className="text-center">#</div><div>종목</div><div>매수/매도</div><div className="text-right">순매수</div><div className="text-center">인사이더</div>
             </div>
@@ -587,7 +587,7 @@ export default function Insider() {
                 <div className="text-xs text-muted-foreground text-center tabular-nums">{i + 1}</div>
                 <div className="flex items-center gap-1.5 font-bold text-sm"><span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(r.symbol) }} />{r.symbol}<span className="text-[length:var(--font-size-10px)] font-normal text-muted-foreground">{sectorLabel(r.sector)}</span></div>
                 <StackedBar r={r} maxVol={maxVol} />
-                <div className="text-right text-[length:var(--font-size-12_5px)] font-bold tabular-nums" style={{ color: r.netValue >= 0 ? BUY : SELL }}>{r.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(r.netValue))}</div>
+                <div className="text-right text-[length:var(--font-size-12-5px)] font-bold tabular-nums" style={{ color: r.netValue >= 0 ? BUY : SELL }}>{r.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(r.netValue))}</div>
                 <div className="text-center text-xs text-muted-foreground tabular-nums">{r.insiderCount}명</div>
               </div>
             ))}

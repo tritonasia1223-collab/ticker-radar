@@ -14,7 +14,7 @@ export default function ComparisonCards({ cards, rightsMode }: { cards: CompareC
           </div>
           <dl className="space-y-1">
             {c.rows.map((r) => (
-              <div key={r.label} className="flex items-start justify-between gap-2 text-[length:var(--font-size-11_5px)]">
+              <div key={r.label} className="flex items-start justify-between gap-2 text-[length:var(--font-size-11-5px)]">
                 <dt className="shrink-0 text-muted-foreground">{r.label}</dt>
                 <dd className={`text-right font-medium ${rightsMode ? (r.on ? "text-emerald-600" : "text-red-500 line-through decoration-red-400/60") : "text-foreground"}`}>
                   {rightsMode && (r.on ? "✓ " : "✗ ")}{r.value}
@@ -22,7 +22,7 @@ export default function ComparisonCards({ cards, rightsMode }: { cards: CompareC
               </div>
             ))}
           </dl>
-          {c.note && <p className="mt-2 border-t border-border pt-1.5 text-[length:var(--font-size-10_5px)] text-muted-foreground">{c.note}</p>}
+          {c.note && <p className="mt-2 border-t border-border pt-1.5 text-[length:var(--font-size-10-5px)] text-muted-foreground">{c.note}</p>}
         </div>
       ))}
     </div>

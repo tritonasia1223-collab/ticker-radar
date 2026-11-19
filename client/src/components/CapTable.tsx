@@ -230,11 +230,11 @@ export function TableCard({
                       onPendingChange={() => { dirty.current = true; }}
                       onChange={(value) => { setCell(r, c, value); }}
                       onBlur={(value) => { editingRef.current = false; commit(setCell(r, c, value)); }}
-                      className="rounded-none border-0 bg-transparent px-1 py-0.5 text-[length:var(--font-size-11_5px)] leading-snug text-foreground focus:bg-background/60"
+                      className="rounded-none border-0 bg-transparent px-1 py-0.5 text-[length:var(--font-size-11-5px)] leading-snug text-foreground focus:bg-background/60"
                     />
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap break-words px-1 py-0.5 text-[length:var(--font-size-11_5px)] leading-snug text-foreground"><CapRichText text={cell || "\u200b"} /></div>
+                  <div className="whitespace-pre-wrap break-words px-1 py-0.5 text-[length:var(--font-size-11-5px)] leading-snug text-foreground"><CapRichText text={cell || "\u200b"} /></div>
                 )}
 
                 {/* 열 경계 드래그 핸들 — 마지막 열 제외(이웃과 너비 교환), 첫 행에만 표시(열 전체 작용) */}

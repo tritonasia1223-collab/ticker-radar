@@ -100,7 +100,7 @@ function ReservoirBars({ rows }: { rows: { label: string; value: number; sub: st
           )}
           <div className="text-right">
             <div className={`text-[length:var(--font-size-12px)] font-semibold tabular-nums ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.placeholder ? "출처 확정 후" : Number.isFinite(r.value) ? fmtEok(r.value) : "자료 부족"}</div>
-            <div className="text-[length:var(--font-size-9_5px)] text-muted-foreground leading-none">{r.sub}</div>
+            <div className="text-[length:var(--font-size-9-5px)] text-muted-foreground leading-none">{r.sub}</div>
           </div>
         </div>
       ))}
@@ -238,9 +238,9 @@ export default function LiquidityBeta() {
         <span className="text-[length:var(--font-size-11px)] text-muted-foreground">얼마나 → 어디서 → 어디로 · H.4.1 주간 · 기존 페이지는 그대로</span>
         <span className="ml-auto flex items-center gap-1.5">
           <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" className="px-1 text-[length:var(--font-size-13px)] text-foreground/70 hover:text-foreground disabled:opacity-25">◀</button>
-          <select aria-label="조회 주차" value={sel.date} onChange={e => setIdx(weeks.findIndex(w => w.date === e.target.value))} className="max-w-[230px] bg-background rounded border px-2 py-1 text-[length:var(--font-size-11_5px)] font-semibold tabular-nums">{[...weeks].reverse().map(w => <option key={w.date} value={w.date}>{w.date.slice(0, 4)}년 {weekLabel(w.date)} ({w.date})</option>)}</select>
+          <select aria-label="조회 주차" value={sel.date} onChange={e => setIdx(weeks.findIndex(w => w.date === e.target.value))} className="max-w-[230px] bg-background rounded border px-2 py-1 text-[length:var(--font-size-11-5px)] font-semibold tabular-nums">{[...weeks].reverse().map(w => <option key={w.date} value={w.date}>{w.date.slice(0, 4)}년 {weekLabel(w.date)} ({w.date})</option>)}</select>
           <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" className="px-1 text-[length:var(--font-size-13px)] text-foreground/70 hover:text-foreground disabled:opacity-25">▶</button>
-          {curIdx < weeks.length - 1 && <button type="button" onClick={() => setIdx(-1)} className="rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] hover:bg-amber-500/10">현재로</button>}
+          {curIdx < weeks.length - 1 && <button type="button" onClick={() => setIdx(-1)} className="rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] hover:bg-amber-500/10">현재로</button>}
           <Pill options={[{ k: "4", label: "4주 전 대비" }, { k: "13", label: "13주 전 대비" }]} value={String(cmp)} onChange={(k) => setCmp(Number(k) as 4 | 13)} />
         </span>
       </div>
@@ -413,18 +413,18 @@ export default function LiquidityBeta() {
             ["NFCI", nfci ? fmtNum(nfci.value, 2) : "자료 부족", nfci?.date],
           ] as [string, string, string | undefined][]).map(([k, v, d]) => (
             <span key={k} className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">{k}</span><b className="tabular-nums">{v}</b><span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">{fmtDate(d)}</span>
+              <span className="text-muted-foreground">{k}</span><b className="tabular-nums">{v}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(d)}</span>
             </span>
           ))}
           <span className="w-px h-3.5 bg-border" />
           <span className="font-semibold text-muted-foreground">가격</span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실질금리 10년</span><b className="tabular-nums">{dfii ? `${dfii.value.toFixed(2)}%` : "자료 부족"}</b><span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">{fmtDate(dfii?.date)}</span></span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">광의달러 3개월</span><b className="tabular-nums">{dxy3m ? fmtPct(dxy3m.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">{fmtDate(dxy3m?.to.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실질금리 10년</span><b className="tabular-nums">{dfii ? `${dfii.value.toFixed(2)}%` : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(dfii?.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">광의달러 3개월</span><b className="tabular-nums">{dxy3m ? fmtPct(dxy3m.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(dxy3m?.to.date)}</span></span>
           <span className="w-px h-3.5 bg-border" />
           <span className="font-semibold text-muted-foreground">사이클</span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">산업생산 전년비</span><b className="tabular-nums">{indproYoy ? fmtPct(indproYoy.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">{fmtDate(indproYoy?.to.date)}</span></span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실업률</span><b className="tabular-nums">{unrate ? `${unrate.value.toFixed(1)}%` : "자료 부족"}</b><span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">{fmtDate(unrate?.date)}</span></span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">근원 PCE 전년비</span><b className="tabular-nums">{pceYoy ? fmtPct(pceYoy.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9_5px)] text-muted-foreground">{fmtDate(pceYoy?.to.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">산업생산 전년비</span><b className="tabular-nums">{indproYoy ? fmtPct(indproYoy.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(indproYoy?.to.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실업률</span><b className="tabular-nums">{unrate ? `${unrate.value.toFixed(1)}%` : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(unrate?.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">근원 PCE 전년비</span><b className="tabular-nums">{pceYoy ? fmtPct(pceYoy.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(pceYoy?.to.date)}</span></span>
           {(ctxFailed || Object.keys(ctxErr).length > 0) && <span className="ml-auto text-amber-700" role="alert">{ctxFailed ? "맥락 지표 요청 실패" : `일부 지표 조회 실패(${Object.keys(ctxErr).join(", ")})`} <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></span>}
         </div>
       </Card>

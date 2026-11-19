@@ -27,7 +27,7 @@ export function Ch7Stablecoin() {
 
   return (
     <div className="w-full space-y-3">
-      <p className="text-[length:var(--font-size-11_5px)] text-muted-foreground">Ch2와 <b className="text-foreground">같은 그림, 담보만 다르다</b> — ETH 대신 국채·예금이 잠기고 달러 토큰이 발행됩니다.</p>
+      <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground">Ch2와 <b className="text-foreground">같은 그림, 담보만 다르다</b> — ETH 대신 국채·예금이 잠기고 달러 토큰이 발행됩니다.</p>
       <div className="flex gap-1.5">
         {MODELS.map((m) => (
           <button key={m.id} onClick={() => setModel(m.id)}
@@ -46,10 +46,10 @@ export function Ch7Stablecoin() {
       <input type="range" min={0} max={730} value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-full accent-primary" />
 
       <div className="rounded-lg border border-border p-2.5">
-        <div className="mb-1 flex justify-between text-[length:var(--font-size-11_5px)]"><span>기간 총 이자</span><b className="tabular-nums">{fmtUSDprecise(gross)}</b></div>
+        <div className="mb-1 flex justify-between text-[length:var(--font-size-11-5px)]"><span>기간 총 이자</span><b className="tabular-nums">{fmtUSDprecise(gross)}</b></div>
         {gross > 0 && rows.map((r) => (
           <div key={r.label} className="mb-1">
-            <div className="flex justify-between text-[length:var(--font-size-10_5px)]"><span style={{ color: r.c }}>{r.label}</span><span className="tabular-nums">{fmtUSDprecise(r.v)}</span></div>
+            <div className="flex justify-between text-[length:var(--font-size-10-5px)]"><span style={{ color: r.c }}>{r.label}</span><span className="tabular-nums">{fmtUSDprecise(r.v)}</span></div>
             <div className="h-2 w-full overflow-hidden rounded bg-secondary"><div className="h-full rounded" style={{ width: `${Math.max(0, (r.v / gross) * 100)}%`, background: r.c }} /></div>
           </div>
         ))}

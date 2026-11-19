@@ -64,11 +64,11 @@ export function StackColumn({ segs, total, align, group, selected, onSelect }: {
               zIndex: isSel ? 20 : undefined,
             }}
             className={`relative flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 first:rounded-t-md last:rounded-b-md ${clickable ? "cursor-pointer" : ""} ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
-            {isSel && h >= 16 && <span className={`absolute top-0.5 text-[length:var(--font-size-10_5px)] font-bold ${align === "right" ? "left-1.5" : "right-1.5"}`} style={{ color: fg }}>✓</span>}
+            {isSel && h >= 16 && <span className={`absolute top-0.5 text-[length:var(--font-size-10-5px)] font-bold ${align === "right" ? "left-1.5" : "right-1.5"}`} style={{ color: fg }}>✓</span>}
             {h >= 34 ? (
               <>
-                <span className="text-[length:var(--font-size-12_5px)] font-semibold leading-tight">{s.label}</span>
-                <span className="text-[length:var(--font-size-11_5px)] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
+                <span className="text-[length:var(--font-size-12-5px)] font-semibold leading-tight">{s.label}</span>
+                <span className="text-[length:var(--font-size-11-5px)] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
               </>
             ) : h >= 17 ? (
               <span className="text-[length:var(--font-size-11px)] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
@@ -91,8 +91,8 @@ export function StackColumn({ segs, total, align, group, selected, onSelect }: {
           <div className="absolute right-0 top-0 h-px w-2 bg-foreground/30" />
           <div className="absolute right-0 bottom-0 h-px w-2 bg-foreground/30" />
           <div className="text-right leading-tight">
-            <div className="text-[length:var(--font-size-11_5px)] font-bold">{group.label}</div>
-            {gh >= 42 && <><div className="text-[length:var(--font-size-9_5px)] text-muted-foreground tabular-nums">{asMoney(gval)}</div><div className="text-[length:var(--font-size-9_5px)] text-muted-foreground tabular-nums">{gpct}%</div></>}
+            <div className="text-[length:var(--font-size-11-5px)] font-bold">{group.label}</div>
+            {gh >= 42 && <><div className="text-[length:var(--font-size-9-5px)] text-muted-foreground tabular-nums">{asMoney(gval)}</div><div className="text-[length:var(--font-size-9-5px)] text-muted-foreground tabular-nums">{gpct}%</div></>}
           </div>
         </div>
       </div>

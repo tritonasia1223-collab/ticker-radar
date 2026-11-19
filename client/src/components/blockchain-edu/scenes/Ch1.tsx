@@ -33,7 +33,7 @@ export function Ch1Toggle() {
       </div>
       <div key={layer}   
         className="rounded-lg border p-3" style={{...({ borderColor: pal.solid, background: pal.soft }),opacity: 1}}>
-        <p className="text-[length:var(--font-size-11_5px)]" style={{ color: pal.ink }}>{metaphor}</p>
+        <p className="text-[length:var(--font-size-11-5px)]" style={{ color: pal.ink }}>{metaphor}</p>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div className="rounded-md bg-background/70 p-2">
             <div className="text-[length:var(--font-size-10px)] text-muted-foreground">같은 송금 수수료</div>
@@ -45,7 +45,7 @@ export function Ch1Toggle() {
           </div>
         </div>
       </div>
-      <p className="mt-2 text-[length:var(--font-size-10_5px)] text-muted-foreground">위 금액 슬라이더를 움직여 보세요. L1 수수료는 금액과 무관(고정비)이고, L2는 거의 공짜입니다.</p>
+      <p className="mt-2 text-[length:var(--font-size-10-5px)] text-muted-foreground">위 금액 슬라이더를 움직여 보세요. L1 수수료는 금액과 무관(고정비)이고, L2는 거의 공짜입니다.</p>
     </div>
   );
 }
@@ -67,7 +67,7 @@ const L2_CARDS: CompareCard[] = [
 export function Ch1Spectrum() {
   return (
     <div className="w-full">
-      <p className="mb-2 text-[length:var(--font-size-11_5px)] text-muted-foreground">L2는 단일 종이 아니다 — 시퀀싱 정책·컴플라이언스·개방성은 운영사의 <b>설계 선택지</b>다.</p>
+      <p className="mb-2 text-[length:var(--font-size-11-5px)] text-muted-foreground">L2는 단일 종이 아니다 — 시퀀싱 정책·컴플라이언스·개방성은 운영사의 <b>설계 선택지</b>다.</p>
       <ComparisonCards cards={L2_CARDS} />
     </div>
   );

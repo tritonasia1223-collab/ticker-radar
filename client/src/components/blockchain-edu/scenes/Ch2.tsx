@@ -43,7 +43,7 @@ export function Ch2LockMint() {
         </div>
       </div>
 
-      <p className="my-2 text-center text-[length:var(--font-size-11_5px)] font-medium">코인이 이동하는 게 아니라, <b>담보로 잠기고 사본이 생긴다.</b></p>
+      <p className="my-2 text-center text-[length:var(--font-size-11-5px)] font-medium">코인이 이동하는 게 아니라, <b>담보로 잠기고 사본이 생긴다.</b></p>
       <div className="flex justify-center">
         <button onClick={() => setPhase(locked ? "idle" : "locked")}
           className="rounded-md bg-primary px-3 py-1.5 text-[length:var(--font-size-12px)] font-semibold text-primary-foreground hover:opacity-90 transition-opacity">

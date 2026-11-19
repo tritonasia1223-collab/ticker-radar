@@ -22,7 +22,7 @@ import { BOND_DEFINITION } from "@shared/credit/report";
 type Response = { asOf: string; collectedAt: string | null; error?: string | null; configChanged?: boolean; indicators: IndicatorAnalysis[]; scenarios: CreditOutcome };
 const ink = "var(--ink)", muted = "var(--ink-soft)", border = "var(--line-soft)";
 const colors = ["var(--tone-blue-600)", "var(--tone-amber-500)", "var(--tone-indigo-500)", "var(--tone-blue-400)"];
-const serif = "var(--font-serif)";
+const serif = "var(--font-reading-serif)";
 const paragraph = { fontSize: "var(--font-size-14)", lineHeight: 1.8, color: "var(--ink)", margin: 0 };
 const caption = { fontSize: "var(--font-size-12)", lineHeight: 1.65, color: muted };
 const bankTitles: Record<string, string> = {

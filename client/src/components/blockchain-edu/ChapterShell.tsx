@@ -21,14 +21,14 @@ export default function ChapterShell({ chapter, step, onPrev, onNext, stage, bot
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[length:var(--font-size-12px)] font-bold">{chapter.num}</span>
         <div className="min-w-0">
           <h2 className="truncate text-[length:var(--font-size-15px)] font-bold leading-tight">{chapter.title}</h2>
-          <p className="truncate text-[length:var(--font-size-11_5px)] text-muted-foreground">{chapter.blurb}</p>
+          <p className="truncate text-[length:var(--font-size-11-5px)] text-muted-foreground">{chapter.blurb}</p>
         </div>
       </div>
 
       {/* 본문: 좌 설명 / 우 스테이지 */}
       <div className="grid gap-0 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="flex flex-col gap-4 p-4 border-r border-border">
-          <p className="text-[length:var(--font-size-13_5px)] leading-relaxed text-foreground/90">{steps[cur]?.text}</p>
+          <p className="text-[length:var(--font-size-13-5px)] leading-relaxed text-foreground/90">{steps[cur]?.text}</p>
           <div className="mt-auto flex items-center gap-2">
             <button onClick={onPrev} disabled={atFirst}
               className="rounded-md border border-border px-3 py-1.5 text-[length:var(--font-size-12px)] font-medium disabled:opacity-40 hover:bg-accent transition-colors">이전</button>
@@ -44,7 +44,7 @@ export default function ChapterShell({ chapter, step, onPrev, onNext, stage, bot
             <div className="text-center text-[length:var(--font-size-12px)] text-muted-foreground">
               <div className="mb-1 text-2xl opacity-40" aria-hidden>◐</div>
               애니메이션 씬 <span className="font-mono">{steps[cur]?.sceneId ?? "—"}</span>
-              <div className="text-[length:var(--font-size-10_5px)]">Phase 3~5에서 구현</div>
+              <div className="text-[length:var(--font-size-10-5px)]">Phase 3~5에서 구현</div>
             </div>
           )}
         </div>

@@ -37,7 +37,7 @@ export default function FeeStackBar({ splits, title = "수수료 구성" }: { sp
         {sorted.map((s) => {
           const pal = recipientPalette(s.recipient);
           return (
-            <span key={s.recipient} className="flex items-center gap-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">
+            <span key={s.recipient} className="flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">
               <span className="inline-block h-2 w-2 rounded-sm" style={{ background: pal.solid }} />
               {RECIPIENT_META[s.recipient].label} <span className="tabular-nums">{fmtPct(s.amountUSD / total)}</span>
             </span>

@@ -140,9 +140,9 @@ function Node({
           data-testid={`fnode-text-${node.id}`}
         >
           {node.text.trim() ? (
-            <CapRichText text={node.text} className="block text-center text-[length:var(--font-size-12_5px)] leading-snug text-foreground" onJump={onJump} />
+            <CapRichText text={node.text} className="block text-center text-[length:var(--font-size-12-5px)] leading-snug text-foreground" onJump={onJump} />
           ) : (
-            <span className="block text-center text-[length:var(--font-size-12_5px)] italic leading-snug text-muted-foreground/50">
+            <span className="block text-center text-[length:var(--font-size-12-5px)] italic leading-snug text-muted-foreground/50">
               (빈 칸 — 클릭해 입력)
             </span>
           )}
@@ -386,12 +386,12 @@ function MemoCard({
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
           }}
           placeholder={st.ph}
-          className={`block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border bg-background px-1.5 py-1 text-[length:var(--font-size-12_5px)] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${st.ta}`}
+          className={`block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border bg-background px-1.5 py-1 text-[length:var(--font-size-12-5px)] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${st.ta}`}
           data-testid={`memo-input-${variant}-${node.id}`}
         />
       ) : (
         <p
-          className={`whitespace-pre-wrap text-[length:var(--font-size-12_5px)] leading-relaxed text-foreground/90 ${editable ? `cursor-text rounded ${st.hover}` : ""}`}
+          className={`whitespace-pre-wrap text-[length:var(--font-size-12-5px)] leading-relaxed text-foreground/90 ${editable ? `cursor-text rounded ${st.hover}` : ""}`}
           onClick={startEdit}
           title={editable ? "클릭해 메모 수정" : undefined}
           data-testid={`memo-text-${variant}-${node.id}`}
@@ -894,17 +894,17 @@ export function FlowColumn({
                 value={dateDraft}
                 onChange={(e) => setDateDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit(null); } }}
-                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-10_5px)] tabular-nums text-foreground"
+                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-10-5px)] tabular-nums text-foreground"
                 data-testid={`edit-date-${flow.slug}`}
               />
-              <span className="text-[length:var(--font-size-10_5px)] text-muted-foreground">~</span>
+              <span className="text-[length:var(--font-size-10-5px)] text-muted-foreground">~</span>
               <input
                 type="date"
                 value={endDateDraft}
                 min={dateDraft || undefined}
                 onChange={(e) => setEndDateDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit(null); } }}
-                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-10_5px)] tabular-nums text-foreground"
+                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-10-5px)] tabular-nums text-foreground"
                 data-testid={`edit-enddate-${flow.slug}`}
               />
             </div>
@@ -930,7 +930,7 @@ export function FlowColumn({
           </div>
         ) : (
           <div
-            className={`text-[length:var(--font-size-10_5px)] tabular-nums text-muted-foreground ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
+            className={`text-[length:var(--font-size-10-5px)] tabular-nums text-muted-foreground ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
             onClick={(e) => { if (editable) { e.stopPropagation(); setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit("date"); } }}
             title={editable ? "클릭해 날짜/기간 수정" : undefined}
             data-testid={`text-date-${flow.slug}`}

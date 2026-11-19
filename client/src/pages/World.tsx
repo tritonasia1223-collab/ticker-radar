@@ -325,7 +325,7 @@ const SwHex = ({ c, fill }: { c: string; fill: number }) => (
   <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1.5 14.5,4.5 14.5,9.5 9,12.5 3.5,9.5 3.5,4.5" fill={c} fillOpacity={fill} stroke={c} strokeWidth="1.3" strokeLinejoin="round" /></svg>
 );
 const LegRow = ({ sw, label }: { sw: React.ReactNode; label: string }) => (
-  <div className="flex items-center gap-1.5"><span className="flex h-3.5 w-[18px] shrink-0 items-center justify-center">{sw}</span><span className="text-[length:var(--font-size-10_5px)] leading-tight text-popover-foreground/80">{label}</span></div>
+  <div className="flex items-center gap-1.5"><span className="flex h-3.5 w-[18px] shrink-0 items-center justify-center">{sw}</span><span className="text-[length:var(--font-size-10-5px)] leading-tight text-popover-foreground/80">{label}</span></div>
 );
 function LegendCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (<div className="pointer-events-none absolute right-0 top-full z-[60] mt-1 hidden w-max min-w-[140px] rounded-lg border border-border bg-popover/95 p-2 shadow-lg glass group-hover:block">
@@ -1204,14 +1204,14 @@ export default function World() {
       {/* hover 툴팁 */}
       {tip && (
         <div className={`pointer-events-none fixed z-[9999] max-w-[260px] ${TIP_CLASS}`} style={{ left: tip.x + 12, top: tip.y + 12, wordBreak: "keep-all" }}>
-          <div>{tip.text}</div>{tip.sub && <div className="mt-0.5 text-[length:var(--font-size-10_5px)] font-normal text-muted-foreground">{tip.sub}</div>}
+          <div>{tip.text}</div>{tip.sub && <div className="mt-0.5 text-[length:var(--font-size-10-5px)] font-normal text-muted-foreground">{tip.sub}</div>}
         </div>
       )}
 
 
       {/* 상단 중앙: 모드 전환(세계·무역 / 미국 데이터센터 / 분쟁) */}
       <div className="absolute left-1/2 top-4 -translate-x-1/2">
-        <div className="flex rounded-full border border-border bg-card/90 p-0.5 text-[length:var(--font-size-11_5px)] shadow-sm glass">
+        <div className="flex rounded-full border border-border bg-card/90 p-0.5 text-[length:var(--font-size-11-5px)] shadow-sm glass">
           {([["trade", "세계·무역", Globe], ["dc", "미국 데이터센터", Server], ["conflict", "분쟁", Swords]] as const).map(([m, label, Icon]) => {
             const on = m === "dc" ? dcMode : m === "conflict" ? conflictMode : tradeMode;
             return <button key={m} onClick={() => enterMode(m)} className={`flex items-center gap-1 rounded-full px-3 py-1 ${on ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}><Icon className="h-3.5 w-3.5" style={m === "conflict" && on ? { color: CONFLICT_RED } : undefined} />{label}</button>;
@@ -1241,7 +1241,7 @@ export default function World() {
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input value={query} onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && results[0]) onSelectResult(results[0]); if (e.key === "Escape") setQuery(""); }}
-              placeholder="나라·수도·해협·항만 검색" spellCheck={false} className="w-full bg-transparent text-[length:var(--font-size-12_5px)] outline-none placeholder:text-muted-foreground" />
+              placeholder="나라·수도·해협·항만 검색" spellCheck={false} className="w-full bg-transparent text-[length:var(--font-size-12-5px)] outline-none placeholder:text-muted-foreground" />
             {query && <button onClick={() => setQuery("")} className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-3.5 w-3.5" /></button>}
           </div>
           {results.length > 0 && (
@@ -1249,11 +1249,11 @@ export default function World() {
               {results.map((it, ri) => { const col = it.kind === "country" ? TEAL : it.kind === "choke" ? AMBER : (it.kind === "port" || it.kind === "route") ? SEA : "var(--line)"; const lab = it.kind === "country" ? "국가" : it.kind === "capital" ? "수도" : it.kind === "choke" ? "해협" : it.kind === "route" ? "항로" : "항만";
                 return (<button key={ri} onClick={() => onSelectResult(it)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted">
                   <span className="shrink-0 rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-medium" style={{ background: col + "26", color: col === "var(--line)" ? "hsl(var(--muted-foreground))" : col }}>{lab}</span>
-                  <span className="text-[length:var(--font-size-12_5px)] font-medium">{it.label}</span><span className="truncate text-[length:var(--font-size-10px)] text-muted-foreground">{it.sub}</span></button>); })}
+                  <span className="text-[length:var(--font-size-12-5px)] font-medium">{it.label}</span><span className="truncate text-[length:var(--font-size-10px)] text-muted-foreground">{it.sub}</span></button>); })}
             </div>
           )}
         </div>
-        <div className="mt-1 pl-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 상세</div>
+        <div className="mt-1 pl-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 상세</div>
       </div>
       )}
 
@@ -1274,7 +1274,7 @@ export default function World() {
             <Route className="h-4 w-4" /><span className="text-sm font-bold">주요 항로</span>
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
           </button>
-          <div className="px-2.5 pb-1.5 text-[length:var(--font-size-10_5px)] text-muted-foreground">{infra.routes.filter((r) => !(r as any).branch_of).length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
+          <div className="px-2.5 pb-1.5 text-[length:var(--font-size-10-5px)] text-muted-foreground">{infra.routes.filter((r) => !(r as any).branch_of).length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
           <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[length:var(--font-size-10px)] text-muted-foreground">
             <span>배 색</span>
             <div className="flex overflow-hidden rounded border border-border">
@@ -1298,7 +1298,7 @@ export default function World() {
               {infra.routes.filter((r) => !(r as any).branch_of).map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
                 const strands = routeStrands(r as any); const faded = shipCargoView && !!cargoFilter && !strands.includes(cargoFilter); // 필터 화물 안 싣는 항로 = 감쇠
                 return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
-                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[length:var(--font-size-11_5px)] ${on ? "bg-muted" : "hover:bg-muted/60"} ${faded ? "opacity-35" : ""}`}>
+                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[length:var(--font-size-11-5px)] ${on ? "bg-muted" : "hover:bg-muted/60"} ${faded ? "opacity-35" : ""}`}>
                   <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: rCol(r as any) }} />
                   <button onClick={() => toggleCompare(r.id)} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 비교 켜기/끄기 + 이동 + 카드">
                     {shipCargoView && strands.length > 1
@@ -1307,7 +1307,7 @@ export default function World() {
                     <span className="truncate">{r.ko}</span></button></div>); })}
               {compareSet.size > 0 && (
                 <div className="mt-0.5 border-t border-border px-2.5 pt-1">
-                  <button onClick={() => setCompareSet(new Set())} className="text-[length:var(--font-size-10_5px)] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
+                  <button onClick={() => setCompareSet(new Set())} className="text-[length:var(--font-size-10-5px)] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
                 </div>
               )}
             </div>
@@ -1338,13 +1338,13 @@ export default function World() {
             <div className="px-2.5 py-1 text-[length:var(--font-size-10px)] text-muted-foreground">강도순 · <button onClick={() => setShowArmed((v) => !v)} title="연간 전투 사망 25명 이상~1,000명 미만도 표시 (기본은 전쟁급만)" className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "소규모 분쟁 포함"}</button></div>
             {visConflicts.map((c) => { const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id; const war = c.intensity === "war";
               return (<button key={c.id} onMouseEnter={() => setHoverConflict(c.id)} onMouseLeave={() => setHoverConflict(null)} onClick={() => goTo({ kind: "conflict", id: c.id })}
-                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11_5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11-5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: conflictColor(c.category) }} />
                 <span className="flex-1 truncate">{c.name_ko}</span><span className="shrink-0 text-[length:var(--font-size-9px)] text-muted-foreground">{CONFLICT_CAT_KO[c.category]}{war ? "" : " · 무력분쟁"}</span></button>); })}
             {visDisputes.length > 0 && <div className="mt-0.5 border-t border-border px-2.5 pt-1 pb-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ color: TERRITORIAL_TEXT }}>영토·주권 분쟁 {visDisputes.length}</div>}
             {visDisputes.map((d) => { const on = sel?.kind === "dispute" && sel.id === d.id;
               return (<button key={d.id} onClick={() => goTo({ kind: "dispute", id: d.id })}
-                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11_5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11-5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                 <span className="h-2 w-2 shrink-0 rounded-full border" style={{ borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "33" }} />
                 <span className="flex-1 truncate">{d.star ? "★ " : ""}{d.name_ko}</span><span className="shrink-0 text-[length:var(--font-size-9px)] text-muted-foreground">{d.region}</span></button>); })}
           </div>
@@ -1373,7 +1373,7 @@ export default function World() {
               <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.en}</div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-12px)]">
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[length:var(--font-size-11px)] font-semibold" style={{ color: SEA }}>세계 {p.rank}위</span>
-                <span className="tabular-nums">{p.teu_m}M TEU</span><span className="text-[length:var(--font-size-10_5px)] text-muted-foreground">({infra._meta.data_year} 기준)</span>
+                <span className="tabular-nums">{p.teu_m}M TEU</span><span className="text-[length:var(--font-size-10-5px)] text-muted-foreground">({infra._meta.data_year} 기준)</span>
               </div>
               {ctyIdx != null && <div className="mt-2 text-[length:var(--font-size-11px)] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
               {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
@@ -1385,7 +1385,7 @@ export default function World() {
             return (<>
               <div className="flex items-center gap-1.5"><Anchor className="h-4 w-4" style={{ color: SEA }} /><span className="text-base font-bold leading-tight">{p.ko}</span></div>
               <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.en}</div>
-              <div className="mt-2 text-[length:var(--font-size-11_5px)] leading-snug">{p.note}</div>
+              <div className="mt-2 text-[length:var(--font-size-11-5px)] leading-snug">{p.note}</div>
               {ctyIdx != null && <div className="mt-2 text-[length:var(--font-size-11px)] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
               {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">연동 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               {p.source_url && <Src url={p.source_url} />}
@@ -1396,12 +1396,12 @@ export default function World() {
                 <span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: AMBER + "22", color: AMBER }}>{c.tier === 1 ? "1급" : "2급"}</span></div>
               <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{c.en}</div>
               <div className="mt-2 text-[length:var(--font-size-12px)]"><span className="text-muted-foreground">연결</span> {c.connects}</div>
-              <div className="mt-1.5 text-[length:var(--font-size-11_5px)] leading-snug">{c.throughput_note}</div>
+              <div className="mt-1.5 text-[length:var(--font-size-11-5px)] leading-snug">{c.throughput_note}</div>
               {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={c.source_url} />
             </>); })()}
           {sel.kind === "route" && (() => { const r = routeById.get(sel.id)!; const rc = routeCards[r.id];
-            if (!rc) return (<><div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold">{r.ko}</span></div><div className="mt-2 text-[length:var(--font-size-11_5px)] text-muted-foreground">{r.facts}</div></>);
+            if (!rc) return (<><div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold">{r.ko}</span></div><div className="mt-2 text-[length:var(--font-size-11-5px)] text-muted-foreground">{r.facts}</div></>);
             return (<>
               <div className="flex items-center gap-1.5 pr-5"><Route className="h-4 w-4 shrink-0" style={{ color: routeColor(r.id) }} /><span className="text-[length:var(--font-size-15px)] font-bold leading-tight">{r.ko}</span>
                 {rc.candidate && <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold text-muted-foreground">후보 항로</span>}</div>
@@ -1421,25 +1421,25 @@ export default function World() {
                     </div>); })}
                 </div>
               </div>
-              <div className="mt-1 flex items-center gap-2 text-[length:var(--font-size-8_5px)] text-muted-foreground/80">
+              <div className="mt-1 flex items-center gap-2 text-[length:var(--font-size-8-5px)] text-muted-foreground/80">
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full border-[1.4px] bg-background" style={{ borderColor: SEA }} />항만</span>
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rotate-45 border-[1.4px] bg-background" style={{ borderColor: AMBER }} />{glossText("{{해협·운하|배가 반드시 지나야 하는 좁은 길목 — 막히면 항로 전체가 영향}}")}</span>
               </div>
-              {rc.fork_note && <div className="mt-1 text-[length:var(--font-size-9_5px)] leading-snug text-muted-foreground">⑂ {glossText(rc.fork_note)}</div>}
+              {rc.fork_note && <div className="mt-1 text-[length:var(--font-size-9-5px)] leading-snug text-muted-foreground">⑂ {glossText(rc.fork_note)}</div>}
               {/* ② 화물 구성 막대(톤 기준 개략) 또는 상태 칩 */}
               {rc.bar ? (<div className="mt-2.5">
-                <div className="mb-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">화물 구성 <span className="text-[length:var(--font-size-9px)]">(톤 기준 개략)</span></div>
+                <div className="mb-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">화물 구성 <span className="text-[length:var(--font-size-9px)]">(톤 기준 개략)</span></div>
                 <div className="flex h-2.5 w-full overflow-hidden rounded-full" title="톤 기준 개략 · 연도별 변동">
                   {rc.bar.map((b, i) => <div key={i} style={{ width: `${b.p}%`, background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other, boxShadow: i > 0 ? "var(--shadow-chart-separator)" : undefined }} />)}
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
-                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[length:var(--font-size-9_5px)] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{glossText(b.l)}</span>)}
+                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[length:var(--font-size-9-5px)] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{glossText(b.l)}</span>)}
                 </div>
               </div>) : rc.status ? (<div className="mt-2.5 flex flex-col gap-1">
-                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[length:var(--font-size-10_5px)] leading-snug text-muted-foreground">{glossText(s)}</span>)}
+                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[length:var(--font-size-10-5px)] leading-snug text-muted-foreground">{glossText(s)}</span>)}
               </div>) : null}
               {/* ③ 설명 — 끊긴 문장, 줄바꿈 유지 */}
-              <div className="mt-2.5 flex flex-col gap-1 text-[length:var(--font-size-11_5px)] leading-snug text-foreground/85">
+              <div className="mt-2.5 flex flex-col gap-1 text-[length:var(--font-size-11-5px)] leading-snug text-foreground/85">
                 {rc.lines.map((l, i) => <div key={i}>{glossText(l)}</div>)}
               </div>
               {/* ④ 관계 칩 */}
@@ -1456,19 +1456,19 @@ export default function World() {
                 <span className="shrink-0 rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: cc + "22", color: cc }}>{badge}</span></div>
               {card && (card.left || card.right) && (
                 <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
-                  {card.left && <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-center text-[length:var(--font-size-11_5px)] font-semibold">{card.left}</span>}
+                  {card.left && <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-center text-[length:var(--font-size-11-5px)] font-semibold">{card.left}</span>}
                   {card.left && card.right && <span className="text-[length:var(--font-size-10px)] text-muted-foreground">vs</span>}
-                  {card.right && <span className="rounded-full border px-2.5 py-1 text-center text-[length:var(--font-size-11_5px)] font-semibold" style={{ borderColor: cc + "66", color: cc, background: cc + "0f" }}>{card.right}</span>}
+                  {card.right && <span className="rounded-full border px-2.5 py-1 text-center text-[length:var(--font-size-11-5px)] font-semibold" style={{ borderColor: cc + "66", color: cc, background: cc + "0f" }}>{card.right}</span>}
                 </div>
               )}
-              <div className="mt-2.5 text-center"><div className="text-[length:var(--font-size-15px)] font-bold leading-tight tabular-nums">{pBig}</div>{pSub && <div className="text-[length:var(--font-size-10_5px)] text-muted-foreground">{pSub}</div>}</div>
+              <div className="mt-2.5 text-center"><div className="text-[length:var(--font-size-15px)] font-bold leading-tight tabular-nums">{pBig}</div>{pSub && <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground">{pSub}</div>}</div>
               {card && (card.need_left || card.need_right) && (
                 <div className="mt-2.5 border-t border-border pt-2 text-[length:var(--font-size-11px)] leading-snug">
                   {card.need_left && <div><span className="font-semibold">{card.left}</span> — {card.need_left}</div>}
                   {card.need_right && <div className={card.need_left ? "mt-1" : ""}><span className="font-semibold" style={{ color: cc }}>{card.right}</span> — {card.need_right}</div>}
                 </div>
               )}
-              <div className="mt-2 text-[length:var(--font-size-9_5px)] text-muted-foreground">{badge} · 최근 12개월 사망 {c.deaths_12mo.toLocaleString()} · 집계 {conflictsMeta.window}</div>
+              <div className="mt-2 text-[length:var(--font-size-9-5px)] text-muted-foreground">{badge} · 최근 12개월 사망 {c.deaths_12mo.toLocaleString()} · 집계 {conflictsMeta.window}</div>
               <Src url={conflictsMeta.source_url} label="UCDP GED" />
             </>); })()}
           {sel.kind === "dispute" && (() => { const d = disputeById.get(sel.id); if (!d) return null; const lc = d.linked_conflict_id ? conflictById.get(d.linked_conflict_id) : null;
@@ -1478,9 +1478,9 @@ export default function World() {
               const bubSt = gray ? { borderColor: "hsl(var(--border))" } : p.controls ? { background: TERRITORIAL_YELLOW + "1a", borderColor: TERRITORIAL_YELLOW + "55" } : { borderColor: "hsl(var(--border))" };
               const inner = <>{p.controls && !gray ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</>;
               return (<div key={key} className="flex min-w-0 flex-col gap-1">
-                {idx != null && !gray ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] font-semibold hover:bg-muted" style={pillSt}>{inner}</button>
-                  : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] font-semibold" style={pillSt}>{inner}</span>}
-                <div className="rounded-lg border px-2 py-1.5 text-[length:var(--font-size-10_5px)] leading-snug" style={bubSt}>{glossText(p.claim)}</div>
+                {idx != null && !gray ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] font-semibold hover:bg-muted" style={pillSt}>{inner}</button>
+                  : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] font-semibold" style={pillSt}>{inner}</span>}
+                <div className="rounded-lg border px-2 py-1.5 text-[length:var(--font-size-10-5px)] leading-snug" style={bubSt}>{glossText(p.claim)}</div>
               </div>); };
             const layout = d.layout ?? "axis";
             return (<>
@@ -1516,12 +1516,12 @@ export default function World() {
                 const allCtrl = d.parties.every((p) => p.controls);
                 return (<>
                   <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-                    <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[length:var(--font-size-8_5px)] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
+                    <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[length:var(--font-size-8-5px)] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
                     <div className="self-center text-[length:var(--font-size-10px)] text-muted-foreground">vs</div>
                     <div className="flex flex-col gap-1.5">{right.map((p, i) => pcol(p, `r${i}`))}</div>
                   </div>
                   {symmetric && <div className="mt-1.5 text-center text-[length:var(--font-size-9px)] text-muted-foreground">{allCtrl ? "양측이 서로 다른 구역을 실효 지배 · 상호 미승인" : "실효 지배자 없음 · 양측 주장 중첩"}</div>}
-                  {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[length:var(--font-size-9px)] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[length:var(--font-size-9_5px)] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
+                  {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[length:var(--font-size-9px)] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[length:var(--font-size-9-5px)] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
                 </>); })()}
               {(d.linked_choke_ids.length > 0 || d.linked_route_ids.length > 0) && (
                 <div className="mt-2.5 flex flex-wrap items-center gap-1"><span className="text-[length:var(--font-size-10px)] text-muted-foreground">무역 지도</span>
@@ -1570,7 +1570,7 @@ export default function World() {
               <LegRow sw={<SwHex c="var(--tone-blue-500)" fill={0.85} />} label="가동" />
               <LegRow sw={<SwHex c="var(--tone-blue-500)" fill={0.4} />} label="건설 중" />
               <LegRow sw={<SwHex c="var(--tone-blue-500)" fill={0.12} />} label="발표(미착공)" />
-              <div className="mt-1 text-[length:var(--font-size-9_5px)] text-muted-foreground">색 = 회사 구분</div>
+              <div className="mt-1 text-[length:var(--font-size-9-5px)] text-muted-foreground">색 = 회사 구분</div>
             </LegendCard>
           </div>
         </div>
@@ -1580,17 +1580,17 @@ export default function World() {
             <div className="flex items-center gap-1.5 text-sm font-bold"><Server className="h-4 w-4" /> 미국 AI 데이터센터
               <span className="ml-auto cursor-help text-[length:var(--font-size-12px)] font-normal text-muted-foreground" title="원 = 데이터센터 (크기 = IT 용량, 색 = 그룹). 자세한 단계·발전원·자금은 마커 클릭 시 카드에서. · 사각 = 발전소">ⓘ</span>
             </div>
-            <div className="text-[length:var(--font-size-10_5px)] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
+            <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
             {/* 마커 색 = 그룹 고정. A/B/C 칩 = 범례 겸 필터. (전력계통·신용등급은 각각 면 채색·사이트 카드로) */}
-            <div className="mt-2 flex items-center gap-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">그룹 (마커 색)<span title="개발/자금 구조로 마커 색 구분. A 스타게이트 계열(개발사 SPV+투자등급 임차인 리스) · B 하이퍼스케일러 자체보유 · C 네오클라우드. 칩 클릭 = 필터. (전력계통 = 아래 '면 채색·전력시장', 신용등급 = 사이트 카드)" className="cursor-help">ⓘ</span></div>
+            <div className="mt-2 flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">그룹 (마커 색)<span title="개발/자금 구조로 마커 색 구분. A 스타게이트 계열(개발사 SPV+투자등급 임차인 리스) · B 하이퍼스케일러 자체보유 · C 네오클라우드. 칩 클릭 = 필터. (전력계통 = 아래 '면 채색·전력시장', 신용등급 = 사이트 카드)" className="cursor-help">ⓘ</span></div>
             <div className="mt-1 flex flex-wrap gap-1">
               {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10px)] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
             </div>
-            <div className="mt-2 flex items-center gap-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">면 채색</div>
-            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[length:var(--font-size-10_5px)]">
+            <div className="mt-2 flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">면 채색</div>
+            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[length:var(--font-size-10-5px)]">
               {([["none", "없음"], ["rto", "전력시장"], ["load", "AI 부하 비중"]] as const).map(([m, lab]) => (<button key={m} onClick={() => setDcFill(m)} className={`flex-1 px-1 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
-            {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[length:var(--font-size-9_5px)] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, var(--alpha-tone-orange-500-150), var(--alpha-tone-orange-500-350), var(--alpha-tone-red-500-600))" }} /><span>높음</span></div>)}
+            {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[length:var(--font-size-9-5px)] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, var(--alpha-tone-orange-500-150), var(--alpha-tone-orange-500-350), var(--alpha-tone-red-500-600))" }} /><span>높음</span></div>)}
             {dcFill === "rto" && (<div className="mt-1 text-[length:var(--font-size-9px)] text-muted-foreground/70">아래 <b className="font-semibold text-muted-foreground">전력계통</b> 목록 = 범례. 행·지도 권역 클릭 = 설명.</div>)}
           </div>
           {/* 채색 뷰 해설 패널(§3) — '전력시장' 채색 시에만. 아코디언 = 세로 범례, 행/지도 양방향, 접힘 기억 */}
@@ -1600,7 +1600,7 @@ export default function World() {
               <Zap className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5"><span className="text-sm font-bold">전력계통</span><span className="text-[length:var(--font-size-9px)] text-muted-foreground">RTO/ISO 7 · 비ISO</span></span>
-                <span className="block text-[length:var(--font-size-9_5px)] leading-tight text-muted-foreground/80">권역 = 전기를 사고파는 시장의 경계 — 색이 곧 요금 문법</span>
+                <span className="block text-[length:var(--font-size-9-5px)] leading-tight text-muted-foreground/80">권역 = 전기를 사고파는 시장의 경계 — 색이 곧 요금 문법</span>
               </span>
               <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform ${gridPanelOpen ? "" : "-rotate-90"}`} />
             </button>
@@ -1609,14 +1609,14 @@ export default function World() {
               {/* 아코디언 폐기 — 각 권역 abbr + 3뱃지 상시 표시. 행 클릭/hover = 지도 권역 하이라이트. */}
               {RTO_ORDER.map((code) => { const hl = dcGridSel === code || dcGridHover === code;
                 return (<div key={code} onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
-                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[length:var(--font-size-11_5px)] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[length:var(--font-size-11-5px)] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} /><span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
                   <GridBadges a={RTO_ATTR[code]} why={GRID_WHY[code]} />
                 </div>); })}
               <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[length:var(--font-size-9px)] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
               {NONISO_ROWS.map((r) => { const hl = dcGridSel === r.region || dcGridHover === r.region;
                 return (<div key={r.region} onClick={() => { setDcGridSel((c) => (c === r.region ? null : r.region)); }} onMouseEnter={() => setDcGridHover(r.region)} onMouseLeave={() => setDcGridHover(null)}
-                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[length:var(--font-size-11_5px)] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[length:var(--font-size-11-5px)] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" style={hl ? { background: "var(--line)", borderColor: "var(--line)" } : undefined} /><span className="shrink-0 font-semibold">{r.region}</span>
                   <GridBadges a={r} why={GRID_WHY[r.region]} />
                 </div>); })}
@@ -1628,12 +1628,12 @@ export default function World() {
           {dcFabs && (
           <div className="flex max-h-[calc(100vh-22rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm glass">
             <div className="flex items-center gap-1.5 p-2.5 pb-1"><Hexagon className="h-4 w-4" style={{ color: "var(--tone-blue-500)" }} /><span className="text-sm font-bold">반도체 팹</span><span className="ml-auto cursor-help text-[length:var(--font-size-11px)] text-muted-foreground" title="육각 = 팹(원=DC · 사각=발전소). 채움 = 상태(가동 꽉참 · 건설 반채움 · 발표 점선 · 지연 앰버 플래그). 크기 = 발표 투자액. 색 = 회사.">ⓘ</span></div>
-            <div className="px-2.5 pb-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">{fabs.length}개 · 상태순 · 투자 발표치</div>
+            <div className="px-2.5 pb-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">{fabs.length}개 · 상태순 · 투자 발표치</div>
             <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">{[...new Set(fabs.map((f) => f.company))].map((co) => <span key={co} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[length:var(--font-size-9px)]"><span className="h-2 w-2 rounded-sm" style={{ background: FAB_COLOR[co] }} />{FAB_COMPANY_KO[co]}</span>)}</div>
             <div className="min-h-0 overflow-auto border-t border-border py-1">
               {fabsSorted.map((f) => { const on = f.id === fabSel;
                 return (<button key={f.id} onMouseEnter={() => setTip(null)} onClick={() => { setFabSel(f.id); setDcSel(null); flyPoint(f.location.lng, f.location.lat); }}
-                  className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11_5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                  className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11-5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                   <span className="h-2 w-2 shrink-0 rotate-45" style={{ background: FAB_COLOR[f.company], opacity: f.status === "announced" ? 0.4 : 1 }} />
                   <span className="flex-1 truncate">{f.site_name}</span><span className="shrink-0 text-[length:var(--font-size-9px)] text-muted-foreground">{FAB_STATUS_KO[f.status]}</span></button>); })}
             </div>
@@ -1658,18 +1658,18 @@ export default function World() {
                 className={`flex-1 py-1 text-center text-[length:var(--font-size-9px)] leading-none ${cur ? "font-bold" : "font-medium"} ${first ? "pl-1.5 pr-2" : last ? "pl-2.5 pr-1" : "px-2"}`}
                 style={{ clipPath: clip, background: done ? GROUP_COLOR[s.group] : "hsl(var(--muted))", color: done ? "var(--surface)" : "hsl(var(--muted-foreground))" }}>{STAGE_KO[st]}</div>;
             })}</div>
-            {s.status_note && <div className="mt-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">{s.status_note}</div>}
-            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[length:var(--font-size-11_5px)]">
+            {s.status_note && <div className="mt-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">{s.status_note}</div>}
+            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[length:var(--font-size-11-5px)]">
               <span className="text-muted-foreground">개발/소유</span><span>{glossText(s.landlord)}</span>
               <span className="text-muted-foreground">임차</span><span className="flex flex-wrap items-center gap-1.5">{s.tenant ?? "—"}{s.lease_term_years ? ` · ${s.lease_term_years}년` : ""}
                 {sameCredit && s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" title="임차인 신용등급 — 전기·임대료를 낼 회사의 신용, 이 사업의 돈줄이 얼마나 튼튼한가 (AAA 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
               {!sameCredit && s.credit_wrapper && <>
-                <span className="tr-gloss pl-2.5 text-[length:var(--font-size-10_5px)] text-muted-foreground/55" title="임대·전기료를 대신 갚아줄 보증 회사 — 임차인과 다를 수 있음">↳ 신용 보증은</span>
-                <span className="flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-10_5px)] text-muted-foreground/70">{s.credit_wrapper}{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[length:var(--font-size-9_5px)] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "1e", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
+                <span className="tr-gloss pl-2.5 text-[length:var(--font-size-10-5px)] text-muted-foreground/55" title="임대·전기료를 대신 갚아줄 보증 회사 — 임차인과 다를 수 있음">↳ 신용 보증은</span>
+                <span className="flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-10-5px)] text-muted-foreground/70">{s.credit_wrapper}{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[length:var(--font-size-9-5px)] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "1e", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
               </>}
               <span className="text-muted-foreground">최종 사용</span><span>{s.end_user ?? "—"}</span></div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
-              <div className="flex items-center gap-1.5 text-[length:var(--font-size-11_5px)] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 방법</div>
+              <div className="flex items-center gap-1.5 text-[length:var(--font-size-11-5px)] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 방법</div>
               {/* 대분류 뱃지(혼합/자체중심은 2뱃지) + 하위 자체발전은 작은 텍스트. 막대·계통운영자·유틸 신설(비DC정보) 제외. */}
               {(() => {
                 const gs = (s.power.grid_share ?? "") as string; const num = Number((/^\s*(\d+)\s*%/.exec(gs) || [])[1]);
@@ -1697,7 +1697,7 @@ export default function World() {
             <div className="flex items-center gap-1.5"><Atom className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{p.name}</span></div>
             <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.state ?? ""} · 원자력</div>
             <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-12px)]"><span className="rounded px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" style={{ background: col + "22", color: col }}>{NUKE_STATUS_KO[p.status]}</span>{p.capacity_mw && <span className="tabular-nums text-muted-foreground">{p.capacity_mw.toLocaleString()}MW</span>}{p.retired_year && <span className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.retired_year} 퇴역</span>}</div>
-            {p.ai_linked && (<div className="mt-2 rounded-md border border-border/60 p-2 text-[length:var(--font-size-11_5px)]"><span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: AI_SMR + "22", color: AI_SMR }}>AI 연계</span> <span className="text-muted-foreground">{p.ai_note}</span></div>)}
+            {p.ai_linked && (<div className="mt-2 rounded-md border border-border/60 p-2 text-[length:var(--font-size-11-5px)]"><span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: AI_SMR + "22", color: AI_SMR }}>AI 연계</span> <span className="text-muted-foreground">{p.ai_note}</span></div>)}
             <div className="mt-2 text-[length:var(--font-size-10px)] leading-tight text-muted-foreground">출처: {nuclearMeta.source}</div>
           </div>); })()}
 
@@ -1708,7 +1708,7 @@ export default function World() {
             <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{FAB_COMPANY_KO[f.company]} · {f.location.city}, {f.location.state} · {FAB_CAT_KO[f.category]}</div>
             <div className="mt-2 flex items-center gap-1.5 text-[length:var(--font-size-12px)]"><span className="rounded px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" style={{ background: col + "22", color: col }}>{FAB_STATUS_KO[f.status]}</span><span className="text-muted-foreground">{f.status_as_of} 기준</span>{f.status === "paused" && <span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: "var(--alpha-tone-orange-500-133)", color: "var(--tone-orange-600)" }}>지연 플래그</span>}</div>
             <div className="mt-1 text-[length:var(--font-size-11px)] leading-snug text-muted-foreground">{f.status_note}</div>
-            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[length:var(--font-size-11_5px)]">
+            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[length:var(--font-size-11-5px)]">
               <span className="text-muted-foreground">공정</span><span>{f.node_note}</span>
               <span className="text-muted-foreground">발표 투자</span><span>{f.invest_announced_usd_bn ? `$${f.invest_announced_usd_bn}B` : "미공개"} <span className="text-[length:var(--font-size-10px)] text-muted-foreground">(발표 기준)</span></span>
               <span className="text-muted-foreground">CHIPS 보조</span><span>{f.chips_award_usd_bn != null ? `$${f.chips_award_usd_bn}B` : "—"}</span>
@@ -1802,5 +1802,5 @@ function Chip({ children, color, onClick }: { children: React.ReactNode; color: 
   return <button onClick={onClick} className="rounded-full border px-2 py-0.5 text-[length:var(--font-size-11px)] hover:bg-muted" style={{ borderColor: color + "66" }}>{children}</button>;
 }
 function Src({ url, label }: { url: string; label?: string }) {
-  return <a href={url} target="_blank" rel="noreferrer" className="mt-2.5 flex items-center gap-1 text-[length:var(--font-size-10_5px)] text-muted-foreground hover:text-foreground"><ExternalLink className="h-3 w-3" />{label ?? "출처"}</a>;
+  return <a href={url} target="_blank" rel="noreferrer" className="mt-2.5 flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground hover:text-foreground"><ExternalLink className="h-3 w-3" />{label ?? "출처"}</a>;
 }

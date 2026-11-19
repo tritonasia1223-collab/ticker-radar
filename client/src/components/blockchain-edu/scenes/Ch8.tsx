@@ -23,9 +23,9 @@ export function Ch8Pipeline() {
       </div>
       <p className="text-[length:var(--font-size-11px)] text-muted-foreground">수수료: 운용보수(자산운용사 {(C.rwa.mgmtFeePct * 100).toFixed(1)}%) + 플랫폼 수수료({(C.rwa.platformFeePct * 100).toFixed(2)}%).</p>
       <div className="rounded-lg border border-border p-2.5">
-        <div className="text-[length:var(--font-size-11_5px)] font-semibold">일반 토큰과의 차이 — 화이트리스트 전송 제한</div>
+        <div className="text-[length:var(--font-size-11-5px)] font-semibold">일반 토큰과의 차이 — 화이트리스트 전송 제한</div>
         <button onClick={() => setBlocked(true)} className="mt-1.5 rounded-md border border-border px-3 py-1.5 text-[length:var(--font-size-12px)] font-medium hover:bg-accent transition-colors">허가 안 된 주소로 전송 시도</button>
-        {blocked && <p className="mt-1.5 text-[length:var(--font-size-11_5px)] font-medium text-red-600">✗ 전송 거부 — 화이트리스트에 없는 주소입니다.</p>}
+        {blocked && <p className="mt-1.5 text-[length:var(--font-size-11-5px)] font-medium text-red-600">✗ 전송 거부 — 화이트리스트에 없는 주소입니다.</p>}
       </div>
     </div>
   );
@@ -46,13 +46,13 @@ export function Ch8Rights() {
   const [insolvent, setInsolvent] = useState(false);
   return (
     <div className="w-full space-y-2.5">
-      <p className="text-[length:var(--font-size-11_5px)] font-medium">락앤민트 그림이 같아도, 토큰에 붙는 <b>법적 권리</b>가 자산의 실체를 결정합니다. 온체인에서 보이는 건 토큰이지 권리가 아니에요.</p>
+      <p className="text-[length:var(--font-size-11-5px)] font-medium">락앤민트 그림이 같아도, 토큰에 붙는 <b>법적 권리</b>가 자산의 실체를 결정합니다. 온체인에서 보이는 건 토큰이지 권리가 아니에요.</p>
       <ComparisonCards cards={RIGHTS_CARDS} rightsMode />
       <div className="rounded-lg border border-border p-2.5">
         <button onClick={() => setInsolvent((v) => !v)} className="rounded-md border border-border px-3 py-1.5 text-[length:var(--font-size-12px)] font-medium hover:bg-accent transition-colors">
           {insolvent ? "되돌리기" : "발행사 파산 시나리오"}
         </button>
-        {insolvent && <p className="mt-1.5 text-[length:var(--font-size-11_5px)] text-emerald-700">담보(실물 주식)는 별도 커스터디에 격리 → 독립 수탁 대리인이 장내 매각 → 토큰 보유자에게 현금 분배. <b>발행사가 죽어도 담보는 산다.</b></p>}
+        {insolvent && <p className="mt-1.5 text-[length:var(--font-size-11-5px)] text-emerald-700">담보(실물 주식)는 별도 커스터디에 격리 → 독립 수탁 대리인이 장내 매각 → 토큰 보유자에게 현금 분배. <b>발행사가 죽어도 담보는 산다.</b></p>}
       </div>
     </div>
   );
@@ -82,7 +82,7 @@ export function Ch8Receipt() {
           const meta = RECIPIENT_META[rec as keyof typeof RECIPIENT_META];
           return (
             <div key={rec}>
-              <div className="flex justify-between text-[length:var(--font-size-10_5px)]"><span style={{ color: pal.ink }}>{meta.label}</span><span className="tabular-nums">{fmtUSDprecise(v)} · {fmtPct(r.totalUSD ? v / r.totalUSD : 0)}</span></div>
+              <div className="flex justify-between text-[length:var(--font-size-10-5px)]"><span style={{ color: pal.ink }}>{meta.label}</span><span className="tabular-nums">{fmtUSDprecise(v)} · {fmtPct(r.totalUSD ? v / r.totalUSD : 0)}</span></div>
               <div className="h-2 w-full overflow-hidden rounded bg-secondary"><div className="h-full rounded" style={{ width: `${r.totalUSD ? (v / r.totalUSD) * 100 : 0}%`, background: pal.solid }} /></div>
             </div>
           );

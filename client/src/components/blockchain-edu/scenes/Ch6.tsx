@@ -27,7 +27,7 @@ function Track({ label, sub, color, dur, tag, racing }: { label: string; sub: st
       <div className="my-1.5 h-2.5 w-full overflow-hidden rounded-full bg-white/70">
         <div ref={bar} className="h-full rounded-full" style={{ background: color, width: '4%' }} />
       </div>
-      <p className="text-[length:var(--font-size-10_5px)]" style={{ color }}>{sub}</p>
+      <p className="text-[length:var(--font-size-10-5px)]" style={{ color }}>{sub}</p>
     </div>
   );
 }
@@ -37,7 +37,7 @@ export function Ch6Crosschain() {
 
   return (
     <div className="w-full space-y-2.5">
-      <p className="text-[length:var(--font-size-11_5px)] text-muted-foreground">롯데월드 팔찌를 에버랜드에서 못 쓰는 문제 — 체인을 건너려면?</p>
+      <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground">롯데월드 팔찌를 에버랜드에서 못 쓰는 문제 — 체인을 건너려면?</p>
       <Track racing={racing} label="공식 경로 (락앤민트)" sub="L1 경유 — 느리지만 L1이 보증" color={LAYER.L1.solid} dur={3.2} tag="느림 · 안전" />
       <Track racing={racing} label="서드파티 유동성 브릿지" sub="빠르지만 별도 신뢰 가정 — 브릿지 자체가 해킹 표적" color={LAYER.L2.solid} dur={1.1} tag="빠름 · 위험" />
       <button onClick={() => { setRacing(false); setTimeout(() => setRacing(true), 30); }}

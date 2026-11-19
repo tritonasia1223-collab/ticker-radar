@@ -56,7 +56,7 @@ export function LiquidityPeriodPanels({ weeks, selected, kind, dominantShare }: 
         <h3 className="text-lg font-semibold">최근 {period.count === 4 ? '한 달(4주)' : '한 분기(13주)'}</h3>
         <p className="mt-1 text-xs text-[color:var(--ink-soft)]">{period.previous?.date ?? '비교일 자료 없음'} → {selected?.date ?? '—'}</p>
         {period.rows.length && period.source && period.destination ? <>
-          <p className="mt-4 mb-4 text-[length:var(--font-size-17px)] leading-relaxed min-h-[56px]" style={{ fontFamily: "var(--font-serif)" }}>
+          <p className="mt-4 mb-4 text-[length:var(--font-size-17px)] leading-relaxed min-h-[56px]" style={{ fontFamily: "var(--font-editorial-serif)" }}>
             {kind === 'source' ? <>순유동성이 <strong style={{ color: color(period.source.dNl) }}>{change(period.source.dNl)}</strong>.</> : <>지급준비금은 <strong style={{ color: color(period.destination.dReserves) }}>{change(period.destination.dReserves)}</strong>.</>}
           </p>
           <VerticalContributions rows={period.rows} limit={limit} bandId={`${kind}-${period.count}`} label={`${period.count}주 ${kind === 'source' ? '유동성 원인' : '유동성 반영 항목'}`} />

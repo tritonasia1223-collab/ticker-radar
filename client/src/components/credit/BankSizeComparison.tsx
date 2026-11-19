@@ -45,7 +45,7 @@ export function BankSizeComparison({spec,result,state,weeks}:{spec:Indicator;res
   return <article id={`read-${spec.id}`} data-credit-reading={spec.id} className="border-t border-[var(--line-soft)] pt-6" style={{scrollMarginTop:'var(--liquidity-sticky-top, 84px)'}}>
     <div className="text-xs text-[color:var(--ink-soft)]">{spec.name} · 주간</div>
     <div className="flex flex-wrap justify-between items-center gap-3 my-3">
-      <h3 style={{fontFamily:"var(--font-serif)",fontSize:"var(--font-size-20)",lineHeight:1.55}}>참고 지표 - H.8 대형·소형은행 대출·예금</h3>
+      <h3 style={{fontFamily:"var(--font-editorial-serif)",fontSize:"var(--font-size-20)",lineHeight:1.55}}>참고 지표 - H.8 대형·소형은행 대출·예금</h3>
       <button className="text-xs underline text-[color:var(--ink-soft)]" onClick={()=>setIndexed(v=>!v)}>{indexed?'실제 잔액 보기':'기준 100으로 비교'}</button>
     </div>
     <div className="grid grid-cols-2 gap-6 mt-6" data-testid="bank-size-pairs">

@@ -48,8 +48,8 @@ interface Overview { weeks: WeekPoint[]; daily: DailyPoint[]; treasury?: { month
 const C = { bg: "var(--bg)", card: "var(--surface)", ink: "var(--ink)", body: "var(--ink)", cap: "var(--ink-soft)", line: "var(--line-soft)", line2: "var(--line-soft)", n1: "var(--line)", n2: "var(--line-soft)", n3: "var(--line)", n4: "var(--ink-soft)", release: "var(--tone-green-700)", absorb: "var(--tone-red-500)", over: "var(--tone-red-200)", m2: "var(--tone-blue-600)", border2: "var(--line)" };
 // 범주(잔고 항목·만기·지수) 구분용 색. 초록·빨강 계열은 쓰지 않는다 — 그 둘은 방출·흡수 판정 전용.
 const HUE = { blue: "var(--tone-blue-600)", sky: "var(--tone-blue-400)", ochre: "var(--tone-amber-500)", purple: "var(--tone-indigo-500)", brown: "var(--tone-orange-500)", slate: "var(--tone-blue-500)" };
-const SERIF = "var(--font-serif)";
-const SANS = "var(--font-sans)";
+const SERIF = "var(--font-reading-serif)";
+const SANS = "var(--font-reading-sans)";
 const FONT_HREF = "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@500;700&display=swap";
 const tone = (t?: Part["tone"]) => (t === "release" ? C.release : t === "absorb" ? C.absorb : undefined);
 const dollars = (musd: number) => `$${fmt.amount(musd)}`;

@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <nav className="block overflow-auto flex-1 p-3 gap-1 space-y-0.5">
           {NAV_GROUPS.map((g) => (
             <div key={g.group} className="block shrink-0 gap-1 pt-3 first:pt-0">
-              <div className="block select-none px-3 pb-1 text-[length:var(--font-size-10_5px)] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
+              <div className="block select-none px-3 pb-1 text-[length:var(--font-size-10-5px)] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
               {g.items.map((n) => {
                 const active = location === n.href;
                 const Icon = n.icon;

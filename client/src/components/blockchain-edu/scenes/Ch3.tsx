@@ -47,7 +47,7 @@ export function Ch3Sequencer() {
           );
         })}
       </div>
-      <p className="mt-2 text-[length:var(--font-size-11_5px)]" style={{ color: frontrun ? "var(--tone-red-500)" : "hsl(var(--muted-foreground))" }}>
+      <p className="mt-2 text-[length:var(--font-size-11-5px)]" style={{ color: frontrun ? "var(--tone-red-500)" : "hsl(var(--muted-foreground))" }}>
         {frontrun
           ? "⚠ 경매 모드: 높은 팁의 봇이 내 스왑 앞에 끼어듭니다 (프론트러닝 = MEV)."
           : "선착순 모드: 도착 순서 그대로 — 팁으로 추월 불가. 설계가 MEV를 막습니다."}
@@ -71,7 +71,7 @@ export function Ch3Compression() {
       <div className="h-5 w-full overflow-hidden rounded bg-secondary">
         <div   className="h-full rounded" style={{...({ background: LAYER.L2.solid }),width: `${(per / RAW) * 100}%`}} />
       </div>
-      <p className="mt-2 text-[length:var(--font-size-11_5px)] text-muted-foreground">
+      <p className="mt-2 text-[length:var(--font-size-11-5px)] text-muted-foreground">
         {compressed ? "서명 제거 + state diff → 128KB 블롭 1개에 " : "원본(서명 포함) → 128KB 블롭에 "}
         <b className="text-foreground tabular-nums">{fit.toLocaleString()}건</b>{compressed ? " 적재" : "밖에 못 담음"}
       </p>
@@ -136,7 +136,7 @@ export function Ch3BlobFloor() {
         ))}
       </div>
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-[length:var(--font-size-11_5px)]">40블록 후 blob base fee</span>
+        <span className="text-[length:var(--font-size-11-5px)]">40블록 후 blob base fee</span>
         <span className="text-[length:var(--font-size-13px)] font-bold tabular-nums" style={{ color: atFloor ? "var(--tone-blue-500)" : LAYER.burn.ink }}>
           {atFloor ? `${C.blob.minBaseFeeWei} wei (바닥)` : `${sim.finalFee.toExponential(1)} wei ↑`}
         </span>
@@ -146,7 +146,7 @@ export function Ch3BlobFloor() {
           ? "타깃 미만 수요 → base fee가 1 wei 바닥에 고착. 아무리 오래 지속돼도 안 움직입니다."
           : "타깃 초과 수요가 지속돼야 비로소 지수 상승. 바닥 이탈은 비대칭적으로 어렵습니다."}
       </p>
-      <p className="mt-1 text-[length:var(--font-size-10_5px)] text-muted-foreground">→ "L2 정산비가 거의 공짜"인 건 우연이 아니라 수수료 공식의 구조적 귀결.</p>
+      <p className="mt-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">→ "L2 정산비가 거의 공짜"인 건 우연이 아니라 수수료 공식의 구조적 귀결.</p>
     </div>
   );
 }

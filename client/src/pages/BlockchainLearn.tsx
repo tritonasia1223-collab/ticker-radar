@@ -87,13 +87,13 @@ function EduInner() {
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <h3 className="text-[length:var(--font-size-14px)] font-bold">돈의 행방 <span className="text-[length:var(--font-size-11_5px)] font-normal text-muted-foreground">· 현재 거래: <b className="text-foreground">{ACTION_LABEL[action]}</b></span></h3>
+            <h3 className="text-[length:var(--font-size-14px)] font-bold">돈의 행방 <span className="text-[length:var(--font-size-11-5px)] font-normal text-muted-foreground">· 현재 거래: <b className="text-foreground">{ACTION_LABEL[action]}</b></span></h3>
             <p className="text-[length:var(--font-size-11px)] text-muted-foreground">거래 종류를 고르고 금액을 바꿔 수수료가 누구에게 가는지 보세요.</p>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums">원장 {state.ledger.length}건</span>
             <button onClick={() => addLedger({ chapterId: activeId, action: ACTION_LABEL[action], feeBreakdown: splits })}
-              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[length:var(--font-size-11_5px)] font-medium hover:bg-accent transition-colors">
+              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[length:var(--font-size-11-5px)] font-medium hover:bg-accent transition-colors">
               <Save className="h-3.5 w-3.5" /> 원장에 기록
             </button>
           </div>
@@ -103,7 +103,7 @@ function EduInner() {
         <div className="mb-2 flex flex-wrap gap-1.5">
           {ACTIONS.map((a) => (
             <button key={a} onClick={() => setAction(a)}
-              className={`rounded-full border px-2.5 py-1 text-[length:var(--font-size-11_5px)] font-medium transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-[length:var(--font-size-11-5px)] font-medium transition-colors ${
                 a === action ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"}`}>
               {ACTION_LABEL[a]}
             </button>

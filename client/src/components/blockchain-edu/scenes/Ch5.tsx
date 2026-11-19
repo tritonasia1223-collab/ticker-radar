@@ -29,7 +29,7 @@ export function Ch5Withdraw() {
       </div>
       <div className="rounded-lg border p-2.5" style={{ borderColor: LAYER.L2.solid, background: LAYER.L2.soft }}>
         <div className="text-[length:var(--font-size-12px)] font-bold" style={{ color: LAYER.L2.ink }}>{proofDesc.title} <span className="ml-1 text-[length:var(--font-size-10px)] font-normal">· {proofDesc.tag}</span></div>
-        <p className="mt-1 text-[length:var(--font-size-11_5px)]" style={{ color: LAYER.L2.ink }}>{proofDesc.body}</p>
+        <p className="mt-1 text-[length:var(--font-size-11-5px)]" style={{ color: LAYER.L2.ink }}>{proofDesc.body}</p>
       </div>
 
       <div>
@@ -42,7 +42,7 @@ export function Ch5Withdraw() {
             </button>
           ))}
         </div>
-        <div className={`rounded-lg border p-2.5 text-[length:var(--font-size-11_5px)] ${scen.tone === "warn" ? "border-amber-400/50 bg-amber-50 text-amber-900" : "border-border text-muted-foreground"}`}>
+        <div className={`rounded-lg border p-2.5 text-[length:var(--font-size-11-5px)] ${scen.tone === "warn" ? "border-amber-400/50 bg-amber-50 text-amber-900" : "border-border text-muted-foreground"}`}>
           {scen.body}
         </div>
       </div>

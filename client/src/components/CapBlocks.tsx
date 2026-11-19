@@ -13,7 +13,7 @@ import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, 
 import { useCapSeries, type SeriesMap } from "@/lib/capitalism-series";
 
 // Keep the text content box and typography identical when toggling edit/read mode.
-const insightTextLayout = "w-full min-w-0 rounded-md border px-2.5 py-2 text-[length:var(--font-size-13_5px)] leading-relaxed whitespace-pre-wrap break-words text-left text-foreground";
+const insightTextLayout = "w-full min-w-0 rounded-md border px-2.5 py-2 text-[length:var(--font-size-13-5px)] leading-relaxed whitespace-pre-wrap break-words text-left text-foreground";
 
 const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? (key === "gdp_growth" ? { ...PANELS[0], id: key, series: key, label: "실질 GDP 성장률(이전 지표)", unit: "%", start: "1930", zeroLine: true, kind: "area" as const } : undefined) ?? (key === "trade" ? { ...PANELS[0], id: key, series: key, label: "실질 순수출(이전 지표)", unit: "십억 2017달러·연율", color: "var(--tone-orange-400)", start: "1929", zeroLine: true, kind: "area" as const } : undefined) ?? { ...PANELS[0], id: key, series: key, label: key === "dollar" ? "기존 달러지수(삭제됨)" : key === "cpi_level" ? "CPI 수준(이전 지표)" : "사용할 수 없는 지표", unit: "" };
 // series 미로드 시(undefined) 안전 기본값. 로드 후엔 실제 데이터 범위.
@@ -408,16 +408,16 @@ export function BlockStack({
               <div className="flex flex-wrap items-center gap-1 pt-0.5" onMouseDown={(e) => e.preventDefault()}>
                 <span className="text-[length:var(--font-size-10px)] text-muted-foreground/60">커서 위치에 삽입:</span>
                 {allow.table ? <button type="button" onClick={() => splitInsert(i, newTable())}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-table-${i}`}><TableIcon className="h-3 w-3" /> 표</button> : null}
                 {allow.image ? <button type="button" onClick={() => splitInsertImage(i)}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-image-${i}`}><ImagePlus className="h-3 w-3" /> 이미지</button> : null}
                 {allow.chart ? <button type="button" onClick={() => splitInsert(i, newChart())}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-chart-${i}`}><ChartIcon className="h-3 w-3" /> 그래프</button> : null}
                 {allow.divider ? <button type="button" onClick={() => splitInsert(i, newDivider())}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-divider-${i}`}><Minus className="h-3 w-3" /> 구분선</button> : null}
               </div>
             ) : null}

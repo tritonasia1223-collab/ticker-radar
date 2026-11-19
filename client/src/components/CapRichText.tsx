@@ -94,7 +94,7 @@ export function CapRichText({
                 display: "flex",
                 textAlign: "left",
                 paddingLeft: `${lvl * 0.85}em`,
-                gap: "var(--space-0_3em)",
+                gap: "var(--space-0-3em)",
                 alignItems: "baseline",
                 // 레벨이 깊을수록 줄 전체를 미미하게 흐릿하게.
                 opacity: BULLET_OPACITY[lvl],

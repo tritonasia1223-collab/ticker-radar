@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {(error.stack || componentStack) && (
               <details className="mt-2">
                 <summary className="cursor-pointer text-[length:var(--font-size-11px)] text-muted-foreground">스택 보기</summary>
-                <pre className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[length:var(--font-size-10_5px)] leading-snug text-muted-foreground">
+                <pre className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[length:var(--font-size-10-5px)] leading-snug text-muted-foreground">
 {(error.stack || "") + (componentStack ? "\n\n--- component stack ---" + componentStack : "")}
                 </pre>
               </details>

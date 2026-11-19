@@ -37,7 +37,7 @@ export function LiquidityDashboard({ how, periods, from, to, who, flow, flowTren
   return <section aria-label="유동성과 국채 리뷰" className="mb-8" data-testid="liquidity-review">
     <div className="border-t-2 border-[var(--ink)] pt-6">
       <div className="text-xs text-[color:var(--ink-soft)]">{how ? `${periods[1].from} → ${periods[1].to}` : "관측 자료 없음"}</div>
-      <h2 className="mt-3 mb-2 font-semibold text-[length:var(--font-size-28px)]" style={{ fontFamily: "var(--font-serif)" }} data-testid="liquidity-headline">{how ? <>이번 주 유동성은 {changeText(periods[1].change, true)}.</> : "선택 주차의 유동성 관측이 없습니다."}</h2>
+      <h2 className="mt-3 mb-2 font-semibold text-[length:var(--font-size-28px)]" style={{ fontFamily: "var(--font-editorial-serif)" }} data-testid="liquidity-headline">{how ? <>이번 주 유동성은 {changeText(periods[1].change, true)}.</> : "선택 주차의 유동성 관측이 없습니다."}</h2>
       {how && <p className="mb-6 text-[length:var(--font-size-15px)] leading-[1.9] text-[color:var(--ink-soft)]" data-testid="liquidity-period-summary">
         <span>최근 한 달(4주) 추세는 {changeText(periods[4].change)}이고, </span>
         <span className="inline-block">최근 1분기(13주) 추세는 {changeText(periods[13].change)}입니다.</span>
@@ -52,7 +52,7 @@ export function LiquidityDashboard({ how, periods, from, to, who, flow, flowTren
     </div>
     <div className="mt-6 border-t-2 border-[var(--ink)] pt-6">
       {flow && <div className="text-xs text-[color:var(--ink-soft)]">{flow.start} → {flow.end} · 이번 주 · 결제일 기준</div>}
-      <h2 className="mt-3 mb-2 font-semibold text-[length:var(--font-size-28px)]" style={{ fontFamily: "var(--font-serif)" }} data-testid="treasury-headline">{flow ? <>이번 주 국채는 순액으로 {changeText(flow.net, true)}.</> : flowLoading ? "이번 주 국채 발행·상환을 확인하고 있습니다." : "이번 주 국채 순증감 자료를 확인하지 못했습니다."}</h2>
+      <h2 className="mt-3 mb-2 font-semibold text-[length:var(--font-size-28px)]" style={{ fontFamily: "var(--font-editorial-serif)" }} data-testid="treasury-headline">{flow ? <>이번 주 국채는 순액으로 {changeText(flow.net, true)}.</> : flowLoading ? "이번 주 국채 발행·상환을 확인하고 있습니다." : "이번 주 국채 순증감 자료를 확인하지 못했습니다."}</h2>
       <p className="mb-6 text-[length:var(--font-size-15px)] leading-[1.9] text-[color:var(--ink-soft)]" data-testid="treasury-period-summary">
         <span>최근 한 달(4주) 추세는 {changeText(flowTrends[4])}이고, </span>
         <span className="inline-block">최근 1분기(13주) 추세는 {changeText(flowTrends[13])}입니다.</span>
