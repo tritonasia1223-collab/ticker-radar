@@ -1,5 +1,7 @@
 # FISCUS — 작업 가이드
 
+주간 해설 운영은 [AGENTS.md](AGENTS.md), [인수인계](docs/LIQUIDITY-EDITORIAL-HANDOFF.md), [실행 절차](tools/liquidity-editorial/README.md)를 따른다. 2026-11-19 사용자가 새 주차와 직접 피드백 수정본의 상시 배포를 허용했다. 작성·검증 후 바로 배포하고 운영 반영을 확인한다. 배포를 문안의 사용자 승인으로 간주하지 않으며 다른 작업의 변경을 섞지 않는다.
+
 개인용 매크로 리서치 도구. 현재 메인: **자본주의 경제사 / 미국 유동성 / 세계 현황판**. 종목 발견·정치인·내부자 거래는 개발 보류 상태이며 코드와 수집 설정은 보존한다. 현재 안내는 README.md 및 docs/INDEX.md를 따른다.
 작업 브랜치: `master`(= Vercel Production Branch). **master 에 커밋·푸시하면 곧장 프로덕션 자동 배포**(`ticker-radar-five.vercel.app`) — 별도 머지 단계 없음. 단순 수정은 master에서 처리할 수 있지만, 저장·협업·DB·복구처럼 교차 검증이 필요한 변경은 `agent/<작업-ID>` 브랜치에서 구현하고 검증 통과 뒤 master에 반영한다. 커밋·푸시는 사용자의 요청 범위에 따라 진행하며, 푸시의 자동 배포 영향을 확인한다.
 

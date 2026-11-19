@@ -1,0 +1,496 @@
+{
+  "asOf": "2026-11-11",
+  "previousAsOf": "2026-11-04",
+  "handoffHash": "18e90923f5eb459fe2e00ac60b8a84a490a7e6eac8c0a92a7342dc9c3cdf790b",
+  "sources": [
+    {
+      "id": "dts",
+      "url": "https://fiscaldata.treasury.gov/datasets/daily-treasury-statement/",
+      "title": "DTS 재무부 현금 보고서",
+      "claim": "11/5~10 국채 현금 순조달287.20억, 기타 순지출528.34억, TGA−241.14억. 직접 조회 JSON 보존.",
+      "accessedAt": "2026-11-13",
+      "eventDate": "2026-11-05~10"
+    },
+    {
+      "id": "h41",
+      "url": "https://www.federalreserve.gov/releases/h41/current/",
+      "title": "연준 H.4.1",
+      "claim": "11/11 수요일 지급준비금2,969,977백만, 할인창구9,268백만, repo5백만. 주평균과 구분.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-12",
+      "eventDate": "2026-11-11"
+    },
+    {
+      "id": "refunding",
+      "url": "https://home.treasury.gov/news/press-releases/sb0678",
+      "title": "11월 분기 발행 계획",
+      "claim": "정례 중장기채 규모 유지, 계절 자금 수요는 단기채로 조절. 11월 말 TGA 고점 전망과 연말 목표는 미래 계획.",
+      "publishedAt": "2026-11-04",
+      "eventDate": "2026-11-04",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "fomc",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm",
+      "title": "10월 FOMC 성명",
+      "claim": "3.75~4.00% 동결. 2명은 인상을 선호.",
+      "publishedAt": "2026-10-28",
+      "eventDate": "2026-10-28",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "implementation",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a1.htm",
+      "title": "10월 FOMC 시행문",
+      "claim": "IORB 3.90% 유지, 만기 국채 차환·기관채 원금 국채 재투자 유지.",
+      "publishedAt": "2026-10-28",
+      "eventDate": "2026-10-29",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "rmp",
+      "url": "https://www.newyorkfed.org/markets/domestic-market-operations/monetary-policy-implementation/treasury-securities/treasury-securities-operational-details",
+      "title": "NYFed 국채 매입 일정",
+      "claim": "10/15~11/13 추가 RMP0, 재투자146억 계획. 미래 집행 완료로 해석하지 않음.",
+      "publishedAt": "2026-10-14",
+      "eventDate": "2026-10-15~2026-11-13",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "sloos",
+      "url": "https://www.federalreserve.gov/data/sloos/sloos-202610.htm",
+      "title": "10월 SLOOS",
+      "claim": "기업 대출 수요 약화, 투자 감소와 자금 조달처 이동을 응답 이유로 제시. 비은행 대출 수요·심사는 다른 방향.",
+      "publishedAt": "2026-11-02",
+      "eventDate": "2026-07~09; 응답 마감 10/05",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "nfci",
+      "url": "https://www.chicagofed.org/research/data/nfci/current-data",
+      "title": "Chicago Fed NFCI 및 수정 설명",
+      "claim": "월초에는 월간·분기 자료 반영으로 과거 수정이 커질 수 있음. 이번 전주치 수정과 실제 새 주간 변화 구별.",
+      "eventDate": "2026-10-30",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "sifma",
+      "url": "https://www.sifma.org/wp-content/uploads/2021/02/US-Fixed-Income-Securities-Statistics-SIFMA.xlsx",
+      "title": "SIFMA 전체 회사채 발행 통계",
+      "claim": "수집본10월139.83131B, 수정9월275.19656B. 같은달·연속3개월 비교로 단월 과장 방지.",
+      "eventDate": "2026-10",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "obdc",
+      "url": "https://www.blueowlcapitalcorporation.com/investors/news-events/press-releases/detail/96/blue-owl-capital-corporation-announces-september-30-2026",
+      "title": "OBDC 3분기 실적",
+      "claim": "NAV14.32, 부실원가2.9%, PIK와 총투자수익 분기 실적.",
+      "publishedAt": "2026-11-04",
+      "eventDate": "2026-09-30",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "fsk",
+      "url": "https://fskkrcapitalcorp.gcs-web.com/static-files/55182db1-2f95-4947-a184-dfe6e163bf73",
+      "title": "FSK 3분기 실적",
+      "claim": "11/5 공개: 부실 원가6.4%, NAV18.28, PIK46/294. 11/4 주가 반응 원인으로 사용하지 않음.",
+      "publishedAt": "2026-11-05",
+      "eventDate": "2026-09-30",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "arcc-10q",
+      "url": "https://www.sec.gov/Archives/edgar/data/1287750/000162828026067383/arcc-20260930.htm",
+      "title": "ARCC 3분기 10-Q",
+      "claim": "분기 PIK 이자·배당125백만/투자수익763백만=16.38%. 부실 대출 비율과 다른 분모.",
+      "publishedAt": "2026-10-27",
+      "eventDate": "2026-09-30",
+      "accessedAt": "2026-11-13"
+    },
+    {
+      "id": "funding",
+      "url": "https://www.fhlbny.com/w/fi/msd/2026/261106",
+      "title": "FHLBNY 11월6일 보고서",
+      "claim": "11/5 작성 시점에 월말 압박 완화 징후. 국채 공급·RMP 중단 등 배경, 향후 상승 가능성은 전망이지 실제 결과가 아님.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-06",
+      "eventDate": "2026-11-05"
+    },
+    {
+      "id": "holiday",
+      "url": "https://www.sifma.org/resources/general/holiday-schedule/",
+      "title": "SIFMA 2026 휴장 일정",
+      "claim": "11/11 Veterans Day 채권시장 휴장 권고. SOFR·CP·단기국채 최신 관측은11/10.",
+      "accessedAt": "2026-11-13",
+      "eventDate": "2026-11-11"
+    },
+    {
+      "id": "h8",
+      "url": "https://www.federalreserve.gov/releases/h8/20261106/",
+      "title": "H.8 11월6일 발표",
+      "claim": "10/28 신규 장부: 기업대출 소폭 증가, 비은행 대출 감소. 두 계열 장기 증가 유지.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-06",
+      "eventDate": "2026-10-28"
+    },
+    {
+      "id": "cpi",
+      "url": "https://www.bls.gov/news.release/cpi.nr0.htm",
+      "title": "10월 CPI 발표",
+      "claim": "10월 전월비 headline+.4%, core+.3%. 2025/10 결측으로 전년비를 임의 계산하지 않음.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-10",
+      "eventDate": "2026-10"
+    },
+    {
+      "id": "rates-news",
+      "url": "https://www.kiplinger.com/investing/stocks/stocks-drop-as-rate-hike-worries-rise-stock-market-today",
+      "title": "11월10일 인플레이션 발표와 채권 반응",
+      "claim": "물가 발표 후 10년 국채금리12.6bp 상승 보도. 주간 등급별 신용 차이 전체의 원인으로 확대하지 않음.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-10",
+      "eventDate": "2026-11-10"
+    },
+    {
+      "id": "vanguard",
+      "url": "https://corporate.vanguard.com/content/corporatesite/us/en/corp/articles/beyond-ccc-high-yield-appears-resilient.html",
+      "title": "Vanguard CCC 스트레스 분석",
+      "claim": "Bloomberg 기준 일부 통신·미디어 차주에 집중. 저신용 대출의 사모대출·레버리지론 이동을 장기 맥락으로 제시. ICE 수치와 혼합 금지.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-10",
+      "eventDate": "2026-11-10"
+    },
+    {
+      "id": "auction-api",
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query",
+      "title": "입찰 API 직접 확인",
+      "claim": "4주7행 중 유효2행, 낙찰값결측5행. 유효 최신10/15, 행 최신10/22. 그 후 입찰 행도 부재.",
+      "accessedAt": "2026-11-13",
+      "publishedAt": "2026-11-13",
+      "eventDate": "2026-10-15~11-11"
+    },
+    {
+      "id": "auction-pdf",
+      "url": "https://www.treasurydirect.gov/instit/annceresult/press/preanre/2026/R_20261029_3.pdf",
+      "title": "재무부 10월29일 7년물 입찰 결과",
+      "claim": "개별 결과는 발표됐음. API 미반영과 공식 미발표를 구분.",
+      "publishedAt": "2026-10-29",
+      "eventDate": "2026-10-29",
+      "accessedAt": "2026-11-06"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "overview",
+      "decision": "write",
+      "reason": "TGA 현금수지와 자금시장·신용시장 엇갈림",
+      "paragraphs": [
+        "순유동성은 2주 연속 늘었지만, 이번 증가 폭은 지난주의 절반 정도입니다. 재무부가 국채로 조달한 현금보다 지출에 필요한 돈이 더 많아 TGA가 줄었습니다. 월초에 크게 풀린 뒤에도 현금 방출이 이어진 것입니다.",
+        "이번에는 레포 금리차도 다시 음수로 내려왔습니다. 지난주에는 돈이 풀려도 조달 압력이 남았지만, 이제 단기 자금시장에서도 완화가 확인됩니다. 다만 CCC 회사채의 위험 프리미엄은 다시 커져, 시장의 현금 사정이 나아지는 것과 취약 기업의 신용 문제가 풀리는 것은 다른 흐름입니다."
+      ],
+      "sourceIds": [
+        "dts",
+        "funding",
+        "vanguard"
+      ],
+      "materialChange": true
+    },
+    {
+      "id": "amount",
+      "decision": "omit",
+      "reason": "동일9월 M2 관측. 총액 설명을 반복하지 않고 이번 주 생략",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "source",
+      "decision": "write",
+      "reason": "13주 롤링 반전의 제거주 효과,26·52주와 중간 경로",
+      "paragraphs": [
+        "최근 한 분기 순유동성이 증가로 바뀌었지만, 이번 주에 갑자기 큰 완화가 시작됐다는 뜻은 아닙니다. 8월 초 약 574억 달러가 줄었던 주간이 비교에서 빠지고, 이번 주 약 331억 달러 증가가 들어온 영향이 큽니다. 최근 한 달은 아직 감소입니다.",
+        "8월 이후의 경로를 길게 보면, 재무부가 잔고를 쌓을 때 줄고 지출할 때 되돌아오는 등락이 반복되고 있습니다. 지금도 6개월 전보다는 적고 1년 전보다는 많습니다. 분기 합계의 부호 하나보다, 월초 반등이 지나간 뒤에도 수준을 유지하는지가 추세를 가르는 기준입니다. 추가 RMP는 여전히 멈춰 있습니다."
+      ],
+      "sourceIds": [
+        "dts",
+        "rmp"
+      ],
+      "materialChange": true
+    },
+    {
+      "id": "destination",
+      "decision": "write",
+      "reason": "대차대조표 항등관계; 이동경로로 오인하지 않음,6개월 수준",
+      "paragraphs": [
+        "지급준비금도 늘었지만, 순유동성이 늘어난 만큼 은행 준비금이 채워진 것은 아닙니다. 순유동성은 약 331억 달러 증가한 반면 준비금 증가는 약 72억 달러에 그쳤습니다. 차이는 현금통화와 연준의 다른 부채 항목 변화에 반영됐습니다.",
+        "준비금은 약 2.97조 달러로 10월 말 저점에서는 회복했지만, 10월 중순과 6개월 전 수준에는 아직 못 미칩니다. 레포 압력이 완화된 것은 긍정적이지만, 총준비금의 여유가 계속 커지는 국면으로 바뀌었다고 보기에는 회복 폭이 작습니다."
+      ],
+      "sourceIds": [
+        "h41"
+      ],
+      "materialChange": false
+    },
+    {
+      "id": "issuance",
+      "decision": "write",
+      "reason": "주간 및4주 구성과11월 분기발행계획",
+      "paragraphs": [
+        "단기채 중심의 순발행은 이어지지만, 이번 주 전체 순증가 규모는 줄었습니다. 단기채가 약 422억 달러 늘고 중장기채 등은 약 75억 달러 줄어, 합계는 약 347억 달러 순증가입니다.",
+        "최근 4주 순증가의 대부분도 단기채입니다. 9월에 단기채를 갚던 모습에서 10월 이후 다시 단기채로 자금을 조달하는 구도로 바뀌었습니다. 재무부가 정례 중장기채 규모를 유지하고 계절적인 자금 수요를 단기채로 조절하겠다고 밝힌 방향과도 맞닿아 있습니다."
+      ],
+      "sourceIds": [
+        "refunding",
+        "dts"
+      ],
+      "materialChange": false,
+      "note": "11월 11일 휴일로 이번 주 국채 현금·발행 자료는 11월 10일까지입니다."
+    },
+    {
+      "id": "auctions",
+      "decision": "write",
+      "reason": "누락 악화: 유효2건,5null 및 이후행 부재를 수요붕괴와 구분",
+      "paragraphs": [
+        "이번 생키에서 중장기채가 보이지 않는 것은 수요가 사라졌기 때문이 아닙니다. 공개 API에 최신 입찰 결과가 들어오지 않은 채 비교 기간만 이동해, 현재 합산에 남은 유효 표본은 10월 15일 단기채 입찰 2건뿐입니다.",
+        "공식 입찰 결과의 발표와 앱의 집계 반영은 다른 문제입니다. 전체 표본이 복구되기 전에는 지금의 배분 비중으로 최근 입찰 수요를 판단하기 어렵습니다."
+      ],
+      "sourceIds": [
+        "auction-api",
+        "auction-pdf"
+      ],
+      "materialChange": false,
+      "note": "최신 입찰 API 미반영으로 표본이 불완전합니다. 최근 수요 비교에 사용하지 마세요."
+    },
+    {
+      "id": "ownership",
+      "decision": "carry",
+      "reason": "동일분기 관측의 구조적 해석 유지; 지난주 상대시점 문구 정리",
+      "paragraphs": [
+        "국채를 많이 보유한 주체와 최근 보유액을 많이 늘린 주체가 다르다는 구도는 유지됩니다. 2분기말 통계에서는 해외 투자자가 전체의 약 32%를 보유하지만, 직전 1년 증가분에서 차지하는 몫은 약 8%입니다. MMF는 보유 비중 약 11%에 비해 증가분의 약 30%를 차지했습니다.",
+        "단기채 중심의 발행이 이어지는 지금도 이 수요 기반을 함께 볼 필요가 있습니다. 다만 분기 보유 통계가 이번 주 입찰의 실제 매수자를 알려주는 것은 아닙니다."
+      ],
+      "sourceIds": [],
+      "materialChange": false,
+      "unchangedNote": true,
+      "note": "새 분기 관측이 없어 지난주 해석을 유지합니다."
+    },
+    {
+      "id": "rateContext",
+      "decision": "write",
+      "reason": "정책 수준 유지, CPI 이후 국채 반응과 레포 구분",
+      "paragraphs": [
+        "연준은 9월에 기준금리를 25bp 올렸고, 10월 28일에는 3.75~4.00%로 동결했습니다. 11월 10일 물가 발표 뒤 국채금리는 다시 올랐지만, 같은 주 레포 금리차는 내려왔습니다. 앞으로의 정책금리 기대와 당장 하루 돈을 빌리는 시장의 압력을 나눠서 볼 필요가 있습니다."
+      ],
+      "sourceIds": [
+        "fomc",
+        "implementation",
+        "cpi",
+        "rates-news"
+      ],
+      "materialChange": false,
+      "emphasis": [
+        "연준은 9월에 기준금리를 25bp 올렸고, 10월 28일에는 3.75~4.00%로 동결했습니다."
+      ]
+    },
+    {
+      "id": "spread",
+      "decision": "write",
+      "reason": "양수 지속 판단 갱신; 외부 보고의 월말 요인과 실제 일별 확인",
+      "paragraphs": [
+        "월말 이후에도 남았던 레포 조달 압력이 이번 주에는 완화됐습니다. SOFR-IORB는 지난주 +4bp에서 최신 관측일인 11월 10일 −1bp로 내려왔고, 11월 6일 이후에는 계속 음수였습니다.",
+        "FHLBNY도 월말·캐나다 은행 회계연말의 부담이 지나며 압력이 잦아드는 징후를 짚었습니다. TGA 방출과 준비금 회복도 같은 방향입니다. 다만 이를 새 통화완화 정책의 효과로 읽을 근거는 없습니다. 추가 RMP는 재개되지 않았고, 국채 공급이 많은 날에는 조달 부담이 다시 커질 수 있는 구조가 남아 있습니다."
+      ],
+      "sourceIds": [
+        "funding",
+        "rmp",
+        "holiday"
+      ],
+      "materialChange": true,
+      "note": "11월 11일 휴일로 SOFR 최신 관측은 11월 10일입니다."
+    },
+    {
+      "id": "nfci",
+      "decision": "omit",
+      "reason": "새 관측 변화+.003, 전주수정−.006. 큰 방향 변화 없어 이번 주 해설 생략",
+      "paragraphs": [],
+      "sourceIds": [],
+      "materialChange": false
+    },
+    {
+      "id": "facilities",
+      "decision": "write",
+      "reason": "새 관측 소폭변화와 여름·10월중순 경로",
+      "paragraphs": [
+        "연준 창구 차입은 대체로 제자리입니다. 할인창구 잔액은 약 93억 달러로 지난주와 거의 같고, 레포 창구도 사실상 비어 있습니다.",
+        "직접 차입이 여름보다 높은 수준에 남아 있기는 하지만, 10월 중순 이후 계속 급증하는 모습은 아닙니다. 이번 주에는 시장의 레포 금리차도 내려와, 조달 압박이 창구 차입 급증으로 번지고 있다는 신호는 확인되지 않습니다."
+      ],
+      "sourceIds": [
+        "h41"
+      ],
+      "materialChange": false
+    },
+    {
+      "id": "h8_ci_loans",
+      "decision": "write",
+      "reason": "10/28 새 관측 대 전주동결10/21; 연간 추세와 설문 차이",
+      "paragraphs": [
+        "은행의 기업대출 잔액은 약 3조 달러로, 1년 전보다 11% 정도 많은 수준을 유지합니다. 새 장부에서도 소폭 늘어, 기업에 나간 대출 전체가 줄어드는 모습은 아닙니다.",
+        "다만 최근 SLOOS에서 대출 수요가 약해졌다는 응답이 나온 점은 그대로 남습니다. 이미 나가 있는 대출 잔액의 증가와 앞으로 빌리려는 수요의 약화를 함께 보면, 잔액 증가만으로 기업의 투자 의욕까지 강하다고 읽기는 어렵습니다."
+      ],
+      "sourceIds": [
+        "h8",
+        "sloos"
+      ],
+      "materialChange": false,
+      "note": "H.8 최신 관측은 10월 28일입니다."
+    },
+    {
+      "id": "h8_loans_to_nondepository",
+      "decision": "write",
+      "reason": "새 관측 감소 대 연간 증가; 범위는 비은행 전체",
+      "paragraphs": [
+        "비은행 금융회사 대출은 이번 관측에서 조금 줄었지만, 기업 직접대출보다 빠르게 커지는 장기 흐름은 유지됩니다. 1년 전보다 약 20% 많아 한 주 감소를 연결 규모가 줄어드는 전환으로 보기는 어렵습니다.",
+        "최근 은행 설문에서는 비은행 차입 수요가 강한 가운데 심사는 더 엄격해졌습니다. 자금이 계속 들어가는 동시에 은행도 위험을 더 가리는 구도입니다. 은행과 사모대출 등 비은행 금융의 연결을 살펴봐야 한다는 이유는 여전히 유효합니다."
+      ],
+      "sourceIds": [
+        "h8",
+        "sloos"
+      ],
+      "materialChange": false
+    },
+    {
+      "id": "sloos_ci_standards",
+      "decision": "carry",
+      "reason": "같은10월 설문; 지난주 신규 관측 해석 유지, 빨간 안내",
+      "paragraphs": [
+        "은행이 기업대출 문턱을 본격적으로 낮췄다는 신호는 없습니다. 새 조사에서 대·중견기업 심사 기준은 0에서 +1.7로 움직였지만, 변화 자체는 작아 대체로 유지에 가깝습니다. 이전에 높아진 문턱이 풀렸다고 볼 수는 없습니다.",
+        "전체 기준이 거의 그대로여도 위험한 대출에는 추가 프리미엄을 요구하는 경향이 나타났습니다. 모든 기업을 일괄적으로 막기보다 차주의 위험에 따라 조건을 나누는 모습입니다."
+      ],
+      "sourceIds": [
+        "sloos"
+      ],
+      "materialChange": false,
+      "unchangedNote": true,
+      "note": "새 관측이 없어 지난주 해석을 유지합니다."
+    },
+    {
+      "id": "sloos_ci_demand",
+      "decision": "carry",
+      "reason": "같은10월 설문; 수요 약화 판단 유지, 빨간 안내",
+      "paragraphs": [
+        "기업의 대출 수요는 강해졌다는 응답에서 약해졌다는 응답으로 돌아섰습니다. 순응답은 지난 조사 +16.1에서 이번 −11.7로 바뀌었습니다. 대출 잔액의 증가보다 먼저 눈여겨볼 방향 전환입니다.",
+        "은행들은 설비투자 수요 감소와 더 유리한 다른 조달처로의 이동을 이유로 들었습니다. 따라서 전부 경기 악화 때문이라고도, 전부 은행이 돈을 안 빌려주기 때문이라고도 볼 수 없습니다. 지난 분기의 강한 차입 수요를 계속 전제하던 설명은 수정할 필요가 있습니다."
+      ],
+      "sourceIds": [
+        "sloos"
+      ],
+      "materialChange": false,
+      "note": "새 관측이 없어 지난주 해석을 유지합니다.",
+      "unchangedNote": true
+    },
+    {
+      "id": "h8_large_vs_small_banks",
+      "decision": "write",
+      "reason": "10/28 신규; 연간격차와단기예금 반등",
+      "paragraphs": [
+        "소형은행에서만 예금이 빠져나가는 모습은 아닙니다. 새 관측에서는 대형·소형 모두 예금이 늘었습니다. 다만 대출은 대형은행에서 늘고 소형은행에서는 조금 줄어, 두 쪽의 속도 차이는 이어집니다.",
+        "한 주 변동보다 1년 경로가 더 분명합니다. 예금과 대출 모두 대형은행의 증가율이 소형은행보다 높습니다. 지금은 예금 이탈 위기보다는 소형은행의 대출 확장 속도가 뒤처지는 흐름으로 보는 편이 맞습니다."
+      ],
+      "sourceIds": [
+        "h8"
+      ],
+      "materialChange": false
+    },
+    {
+      "id": "corporate_bond_issuance",
+      "decision": "carry",
+      "reason": "동일10월 발행 관측과 동일수정9월; 월간·3개월 해석 유지",
+      "paragraphs": [
+        "10월 회사채 발행은 9월보다 크게 줄었습니다. 전체 발행액은 약 1,400억 달러로 9월의 절반 정도이고, 지난해 10월보다도 약 29% 적습니다.",
+        "다만 최근 3개월을 합치면 그 앞 3개월보다 약 4% 적어, 한 달 감소만큼 전체 흐름이 급격히 꺾인 것은 아닙니다. 발행 시점이 몰리는 영향을 함께 봐야 합니다. 지금 자료는 전체 발행액이어서, 감소가 특히 취약한 기업에 집중됐는지까지 확인되지는 않습니다."
+      ],
+      "sourceIds": [
+        "sifma"
+      ],
+      "materialChange": false,
+      "researchUnresolved": "SIFMA 수집본과 FHLBNY 공급 보고서를 대조했다. 전체 발행 감소의 등급별·발행사별 원인 및 예정발행 연기 여부는 확인 못했으며 계절효과로 단정하지 않는다.",
+      "unchangedNote": true,
+      "note": "새 관측이 없어 지난주 해석을 유지합니다."
+    },
+    {
+      "id": "bond-dashboard",
+      "decision": "write",
+      "reason": "CPI 공통금리요인과 CCC신용요인, 연중격차 및 외부 업종집중 연구",
+      "paragraphs": [
+        "회사채 금리는 세 등급 모두 올랐지만, CCC에는 신용 불안이 추가로 얹혔습니다. IG와 HY는 금리가 약 10bp씩 올라도 OAS는 소폭 줄었습니다. 반면 CCC는 금리가 47bp 올라 18%를 넘어섰고, 그중 33bp는 OAS 확대입니다.",
+        "11월 10일 물가 발표 뒤 국채금리가 오른 것이 공통 배경입니다. 다만 CCC와 HY 전체의 OAS 격차는 다시 10%p로 벌어졌습니다. 지난주의 소폭 진정만으로, 올해 취약 차주의 차환 부담이 커져 온 흐름이 끝났다고 보기는 어렵습니다.",
+        "그렇다고 모든 투기등급 기업이 똑같이 나빠졌다는 뜻도 아닙니다. Vanguard는 별도 Bloomberg 지수 분석에서 일부 통신·미디어 기업에 스트레스가 집중돼 있다고 짚었습니다. 우리 ICE 지수와 수치를 직접 섞을 수는 없지만, HY 평균과 최하위 등급을 따로 봐야 하는 이유를 보여줍니다."
+      ],
+      "sourceIds": [
+        "cpi",
+        "rates-news",
+        "vanguard"
+      ],
+      "materialChange": true
+    },
+    {
+      "id": "leveraged_loans",
+      "decision": "write",
+      "reason": "실제 주중회복 및 SRLN과거고점40.71→40.2177수정 분리",
+      "paragraphs": [
+        "레버리지론 ETF에서는 CCC 회사채처럼 매도가 다시 커지는 모습이 나타나지 않았습니다. 두 ETF 모두 주중 하락분을 대부분 되찾았고, 현재 수정가격 기준으로는 3년 고점에 가깝습니다.",
+        "다만 지난 화면보다 고점 대비 낙폭이 줄어든 데에는 과거 수정가격이 바뀐 영향도 섞여 있습니다. 이를 전부 이번 주 매수세로 읽을 수는 없습니다. 이 지표에서 광범위한 대출시장 불안은 아직 뚜렷하지 않지만, 사모대출과 취약 차주의 위험까지 해소됐다는 뜻은 아닙니다."
+      ],
+      "sourceIds": [],
+      "materialChange": false,
+      "note": "분배금·분할 수정가격 기준입니다. 과거 가격 재조정으로 이전 화면의 고점 대비 낙폭과 달라질 수 있습니다."
+    },
+    {
+      "id": "cp-dashboard",
+      "decision": "write",
+      "reason": "4영업일 유효30일관측, 신용과기준금리 프리미엄 분리",
+      "paragraphs": [
+        "기업어음 시장의 신용 프리미엄은 오히려 좁아졌습니다. 30일물 A2/P2와 AA의 금리차는 지난주 20bp에서 16bp로 내려왔고, AA와 단기국채의 차이도 9bp로 낮은 수준입니다.",
+        "CCC 회사채의 악화와 같은 방향이 아니라는 점이 중요합니다. CP에 접근하는 상대적으로 신용도가 높은 기업의 운영자금 조달까지 막히는 모습은 아직 아닙니다. 취약 차주의 장기 차환 부담과 우량 기업의 단기 자금 사정을 구분해서 봐야 합니다."
+      ],
+      "sourceIds": [
+        "holiday"
+      ],
+      "materialChange": false,
+      "note": "11월 11일 휴일로 CP·단기국채 비교는 11월 10일 기준입니다."
+    },
+    {
+      "id": "bdc_price_to_nav",
+      "decision": "write",
+      "reason": "회사별주가 경로, 동일분모, 장기할인; FSK공시11/5 시차 확인",
+      "paragraphs": [
+        "BDC의 시장 평가는 CCC 회사채와 달리 일부 회복을 이어갑니다. OBDC와 FSK는 올랐고, ARCC는 주중 1배 아래로 내려갔다가 다시 약 1.01배로 돌아와 지난주 수준을 유지했습니다.",
+        "다만 OBDC는 약 0.78배, FSK는 약 0.65배로 장부가 대비 할인은 여전히 큽니다. 반등은 있었지만 올해 낮아진 평가를 되돌렸다고 보기는 어렵습니다. 이번 비교는 같은 3분기 NAV를 분모로 썼으므로, 비율 상승은 주가 회복에서 온 것입니다. 실적 발표 전후라는 시점만으로 그 반등의 원인을 확정하지는 않겠습니다."
+      ],
+      "sourceIds": [
+        "obdc",
+        "fsk",
+        "arcc-10q"
+      ],
+      "materialChange": true,
+      "researchUnresolved": "실적 공개일과 고정 NAV를 대조했으나 기업별 주가반등 기여도·거래동기는 공개자료로 확정하지 못함."
+    },
+    {
+      "id": "bdc_credit_quality",
+      "decision": "carry",
+      "reason": "동일3분기 관측, 지난주 신규발표 상대시점 제거; 기존 장부 판단 유지",
+      "paragraphs": [
+        "장부에서는 회사별 차이가 남아 있습니다. FSK의 원가 기준 부실 비중은 2분기 7.1%에서 3분기 6.4%로 낮아졌지만, 총투자수익 중 PIK 비중은 약 14.5%에서 15.6%로 높아졌습니다. 부실 비중 감소만으로 현금 회수가 정상화됐다고 볼 수는 없습니다.",
+        "OBDC는 부실 비중이 거의 그대로인 가운데 PIK 수익 비중이 낮아졌습니다. 시장 가격이 반등하더라도 현금 회수와 장부의 개선은 분기 자료로 따로 확인해야 합니다."
+      ],
+      "sourceIds": [
+        "obdc",
+        "fsk",
+        "arcc-10q"
+      ],
+      "materialChange": false,
+      "unchangedNote": true,
+      "note": "새 분기 관측이 없어 지난주 해석을 유지합니다. 모두 9월 말 장부입니다."
+    }
+  ]
+}

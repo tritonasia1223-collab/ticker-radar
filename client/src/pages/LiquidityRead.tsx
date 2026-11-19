@@ -132,7 +132,7 @@ function ReadingOpinion({ id, title, paragraphs = [], note }: { id: string; titl
     {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
   </div>{note && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{note}</p>}</>;
 }
-function Section({ id, num, title, question, answer, paragraphs, children, bottomGap }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; children: ReactNode; bottomGap?: number }) {
+function Section({ id, num, title, question, answer, paragraphs, note, children, bottomGap }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; note?: string; children: ReactNode; bottomGap?: number }) {
   const opinion = paragraphs ?? answer?.split(/(?<=[.!?])\s+/).filter(Boolean).map(text => ({ kind: "analysis" as const, text }));
   return (
     <Row id={id} bottomGap={bottomGap} aside={
@@ -140,7 +140,7 @@ function Section({ id, num, title, question, answer, paragraphs, children, botto
         <div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{num}</div>
         <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
         <Cap>{question}</Cap>
-        {!!opinion?.length && <div style={{ marginTop: 12 }}><ReadingOpinion id={id} title={title} paragraphs={opinion} /></div>}
+        {!!opinion?.length && <div style={{ marginTop: 12 }}><ReadingOpinion id={id} title={title} paragraphs={opinion} note={note} /></div>}
       </div>
     }>{children}</Row>
   );
@@ -427,7 +427,7 @@ export default function LiquidityRead() {
         </LiquidityFlowConnection>
 
         {/* 04 누가 샀나 */}
-        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryReading.issuance}>
+        <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryReading.issuance} note={weeklyEditorialNote('issuance', selDate)}>
           <TreasuryPeriodComparison asOf={selDate} weeks={cmp} current={debt.data?.flow ?? null} />
         </Section>
         <Row id="s4-auctions" continuation lead={who && S4 && sank && !auctions.isLoading ? (<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -487,7 +487,7 @@ export default function LiquidityRead() {
         </Section>
         <Row id="s5-spread" continuation aside={<div className="flex flex-col gap-3">
           <ReadingOpinion id="s5-rate-context" title="9월 금리 인상" paragraphs={fundingReading.rateContext} />
-          <ReadingOpinion id="s5-spread" title="SOFR·IORB" paragraphs={fundingReading.spread} />
+          <ReadingOpinion id="s5-spread" title="SOFR·IORB" paragraphs={fundingReading.spread} note={weeklyEditorialNote('spread', selDate)} />
         </div>}>
           <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} showNotes={false} showSources={false} />
         </Row>

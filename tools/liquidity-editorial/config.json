@@ -1,0 +1,11 @@
+{
+  "canonicalRoot": "C:/ticker-radar-master",
+  "automationId": "automation",
+  "origin": "https://ticker-radar-five.vercel.app",
+  "baselineAsOf": "2026-10-14",
+  "baselineCommit": "36e566367b5fba0186e7fb59241c8e0d6c29579d",
+  "sourceWorkspace": ".deploy/credit-monitor",
+  "handoff": "docs/LIQUIDITY-EDITORIAL-HANDOFF.md",
+  "records": "data/liquidity-editorial",
+  "publishAutomatically": true
+}
