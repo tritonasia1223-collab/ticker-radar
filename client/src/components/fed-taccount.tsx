@@ -1,4 +1,3 @@
-import { isDarkColor } from "@/lib/theme-colors";
 // 연준 T-계정(구성비 스택) — /fed 와 /liquidity(베타)가 공유. client/src/pages/Fed.tsx 에서 순수 이동(동작 변경 없음).
 //   WeekPoint 는 server/fed.ts buildWeekly 의 응답 형태(모든 수치 million USD).
 
@@ -11,14 +10,14 @@ export interface WeekPoint {
 }
 
 // ── 색 ── SOMA 세분(국채·MBS·기관채)=teal 3단 / 대출=amber / 기타=slate / 부채=purple+gray
-export const A_SOMA = "var(--tone-teal-600)", A_MBS = "var(--tone-teal-400)", A_AGENCY = "var(--tone-teal-200)"; // 국채·MBS·기관채
-export const A_LOAN = "var(--tone-orange-500)", A_RESID = "var(--line)";                     // 대출·스왑 / 기타자산
-export const L_RES = "var(--tone-indigo-400)", L_RRP = "var(--tone-violet-400)", L_TGA = "var(--tone-violet-100)", L_CUR = "var(--ink-soft)", L_RESID = "var(--line)";
-export const POS = "var(--tone-green-600)", NEG = "var(--tone-red-500)";
-export const LEND = { discount: "var(--tone-orange-500)", btfp: "var(--tone-red-400)", repo: "var(--tone-blue-400)", swap: "var(--tone-indigo-300)" };
+export const A_SOMA = "#0d9488", A_MBS = "#14b8a6", A_AGENCY = "#5eead4"; // 국채·MBS·기관채
+export const A_LOAN = "#f59e0b", A_RESID = "#94a3b8";                     // 대출·스왑 / 기타자산
+export const L_RES = "#7c3aed", L_RRP = "#a855f7", L_TGA = "#d8b4fe", L_CUR = "#9ca3af", L_RESID = "#6b7280";
+export const POS = "#16a34a", NEG = "#dc2626";
+export const LEND = { discount: "#f59e0b", btfp: "#ef4444", repo: "#3b82f6", swap: "#8b5cf6" };
 // 국채 종류별(재무부) — 단기(파랑)→장기(보라) 그라데이션 + TIPS(teal)·FRN(amber). 연준 흡수율=rose.
-export const TB = { bill: "var(--tone-blue-400)", note: "var(--tone-blue-300)", bond: "var(--tone-indigo-300)", tips: "var(--tone-teal-600)", frn: "var(--tone-orange-500)" };
-export const FED_ABS = "var(--tone-rose-500)";
+export const TB = { bill: "#3b82f6", note: "#6366f1", bond: "#8b5cf6", tips: "#14b8a6", frn: "#f59e0b" };
+export const FED_ABS = "#e11d48";
 
 // ── 단위: 세미 한국식($억/$조) ── musd → 억=÷100, 조=÷1e6(소수점 1자리)
 export const asMoney = (v: number) => {
@@ -31,7 +30,10 @@ export const T = asMoney;
 export const signed = (v: number) => Number.isFinite(v) ? (v >= 0 ? "+" : "−") + asMoney(Math.abs(v)) : "—";
 export const yr = (d: string) => d.slice(0, 4);
 export const weekLabel = (d: string) => `${Number(d.slice(5, 7))}월 ${Math.ceil(Number(d.slice(8, 10)) / 7)}주차`;
-export const textOn = (color: string) => isDarkColor(color) ? "var(--surface)" : "var(--ink)";
+export const textOn = (hex: string) => {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? "#0f172a" : "#ffffff";
+};
 export const nearestIdx = (weeks: WeekPoint[], date: string) => {
   let best = 0, bd = Infinity;
   for (let i = 0; i < weeks.length; i++) { const d = Math.abs(+new Date(weeks[i].date) - +new Date(date)); if (d < bd) { bd = d; best = i; } }
@@ -59,19 +61,19 @@ export function StackColumn({ segs, total, align, group, selected, onSelect }: {
             style={{
               height: h, background: s.color, color: fg,
               transform: isSel ? "scale(1.035)" : undefined,
-              boxShadow: isSel ? "var(--shadow-chart-selection)" : undefined,
-              transition: "var(--transition-emphasis)",
+              boxShadow: isSel ? "0 4px 14px rgba(0,0,0,0.22), inset 0 0 0 2px rgba(255,255,255,0.72)" : undefined,
+              transition: "transform 0.18s ease, box-shadow 0.18s ease",
               zIndex: isSel ? 20 : undefined,
             }}
             className={`relative flex flex-col justify-center overflow-hidden border-t border-black/10 first:border-t-0 first:rounded-t-md last:rounded-b-md ${clickable ? "cursor-pointer" : ""} ${align === "right" ? "items-end pr-2.5" : "items-start pl-2.5"}`}>
-            {isSel && h >= 16 && <span className={`absolute top-0.5 text-[length:var(--font-size-10-5px)] font-bold ${align === "right" ? "left-1.5" : "right-1.5"}`} style={{ color: fg }}>✓</span>}
+            {isSel && h >= 16 && <span className={`absolute top-0.5 text-[10.5px] font-bold ${align === "right" ? "left-1.5" : "right-1.5"}`} style={{ color: fg }}>✓</span>}
             {h >= 34 ? (
               <>
-                <span className="text-[length:var(--font-size-12-5px)] font-semibold leading-tight">{s.label}</span>
-                <span className="text-[length:var(--font-size-11-5px)] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
+                <span className="text-[12.5px] font-semibold leading-tight">{s.label}</span>
+                <span className="text-[11.5px] tabular-nums leading-tight opacity-90">{asMoney(s.val)} · {pct}%</span>
               </>
             ) : h >= 17 ? (
-              <span className="text-[length:var(--font-size-11px)] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
+              <span className="text-[11px] font-medium tabular-nums whitespace-nowrap leading-tight">{s.label} · {asMoney(s.val)}</span>
             ) : null}
           </div>
         );
@@ -91,8 +93,8 @@ export function StackColumn({ segs, total, align, group, selected, onSelect }: {
           <div className="absolute right-0 top-0 h-px w-2 bg-foreground/30" />
           <div className="absolute right-0 bottom-0 h-px w-2 bg-foreground/30" />
           <div className="text-right leading-tight">
-            <div className="text-[length:var(--font-size-11-5px)] font-bold">{group.label}</div>
-            {gh >= 42 && <><div className="text-[length:var(--font-size-9-5px)] text-muted-foreground tabular-nums">{asMoney(gval)}</div><div className="text-[length:var(--font-size-9-5px)] text-muted-foreground tabular-nums">{gpct}%</div></>}
+            <div className="text-[11.5px] font-bold">{group.label}</div>
+            {gh >= 42 && <><div className="text-[9.5px] text-muted-foreground tabular-nums">{asMoney(gval)}</div><div className="text-[9.5px] text-muted-foreground tabular-nums">{gpct}%</div></>}
           </div>
         </div>
       </div>
@@ -120,12 +122,12 @@ export function TAccount({ w, selected, onSelect }: { w: WeekPoint; selected?: s
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
       <div>
-        <div className="mb-1.5 flex items-baseline justify-between text-[length:var(--font-size-11px)] text-muted-foreground"><span className="font-medium">자산</span><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span></div>
+        <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="font-medium">자산</span><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span></div>
         <StackColumn segs={assets} total={w.total} align="left" group={{ label: "SOMA", count: 3 }} selected={selected} onSelect={onSelect} />
       </div>
       <div className="mt-6 w-px bg-border" style={{ height: STACK_H }} />
       <div>
-        <div className="mb-1.5 flex items-baseline justify-between text-[length:var(--font-size-11px)] text-muted-foreground"><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span><span className="font-medium">부채·자본</span></div>
+        <div className="mb-1.5 flex items-baseline justify-between text-[11px] text-muted-foreground"><span className="tabular-nums text-foreground font-semibold">{T(w.total)}</span><span className="font-medium">부채·자본</span></div>
         <StackColumn segs={liabs} total={w.total} align="right" selected={selected} onSelect={onSelect} />
       </div>
     </div>

@@ -1,4 +1,3 @@
-import { isDarkColor as isDark } from "@/lib/theme-colors";
 // 미국 유동성 B안 — 상단 문장형 리뷰와 하단 지표 해설. 작성 규칙: docs/LIQUIDITY-REVIEW-RULES.md
 //   상단은 변화·수치·의미 순서로 요약하고, 하단은 계산 근거와 해설을 표시한다.
 //   부호 규칙 하나: 초록 = 방출(순유동성 증가 기여) · 빨강 = 흡수. 본문 Δ는 전부 '순유동성에 준 영향' 부호.
@@ -45,11 +44,12 @@ interface DailyPoint { date: string; netLiq: number; sp500: number | null }
 interface Overview { weeks: WeekPoint[]; daily: DailyPoint[]; treasury?: { monthly: TreasuryMonth[]; fedWeekly: FedMatWeek[] }; updatedAt: string }
 
 // ── 색·글꼴 토큰(명세 3.4) — 이 페이지 스코프에만 ──
-const C = { bg: "var(--bg)", card: "var(--surface)", ink: "var(--ink)", body: "var(--ink)", cap: "var(--ink-soft)", line: "var(--line-soft)", line2: "var(--line-soft)", n1: "var(--line)", n2: "var(--line-soft)", n3: "var(--line)", n4: "var(--ink-soft)", release: "var(--tone-green-700)", absorb: "var(--tone-red-500)", over: "var(--tone-red-200)", m2: "var(--tone-blue-600)", border2: "var(--line)" };
+const C = { bg: "#F6F4EE", card: "#FFFFFF", ink: "#1A1A18", body: "#3B3934", cap: "#5F5C54", line: "#D9D5CA", line2: "#E8E5DC", n1: "#CFCABD", n2: "#E3DFD4", n3: "#BDB8AA", n4: "#7A766C", release: "#1F7A4D", absorb: "#B3402E", over: "#E9C9C2", m2: "#3E5C76", border2: "#B9B4A6" };
 // 범주(잔고 항목·만기·지수) 구분용 색. 초록·빨강 계열은 쓰지 않는다 — 그 둘은 방출·흡수 판정 전용.
-const HUE = { blue: "var(--tone-blue-600)", sky: "var(--tone-blue-400)", ochre: "var(--tone-amber-500)", purple: "var(--tone-indigo-500)", brown: "var(--tone-orange-500)", slate: "var(--tone-blue-500)" };
-const SERIF = "var(--font-reading-serif)";
-const SANS = "var(--font-reading-sans)";
+const HUE = { blue: "#3E5C76", sky: "#6A9BC3", ochre: "#C89B3C", purple: "#7B5EA7", brown: "#8C6A4F", slate: "#7C8A9E" };
+const isDark = (hex: string) => { const n = parseInt(hex.slice(1), 16); return 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255) < 150; }; // 어두운 배경이면 흰 글자
+const SERIF = "'Noto Serif KR', 'Apple SD Gothic Neo', serif";
+const SANS = "'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
 const FONT_HREF = "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@500;700&display=swap";
 const tone = (t?: Part["tone"]) => (t === "release" ? C.release : t === "absorb" ? C.absorb : undefined);
 const dollars = (musd: number) => `$${fmt.amount(musd)}`;
@@ -59,36 +59,36 @@ const signedDollars = (musd: number) => `${musd < 0 && !fmt.isZeroEok(musd) ? "�
 function Parts({ parts, strongTone = false }: { parts: Part[]; strongTone?: boolean }) {
   return <>{parts.map((p, i) => p.tone || p.strong ? <strong key={i} style={{ color: tone(p.tone), fontWeight: strongTone || p.strong ? 700 : 600 }}>{p.text}</strong> : <span key={i}>{p.text}</span>)}</>;
 }
-function Cap({ children, style }: { children: ReactNode; style?: React.CSSProperties }) { return <div style={{ fontSize: "var(--font-size-13)", lineHeight: 1.6, color: C.cap, ...style }}>{children}</div>; }
-function Body({ children, max = 680 }: { children: ReactNode; max?: number }) { return <p style={{ fontSize: "var(--font-size-14)", lineHeight: 1.75, color: C.body, maxWidth: max, margin: 0 }}>{children}</p>; }
-function Sub({ children }: { children: ReactNode }) { return <div style={{ fontSize: "var(--font-size-14)", fontWeight: 600 }}>{children}</div>; }
+function Cap({ children, style }: { children: ReactNode; style?: React.CSSProperties }) { return <div style={{ fontSize: 13, lineHeight: 1.6, color: C.cap, ...style }}>{children}</div>; }
+function Body({ children, max = 680 }: { children: ReactNode; max?: number }) { return <p style={{ fontSize: 14, lineHeight: 1.75, color: C.body, maxWidth: max, margin: 0 }}>{children}</p>; }
+function Sub({ children }: { children: ReactNode }) { return <div style={{ fontSize: 14, fontWeight: 600 }}>{children}</div>; }
 function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return <button type="button" onClick={onClick} aria-pressed={active} style={{ minHeight: 36, padding: "0 var(--space-16px)", fontSize: "var(--font-size-13)", fontWeight: active ? 600 : 500, color: active ? C.bg : C.ink, background: active ? C.ink : "transparent", border: `1px solid ${active ? C.ink : C.border2}`, borderRadius: "var(--radius-22)", cursor: "pointer" }}>{children}</button>;
+  return <button type="button" onClick={onClick} aria-pressed={active} style={{ minHeight: 36, padding: "0 16px", fontSize: 13, fontWeight: active ? 600 : 500, color: active ? C.bg : C.ink, background: active ? C.ink : "transparent", border: `1px solid ${active ? C.ink : C.border2}`, borderRadius: 22, cursor: "pointer" }}>{children}</button>;
 }
 function Expander({ label, open, onToggle, children, transparent = false }: { label: string; open: boolean; onToggle: () => void; children: ReactNode; transparent?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-16)" }}>
-      <button type="button" onClick={onToggle} aria-expanded={open} style={{ alignSelf: "flex-start", minHeight: 36, padding: "0 var(--space-4px)", fontSize: "var(--font-size-14)", fontWeight: 500, color: C.ink, background: "transparent", border: "none", borderBottom: `1px solid ${C.ink}`, display: "flex", alignItems: "center", gap: "var(--space-8)", cursor: "pointer" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <button type="button" onClick={onToggle} aria-expanded={open} style={{ alignSelf: "flex-start", minHeight: 36, padding: "0 4px", fontSize: 14, fontWeight: 500, color: C.ink, background: "transparent", border: "none", borderBottom: `1px solid ${C.ink}`, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" style={{ transform: open ? "rotate(180deg)" : undefined }}><path d="M3 5l4 4 4-4"></path></svg>{label}
       </button>
-      {open && <div style={{ background: transparent ? "transparent" : C.card, border: `1px solid ${C.line}`, borderRadius: "var(--radius-16)", padding: "var(--space-24px) var(--space-28px)" }}>{children}</div>}
+      {open && <div style={{ background: transparent ? "transparent" : C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 28px" }}>{children}</div>}
     </div>
   );
 }
 // 행 격자 — 왼쪽 여백 칸(라벨, lg 이상에서 본문에 붙여 오른쪽 정렬) + 가운데 본문 칸(최대 900px) + 오른쪽 여백 칸.
 // 라벨이 본문 폭을 잡아먹지 않고, 본문은 남는 폭의 가운데에 선다. lg 미만에서는 라벨이 본문 위로 올라간다.
-const ROW_GRID = "grid grid-cols-[minmax(280px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 gap-x-8";
+const ROW_GRID = "grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,900px)_minmax(0,1fr)] xl:grid-cols-[minmax(280px,1fr)_minmax(0,900px)_minmax(0,1fr)] gap-y-3 lg:gap-x-8";
 const SECTION_SCROLL_MARGIN = "var(--liquidity-sticky-top, 96px)";
 function Row({ id, as = "section", aside, children, continuation = false, lead, asideClassName, bottomGap = 48 }: { id?: string; as?: "section" | "footer"; aside: ReactNode; children: ReactNode; continuation?: boolean; lead?: ReactNode; asideClassName?: string; bottomGap?: number }) {
   const Tag = as;
   const borderColor = id === "s3" ? C.line : C.ink;
   return (
     <Tag id={id} data-scroll-anchor={id} className={ROW_GRID} style={{ scrollMarginTop: SECTION_SCROLL_MARGIN }}>
-      {lead && <div className="col-start-2 mb-4" style={{ minWidth: 0 }}>{lead}</div>}
-      <div className={`${continuation ? "" : "border-[color:var(--ink)] border-t-0 pt-7"} ${lead ? "row-start-2" : ""} ${asideClassName ?? ''} justify-self-end w-[280px]`} style={{ borderColor }}>
+      {lead && <div className="lg:col-start-2 mb-4" style={{ minWidth: 0 }}>{lead}</div>}
+      <div className={`${continuation ? "" : "border-t border-[#1A1A18] lg:border-t-0 pt-7"} ${lead ? "lg:row-start-2" : ""} ${asideClassName ?? ''} lg:justify-self-end lg:w-[260px] xl:w-[280px]`} style={{ borderColor }}>
         {aside}
       </div>
-      <div className={`${continuation ? "" : "pt-7 border-t border-[color:var(--ink)]"} ${lead ? "col-start-2 row-start-2" : ""}`} style={{ borderColor, minWidth: 0, paddingBottom: bottomGap, display: "flex", flexDirection: "column", gap: "var(--space-28)" }}>{children}</div>
+      <div className={`${continuation ? "" : "lg:pt-7 lg:border-t lg:border-[#1A1A18]"} ${lead ? "lg:col-start-2 lg:row-start-2" : ""}`} style={{ borderColor, minWidth: 0, paddingBottom: bottomGap, display: "flex", flexDirection: "column", gap: 28 }}>{children}</div>
     </Tag>
   );
 }
@@ -128,24 +128,24 @@ function OpinionText({ paragraph }: { paragraph: ChapterParagraph }) {
 }
 function ReadingOpinion({ id, title, paragraphs = [], note }: { id: string; title: string; paragraphs?: ChapterParagraph[]; note?: string }) {
   if (!paragraphs.length) return null;
-  return <><div aria-label={`${title} 해설`} data-testid={`chart-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: "var(--space-14)", background: "var(--tint-lemon)", borderRadius: "var(--radius-10)", padding: "var(--space-18px) var(--space-16px)", wordBreak: "normal", textWrap: "wrap", overflowWrap: "break-word", whiteSpace: "pre-line" }}>
-    {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "var(--ink-soft)" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
-  </div>{note && <p data-testid={`unchanged-reading-${id}`} style={{ margin: 'var(--space-8px) 0 0', fontSize: "var(--font-size-12)", lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{note}</p>}</>;
+  return <><div aria-label={`${title} 해설`} data-testid={`chart-answer-${id}`} style={{ display: "flex", flexDirection: "column", gap: 14, background: "#EEEBDF", borderRadius: 10, padding: "18px 16px", wordBreak: "normal", textWrap: "wrap", overflowWrap: "break-word", whiteSpace: "pre-line" }}>
+    {paragraphs.map((p, n) => <p key={n} data-reading-kind={p.kind} style={{ margin: 0, fontSize: p.kind === "explanation" ? 12 : 14, lineHeight: p.kind === "explanation" ? 1.75 : 1.85, color: p.kind === "explanation" ? "#777369" : C.body, fontWeight: 400 }}><OpinionText paragraph={p} /></p>)}
+  </div>{note && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{note}</p>}</>;
 }
 function Section({ id, num, title, question, answer, paragraphs, children, bottomGap }: { id: string; num: string; title: string; question: string; answer?: string; paragraphs?: ChapterParagraph[]; children: ReactNode; bottomGap?: number }) {
   const opinion = paragraphs ?? answer?.split(/(?<=[.!?])\s+/).filter(Boolean).map(text => ({ kind: "analysis" as const, text }));
   return (
     <Row id={id} bottomGap={bottomGap} aside={
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-        <div style={{ fontSize: "var(--font-size-12)", fontWeight: 600, color: C.cap }}>{num}</div>
-        <div style={{ fontSize: "var(--font-size-16)", fontWeight: 600 }}>{title}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{num}</div>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
         <Cap>{question}</Cap>
-        {!!opinion?.length && <div style={{ marginTop: "var(--space-12)" }}><ReadingOpinion id={id} title={title} paragraphs={opinion} /></div>}
+        {!!opinion?.length && <div style={{ marginTop: 12 }}><ReadingOpinion id={id} title={title} paragraphs={opinion} /></div>}
       </div>
     }>{children}</Row>
   );
 }
-function H2({ children }: { children: ReactNode }) { return <h2 className="text-[length:var(--font-size-24px)]" style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>{children}</h2>; }
+function H2({ children }: { children: ReactNode }) { return <h2 className="text-[20px] md:text-[24px]" style={{ fontFamily: SERIF, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>{children}</h2>; }
 interface LiquidityPiePart { label: string; value: number; color: string }
 function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, parts, note, empty }: { title: string; total: number | null; displayTotal?: number | null; maxTotal: number; formula: ReactNode; parts: LiquidityPiePart[]; note: ReactNode; empty?: string }) {
   const [active, setActive] = useState<number | null>(null);
@@ -166,14 +166,14 @@ function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, p
   }).filter(part => part.value > 0) : [];
   const selected = active == null ? null : sectors.find(part => part.index === active);
   return <div style={{ display: "grid", gridTemplateRows: "subgrid", gridRow: "span 3", minWidth: 0 }}>
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-10)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-7)", fontSize: "var(--font-size-15)", fontWeight: 500 }}>{title}
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 15, fontWeight: 500 }}>{title}
         <TooltipProvider delayDuration={150}>
           <HelpTooltip open={formulaOpen} onOpenChange={setFormulaOpen}>
             <TooltipTrigger asChild>
-              <button type="button" aria-label={`${title} 계산식`} onClick={() => setFormulaOpen(true)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, padding: 0, borderRadius: "var(--radius-50pct)", border: `1px solid ${C.border2}`, background: "transparent", color: C.cap, fontSize: "var(--font-size-12)", cursor: "help" }}>?</button>
+              <button type="button" aria-label={`${title} 계산식`} onClick={() => setFormulaOpen(true)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, padding: 0, borderRadius: "50%", border: `1px solid ${C.border2}`, background: "transparent", color: C.cap, fontSize: 12, cursor: "help" }}>?</button>
             </TooltipTrigger>
-            <TooltipContent side="top" align="start" collisionPadding={16} style={{ maxWidth: "min(360px, calc(100vw - 32px))", background: C.card, color: C.body, borderColor: C.line, fontFamily: SANS, fontSize: "var(--font-size-13)", lineHeight: 1.75, wordBreak: "keep-all" }}>{formula}</TooltipContent>
+            <TooltipContent side="top" align="start" collisionPadding={16} style={{ maxWidth: "min(360px, calc(100vw - 32px))", background: C.card, color: C.body, borderColor: C.line, fontFamily: SANS, fontSize: 13, lineHeight: 1.75, wordBreak: "keep-all" }}>{formula}</TooltipContent>
           </HelpTooltip>
         </TooltipProvider>
       </div>
@@ -181,10 +181,10 @@ function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, p
     </div>
     <div onPointerLeave={event => { if (event.pointerType !== "touch") setActive(null); }} style={{ position: "relative", width: "100%", maxWidth: 300, aspectRatio: "1", justifySelf: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {valid ? <svg viewBox="0 0 300 300" role="group" aria-label={`${title} 구성비`} style={{ width: `${Math.sqrt(total! / maxTotal) * 100}%`, overflow: "visible" }}>
-        <style>{`.liquidity-pie-sector { transition: var(--transition-state), var(--transition-emphasis); } @media (prefers-reduced-motion: reduce) { .liquidity-pie-sector { transition: none; } }`}</style>
+        <style>{`.liquidity-pie-sector { transition: transform 150ms ease, filter 150ms ease; } @media (prefers-reduced-motion: reduce) { .liquidity-pie-sector { transition: none; } }`}</style>
         {/* 시각 효과와 고정된 입력 영역을 분리해 확대 중 경계에서 깜빡이지 않게 한다. */}
         {[...sectors.filter(part => part.index !== active), ...sectors.filter(part => part.index === active)].map(part => <path key={part.label} d={part.path} fill={part.color} className="liquidity-pie-sector" aria-hidden="true" pointerEvents="none"
-          style={{ transformOrigin: "150px 150px", transform: part.index === active ? "scale(1.035)" : "scale(1)", filter: part.index === active ? `drop-shadow(0 0 6px color-mix(in srgb, ${part.color} 40%, transparent))` : "none" }} />)}
+          style={{ transformOrigin: "150px 150px", transform: part.index === active ? "scale(1.035)" : "scale(1)", filter: part.index === active ? `drop-shadow(0 0 6px ${part.color}66)` : "none" }} />)}
         {sectors.map(part => <path key={part.label} d={part.path} fill="transparent" role="button" tabIndex={0}
           aria-label={`${part.label} ${dollars(part.value)} · ${(part.value / sum * 100).toFixed(1)}%`} aria-describedby={part.index === active ? tooltipId : undefined}
           onPointerEnter={event => { if (event.pointerType !== "touch") setActive(part.index); }}
@@ -193,19 +193,19 @@ function LiquidityPie({ title, total, displayTotal = total, maxTotal, formula, p
           onKeyDown={event => { if (event.key === "Escape") setActive(null); else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActive(value => value === part.index ? null : part.index); } }}
           style={{ cursor: "pointer" }} />)}
       </svg> : <Cap>{empty ?? "구성 자료가 없어 파이를 표시하지 않았습니다."}</Cap>}
-      {selected && <div id={tooltipId} role="tooltip" style={{ position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)", maxWidth: "100%", width: "max-content", pointerEvents: "none", zIndex: 2, background: C.card, border: `1px solid ${C.line}`, boxShadow: "var(--shadow-detail-126)", borderRadius: "var(--radius-8)", padding: "var(--space-10px) var(--space-14px)", fontSize: "var(--font-size-13)", lineHeight: 1.6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-7)", fontWeight: 600 }}><span style={{ width: 9, height: 9, background: selected.color, borderRadius: "var(--radius-2)", flexShrink: 0 }} />{selected.label}</div>
-        <div>{dollars(selected.value)} <span style={{ color: C.cap, marginLeft: "var(--space-8)" }}>{(selected.value / sum * 100).toFixed(1)}%</span></div>
+      {selected && <div id={tooltipId} role="tooltip" style={{ position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)", maxWidth: "100%", width: "max-content", pointerEvents: "none", zIndex: 2, background: C.card, border: `1px solid ${C.line}`, boxShadow: "0 4px 16px #1A1A1814", borderRadius: 8, padding: "10px 14px", fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600 }}><span style={{ width: 9, height: 9, background: selected.color, borderRadius: 2, flexShrink: 0 }} />{selected.label}</div>
+        <div>{dollars(selected.value)} <span style={{ color: C.cap, marginLeft: 8 }}>{(selected.value / sum * 100).toFixed(1)}%</span></div>
       </div>}
     </div>
-    <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: "var(--space-14)", alignSelf: "start" }}>
-      {valid && <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-9)" }}>
-        {parts.map(part => <div key={part.label} style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "var(--space-3px) var(--space-10px)", fontSize: "var(--font-size-13)", color: C.body }}>
-          <span style={{ display: "flex", alignItems: "center", gap: "var(--space-7)", flex: "1 1 auto" }}><span aria-hidden="true" style={{ width: 9, height: 9, flexShrink: 0, borderRadius: "var(--radius-2)", background: part.color }} />{part.label}</span>
-          <span style={{ whiteSpace: "nowrap" }}>{dollars(part.value)} <span style={{ color: C.cap, marginLeft: "var(--space-5)" }}>{(part.value / sum * 100).toFixed(1)}%</span></span>
+    <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14, alignSelf: "start" }}>
+      {valid && <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {parts.map(part => <div key={part.label} style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "3px 10px", fontSize: 13, color: C.body }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 7, flex: "1 1 auto" }}><span aria-hidden="true" style={{ width: 9, height: 9, flexShrink: 0, borderRadius: 2, background: part.color }} />{part.label}</span>
+          <span style={{ whiteSpace: "nowrap" }}>{dollars(part.value)} <span style={{ color: C.cap, marginLeft: 5 }}>{(part.value / sum * 100).toFixed(1)}%</span></span>
         </div>)}
       </div>}
-      <Cap style={{ fontSize: "var(--font-size-12)", color: "var(--ink-soft)", marginTop: "var(--space-12)" }}>{note}</Cap>
+      <Cap style={{ fontSize: 12, color: "#918D83", marginTop: 12 }}>{note}</Cap>
     </div>
   </div>;
 }
@@ -227,11 +227,11 @@ function taccountRows(sel: WeekPoint, prev: WeekPoint): TRow[] {
 function NeutralStack({ rows, total, align }: { rows: TRow[]; total: number; align: "left" | "right" }) {
   const H = 280;
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: H, borderRadius: "var(--radius-8)", overflow: "hidden", minWidth: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: H, borderRadius: 8, overflow: "hidden", minWidth: 0 }}>
       {rows.map((r) => {
         const h = Number.isFinite(r.v) && total > 0 ? Math.max(0, (r.v / total) * H) : 0;
         const dark = isDark(r.color);
-        return <div key={r.label} title={`${r.label} ${dollars(r.v)}`} style={{ height: h, background: r.color, color: dark ? "var(--surface)" : C.ink, display: "flex", alignItems: "center", justifyContent: align === "left" ? "flex-start" : "flex-end", padding: "0 var(--space-10px)", overflow: "hidden", fontSize: "var(--font-size-12)", whiteSpace: "nowrap", borderTop: "1px solid var(--alpha-ink-80)" }}>{h >= 26 ? `${r.label} ${dollars(r.v)}` : ""}</div>;
+        return <div key={r.label} title={`${r.label} ${dollars(r.v)}`} style={{ height: h, background: r.color, color: dark ? "#FFFFFF" : C.ink, display: "flex", alignItems: "center", justifyContent: align === "left" ? "flex-start" : "flex-end", padding: "0 10px", overflow: "hidden", fontSize: 12, whiteSpace: "nowrap", borderTop: "1px solid rgba(0,0,0,0.08)" }}>{h >= 26 ? `${r.label} ${dollars(r.v)}` : ""}</div>;
       })}
     </div>
   );
@@ -239,8 +239,8 @@ function NeutralStack({ rows, total, align }: { rows: TRow[]; total: number; ali
 function NeutralTAccount({ rows, total }: { rows: TRow[]; total: number }) {
   return (
     <div className="grid grid-cols-2 gap-3" style={{ minWidth: 0 }}>
-      <div><Cap style={{ paddingBottom: "var(--space-6)" }}>자산 <b style={{ color: C.ink }}>{dollars(total)}</b></Cap><NeutralStack rows={rows.filter((r) => r.side === "asset")} total={total} align="left" /></div>
-      <div><Cap style={{ paddingBottom: "var(--space-6)", textAlign: "right" }}>부채·자본 <b style={{ color: C.ink }}>{dollars(total)}</b></Cap><NeutralStack rows={rows.filter((r) => r.side === "liab")} total={total} align="right" /></div>
+      <div><Cap style={{ paddingBottom: 6 }}>자산 <b style={{ color: C.ink }}>{dollars(total)}</b></Cap><NeutralStack rows={rows.filter((r) => r.side === "asset")} total={total} align="left" /></div>
+      <div><Cap style={{ paddingBottom: 6, textAlign: "right" }}>부채·자본 <b style={{ color: C.ink }}>{dollars(total)}</b></Cap><NeutralStack rows={rows.filter((r) => r.side === "liab")} total={total} align="right" /></div>
     </div>
   );
 }
@@ -341,8 +341,8 @@ export default function LiquidityRead() {
   const somaExact = (date?: string) => (date ? fedWeekly.find((w) => w.date === date) ?? null : null);
   const somaSel = somaExact(sel?.date), somaPrev = somaExact(prev?.date);
 
-  if (overview.isLoading) return <div style={{ background: C.bg, minHeight: "100vh", padding: "var(--space-40)", color: C.cap, fontFamily: SANS }}>불러오는 중…</div>;
-  if (overview.isError || !latestWeek) return <div style={{ background: C.bg, minHeight: "100vh", padding: "var(--space-40)", fontFamily: SANS }} role="alert">유동성 데이터를 불러오지 못했습니다. <button className="underline" onClick={() => void overview.refetch()}>다시 불러오기</button></div>;
+  if (overview.isLoading) return <div style={{ background: C.bg, minHeight: "100vh", padding: 40, color: C.cap, fontFamily: SANS }}>불러오는 중…</div>;
+  if (overview.isError || !latestWeek) return <div style={{ background: C.bg, minHeight: "100vh", padding: 40, fontFamily: SANS }} role="alert">유동성 데이터를 불러오지 못했습니다. <button className="underline" onClick={() => void overview.refetch()}>다시 불러오기</button></div>;
   const selW = weeks[curIdx];
 
   const m2Now = how?.m2Yoy?.to ?? (sel && ctx.m2 ? [...ctx.m2].reverse().find((o) => o.date <= sel.date) ?? null : null); // 선택 주 이하 최신 M2 — 전년비가 없어도 잔액은 보인다(Codex 4차 F1)
@@ -357,27 +357,27 @@ export default function LiquidityRead() {
 
   return (
     <div ref={pageRef} style={{ background: C.bg, color: C.ink, fontFamily: SANS, minHeight: "100vh", fontVariantNumeric: "tabular-nums", wordBreak: "keep-all" } as React.CSSProperties}>
-      <div className="px-10" style={{ maxWidth: 1280 + 80, margin: "0 auto", paddingTop: "var(--space-24)", paddingBottom: "var(--space-96)" }}>
+      <div className="px-4 md:px-10" style={{ maxWidth: 1280 + 80, margin: "0 auto", paddingTop: 24, paddingBottom: 96 }}>
 
         {/* 주차 이동은 같은 그래프를 보면서 사용할 수 있도록 헤더만 고정한다. */}
-        <header ref={headerRef} data-testid="liquidity-week-header" className="sticky top-0 z-30 flex flex-row items-center justify-between gap-3" style={{ background: C.bg, padding: "var(--space-12px) 0", marginBottom: "var(--space-20)", borderBottom: `1px solid ${C.line}` }}>
-          <div className="flex flex-row items-baseline gap-4" style={{ minWidth: 0 }}>
-            <div style={{ fontSize: "var(--font-size-12)", fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
-            <h1 style={{ fontFamily: SERIF, fontSize: "var(--font-size-20)", fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
+        <header ref={headerRef} data-testid="liquidity-week-header" className="sticky top-0 z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3" style={{ background: C.bg, padding: "12px 0", marginBottom: 20, borderBottom: `1px solid ${C.line}` }}>
+          <div className="flex flex-col xl:flex-row xl:items-baseline gap-1 xl:gap-4" style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", color: C.cap, whiteSpace: "nowrap" }}>미국 유동성 B안 · 주간</div>
+            <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>{fmt.weekTitle(selW.date)}</h1>
             <Cap>{fmt.dateKo(selW.date)} 기준 · 유동성 주간 / 신용 지표별 주기</Cap>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <button type="button" onClick={() => selectWeek(-1)} disabled={curIdx >= weeks.length - 1} style={{ minHeight: 36, padding: "0 var(--space-16px)", fontSize: "var(--font-size-13)", border: `1px solid ${C.border2}`, borderRadius: "var(--radius-22)", background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.4 : 1, cursor: curIdx >= weeks.length - 1 ? "default" : "pointer" }}>이번 주로</button>
-            <button type="button" onClick={() => selectWeek(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: "var(--radius-22)", background: "transparent", color: C.ink, opacity: curIdx <= 0 ? 0.3 : 1, cursor: "pointer" }}>◀</button>
-            <button type="button" onClick={() => selectWeek(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: "var(--radius-22)", background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.3 : 1, cursor: "pointer" }}>▶</button>
+            <button type="button" onClick={() => selectWeek(-1)} disabled={curIdx >= weeks.length - 1} style={{ minHeight: 36, padding: "0 16px", fontSize: 13, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.4 : 1, cursor: curIdx >= weeks.length - 1 ? "default" : "pointer" }}>이번 주로</button>
+            <button type="button" onClick={() => selectWeek(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx <= 0 ? 0.3 : 1, cursor: "pointer" }}>◀</button>
+            <button type="button" onClick={() => selectWeek(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" style={{ minHeight: 36, minWidth: 36, border: `1px solid ${C.border2}`, borderRadius: 22, background: "transparent", color: C.ink, opacity: curIdx >= weeks.length - 1 ? 0.3 : 1, cursor: "pointer" }}>▶</button>
           </div>
         </header>
 
         {/* 요약 — 본문 칸과 같은 격자에 놓아 가운데 정렬 */}
         <div className={ROW_GRID} data-scroll-anchor="overview">
-        <div className="justify-self-end w-[280px] pt-6"><div>
+        <div className="lg:justify-self-end lg:w-[260px] xl:w-[280px] lg:pt-6"><div>
           <h2 className="text-base font-semibold">개요</h2>
-          <p className="mt-1.5 text-xs leading-relaxed text-[color:var(--ink-soft)]">각 항목의 근거와 데이터는 아래에서 확인</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#918D83]">각 항목의 근거와 데이터는 아래에서 확인</p>
           {how && overviewEditorial(selDate).length > 0 && <div className="mt-4"><ReadingOpinion id="overview" title="개요" paragraphs={overviewEditorial(selDate)} /></div>}
         </div></div>
         <div style={{ minWidth: 0 }}>
@@ -389,7 +389,7 @@ export default function LiquidityRead() {
           {!how || !S1 ? <Cap>이번 주 관측이 없습니다.</Cap> : (<>
             <H2>순유동성과 M2</H2>
 
-            <div className="grid grid-cols-2 gap-x-9 gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-9 gap-y-5">
               <LiquidityPie title="순유동성" total={how.total} displayTotal={how.nl} maxTotal={Math.max(how.total, m2Now?.value ?? 0)}
                 formula={<>순유동성(근사치) = 연준이 만든 돈 {fmt.jo(how.total)}조 달러 − TGA ({dollars(how.tga)}) − 역레포 ({dollars(how.rrp)})</>}
                 parts={[{ label: "순유동성", value: how.nl, color: C.ink }, { label: "TGA", value: how.tga, color: HUE.ochre }, { label: "역레포", value: how.rrp, color: HUE.purple }]}
@@ -417,9 +417,9 @@ export default function LiquidityRead() {
         <Section id="s3" num="03" title="어디로" question="유동성 변화가 어디에 반영됐나" paragraphs={weeklyEditorial('destination', selDate)}>
           <LiquidityPeriodPanels weeks={weeks} selected={sel} kind="destination" dominantShare={cfg.DOMINANT_SHARE} />
           {to && (<>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <Body>현재 은행 지급준비금은 {fmt.jo(to.reserves)}조 달러{reserveRatio ? `로, 명목 GDP의 ${reserveRatio.pct.toFixed(1)}%입니다.` : "입니다."}</Body>
-              <Cap style={{ color: "var(--ink-soft)" }}>{reserveRatio ? `지준 ${sel?.date} · GDP ${reserveRatio.quarter} (계절조정·연율). 관측 기간 기준·사후 수정치 포함.` : context.isFetching ? "GDP 대비 비율을 불러오는 중입니다." : "비교 가능한 GDP 자료가 없어 비율을 표시하지 않았습니다."}</Cap>
+              <Cap style={{ color: "#918D83" }}>{reserveRatio ? `지준 ${sel?.date} · GDP ${reserveRatio.quarter} (계절조정·연율). 관측 기간 기준·사후 수정치 포함.` : context.isFetching ? "GDP 대비 비율을 불러오는 중입니다." : "비교 가능한 GDP 자료가 없어 비율을 표시하지 않았습니다."}</Cap>
             </div>
           </>)}
         </Section>
@@ -430,9 +430,9 @@ export default function LiquidityRead() {
         <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryReading.issuance}>
           <TreasuryPeriodComparison asOf={selDate} weeks={cmp} current={debt.data?.flow ?? null} />
         </Section>
-        <Row id="s4-auctions" continuation lead={who && S4 && sank && !auctions.isLoading ? (<div className="flex flex-row items-center justify-between gap-3">
+        <Row id="s4-auctions" continuation lead={who && S4 && sank && !auctions.isLoading ? (<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <Cap>{fmt.dateKo(who.start)} ~ {fmt.dateKo(who.end)} 입찰분 · {who.counted}건{who.excludeBills ? " · 단기채 제외" : ""}</Cap>
-                <div style={{ display: "flex", gap: "var(--space-8)", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <Pill active={auctionMode === "all"} onClick={() => setAuctionMode("all")}>전체</Pill>
                   <Pill active={auctionMode === "nobills"} onClick={() => setAuctionMode("nobills")}>단기채 빼고 보기</Pill>
                   <Cap>최근 {cmp}주</Cap>
@@ -441,9 +441,9 @@ export default function LiquidityRead() {
           {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
             <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-16)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: "var(--radius-16)", padding: "var(--space-24px) var(--space-12px)", overflowX: "auto" }}>
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 12px", overflowX: "auto" }}>
                 <div style={{ minWidth: 640, height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <Sankey data={sank} nodeWidth={14} nodePadding={22} linkCurvature={0.5} iterations={32} margin={{ top: 24, right: 200, bottom: 36, left: 210 }} node={<ReadSankeyNode />} link={<ReadSankeyLink />} />
@@ -454,14 +454,14 @@ export default function LiquidityRead() {
             <Cap>입찰일 기준입니다. 결제 시점이 달라 위 발행·상환 표의 금액과 차이가 날 수 있습니다.</Cap>
             <Expander transparent label="만기별 표 펼치기 — 발행 · 연준 인수 · 연준 보유 변화 · 만기상환" open={openM} onToggle={() => setOpenM((v) => !v)}>
               {!life ? <Cap>{settledAuctions.isLoading ? "결제 기준 자료를 불러오는 중…" : "결제 기준 입찰·보유 자료를 확인하지 못했습니다."}</Cap> : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-10)" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <Cap>이 표는 결제일 기준입니다. 발행·연준 인수·보유 변화 모두 H.4.1 보유 관측 구간 {fmt.dateKo(life.from)} → {fmt.dateKo(life.to)} 기준. 발행은 보고 총액, 만기상환은 인수 − 보유 변화의 추정치(음수면 입찰 인수보다 보유가 더 늘어난 것).</Cap>
                   <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", minWidth: 560, fontSize: "var(--font-size-13)", borderCollapse: "collapse" }}>
-                      <thead><tr style={{ color: C.cap }}>{["만기", "발행", "연준 인수", "연준 보유", "보유 변화", "만기상환(추정)"].map((h, i) => <th key={h} style={{ textAlign: i ? "right" : "left", fontWeight: 500, padding: "var(--space-6px) 0", borderBottom: `1px solid ${C.line}` }}>{h}</th>)}</tr></thead>
+                    <table style={{ width: "100%", minWidth: 560, fontSize: 13, borderCollapse: "collapse" }}>
+                      <thead><tr style={{ color: C.cap }}>{["만기", "발행", "연준 인수", "연준 보유", "보유 변화", "만기상환(추정)"].map((h, i) => <th key={h} style={{ textAlign: i ? "right" : "left", fontWeight: 500, padding: "6px 0", borderBottom: `1px solid ${C.line}` }}>{h}</th>)}</tr></thead>
                       <tbody>{life.rows.map((r) => (
                         <tr key={r.label} style={{ borderBottom: `1px solid ${C.line2}` }}>
-                          <td style={{ padding: "var(--space-8px) 0" }}>{r.label}</td>
+                          <td style={{ padding: "8px 0" }}>{r.label}</td>
                           <td style={{ textAlign: "right" }}>{Number.isFinite(r.issued) ? dollars(r.issued) : <span style={{ color: C.cap }}>준비 중</span>}</td>
                           <td style={{ textAlign: "right" }}>{Number.isFinite(r.soma) ? dollars(r.soma) : <span style={{ color: C.cap }}>준비 중</span>}</td>
                           <td style={{ textAlign: "right" }}>{Number.isFinite(r.held) ? dollars(r.held) : "—"}</td>
@@ -483,7 +483,7 @@ export default function LiquidityRead() {
 
         {/* 05 탈은 없나 */}
         <Section id="s5" num="05" title="탈은 없나" question="돈이 모자라다는 신호가 있나" paragraphs={[]} bottomGap={28}>
-          <p data-funding-definition="spread" className="rounded-xl bg-[color:var(--surface-soft)] py-5 px-6" style={{ fontSize: "var(--font-size-15)", lineHeight: 1.8, color: C.body }}>{FUNDING_DEFINITIONS.spread}</p>
+          <p data-funding-definition="spread" className="rounded-xl bg-[#EAF0EE] px-5 py-5 md:px-6" style={{ fontSize: 15, lineHeight: 1.8, color: C.body }}>{FUNDING_DEFINITIONS.spread}</p>
         </Section>
         <Row id="s5-spread" continuation aside={<div className="flex flex-col gap-3">
           <ReadingOpinion id="s5-rate-context" title="9월 금리 인상" paragraphs={fundingReading.rateContext} />
@@ -491,10 +491,10 @@ export default function LiquidityRead() {
         </div>}>
           <FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={selDate} weeks={cmp} showNotes={false} showSources={false} />
         </Row>
-        <Row id="s5-nfci" continuation asideClassName="pt-[25px]" lead={<H2>참고할만한 위험 지표들</H2>} aside={<ReadingOpinion id="s5-nfci" title="NFCI 지수" paragraphs={fundingReading.nfci} />}>
+        <Row id="s5-nfci" continuation asideClassName="lg:pt-[25px]" lead={<H2>참고할만한 위험 지표들</H2>} aside={<ReadingOpinion id="s5-nfci" title="NFCI 지수" paragraphs={fundingReading.nfci} />}>
           <NfciHistoryChart points={ctx.nfci ?? []} stats={funding.nfci} asOf={selDate} weeks={cmp} />
         </Row>
-        <Row id="s5-facilities" continuation asideClassName="pt-[25px]" aside={<ReadingOpinion id="s5-facilities" title="연준 긴급대출 창구 합계" paragraphs={fundingReading.facilities} />}>
+        <Row id="s5-facilities" continuation asideClassName="lg:pt-[25px]" aside={<ReadingOpinion id="s5-facilities" title="연준 긴급대출 창구 합계" paragraphs={fundingReading.facilities} />}>
           <FacilitiesHistoryChart history={weeks} data={fedFacilities(weeks,selDate,cmp)} asOf={selDate} weeks={cmp} />
           {context.isError && <Cap>맥락 지표를 불러오지 못했습니다. <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></Cap>}
         </Row>
@@ -502,37 +502,37 @@ export default function LiquidityRead() {
         {readingGroups.map((group, n) => {
           return <section key={group.id} id={group.id} style={{ scrollMarginTop: SECTION_SCROLL_MARGIN }}>
             <CreditReadingGroup group={group} state={credit} weeks={cmp} renderReadingRow={(id, content, paragraphs) => <div key={id} data-bank-reading-row={group.id === 'credit-bank' ? id : undefined} data-credit-reading-row={id} className={ROW_GRID}>
-              <div className={`justify-self-end w-[280px] ${paragraphs.length ? (["bond-dashboard", "cp-dashboard"].includes(id) ? "" : "pt-[53px]") : "pt-6"}`}>
-                {['bank-intro', 'corporate_bond_issuance', 'cp-intro', 'bdc-intro'].includes(id) && <div className="space-y-1.5"><div style={{ fontSize: "var(--font-size-12)", fontWeight: 600, color: C.cap }}>{String(n + 6).padStart(2, "0")}</div><div className="text-base font-semibold">{group.title}</div><Cap>{group.question}</Cap></div>}
-                {!!paragraphs.length && <div aria-label={`${id} 해설`} data-testid={`chart-answer-${id}`} className="rounded-[var(--radius-10px)] bg-[color:var(--tint-lemon)] px-4 py-[18px] space-y-4" style={{ wordBreak: "normal", textWrap: "wrap", overflowWrap: "break-word" }}>
-                  {paragraphs.map((p, index) => <p key={index} style={{ margin: 0, marginTop: index ? 14 : 0, fontSize: p.kind === 'explanation' ? 12 : 14, lineHeight: 1.85, whiteSpace: 'pre-line', color: p.kind === 'explanation' ? 'var(--ink-soft)' : C.body }}><OpinionText paragraph={p} /></p>)}
+              <div className={`lg:justify-self-end lg:w-[260px] xl:w-[280px] ${paragraphs.length ? (["bond-dashboard", "cp-dashboard"].includes(id) ? "" : "lg:pt-[53px]") : "pt-6"}`}>
+                {['bank-intro', 'corporate_bond_issuance', 'cp-intro', 'bdc-intro'].includes(id) && <div className="space-y-1.5"><div style={{ fontSize: 12, fontWeight: 600, color: C.cap }}>{String(n + 6).padStart(2, "0")}</div><div className="text-base font-semibold">{group.title}</div><Cap>{group.question}</Cap></div>}
+                {!!paragraphs.length && <div aria-label={`${id} 해설`} data-testid={`chart-answer-${id}`} className="rounded-[10px] bg-[#EEEBDF] px-4 py-[18px] space-y-4" style={{ wordBreak: "normal", textWrap: "wrap", overflowWrap: "break-word" }}>
+                  {paragraphs.map((p, index) => <p key={index} style={{ margin: 0, marginTop: index ? 14 : 0, fontSize: p.kind === 'explanation' ? 12 : 14, lineHeight: 1.85, whiteSpace: 'pre-line', color: p.kind === 'explanation' ? '#777369' : C.body }}><OpinionText paragraph={p} /></p>)}
                 </div>}
                 {selDate === '2026-10-07' && group.id === 'credit-bank' && !!paragraphs.length
                   && credit.data.find(indicator => indicator.id === id)?.lines.every(line => line.latest && line.latest.date <= '2026-09-30')
                   && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>새 관측이 없어 지난주 해석을 유지합니다</p>}
                 {!!paragraphs.length && weeklyEditorialNote(id, selDate) && <p data-testid={`unchanged-reading-${id}`} style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.6, color: C.absorb, fontWeight: 400 }}>{weeklyEditorialNote(id, selDate)}</p>}
               </div>
-              <div className={['bank-intro', 'cp-intro', 'bdc-intro'].includes(id) ? 'border-t border-[var(--ink)] pt-7' : ''} style={{ minWidth: 0, paddingBottom: "var(--space-28)", display: 'flex', flexDirection: 'column', gap: "var(--space-24)" }}>{content}</div>
+              <div className={['bank-intro', 'cp-intro', 'bdc-intro'].includes(id) ? 'border-t border-[#1A1A18] pt-7' : ''} style={{ minWidth: 0, paddingBottom: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>{content}</div>
             </div>} />
           </section>;
         })}
         {/* 배경 */}
-        <Row as="footer" aside={<div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}><span style={{ fontSize: "var(--font-size-16)", fontWeight: 600 }}>배경</span><Cap>유동성 바깥의 가격과 경기</Cap></div>}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
-            <div className="grid grid-cols-5 gap-x-5">
+        <Row as="footer" aside={<div style={{ display: "flex", flexDirection: "column", gap: 6 }}><span style={{ fontSize: 16, fontWeight: 600 }}>배경</span><Cap>유동성 바깥의 가격과 경기</Cap></div>}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-x-5">
               {bg.map((b) => {
                 const monthlyKey = b.key === "indpro" || b.key === "unrate" || b.key === "pce";
                 const val = b.value == null ? null : b.kind === "pct2" ? `${b.value.toFixed(2)}%` : b.kind === "pct1" ? `${b.value.toFixed(1)}%` : fmt.pct(b.value);
                 return (
-                  <div key={b.key} style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", padding: "var(--space-16px) 0", borderTop: `1px solid ${C.line}` }}>
-                    <span style={{ fontSize: "var(--font-size-13)", color: C.cap }}>{b.label}</span>
-                    {val ? <span style={{ fontSize: "var(--font-size-17)", fontWeight: 600 }}>{val}</span> : <span style={{ fontSize: "var(--font-size-13)", color: C.cap }}>준비 중</span>}
-                    <span style={{ fontSize: "var(--font-size-13)", color: C.cap }}>{b.date ? (monthlyKey ? fmt.monthKo(b.date) : fmt.dateKo(b.date)) : ""}</span>
+                  <div key={b.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "16px 0", borderTop: `1px solid ${C.line}` }}>
+                    <span style={{ fontSize: 13, color: C.cap }}>{b.label}</span>
+                    {val ? <span style={{ fontSize: 17, fontWeight: 600 }}>{val}</span> : <span style={{ fontSize: 13, color: C.cap }}>준비 중</span>}
+                    <span style={{ fontSize: 13, color: C.cap }}>{b.date ? (monthlyKey ? fmt.monthKo(b.date) : fmt.dateKo(b.date)) : ""}</span>
                   </div>
                 );
               })}
             </div>
-            <Cap style={{ lineHeight: 1.7, paddingTop: "var(--space-20)" }}>출처: 연준 H.4.1 · H.8, 재무부 MSPD · 입찰 결과(FiscalData), 시카고 연은, FRED.</Cap>
+            <Cap style={{ lineHeight: 1.7, paddingTop: 20 }}>출처: 연준 H.4.1 · H.8, 재무부 MSPD · 입찰 결과(FiscalData), 시카고 연은, FRED.</Cap>
           </div>
         </Row>
       </div>

@@ -1,19 +1,36 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import type { TimelineEvent, TimelineLane } from "@/data/international-timeline";
 import { eventLanes } from "@/lib/international-timeline-lanes";
 import { periodEnd, periodExtent, type PeriodSlice } from "@/lib/international-timeline-period";
+
+export const TimelinePeriodContext = createContext<{ mobile: boolean; tapped: string | null; setTapped: Dispatch<SetStateAction<string | null>> }>({ mobile: false, tapped: null, setTapped: () => {} });
+export const usePeriodInteraction = () => useContext(TimelinePeriodContext);
 
 export function useTimelinePeriod(events: TimelineEvent[], slices: PeriodSlice[], lanes: TimelineLane[]) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  const [tapped, setTapped] = useState<string | null>(null);
+  const keyboard = useRef(false);
+  const [mobile, setMobile] = useState(() => window.matchMedia("(hover: none)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(hover: none)");
+    const change = () => { setMobile(media.matches); setHovered(null); setFocused(null); setTapped(null); };
+    media.addEventListener("change", change);
+    const key = (e: KeyboardEvent) => { if (e.key === "Tab") keyboard.current = true; };
+    const pointer = () => { keyboard.current = false; };
+    window.addEventListener("keydown", key);
+    window.addEventListener("pointerdown", pointer);
+    return () => { media.removeEventListener("change", change); window.removeEventListener("keydown", key); window.removeEventListener("pointerdown", pointer); };
+  }, []);
   // Filtering/unmounting an active card must not leave a stranded indicator.
   useEffect(() => {
     const present = (id: string | null) => id && events.some(e => e.id === id && periodEnd(e));
     if (!present(hovered)) setHovered(null);
     if (!present(focused)) setFocused(null);
-  }, [events, hovered, focused]);
-  const activeId = hovered ?? focused;
+    if (!present(tapped)) setTapped(null);
+  }, [events, hovered, focused, tapped]);
+  const activeId = mobile ? tapped ?? focused : hovered ?? focused;
   const event = events.find(e => e.id === activeId && periodEnd(e));
   const extent = useMemo(() => event ? periodExtent(event, slices) : null, [event, slices]);
   const color = event ? event.scope === "global" ? "shock" : eventLanes(event).length > 1 ? "eu" : eventLanes(event)[0] : "us";
@@ -49,16 +66,17 @@ export function useTimelinePeriod(events: TimelineEvent[], slices: PeriodSlice[]
 
   const periodId = (target: EventTarget | null) => target instanceof Element ? target.closest<HTMLElement>("[data-period-event]")?.dataset.periodEvent ?? null : null;
   const handlers = {
-    onPointerOver: (e: React.PointerEvent) => { if (e.pointerType !== "touch") setHovered(periodId(e.target)); },
-    onPointerOut: (e: React.PointerEvent) => { if (e.pointerType !== "touch" && periodId(e.target) !== periodId(e.relatedTarget)) setHovered(periodId(e.relatedTarget)); },
-    onFocusCapture: (e: React.FocusEvent) => { setFocused(periodId(e.target)); },
-    onBlurCapture: (e: React.FocusEvent) => { setFocused(periodId(e.relatedTarget)); },
-    onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Escape") { setHovered(null); setFocused(null); } },
+    onPointerDown: () => { if (mobile) setFocused(null); },
+    onPointerOver: (e: React.PointerEvent) => { if (!mobile && e.pointerType !== "touch") setHovered(periodId(e.target)); },
+    onPointerOut: (e: React.PointerEvent) => { if (!mobile && e.pointerType !== "touch" && periodId(e.target) !== periodId(e.relatedTarget)) setHovered(periodId(e.relatedTarget)); },
+    onFocusCapture: (e: React.FocusEvent) => { if (!mobile || keyboard.current) setFocused(periodId(e.target)); },
+    onBlurCapture: (e: React.FocusEvent) => { setFocused(!mobile || keyboard.current ? periodId(e.relatedTarget) : null); },
+    onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Escape") { setHovered(null); setFocused(null); setTapped(null); } },
   };
   const overlay = <div aria-hidden="true" data-testid="period-indicator" data-visible={!!event && measuredId === event.id} data-missing-end={geometry?.missingEnd ?? false}
     className="it-period-indicator" style={{ top: geometry?.top ?? 0, left: geometry?.left ?? 0, width: geometry?.width ?? 0, height: geometry?.height ?? 0, "--it-period-color": `var(--it-${geometry?.color ?? color})` } as CSSProperties}>
     {geometry?.missingEnd && <span className="it-period-end"><span className="it-period-arrow">↓</span>{geometry.endLabel}</span>}
   </div>;
   const gutterStyle = (key: string): CSSProperties | undefined => extent?.keys.includes(key) ? { "--it-gutter-period": `var(--it-${color})` } as CSSProperties : undefined;
-  return { boardRef, handlers, overlay, gutterStyle };
+  return { boardRef, handlers, overlay, gutterStyle, interaction: { mobile, tapped, setTapped } };
 }

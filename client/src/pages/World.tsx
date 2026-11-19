@@ -1,4 +1,3 @@
-import { spring, springPresets } from "@/lib/warm-prism/spring.js";
 // 세계 현황판 (/#/world) — L1 국가 + 검색/프리셋 + L2 무역 인프라(항로·해협·항만) 개체 시스템.
 //   정적 데이터 직접 렌더(DB/서버 불요). d3-geo Equal Earth + d3-zoom. 태평양 중심(회전 스핀).
 //   L2 개편(개체 명세): 항로/해협/항만을 필드·경유지체인·상호 하이퍼링크를 가진 개체로. 카드 1컴포넌트, 유형별 필드.
@@ -56,17 +55,17 @@ const disputeCtrl = (d: { parties: { controls: boolean; name_ko: string }[] }) =
 type ConflictCard = { title: string; left: string; right: string; period: string; need_left: string; need_right: string };
 const conflictCards = (conflictCardsData as unknown as { cards: Record<string, ConflictCard> }).cards;
 // 항로 카드 신포맷(노선도·화물막대·설명·관계칩). 색: 화물 4종.
-const CARGO_BAR_COLOR: Record<string, string> = { container: "var(--tone-blue-500)", oil: "var(--tone-orange-500)", grain: "var(--tone-teal-600)", other: "var(--line)" };
+const CARGO_BAR_COLOR: Record<string, string> = { container: "#378ADD", oil: "#EF9F27", grain: "#1D9E75", other: "#B4B2A9" };
 type RouteStop = { l: string; t: "port" | "strait" | "seg"; ref?: string; note?: string };
 type RouteCard = { candidate?: boolean; stops: RouteStop[]; fork_note?: string; bar?: { l: string; p: number; c: string }[]; status?: string[]; lines: string[]; rel?: { k: string; rk: "route" | "dispute"; ref: string; l: string } };
 const routeCards = (routeCardsData as unknown as { cards: Record<string, RouteCard> }).cards;
 // 최근 사건 펄스 기준 = 데이터셋 최신 사건일(실 '지금' 대용). 이후 30일 이내 = 라이브.
 const CONFLICT_MAX_MS = Math.max(...conflictsAll.map((c) => (c.last_event_date ? Date.parse(c.last_event_date) : 0)));
 // 유형색(§2, 2026-09 4색 확정 — 상징성 배제·구분 최우선, 색상환 등거리+색각 고려). 색=유형, 폭·진하기=강도.
-const CONFLICT_TYPE_COLOR: Record<string, string> = { interstate: "var(--tone-red-400)", civil: "var(--tone-blue-500)", nonstate: "var(--tone-teal-600)", onesided: "var(--tone-teal-600)" };
-const conflictColor = (cat: string) => CONFLICT_TYPE_COLOR[cat] || "var(--tone-teal-600)";
-const TERRITORIAL_YELLOW = "var(--tone-amber-500)"; // 영토·주권 — 지도 요소(점선 마커·주장선)
-const TERRITORIAL_TEXT = "var(--tone-amber-700)";   // 투톤 — 텍스트·뱃지(노랑은 밝은 배경 소자 가독 불가)
+const CONFLICT_TYPE_COLOR: Record<string, string> = { interstate: "#E24B4A", civil: "#378ADD", nonstate: "#1D9E75", onesided: "#1D9E75" };
+const conflictColor = (cat: string) => CONFLICT_TYPE_COLOR[cat] || "#1D9E75";
+const TERRITORIAL_YELLOW = "#F2C40F"; // 영토·주권 — 지도 요소(점선 마커·주장선)
+const TERRITORIAL_TEXT = "#8A6D00";   // 투톤 — 텍스트·뱃지(노랑은 밝은 배경 소자 가독 불가)
 // 유형 그룹(칩=범례+스위치). territorial 은 별도 층. category → group.
 const catGroup = (cat: string) => (cat === "interstate" ? "interstate" : cat === "civil" ? "civil" : "nonstate");
 const CONFLICT_LEGEND: { group: string; ko: string; color: string; help: string }[] = [
@@ -93,13 +92,13 @@ type EntitySel =
   | { kind: "conflict"; id: string }
   | { kind: "dispute"; id: string };
 
-const TEAL = "var(--tone-teal-600)";          // 선택 하이라이트
-const AMBER = "var(--tone-orange-500)";         // 해협
-const SEA = "var(--tone-blue-500)";           // 항만(파랑 점)
+const TEAL = "#0d9488";          // 선택 하이라이트
+const AMBER = "#f59e0b";         // 해협
+const SEA = "#2563eb";           // 항만(파랑 점)
 // 항로별 색 — 앰버(해협)·청록(선택)·적(분쟁 예정) 회피한 범주형 팔레트
 const ROUTE_COLOR: Record<string, string> = {
-  "eu-asia-suez": "var(--tone-blue-500)", "cape": "var(--tone-violet-500)", "arctic": "var(--tone-blue-600)", "nsr": "var(--tone-blue-600)", "nwp": "var(--tone-blue-500)",
-  "trans-pacific": "var(--tone-rose-500)", "panama": "var(--tone-green-600)", "mideast-oil": "var(--tone-blue-400)", "trans-atlantic": "var(--tone-blue-500)",
+  "eu-asia-suez": "#2563eb", "cape": "#9333ea", "arctic": "#0891b2", "nsr": "#0891b2", "nwp": "#64748b",
+  "trans-pacific": "#db2777", "panama": "#16a34a", "mideast-oil": "#4f46e5", "trans-atlantic": "#0ea5e9",
 };
 const routeColor = (id: string) => ROUTE_COLOR[id] ?? SEA;
 // 북극항로 패밀리 = 통합 개체(arctic) + 두 지선(nsr·nwp). 통합 렌더/라벨/리스트에서 하나로 취급.
@@ -107,7 +106,7 @@ const ARCTIC_IDS = new Set(["arctic", "nsr", "nwp"]);
 const isArcticFam = (r: { id?: string; branch_of?: string }) => r.id === "arctic" || r.branch_of === "북극항로";
 // ── 항로 배 흐름(밀도=물동량 등급) ──
 const TIER_SHIPS: Record<string, number> = { high: 5, mid: 3, low: 1, none: 0 }; // 동시 척수(합 상한 40). none=배 0(상업 통항 없음)
-const CARGO_COLOR: Record<string, string> = { container: "var(--tone-blue-500)", crude: "var(--tone-orange-500)", mixed: "var(--tone-violet-500)", bulk: "var(--ink-soft)" };
+const CARGO_COLOR: Record<string, string> = { container: "#2563eb", crude: "#f59e0b", mixed: "#9333ea", bulk: "#78716c" };
 const CARGO_KO: Record<string, string> = { container: "컨테이너", crude: "원유", mixed: "혼합", bulk: "벌크" };
 const shipSymbol = (cargo: string) => (cargo === "crude" ? "ship-tanker" : "ship-container");
 const LANE_OFFSETS: Record<string, number[]> = { high: [-7, 0, 7], mid: [-4, 4], low: [0], none: [0] }; // 등급→차선(회랑 폭=2차 인코딩)
@@ -155,29 +154,29 @@ type Nuke = { id: string; buyer: string; plant: string; reactor_type: string; mw
 const SITE_TYPE_KO: Record<string, string> = { restart: "퇴역 원전 재가동", existing: "기존 원전 활용", new: "신규 건설", unconfirmed: "미확인", none: "원자력 없음" };
 const isReuseNuke = (t?: string) => t === "restart" || t === "existing";
 const dc = dcData as unknown as { meta: any; sites: Site[]; analysis_notes: string[]; nuclear_deals: Nuke[] };
-const GROUP_COLOR: Record<string, string> = { A: "var(--tone-indigo-400)", B: "var(--tone-blue-500)", C: "var(--tone-rose-500)" };
+const GROUP_COLOR: Record<string, string> = { A: "#7c3aed", B: "#2563eb", C: "#db2777" };
 const GROUP_LABEL: Record<string, string> = { A: "스타게이트 계열", B: "하이퍼스케일러", C: "네오클라우드" };
 const GROUP_GLOSS: Record<string, string> = { A: "오픈AI '스타게이트' 계열 — 개발사가 이 사업만을 위한 별도 법인(SPV)으로 짓고 투자등급 임차인이 장기 임대로 신용을 댐", B: "자체 초대형 DC를 짓는 빅테크(하이퍼스케일러) — 대부분 자기 현금으로", C: "GPU를 빌려주는 신생 클라우드 업체(네오클라우드)" };
 // 자금 조달 유형 — 영문 enum 노출 금지, 한글로.
 // 자금 조달 — 세부 타입(hover) + 3분류 대뱃지. 14종을 자본구조상 위치로 묶음.
 const FIN_TYPE_KO: Record<string, string> = { equity: "지분 투자", debt: "대출", bond: "채권 발행", power: "전력 계약", self: "자기자본(자기 현금)", project_finance: "프로젝트 파이낸싱(PF)", gpu_ddtl: "GPU 담보 대출", contract_backed_debt: "계약 담보 대출", gpu_spv: "GPU 담보 SPV", customer_prepay: "고객 선불", vendor: "벤더 금융", convertible: "전환사채", ipo: "상장(IPO)", epc: "EPC 시공금융" };
 const FIN_BUCKET: Record<string, string> = { self: "자기자본", equity: "자기자본", ipo: "자기자본", convertible: "자기자본", debt: "대출", project_finance: "대출", bond: "대출", contract_backed_debt: "대출", gpu_ddtl: "대출", gpu_spv: "대출", vendor: "대출", epc: "대출", power: "고객 선지급", customer_prepay: "고객 선지급" };
-const FIN_BUCKET_COLOR: Record<string, string> = { "자기자본": "var(--tone-green-600)", "대출": "var(--tone-blue-500)", "고객 선지급": "var(--tone-orange-500)" };
+const FIN_BUCKET_COLOR: Record<string, string> = { "자기자본": "#16a34a", "대출": "#64748b", "고객 선지급": "#f59e0b" };
 // 발전 유형 한글 — 현장발전·유틸 신설 공용(영문 enum 노출 금지).
 const genTypeKo = (t: string) => t.includes("combined_cycle") ? "가스 복합화력" : t.includes("recip") ? "가스 엔진" : t.includes("turbine") ? "가스 터빈" : t.includes("gas") ? "가스" : (t.includes("nuclear") || t === "smr") ? "원전" : t.includes("battery") ? "배터리" : t.includes("solar") ? "태양광" : t.includes("wind") ? "풍력" : t;
 // 전력 조달 구성 색(원별): 계통 파랑 · 가스 앰버 · 재생 녹 · 원전 보라 · 기타 회.
-const POWER_SRC_COLOR: Record<string, string> = { grid: "var(--tone-blue-500)", gas: "var(--tone-orange-500)", renew: "var(--tone-green-600)", nuclear: "var(--tone-indigo-400)", other: "var(--ink-soft)" };
+const POWER_SRC_COLOR: Record<string, string> = { grid: "#2563eb", gas: "#f59e0b", renew: "#16a34a", nuclear: "#7c3aed", other: "#78716c" };
 const powerSrcCat = (t: string) => (t.includes("gas") ? "gas" : (t.includes("solar") || t.includes("wind") || t.includes("renew")) ? "renew" : (t.includes("nuclear") || t === "smr") ? "nuclear" : "other");
 // 전력 조달 대분류(층위 최상단) — grid_share·현장발전으로 4분류 확정. 막대 대신 이 텍스트를 강조.
 // 전력 조달 방법 — 대분류를 뱃지로. 혼합/자체 중심은 [일부 전력망]+[자체발전] 2뱃지, 나머지는 1뱃지.
 const POWER_TIER: Record<string, { label: string; color: string }[]> = {
-  grid: [{ label: "전량 전력망에서 구매", color: "var(--tone-blue-500)" }],
-  mixed: [{ label: "일부 전력망", color: "var(--tone-blue-500)" }, { label: "자체 발전 병행", color: "var(--tone-indigo-400)" }],
-  self: [{ label: "일부 전력망", color: "var(--tone-blue-500)" }, { label: "자체 발전 중심", color: "var(--tone-indigo-400)" }],
-  unknown: [{ label: "수급 계획 미확인", color: "var(--ink-soft)" }],
+  grid: [{ label: "전량 전력망에서 구매", color: "#2563eb" }],
+  mixed: [{ label: "일부 전력망", color: "#2563eb" }, { label: "자체 발전 병행", color: "#7c3aed" }],
+  self: [{ label: "일부 전력망", color: "#2563eb" }, { label: "자체 발전 중심", color: "#7c3aed" }],
+  unknown: [{ label: "수급 계획 미확인", color: "#78716c" }],
 };
-const GRID_COLOR: Record<string, string> = { ERCOT: "var(--tone-red-500)", PJM: "var(--tone-blue-500)", MISO: "var(--tone-green-600)", SPP: "var(--tone-orange-500)" };
-const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "var(--tone-blue-500)";
+const GRID_COLOR: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b" };
+const gridColor = (op?: string) => (op && GRID_COLOR[op]) || "#64748b";
 const STAGES = ["announced", "approved", "construction", "partial_operation", "operating"];
 const STAGE_KO: Record<string, string> = { announced: "발표", approved: "인허가", construction: "건설", partial_operation: "부분가동", operating: "가동" };
 // 용어 병기 — 문자열 안 "{{보이는말|설명}}" 을 점선밑줄+title(hover) 스팬으로. 나머지는 평문. 용어는 지우지 않고 설명만 얹음(검색·학습 유지).
@@ -189,7 +188,7 @@ function glossText(s?: string): React.ReactNode {
   if (last < s.length) out.push(s.slice(last));
   return out;
 }
-const creditColor = (r: string | null) => (!r ? "var(--line)" : r === "BBB-" ? "var(--tone-orange-500)" : r.startsWith("BB") ? "var(--tone-red-500)" : "var(--tone-green-600)");
+const creditColor = (r: string | null) => (!r ? "#94a3b8" : r === "BBB-" ? "#f59e0b" : r.startsWith("BB") ? "#dc2626" : "#16a34a");
 const capMW = (s: Site) => s.capacity_operational_mw ?? s.capacity_target_mw.max ?? s.capacity_target_mw.min ?? null;
 const dcMarkerR = (s: Site) => { if (s.id === "fermi-matador") return 7; const c = capMW(s); return c ? 4 + 0.16 * Math.sqrt(c) : 5; };
 // 계통 의존도(grid_share) → 외곽 링 채움 비율. null = undisclosed(점선 링). "100% (…)"·"minimal (200MW ESA)" 등 접미어 허용.
@@ -215,16 +214,16 @@ const GEN_ICON = { gas: Flame, nuclear: Atom, battery: BatteryCharging, grid: Za
 type NukePlant = { id: string; name: string; status: string; state: string | null; lat: number; lng: number; capacity_mw: number | null; ai_linked: boolean; ai_note: string | null; retired_year?: number };
 const nuclearPlants = (nuclearData as unknown as { _meta: any; plants: NukePlant[] }).plants;
 const nuclearMeta = (nuclearData as unknown as { _meta: any })._meta;
-const NUKE_STATUS_COLOR: Record<string, string> = { operating: "var(--tone-green-600)", retired: "var(--line)", restarting: "var(--tone-orange-500)", canceled: "var(--tone-blue-200)" };
+const NUKE_STATUS_COLOR: Record<string, string> = { operating: "#16a34a", retired: "#94a3b8", restarting: "#f59e0b", canceled: "#cbd5e1" };
 const NUKE_STATUS_KO: Record<string, string> = { operating: "가동", retired: "퇴역", restarting: "재가동 진행", canceled: "취소" };
-const AI_SMR = "var(--tone-violet-400)"; // AI 데이터센터 연계(기존 가동 원전) — 보라 마름모
-const AI_NEW = "var(--tone-teal-600)"; // AI 신규 원전·SMR 계획 — 청록 마름모(점선)
+const AI_SMR = "#a855f7"; // AI 데이터센터 연계(기존 가동 원전) — 보라 마름모
+const AI_NEW = "#0d9488"; // AI 신규 원전·SMR 계획 — 청록 마름모(점선)
 // ── 반도체 팹 층(DC 모드 안 레이어) ──
 type FabLog = { status: string; changed_on: string; note: string; source_url: string };
 type Fab = { id: string; company: string; site_name: string; location: { city: string; state: string; lat: number; lng: number }; category: string; node_note: string; invest_announced_usd_bn: number; chips_award_usd_bn: number | null; target_year: number | null; status: string; status_as_of: string; status_note: string; status_source_url: string; status_log: FabLog[]; source_url: string };
 const fabs = (fabsData as unknown as { _meta: any; fabs: Fab[] }).fabs;
 const fabsMeta = (fabsData as unknown as { _meta: any })._meta;
-const FAB_COLOR: Record<string, string> = { intel: "var(--tone-blue-500)", tsmc: "var(--tone-red-500)", samsung: "var(--tone-indigo-400)", skhynix: "var(--tone-orange-500)", micron: "var(--tone-teal-600)", ti: "var(--tone-orange-600)", other: "var(--tone-blue-500)" };
+const FAB_COLOR: Record<string, string> = { intel: "#2563eb", tsmc: "#dc2626", samsung: "#7c3aed", skhynix: "#ea580c", micron: "#059669", ti: "#b45309", other: "#64748b" };
 const FAB_COMPANY_KO: Record<string, string> = { intel: "인텔", tsmc: "TSMC", samsung: "삼성", skhynix: "SK하이닉스", micron: "마이크론", ti: "TI", other: "기타" };
 const FAB_STATUS_KO: Record<string, string> = { operating: "가동", construction: "건설 중", announced: "발표", paused: "중단" };
 const FAB_CAT_KO: Record<string, string> = { logic: "로직", memory: "메모리", packaging: "패키징", other: "기타" };
@@ -243,18 +242,18 @@ type Plant = { id: string; name: string; fuel: string; capacity_mw: number | nul
 type DcLink = { dc_id: string; plant_id: string; tier: "physical" | "contract" | "grid"; note: string; source_url: string };
 const dcPower = dcPowerLinks as unknown as { plants: Plant[]; links: DcLink[] };
 const PLANT_BY_ID = new Map(dcPower.plants.map((p) => [p.id, p]));
-const FUEL_COLOR: Record<string, string> = { gas: "var(--tone-orange-500)", nuclear: "var(--tone-green-600)", solar: "var(--tone-amber-500)", coal: "var(--ink-soft)", hydro: "var(--tone-blue-500)" };
+const FUEL_COLOR: Record<string, string> = { gas: "#f97316", nuclear: "#16a34a", solar: "#facc15", coal: "#57534e", hydro: "#0ea5e9" };
 const FUEL_KO: Record<string, string> = { gas: "가스", nuclear: "원전", solar: "태양광", coal: "석탄", hydro: "수력" };
 const FUEL_ICON: Record<string, any> = { gas: Flame, nuclear: Atom, solar: Zap, coal: Flame, hydro: Zap };
 // 주별 총 소매 전력판매량 MWh (EIA 2023 State Electricity Profiles). AI 부하 비중 분모.
 const STATE_RETAIL_MWH_2023: Record<string, number> = { TX: 404603980, LA: 95374457, WI: 68563904, OH: 146640983, GA: 142028831, IN: 95995350, MI: 97588690, MS: 48421762, NJ: 71096939, NM: 28347490, ND: 28202179, PA: 138710993, TN: 89880852 };
 // 부하 비중 단계 램프(누적 임계 desc): AI DC 부하 ÷ 주 평균부하(연 판매량/8760) %.
-const LOAD_FILL_STEPS: [number, string][] = [[45, "var(--alpha-tone-red-500-600)"], [30, "var(--alpha-tone-red-500-420)"], [15, "var(--alpha-tone-orange-500-300)"], [5, "var(--alpha-tone-orange-500-200)"], [0, "var(--alpha-tone-orange-500-90)"]];
+const LOAD_FILL_STEPS: [number, string][] = [[45, "rgba(220,38,38,0.60)"], [30, "rgba(220,38,38,0.42)"], [15, "rgba(234,88,12,0.30)"], [5, "rgba(245,158,11,0.20)"], [0, "rgba(245,158,11,0.09)"]];
 const loadFillColor = (share: number) => { for (const [th, c] of LOAD_FILL_STEPS) if (share >= th) return c; return "transparent"; };
 // ISO/RTO 권역 채색(§B '전력시장'). 비ISO(TVA·WECC·SERC 등)는 무채색.
 type RtoRegion = { code: string; name: string; geometry: any };
 const rtoRegions = (rtoData as unknown as { regions: RtoRegion[] }).regions;
-const RTO_FILL: Record<string, string> = { ERCOT: "var(--tone-red-500)", PJM: "var(--tone-blue-500)", MISO: "var(--tone-green-600)", SPP: "var(--tone-orange-500)", CAISO: "var(--tone-rose-500)", ISONE: "var(--tone-violet-500)", NYISO: "var(--tone-blue-600)" };
+const RTO_FILL: Record<string, string> = { ERCOT: "#dc2626", PJM: "#2563eb", MISO: "#16a34a", SPP: "#f59e0b", CAISO: "#db2777", ISONE: "#9333ea", NYISO: "#0891b2" };
 // 전력계통 용어 사전(§1·§2) — 채색 뷰 해설 패널 + 지도 hover 한 줄 신원. 표시 순서·한글 병기·권역·설명.
 const RTO_ORDER = ["ERCOT", "PJM", "MISO", "SPP", "CAISO", "ISONE", "NYISO"] as const;
 const rtoAbbr = (c: string) => (c === "ISONE" ? "ISO-NE" : c); // 표시용 약칭
@@ -272,8 +271,8 @@ const RTO_ATTR: Record<string, GridAttr> = {
   NYISO: { price: "고가", gen: "가스·수력", tx: "병목" },
 };
 // 가격/송전 뱃지 색(의미). 발전원은 무채색.
-const gridPriceColor = (v: string) => (v.startsWith("최저") || v === "저가") ? "var(--tone-green-600)" : /고가/.test(v) ? "var(--tone-red-500)" : /중/.test(v) ? "var(--tone-blue-500)" : "var(--ink-soft)";
-const gridTxColor = (v: string) => v.includes("우수") ? "var(--tone-green-600)" : v.includes("병목") ? "var(--tone-orange-500)" : "var(--tone-blue-500)";
+const gridPriceColor = (v: string) => (v.startsWith("최저") || v === "저가") ? "#16a34a" : /고가/.test(v) ? "#dc2626" : /중/.test(v) ? "#64748b" : "#78716c";
+const gridTxColor = (v: string) => v.includes("우수") ? "#16a34a" : v.includes("병목") ? "#f59e0b" : "#64748b";
 // 비ISO 지역(§2) — 동일 3속성. 정밀 유틸 폴리곤은 후속(EIA-861); 여기선 주 경계 병합으로 대략적 영역만(무채색, hover 강조).
 const NONISO_ROWS: ({ region: string } & GridAttr)[] = [
   { region: "남동부", price: "중저가", gen: "가스·원전", tx: "우수" },
@@ -306,9 +305,9 @@ const GRID_WHY: Record<string, { price?: string; gen?: string; tx?: string }> = 
 function GridBadges({ a, why }: { a: GridAttr; why?: { price?: string; gen?: string; tx?: string } }) {
   const pc = gridPriceColor(a.price), tc = gridTxColor(a.tx);
   return (<>
-    <span className={`shrink-0 rounded px-1.5 py-px text-[length:var(--font-size-9px)] font-semibold${why?.price ? " cursor-help" : ""}`} style={{ background: pc + "1e", color: pc }} title={why?.price}>{a.price}</span>
-    <span className={`shrink-0 rounded bg-muted px-1.5 py-px text-[length:var(--font-size-9px)] font-semibold text-foreground/70${why?.gen ? " cursor-help" : ""}`} title={why?.gen}>{a.gen}</span>
-    <span className={`shrink-0 rounded px-1.5 py-px text-[length:var(--font-size-9px)] font-semibold${why?.tx ? " cursor-help" : ""}`} style={{ background: tc + "1e", color: tc }} title={why?.tx}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
+    <span className={`shrink-0 rounded px-1.5 py-px text-[9px] font-semibold${why?.price ? " cursor-help" : ""}`} style={{ background: pc + "1e", color: pc }} title={why?.price}>{a.price}</span>
+    <span className={`shrink-0 rounded bg-muted px-1.5 py-px text-[9px] font-semibold text-foreground/70${why?.gen ? " cursor-help" : ""}`} title={why?.gen}>{a.gen}</span>
+    <span className={`shrink-0 rounded px-1.5 py-px text-[9px] font-semibold${why?.tx ? " cursor-help" : ""}`} style={{ background: tc + "1e", color: tc }} title={why?.tx}><span className="font-normal opacity-60">송전 </span>{a.tx}</span>
   </>);
 }
 // 레이어 토글 hover 범례(우상단) — 줄글 툴팁 대신 실제 마커 모양 스와치 + 짧은 라벨(표 옆 범례처럼).
@@ -318,18 +317,18 @@ const SwCircle = ({ c, filled = true, ring }: { c: string; filled?: boolean; rin
 const SwDiamond = ({ c, solid }: { c: string; solid?: boolean }) => (
   <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1 15.5,7 9,13 2.5,7" fill={c} fillOpacity={solid ? 0.85 : 0.18} stroke={c} strokeWidth="1.6" strokeDasharray={solid ? undefined : "2 1.5"} strokeLinejoin="round" /></svg>
 );
-const SwLine = ({ w, dash, c = "var(--tone-blue-500)" }: { w: number; dash?: string; c?: string }) => (
+const SwLine = ({ w, dash, c = "#0ea5e9" }: { w: number; dash?: string; c?: string }) => (
   <svg width="18" height="14" viewBox="0 0 18 14"><line x1="1" y1="7" x2="17" y2="7" stroke={c} strokeWidth={w} strokeDasharray={dash} strokeLinecap="round" /></svg>
 );
 const SwHex = ({ c, fill }: { c: string; fill: number }) => (
   <svg width="18" height="14" viewBox="0 0 18 14"><polygon points="9,1.5 14.5,4.5 14.5,9.5 9,12.5 3.5,9.5 3.5,4.5" fill={c} fillOpacity={fill} stroke={c} strokeWidth="1.3" strokeLinejoin="round" /></svg>
 );
 const LegRow = ({ sw, label }: { sw: React.ReactNode; label: string }) => (
-  <div className="flex items-center gap-1.5"><span className="flex h-3.5 w-[18px] shrink-0 items-center justify-center">{sw}</span><span className="text-[length:var(--font-size-10-5px)] leading-tight text-popover-foreground/80">{label}</span></div>
+  <div className="flex items-center gap-1.5"><span className="flex h-3.5 w-[18px] shrink-0 items-center justify-center">{sw}</span><span className="text-[10.5px] leading-tight text-popover-foreground/80">{label}</span></div>
 );
 function LegendCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (<div className="pointer-events-none absolute right-0 top-full z-[60] mt-1 hidden w-max min-w-[140px] rounded-lg border border-border bg-popover/95 p-2 shadow-lg glass group-hover:block">
-    <div className="mb-1.5 text-[length:var(--font-size-10px)] font-semibold text-muted-foreground">{title}</div>
+  return (<div className="pointer-events-none absolute right-0 top-full z-[60] mt-1 hidden w-max min-w-[140px] rounded-lg border border-border bg-popover/95 p-2 shadow-lg backdrop-blur-sm group-hover:block">
+    <div className="mb-1.5 text-[10px] font-semibold text-muted-foreground">{title}</div>
     <div className="space-y-1">{children}</div>
   </div>);
 }
@@ -393,7 +392,7 @@ export default function World() {
     return out;
   }, [features]);
 
-  // ── 컨테이너 측정 ──
+  // ── 반응형 ──
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dim, setDim] = useState({ w: 960, h: 540 });
   useEffect(() => {
@@ -405,15 +404,15 @@ export default function World() {
   // ── 투영 ──
   const [lon, setLon] = useState(CENTER_LON);
   const lonRef = useRef(lon); lonRef.current = lon;
-  const lonMotion = useRef<ReturnType<typeof spring> | null>(null);
-  useEffect(() => () => lonMotion.current?.cancel(), []);
+  const lonTweenRaf = useRef(0);
   // 경도(투영 회전) 부드러운 트윈 — 순간 점프 대신 zoom 트랜지션과 함께 회전(먼 경도 비행이 자연스럽게).
-  const tweenLon = useCallback((to: number, _dur: number) => {
-    lonMotion.current?.cancel();
-    const from = lonRef.current; let delta = to - from;
-    while (delta > 180) delta -= 360; while (delta < -180) delta += 360;
-    if (!wrapRef.current || Math.abs(delta) < .5) { setLon(to); return; }
-    lonMotion.current = spring(wrapRef.current, { ...springPresets.smooth, from, to: from + delta, onUpdate: setLon });
+  const tweenLon = useCallback((to: number, dur: number) => {
+    cancelAnimationFrame(lonTweenRaf.current);
+    const from = lonRef.current; let dd = to - from; while (dd > 180) dd -= 360; while (dd < -180) dd += 360;
+    if (Math.abs(dd) < 0.5) { setLon(to); return; }
+    const t0 = performance.now();
+    const tick = (now: number) => { const p = Math.min(1, (now - t0) / dur); const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; setLon(from + dd * e); if (p < 1) lonTweenRaf.current = requestAnimationFrame(tick); };
+    lonTweenRaf.current = requestAnimationFrame(tick);
   }, []);
   const projection = useMemo(() => geoEqualEarth().rotate([-lon, 0]).fitExtent([[14, 14], [dim.w - 14, dim.h - 14]], { type: "Sphere" } as any), [dim, lon]);
   const pathGen = useMemo(() => geoPath(projection), [projection]);
@@ -453,6 +452,7 @@ export default function World() {
     if (ct === "mixed") return CARGO_COLOR[cargoFilter || "container"];
     return CARGO_COLOR[ct] || SEA;
   };
+  const reducedMotion = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
   const routeSamples = useMemo(() => { const m = new Map<string, { pts: number[][]; len: number }>(); for (const r of infra.routes) m.set(r.id, densifyRoute(r.coords)); return m; }, []);
   const fleet = useMemo(() => { const s: { routeId: string; cargo: string; offset: number; speed: number; lane: number }[] = []; for (const r of infra.routes as any[]) { const n = TIER_SHIPS[r.volume_tier] ?? 1; const lanes = LANE_OFFSETS[r.volume_tier] ?? [0]; const len = routeSamples.get(r.id)?.len ?? 100; const strands = r.cargo_type === "mixed" ? ["container", "crude"] : [r.cargo_type || "container"]; for (let i = 0; i < n; i++) s.push({ routeId: r.id, cargo: strands[i % strands.length], offset: (i + 0.5) / n, speed: (0.004 / len) * (0.9 + 0.2 * ((i * 37) % 100) / 100), lane: lanes[i % lanes.length] }); } return s; }, [routeSamples]);
   const fleetRefs = useRef<(SVGGElement | null)[]>([]);
@@ -593,7 +593,7 @@ export default function World() {
   const spinRef = useRef<{ x: number; lon: number } | null>(null);
   const onSpinDown = (e: React.PointerEvent) => {
     draggedRef.current = false;
-    lonMotion.current?.cancel(); // 사용자가 잡으면 진행 중 회전 트윈 중단
+    cancelAnimationFrame(lonTweenRaf.current); // 사용자가 잡으면 진행 중 회전 트윈 중단
     if (e.pointerType !== "mouse" || kRef.current > 1.02) return;
     spinRef.current = { x: e.clientX, lon }; // ⚠ setPointerCapture 안 함 — 클릭(선택) 스틸 방지. 스핀은 svg onPointerMove/Up 으로 추적.
   };
@@ -608,7 +608,7 @@ export default function World() {
     fitKRef.current = k;
     tweenLon(useLon, 700); // 회전도 부드럽게(즉시 점프 제거) → 먼 경도 비행이 '내려꽂힘' 대신 자연스러운 이동
     const tr = zoomIdentity.translate(dim.w / 2 - k * cx, dim.h / 2 - k * cy).scale(k);
-    select(svgRef.current).call(zoomRef.current.transform, tr);
+    select(svgRef.current).transition().duration(700).call(zoomRef.current.transform, tr);
   }, [dim]);
   const flyRegion = useCallback((r: { lon: number; bbox: [number, number, number, number] }) => {
     const proj = projFor(r.lon); const [w, s, e, n] = r.bbox, N = 8;
@@ -628,8 +628,8 @@ export default function World() {
     const midLon = r.coords[Math.floor(r.coords.length / 2)][0];
     flyRegion({ lon: midLon, bbox: [Math.min(...lo), Math.min(...la), Math.max(...lo), Math.max(...la)] });
   }, [flyRegion]);
-  const zoomBy = (f: number) => zoomRef.current && svgRef.current && select(svgRef.current).call(zoomRef.current.scaleBy, f);
-  const resetWorldView = useCallback(() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).call(zoomRef.current.transform, zoomIdentity); }, []);
+  const zoomBy = (f: number) => zoomRef.current && svgRef.current && select(svgRef.current).transition().duration(250).call(zoomRef.current.scaleBy, f);
+  const resetWorldView = useCallback(() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).transition().duration(500).call(zoomRef.current.transform, zoomIdentity); }, []);
   // DC 모드: 미국만 보는 화면 → 훨씬 깊게 확대(캡 12→40) + 좌우 패닝을 미국 프레임으로 제한(다른 대륙 표류 방지).
   // 기존 zoom 동작을 in-place 갱신(재생성 안 함 → 진행 중 트윈·현재 변환 안 깨짐).
   useEffect(() => {
@@ -649,7 +649,7 @@ export default function World() {
   const enterMode = useCallback((m: "trade" | "dc" | "conflict") => {
     setSel(null); setDcSel(null); setDcMode(m === "dc"); setConflictMode(m === "conflict");
     if (m === "dc") { flyRegion({ lon: -95, bbox: US_BBOX }); dcBaseKRef.current = fitKRef.current; }
-    else if (m === "conflict") { setLon(25); svgRef.current && select(svgRef.current).call(zoomRef.current.transform, zoomIdentity); } // 분쟁 밀집 반구(유럽·중동·아프리카) 중심
+    else if (m === "conflict") { setLon(25); svgRef.current && select(svgRef.current).transition().duration(500).call(zoomRef.current.transform, zoomIdentity); } // 분쟁 밀집 반구(유럽·중동·아프리카) 중심
     else resetWorldView();
   }, [flyRegion, resetWorldView]);
 
@@ -744,7 +744,7 @@ export default function World() {
       if (dist < need) { const ang = dist < 0.5 ? -Math.PI / 4 : Math.atan2(dy, dx); return [d.x + Math.cos(ang) * need, d.y + Math.sin(ang) * need]; } }
     return [x, y];
   };
-  // 배의 밀도로 물동량 표시. 반복 이동 없이 투영/줌 좌표만 갱신.
+  // 배 흐름 rAF — 최신 투영/줌은 ref 로 읽어 스핀·줌 자연 대응. 배는 스크린 공간이라 크기 고정.
   const projRef = useRef(projection); projRef.current = projection;
   const tRef = useRef(t); tRef.current = t;
   const shipsOn = tradeMode && layers.routes;
@@ -762,10 +762,16 @@ export default function World() {
         el.setAttribute("transform", `translate(${lx.toFixed(1)},${ly.toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${fy})`);
       }
     };
-    place();
-  }, [shipsOn, fleet, routeSamples, dim]);
-  // 정적 밀도 표시 — 스핀/줌 시 위치만 갱신
-  useEffect(() => { if (shipsOn) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); el.style.display = p2 && Math.abs(p2[0] - p[0]) > dim.w * 0.5 ? "none" : ""; const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${Math.cos(angR) < 0 ? -0.78 : 0.78})`); } } });
+    if (reducedMotion) { place(); return; } // 정지: 정적 배치(밀도 정보 유지)
+    let raf = 0, last = performance.now(), running = true;
+    const tick = (now: number) => { if (!running) return; const dt = Math.min(50, now - last); last = now; for (const ship of fleet) ship.offset = (ship.offset + ship.speed * dt) % 1; place(); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    const onVis = () => { if (document.hidden) { running = false; cancelAnimationFrame(raf); } else if (!running) { running = true; last = performance.now(); raf = requestAnimationFrame(tick); } };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { running = false; cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); };
+  }, [shipsOn, fleet, routeSamples, reducedMotion, dim]);
+  // 정적(reducedMotion)·스핀/줌 시 재배치
+  useEffect(() => { if (shipsOn && reducedMotion) { const proj = projRef.current, tt = tRef.current; for (let i = 0; i < fleet.length; i++) { const ship = fleet[i], el = fleetRefs.current[i]; if (!el) continue; const samples = routeSamples.get(ship.routeId); if (!samples) continue; const [lng, lat] = shipLngLat(samples.pts, ship.offset); const p = proj([lng, lat] as any); if (!p) continue; const x = p[0] * tt.k + tt.x, y = p[1] * tt.k + tt.y; const [al, at] = shipLngLat(samples.pts, ship.offset + 0.004); const p2 = proj([al, at] as any); el.style.display = p2 && Math.abs(p2[0] - p[0]) > dim.w * 0.5 ? "none" : ""; const angR = p2 ? Math.atan2((p2[1] * tt.k + tt.y) - y, (p2[0] * tt.k + tt.x) - x) : 0; el.setAttribute("transform", `translate(${(x + ship.lane * -Math.sin(angR)).toFixed(1)},${(y + ship.lane * Math.cos(angR)).toFixed(1)}) rotate(${(angR * 180 / Math.PI).toFixed(1)}) scale(0.78,${Math.cos(angR) < 0 ? -0.78 : 0.78})`); } } });
 
   // 항만 라벨 클러스터(세계 뷰에서 밀집 시 최상위 1개만) — 순위 오름차순 그리디, 44px 이내 중복 제거
   const portLabelSet = useMemo(() => {
@@ -780,7 +786,7 @@ export default function World() {
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-background text-foreground">
-      
+      <style>{`@keyframes wf-flow{to{stroke-dashoffset:-24}}.wf-flow{animation:wf-flow 1s linear infinite}.wf-flow-slow{animation:wf-flow 3.2s linear infinite}@keyframes cf-pulse{0%{transform:scale(1);opacity:.7}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}.cf-pulse{animation:cf-pulse 1.8s ease-out infinite}@keyframes dz-in{from{opacity:0}to{opacity:1}}.dz-in{animation:dz-in .4s ease-out}.tr-gloss{text-decoration:underline dotted;text-underline-offset:2px;text-decoration-thickness:1px;cursor:help}@media(prefers-reduced-motion:reduce){.cf-pulse{animation:none;opacity:0}.dz-in{animation:none}}`}</style>
       <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${dim.w} ${dim.h}`}
         className="block cursor-grab active:cursor-grabbing select-none"
         onPointerDown={onSpinDown} onPointerMove={onSpinMove} onPointerUp={onSpinUp} onPointerLeave={onSpinUp}
@@ -790,7 +796,7 @@ export default function World() {
           <symbol id="ship-tanker" viewBox="0 0 16 8"><path d="M0 4.6 L2 7.4 L14 7.4 L16 4.6 Z" /><rect x="3" y="3" width="7.6" height="1.8" rx="0.9" opacity="0.7" /><rect x="12" y="1.8" width="1.8" height="2.8" opacity="0.7" /></symbol>
           {/* 분쟁 진앙 번짐 — 유형색 방사 그라데이션(중심 → 투명) */}
           {CONFLICT_LEGEND.map((l) => (
-            <radialGradient key={l.color} id={`cfdot-${l.color.replace(/[^a-z0-9_-]/gi, "")}`}>
+            <radialGradient key={l.color} id={`cfdot-${l.color.slice(1)}`}>
               <stop offset="0%" stopColor={l.color} stopOpacity="0.55" /><stop offset="45%" stopColor={l.color} stopOpacity="0.22" /><stop offset="100%" stopColor={l.color} stopOpacity="0" />
             </radialGradient>
           ))}
@@ -800,10 +806,10 @@ export default function World() {
           {/* 육지 */}
           {features.map((f, i) => {
             const isSel = isSelCty(i), isNb = selCtyNeighbors.has(i), isHov = i === hoverCty;
-            const fill = isSel ? TEAL : isNb ? "var(--alpha-tone-teal-600-280)" : isHov ? "hsl(var(--muted))" : "hsl(var(--card))";
+            const fill = isSel ? TEAL : isNb ? "rgba(13,148,136,0.28)" : isHov ? "hsl(var(--muted))" : "hsl(var(--card))";
             return (
               <path key={i} d={paths[i]} fill={fill} stroke="hsl(var(--border))" strokeWidth={0.5 / t.k}
-                style={{ cursor: dcMode ? "default" : "pointer", transition: "var(--transition-state)", pointerEvents: dcMode ? "none" : undefined }}
+                style={{ cursor: dcMode ? "default" : "pointer", transition: "fill 0.12s", pointerEvents: dcMode ? "none" : undefined }}
                 onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "country", idx: i }); }}
                 onMouseEnter={(e) => { setHoverCty(i); setTip({ x: e.clientX, y: e.clientY, text: f.properties.ko || f.properties.en }); }}
                 onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: f.properties.ko || f.properties.en })}
@@ -821,7 +827,7 @@ export default function World() {
               <g key={`cg${g.idx}`}>
                 <clipPath id={`cgclip-${g.idx}`} clipPathUnits="userSpaceOnUse"><path d={d} /></clipPath>
                 <g clipPath={`url(#cgclip-${g.idx})`}>
-                  <path d={d} fill={g.color} fillOpacity={fillOp} stroke="none" style={{ cursor: "pointer", transition: "var(--transition-state)" }}
+                  <path d={d} fill={g.color} fillOpacity={fillOp} stroke="none" style={{ cursor: "pointer", transition: "fill-opacity 0.12s" }}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } goTo({ kind: "conflict", id: g.repId }); }}
                     onMouseEnter={(e) => { setHoverCty(g.idx); if (rc) setTip({ x: e.clientX, y: e.clientY, text: rc.name_ko, sub: `${conflictLabel(rc.category, rc.intensity === "war")} · 사망 ${rc.deaths_12mo.toLocaleString()}` }); }}
@@ -834,7 +840,7 @@ export default function World() {
           })}
           {/* DC 모드: 미국 주 경계 오버레이 */}
           {/* 국가 뷰 면 채색 §B — 전력시장(RTO) 권역. 비ISO 지역은 무채색(안 그림) */}
-          {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => { if (!r.d) return null; const active = dcGridSel === r.code || dcGridHover === r.code; const col = RTO_FILL[r.code] || "var(--line)";
+          {dcMode && dcFill === "rto" && rtoPaths.map((r, i) => { if (!r.d) return null; const active = dcGridSel === r.code || dcGridHover === r.code; const col = RTO_FILL[r.code] || "#94a3b8";
             return <path key={`rto${i}`} d={r.d} fill={col} fillOpacity={active ? 0.34 : 0.14} stroke={col} strokeOpacity={active ? 0.85 : 0.3} strokeWidth={(active ? 1.3 : 0.5) / t.k} style={{ cursor: "pointer" }}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcGridSel((c) => (c === r.code ? null : r.code)); setGridPanelOpen(true); }}
@@ -843,7 +849,7 @@ export default function World() {
               onMouseLeave={() => { setDcGridHover(null); setTip(null); }} />; })}
           {/* 비ISO 권역 대략 영역 — 무채색(수직통합 유틸). hover/선택 시 진해짐 */}
           {dcMode && dcFill === "rto" && nonIsoPaths.map((r, i) => { if (!r.d) return null; const active = dcGridSel === r.region || dcGridHover === r.region;
-            return <path key={`niso${i}`} d={r.d} fill="var(--line)" fillOpacity={active ? 0.28 : 0.08} stroke="var(--line)" strokeOpacity={active ? 0.7 : 0.3} strokeWidth={(active ? 1.2 : 0.5) / t.k} strokeDasharray={active ? undefined : `${2.5 / t.k} ${2.5 / t.k}`} style={{ cursor: "pointer" }}
+            return <path key={`niso${i}`} d={r.d} fill="#94a3b8" fillOpacity={active ? 0.28 : 0.08} stroke="#94a3b8" strokeOpacity={active ? 0.7 : 0.3} strokeWidth={(active ? 1.2 : 0.5) / t.k} strokeDasharray={active ? undefined : `${2.5 / t.k} ${2.5 / t.k}`} style={{ cursor: "pointer" }}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); if (draggedRef.current) { draggedRef.current = false; return; } setDcGridSel((c) => (c === r.region ? null : r.region)); setGridPanelOpen(true); }}
               onMouseEnter={(e) => { setDcGridHover(r.region); setTip({ x: e.clientX, y: e.clientY, text: `${r.region} · 비ISO 수직통합 유틸`, sub: "정밀 서비스 영역 아닌 구성 주 근사" }); }}
@@ -860,8 +866,8 @@ export default function World() {
           {/* 송전선 345kV+ (기존 계통 2022). 전압 등급별 굵기 + 흐르는 점선(전력이 흐르는 느낌). 정적 언더레이로 그물망은 상시 보임. */}
           {txPathsByClass.map(({ v, d }) => d ? (
             <g key={`tx${v}`} style={{ pointerEvents: "none" }}>
-              <path d={d} fill="none" stroke="var(--tone-blue-400)" strokeOpacity={TX_OPACITY[v] * 0.3} strokeWidth={(TX_WIDTH[v] + 1.4) / t.k} strokeLinejoin="round" strokeLinecap="round" />
-              <path d={d} className="wf-flow-slow" fill="none" stroke="var(--tone-blue-500)" strokeOpacity={TX_OPACITY[v]} strokeWidth={TX_WIDTH[v] / t.k} strokeLinecap="round" strokeDasharray={`${6 / t.k} ${5 / t.k}`} />
+              <path d={d} fill="none" stroke="#38bdf8" strokeOpacity={TX_OPACITY[v] * 0.3} strokeWidth={(TX_WIDTH[v] + 1.4) / t.k} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={d} className="wf-flow-slow" fill="none" stroke="#0ea5e9" strokeOpacity={TX_OPACITY[v]} strokeWidth={TX_WIDTH[v] / t.k} strokeLinecap="round" strokeDasharray={`${6 / t.k} ${5 / t.k}`} />
             </g>
           ) : null)}
           {dcMode && usStateLabels.map((l: any, i: number) => (
@@ -964,7 +970,7 @@ export default function World() {
           // 주석(분기 화살표·공통 구간)은 선택(클릭) 시에만 — 스쳐가는 hover 툴팁과 겹침 방지.
           const sticky = compareSet.has("arctic") || (sel?.kind === "route" && ARCTIC_IDS.has(sel.id));
           const arc = routeColor("nsr"); const lock = routeColor("nwp");
-          const RED = "var(--tone-red-400)"; // 분기 화살표 — 항로선과 분리된 별도 주석색
+          const RED = "#E24B4A"; // 분기 화살표 — 항로선과 분리된 별도 주석색
           const mid = toScreen(arcticBits.trunkMid[0], arcticBits.trunkMid[1]);
           const ns = toScreen(arcticBits.nsrAt[0], arcticBits.nsrAt[1]);
           const nw = toScreen(arcticBits.nwpAt[0], arcticBits.nwpAt[1]);
@@ -1080,11 +1086,11 @@ export default function World() {
 
         {/* ③ 계통 급전 — 최근접 345kV 스냅(근사) 점선. 사이트 줌에서만(§A) */}
         {dcSiteZoom && snapLines.map((sl) => { const a = toScreen(sl.dc[0], sl.dc[1]), b = toScreen(sl.snap[0], sl.snap[1]); if (!a || !b) return null;
-          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="var(--tone-blue-500)" strokeOpacity={0.8} strokeWidth={1.2} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
+          return <line key={`snap${sl.id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#0ea5e9" strokeOpacity={0.8} strokeWidth={1.2} strokeDasharray="1.5 2" style={{ pointerEvents: "none" }} />; })}
 
         {/* ① 물리 연결선(흐름 애니메이션 = 실제 조류) — DC 마커 아래(원래 자리). 사이트 줌에서만(§A) */}
         {dcMode && dcSiteZoom && dcLinksR.filter(({ link }) => link.tier === "physical").map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
-          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="var(--tone-green-600)" strokeOpacity={0.95} strokeWidth={2.4}
+          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#16a34a" strokeOpacity={0.95} strokeWidth={2.4}
             strokeDasharray="5 4" strokeLinecap="round" className="wf-flow" style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: "물리 전용 · 실제 조류", sub: link.note })}
@@ -1092,13 +1098,13 @@ export default function World() {
             onMouseLeave={() => setTip(null)} />; })}
 
         {/* 발전소 점 (②·① 관련만) — 연료색 사각 + 글리프. DC(원)와 형태로 구분 */}
-        {dcMode && dcLinksR.map(({ plant }) => { const sc = toScreen(plant.lng, plant.lat); if (!sc || !inView(sc[0], sc[1])) return null; const col = FUEL_COLOR[plant.fuel] || "var(--tone-orange-500)"; const FI = FUEL_ICON[plant.fuel] || Flame;
+        {dcMode && dcLinksR.map(({ plant }) => { const sc = toScreen(plant.lng, plant.lat); if (!sc || !inView(sc[0], sc[1])) return null; const col = FUEL_COLOR[plant.fuel] || "#f97316"; const FI = FUEL_ICON[plant.fuel] || Flame;
           return <g key={`pl${plant.id}`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FUEL_KO[plant.fuel] || plant.fuel} · ${plant.name}`, sub: `${plant.capacity_mw ? plant.capacity_mw + "MW · " : ""}${plant.note}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FUEL_KO[plant.fuel] || plant.fuel} · ${plant.name}` })}
             onMouseLeave={() => setTip(null)}>
             <rect x={sc[0] - 4.5} y={sc[1] - 4.5} width={9} height={9} rx={1.5} fill={col} fillOpacity={0.92} stroke="hsl(var(--background))" strokeWidth={1} />
-            <FI x={sc[0] - 3} y={sc[1] - 3} width={6} height={6} style={{ color: "var(--surface)", pointerEvents: "none" }} />
+            <FI x={sc[0] - 3} y={sc[1] - 3} width={6} height={6} style={{ color: "#fff", pointerEvents: "none" }} />
           </g>; })}
 
         {/* L4 분쟁 진앙 마커 — 색=유형. 넓게 번지는 방사 광훈 + 또렷한 코어(클릭 타깃). 최근 30일+전쟁 = 라이브 펄스. */}
@@ -1112,7 +1118,7 @@ export default function World() {
             onMouseEnter={(e) => { setHoverConflict(c.id); setTip({ x: e.clientX, y: e.clientY, text: c.name_ko, sub: `${conflictLabel(c.category, war)} · 최근 12개월 사망 ${c.deaths_12mo.toLocaleString()}` }); }}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: c.name_ko, sub: `${war ? "전면" : "무력분쟁"} · 사망 ${c.deaths_12mo.toLocaleString()}` })}
             onMouseLeave={() => { setHoverConflict(null); setTip(null); }}>
-            <circle cx={sc[0]} cy={sc[1]} r={halo} fill={`url(#cfdot-${col.replace(/[^a-z0-9_-]/gi, "")})`} />
+            <circle cx={sc[0]} cy={sc[1]} r={halo} fill={`url(#cfdot-${col.slice(1)})`} />
             {live && <circle className="cf-pulse" cx={sc[0]} cy={sc[1]} r={r} fill="none" stroke={col} strokeWidth={1.4} style={{ transformOrigin: `${sc[0]}px ${sc[1]}px` }} />}
             <circle cx={sc[0]} cy={sc[1]} r={r} fill={col} fillOpacity={0.95} stroke="hsl(var(--background))" strokeWidth={on ? 1.7 : 1.1} />
           </g>); })}
@@ -1126,7 +1132,7 @@ export default function World() {
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${disputeCtrl(d)}` })}
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${d.name_ko}${d.star ? " ★" : ""}`, sub: `영토·주권 · ${disputeCtrl(d)}` })}
             onMouseLeave={() => setTip(null)}>
-            <circle cx={sc[0]} cy={sc[1]} r={halo} fill={`url(#cfdot-${TERRITORIAL_YELLOW.replace(/[^a-z0-9_-]/gi, "")})`} />
+            <circle cx={sc[0]} cy={sc[1]} r={halo} fill={`url(#cfdot-${TERRITORIAL_YELLOW.slice(1)})`} />
             {d.star && <circle className="cf-pulse" cx={sc[0]} cy={sc[1]} r={r} fill="none" stroke={TERRITORIAL_YELLOW} strokeWidth={1.4} style={{ transformOrigin: `${sc[0]}px ${sc[1]}px` }} />}
             <circle cx={sc[0]} cy={sc[1]} r={r} fill={TERRITORIAL_YELLOW} fillOpacity={0.98} stroke={TERRITORIAL_TEXT} strokeWidth={on ? 1.3 : 0.9} />
           </g>); })}
@@ -1135,7 +1141,7 @@ export default function World() {
         {dcMode && dcNuke && nuclearPlants.map((p) => { const sc = toScreen(p.lng, p.lat); if (!sc || !inView(sc[0], sc[1])) return null;
           const on = p.id === nukeSel; const ai = p.ai_linked;
           // AI 데이터센터 연계 = 보라 마름모(원+점선 링은 가독성 낮아 재편) · 일반 fleet = 상태색 원.
-          const col = ai ? AI_SMR : (NUKE_STATUS_COLOR[p.status] || "var(--line)");
+          const col = ai ? AI_SMR : (NUKE_STATUS_COLOR[p.status] || "#94a3b8");
           const solid = ai || p.status === "operating" || p.status === "restarting";
           const r = (ai ? 8 : 6) * (on ? 1.22 : 1);
           const [mx, my] = dodgeBadge(sc[0], sc[1], r);
@@ -1148,7 +1154,7 @@ export default function World() {
             {ai
               ? <polygon points={dpts} fill={col} fillOpacity={0.9} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeLinejoin="round" />
               : <circle cx={mx} cy={my} r={r} fill={col} fillOpacity={solid ? 0.9 : 0.28} stroke={col} strokeWidth={on ? 2.4 : 1.6} strokeDasharray={p.status === "canceled" ? "2.5 1.8" : undefined} />}
-            <text x={mx} y={my + 2.9} textAnchor="middle" fontSize={7.5} fill={solid ? "var(--surface)" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            <text x={mx} y={my + 2.9} textAnchor="middle" fontSize={7.5} fill={solid ? "#fff" : col} fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
         {/* AI 신규 SMR/원전 계획(데이터센터 PPA — 기존 원전 아닌 신규) = 청록 점선 마름모(연계=보라 마름모와 색으로 구분) */}
         {dcMode && dcNuke && newSmrDeals.map((n) => { const sc = toScreen(n.location.lng, n.location.lat); if (!sc || !inView(sc[0], sc[1])) return null;
@@ -1158,7 +1164,7 @@ export default function World() {
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `⚛ ${n.plant}`, sub: `${n.buyer} · ${n.reactor_type}` })}
             onMouseLeave={() => setTip(null)}>
             <polygon points={dpts} fill={AI_NEW} fillOpacity={0.9} stroke={AI_NEW} strokeWidth={1.8} strokeLinejoin="round" />
-            <text x={mx} y={my + 2.9} textAnchor="middle" fontSize={7.5} fill="var(--surface)" fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
+            <text x={mx} y={my + 2.9} textAnchor="middle" fontSize={7.5} fill="#fff" fontWeight={700} style={{ pointerEvents: "none" }}>⚛</text>
           </g>); })}
 
         {/* DC 모드: 반도체 팹 — 육각(원=DC·사각=발전소와 형태 구분). 회사색·상태 채움 */}
@@ -1171,7 +1177,7 @@ export default function World() {
             onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, text: `${FAB_COMPANY_KO[f.company]} · ${FAB_STATUS_KO[f.status]}`, sub: f.node_note })}
             onMouseLeave={() => setTip(null)}>
             <path d={hexPath(mx, my, r)} fill={col} fillOpacity={fabFillOpacity(f.status)} stroke={col} strokeWidth={on ? 2 : 1.4} strokeDasharray={f.status === "announced" ? "2.5 2" : undefined} />
-            {f.status === "paused" && <circle cx={mx + r * 0.7} cy={my - r * 0.7} r={2.2} fill="var(--tone-orange-500)" stroke="hsl(var(--background))" strokeWidth={0.8} />}
+            {f.status === "paused" && <circle cx={mx + r * 0.7} cy={my - r * 0.7} r={2.2} fill="#f59e0b" stroke="hsl(var(--background))" strokeWidth={0.8} />}
           </g>); })}
 
         {/* DC 모드: 데이터센터 마커 */}
@@ -1193,7 +1199,7 @@ export default function World() {
         })}
         {/* ② 계약 연결선(하이페리온 등)만 DC 마커 '위'로 — 원에 가려지지 않게(짧아서 잘 안 보임). 빨강 점선. */}
         {dcMode && dcSiteZoom && dcLinksR.filter(({ link }) => link.tier !== "physical").map(({ link, plant, dc: s }) => { const a = toScreen(s.location.lng!, s.location.lat!), b = toScreen(plant.lng, plant.lat); if (!a || !b) return null;
-          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="var(--tone-red-500)" strokeOpacity={0.9} strokeWidth={1.8}
+          return <line key={`lk${link.dc_id}-${link.plant_id}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#dc2626" strokeOpacity={0.9} strokeWidth={1.8}
             strokeDasharray="7 5" strokeLinecap="round" style={{ cursor: "pointer" }}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseEnter={(e) => setTip({ x: e.clientX, y: e.clientY, text: "계약 관계 · 물리 조류 아님", sub: link.note })}
@@ -1204,14 +1210,14 @@ export default function World() {
       {/* hover 툴팁 */}
       {tip && (
         <div className={`pointer-events-none fixed z-[9999] max-w-[260px] ${TIP_CLASS}`} style={{ left: tip.x + 12, top: tip.y + 12, wordBreak: "keep-all" }}>
-          <div>{tip.text}</div>{tip.sub && <div className="mt-0.5 text-[length:var(--font-size-10-5px)] font-normal text-muted-foreground">{tip.sub}</div>}
+          <div>{tip.text}</div>{tip.sub && <div className="mt-0.5 text-[10.5px] font-normal text-muted-foreground">{tip.sub}</div>}
         </div>
       )}
 
 
       {/* 상단 중앙: 모드 전환(세계·무역 / 미국 데이터센터 / 분쟁) */}
       <div className="absolute left-1/2 top-4 -translate-x-1/2">
-        <div className="flex rounded-full border border-border bg-card/90 p-0.5 text-[length:var(--font-size-11-5px)] shadow-sm glass">
+        <div className="flex rounded-full border border-border bg-card/90 p-0.5 text-[11.5px] shadow-sm backdrop-blur">
           {([["trade", "세계·무역", Globe], ["dc", "미국 데이터센터", Server], ["conflict", "분쟁", Swords]] as const).map(([m, label, Icon]) => {
             const on = m === "dc" ? dcMode : m === "conflict" ? conflictMode : tradeMode;
             return <button key={m} onClick={() => enterMode(m)} className={`flex items-center gap-1 rounded-full px-3 py-1 ${on ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}><Icon className="h-3.5 w-3.5" style={m === "conflict" && on ? { color: CONFLICT_RED } : undefined} />{label}</button>;
@@ -1219,15 +1225,15 @@ export default function World() {
         </div>
       </div>
       {/* 좌하단: 사용 가이드 */}
-      <button onClick={() => setGuideOpen((o) => !o)} className="absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-md border border-border bg-card/90 px-2.5 py-1.5 text-[length:var(--font-size-11px)] font-semibold shadow-sm glass hover:bg-muted"><Info className="h-3.5 w-3.5" />사용 가이드</button>
+      <button onClick={() => setGuideOpen((o) => !o)} className="absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-md border border-border bg-card/90 px-2.5 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:bg-muted"><Info className="h-3.5 w-3.5" />사용 가이드</button>
       {guideOpen && <GuideCard mode={dcMode ? "dc" : conflictMode ? "conflict" : "trade"} onClose={() => setGuideOpen(false)} />}
 
       {/* 우상: L2 층 토글 (세계·무역 모드에서만) */}
       {tradeMode && (
-      <div className="absolute right-4 flex gap-1" style={{ top: 16 }}>
+      <div className="absolute right-4 flex gap-1" style={{ top: dim.w < 560 ? 112 : dim.w < 1050 ? 64 : 16 }}>
         {([["routes", "항로", Route, SEA], ["ports", "항만", Anchor, SEA], ["chokes", "해협", Diamond, AMBER]] as const).map(([k, label, Icon, color]) => (
           <button key={k} onClick={() => setLayers((l) => ({ ...l, [k]: !l[k] }))}
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[length:var(--font-size-11px)] shadow-sm glass transition-opacity ${layers[k] ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${layers[k] ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}
             title={`${label} ${layers[k] ? "끄기" : "켜기"}`}><Icon className="h-3 w-3" style={{ color: layers[k] ? color : undefined }} />{label}</button>
         ))}
       </div>
@@ -1235,56 +1241,56 @@ export default function World() {
 
       {/* 좌상: 검색 */}
       {!dcMode && (
-      <div className="absolute left-4 z-30 w-64" style={{ top: 16, maxWidth: "calc(100% - 32px)" }}>
-        <div className="rounded-md border border-border bg-card/90 shadow-sm glass">
+      <div className="absolute left-4 z-30 w-64" style={{ top: dim.w < 1050 ? 64 : 16, maxWidth: "calc(100% - 32px)" }}>
+        <div className="rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           <div className="flex items-center gap-1.5 px-2.5 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input value={query} onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && results[0]) onSelectResult(results[0]); if (e.key === "Escape") setQuery(""); }}
-              placeholder="나라·수도·해협·항만 검색" spellCheck={false} className="w-full bg-transparent text-[length:var(--font-size-12-5px)] outline-none placeholder:text-muted-foreground" />
+              placeholder="나라·수도·해협·항만 검색" spellCheck={false} className="w-full bg-transparent text-[12.5px] outline-none placeholder:text-muted-foreground" />
             {query && <button onClick={() => setQuery("")} className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-3.5 w-3.5" /></button>}
           </div>
           {results.length > 0 && (
             <div className="max-h-64 overflow-auto border-t border-border">
-              {results.map((it, ri) => { const col = it.kind === "country" ? TEAL : it.kind === "choke" ? AMBER : (it.kind === "port" || it.kind === "route") ? SEA : "var(--line)"; const lab = it.kind === "country" ? "국가" : it.kind === "capital" ? "수도" : it.kind === "choke" ? "해협" : it.kind === "route" ? "항로" : "항만";
+              {results.map((it, ri) => { const col = it.kind === "country" ? TEAL : it.kind === "choke" ? AMBER : (it.kind === "port" || it.kind === "route") ? SEA : "#94a3b8"; const lab = it.kind === "country" ? "국가" : it.kind === "capital" ? "수도" : it.kind === "choke" ? "해협" : it.kind === "route" ? "항로" : "항만";
                 return (<button key={ri} onClick={() => onSelectResult(it)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted">
-                  <span className="shrink-0 rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-medium" style={{ background: col + "26", color: col === "var(--line)" ? "hsl(var(--muted-foreground))" : col }}>{lab}</span>
-                  <span className="text-[length:var(--font-size-12-5px)] font-medium">{it.label}</span><span className="truncate text-[length:var(--font-size-10px)] text-muted-foreground">{it.sub}</span></button>); })}
+                  <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-medium" style={{ background: col + "26", color: col === "#94a3b8" ? "hsl(var(--muted-foreground))" : col }}>{lab}</span>
+                  <span className="text-[12.5px] font-medium">{it.label}</span><span className="truncate text-[10px] text-muted-foreground">{it.sub}</span></button>); })}
             </div>
           )}
         </div>
-        <div className="mt-1 pl-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 상세</div>
+        <div className="mt-1 pl-1 text-[10.5px] text-muted-foreground">좌우로 끌어 회전 · 클릭하면 상세</div>
       </div>
       )}
 
 
       {/* 우하: 줌 컨트롤 */}
       <div className="absolute bottom-4 right-4 flex flex-col gap-1">
-        <button onClick={() => zoomBy(1.6)} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm glass hover:bg-muted"><Plus className="mx-auto h-4 w-4" /></button>
-        <button onClick={() => zoomBy(1 / 1.6)} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm glass hover:bg-muted"><Minus className="mx-auto h-4 w-4" /></button>
-        <button onClick={() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).call(zoomRef.current.transform, zoomIdentity); }} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm glass hover:bg-muted" title="세계 뷰"><Locate className="mx-auto h-4 w-4" /></button>
+        <button onClick={() => zoomBy(1.6)} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted"><Plus className="mx-auto h-4 w-4" /></button>
+        <button onClick={() => zoomBy(1 / 1.6)} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted"><Minus className="mx-auto h-4 w-4" /></button>
+        <button onClick={() => { setLon(CENTER_LON); svgRef.current && select(svgRef.current).transition().duration(400).call(zoomRef.current.transform, zoomIdentity); }} className="h-9 w-9 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur hover:bg-muted" title="세계 뷰"><Locate className="mx-auto h-4 w-4" /></button>
       </div>
 
       {/* 주요 항로 목록/범례 — 접기 가능(향후 층위 위해 상시 점유 안 함). 색=항로 신원 */}
       {((tradeMode && layers.routes) || conflictMode) && (
-      <div className="absolute left-4 flex max-h-[calc(100%-11rem)] w-60 flex-col gap-2" style={{ top: 76 }}>
+      <div className="absolute left-4 flex max-h-[calc(100%-11rem)] w-60 flex-col gap-2" style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 124 : 76 }}>
         {tradeMode && layers.routes && (
-        <div className="shrink-0 rounded-md border border-border bg-card/90 shadow-sm glass">
+        <div className="shrink-0 rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           <button onClick={() => setListOpen((o) => !o)} className="flex w-full items-center gap-1.5 p-2.5 pb-1 text-left hover:bg-muted/30">
             <Route className="h-4 w-4" /><span className="text-sm font-bold">주요 항로</span>
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listOpen ? "" : "-rotate-90"}`} />
           </button>
-          <div className="px-2.5 pb-1.5 text-[length:var(--font-size-10-5px)] text-muted-foreground">{infra.routes.filter((r) => !(r as any).branch_of).length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
-          <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[length:var(--font-size-10px)] text-muted-foreground">
+          <div className="px-2.5 pb-1.5 text-[10.5px] text-muted-foreground">{infra.routes.filter((r) => !(r as any).branch_of).length}개 · 체크 = 여러 항로 비교{compareSet.size > 0 && <span className="text-primary"> · 비교 {compareSet.size}</span>}<span title="체크박스·지도 라벨·목록 이름 클릭이 모두 연동 — 켜면 그 항로로 이동(여럿이면 다 보이게), 카드도 뜸." className="ml-1 cursor-help">ⓘ</span></div>
+          <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-muted-foreground">
             <span>배 색</span>
             <div className="flex overflow-hidden rounded border border-border">
               {([["route", "항로별"], ["cargo", "화물별"]] as const).map(([v, lab]) => (<button key={v} onClick={() => { setShipCargoView(v === "cargo"); if (v !== "cargo") setCargoFilter(null); }} className={`px-1.5 py-0.5 ${(v === "cargo") === shipCargoView ? "bg-muted font-semibold text-foreground" : "hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
-            <span title="배의 밀도 = 물동량 등급의 표현 (많이 다니는 길일수록 배가 많음) — 실제 선박의 실시간 위치가 아님. · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
+            <span title="움직이는 배 = 물동량 등급의 표현 (많이 다니는 길일수록 배가 많음) — 실제 선박의 실시간 위치가 아님. · 등급 출처: 운하청 통계·UNCTAD" className="cursor-help">ⓘ</span>
           </div>
           {/* 화물별 뷰: 칩 줄 = 컨테이너/원유 필터(§5, 칩=범례+토글). 클릭 = 그 화물 라인만 · 다시 클릭 = 둘 다. 혼합은 두 색을 모두 가짐. */}
           {shipCargoView && (
-            <div className="flex flex-wrap items-center gap-1 px-2.5 pb-2 text-[length:var(--font-size-10px)]">
+            <div className="flex flex-wrap items-center gap-1 px-2.5 pb-2 text-[10px]">
               {(["container", "crude"] as const).map((c) => { const act = cargoFilter === c;
                 return <button key={c} onClick={() => setCargoFilter((f) => (f === c ? null : c))} title="클릭 = 이 화물 라인만 보기 (다시 클릭 = 둘 다)"
                   className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${act ? "border-border bg-muted font-semibold" : "border-border/50 text-muted-foreground hover:bg-muted/50"}`}>
@@ -1298,7 +1304,7 @@ export default function World() {
               {infra.routes.filter((r) => !(r as any).branch_of).map((r) => { const cmp = compareSet.has(r.id); const on = hlRoutes.has(r.id) || (sel?.kind === "route" && sel.id === r.id);
                 const strands = routeStrands(r as any); const faded = shipCargoView && !!cargoFilter && !strands.includes(cargoFilter); // 필터 화물 안 싣는 항로 = 감쇠
                 return (<div key={r.id} onMouseEnter={() => setHoverInfra({ kind: "route", id: r.id })} onMouseLeave={() => setHoverInfra(null)}
-                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[length:var(--font-size-11-5px)] ${on ? "bg-muted" : "hover:bg-muted/60"} ${faded ? "opacity-35" : ""}`}>
+                  className={`flex items-center gap-1.5 pl-2 pr-2.5 text-[11.5px] ${on ? "bg-muted" : "hover:bg-muted/60"} ${faded ? "opacity-35" : ""}`}>
                   <input type="checkbox" checked={cmp} onChange={() => toggleCompare(r.id)} title="비교에 켜기 (여러 개 동시 선택)" className="h-3 w-3 shrink-0 cursor-pointer" style={{ accentColor: rCol(r as any) }} />
                   <button onClick={() => toggleCompare(r.id)} className={`flex flex-1 items-center gap-2 py-0.5 text-left ${on ? "font-semibold" : ""}`} title="클릭 = 비교 켜기/끄기 + 이동 + 카드">
                     {shipCargoView && strands.length > 1
@@ -1307,7 +1313,7 @@ export default function World() {
                     <span className="truncate">{r.ko}</span></button></div>); })}
               {compareSet.size > 0 && (
                 <div className="mt-0.5 border-t border-border px-2.5 pt-1">
-                  <button onClick={() => setCompareSet(new Set())} className="text-[length:var(--font-size-10-5px)] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
+                  <button onClick={() => setCompareSet(new Set())} className="text-[10.5px] text-muted-foreground hover:text-foreground">비교 전체 해제 ✕</button>
                 </div>
               )}
             </div>
@@ -1316,37 +1322,37 @@ export default function World() {
         )}
         {/* 분쟁 패널(§1 3줄 다이어트) — 제목 / 칩 토글 / 접힌 카운트(아코디언). 에피소드는 화면 미노출(각주 — war-episodes.json 보존). */}
         {conflictMode && (
-        <div className="flex min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm glass">
+        <div className="flex min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
           {/* 1줄: 제목 */}
           <div className="flex items-center gap-1.5 px-2.5 pt-2.5 pb-1"><Swords className="h-4 w-4" style={{ color: CONFLICT_RED }} /><span className="text-sm font-bold">분쟁</span>
-            <span className="cursor-help text-[length:var(--font-size-11px)] text-muted-foreground" title={"국경 안쪽 빛(글로우) = 교전이 벌어지는 나라. 색은 분쟁 유형, 진하기는 규모.\n지도 위 점 = 최근 사건들의 지리적 중심점 — 정확한 격전지가 아니라 대략의 무게중심.\n노랑 점선 = 총성 없는 영토·주권 분쟁. 클릭하면 각국 주장이 열림.\n데이터: 웁살라대 분쟁 데이터(UCDP) 자동 + 영토 분쟁은 직접 정리."}>ⓘ</span>
-            <span className="ml-auto text-[length:var(--font-size-9px)] text-muted-foreground" title={`출처: ${conflictsMeta.source} · 집계 ${conflictsMeta.window} · 영토·주권 = 직접 큐레이션`}>UCDP · 직접</span></div>
+            <span className="cursor-help text-[11px] text-muted-foreground" title={"국경 안쪽 빛(글로우) = 교전이 벌어지는 나라. 색은 분쟁 유형, 진하기는 규모.\n지도 위 점 = 최근 사건들의 지리적 중심점 — 정확한 격전지가 아니라 대략의 무게중심.\n노랑 점선 = 총성 없는 영토·주권 분쟁. 클릭하면 각국 주장이 열림.\n데이터: 웁살라대 분쟁 데이터(UCDP) 자동 + 영토 분쟁은 직접 정리."}>ⓘ</span>
+            <span className="ml-auto text-[9px] text-muted-foreground" title={`출처: ${conflictsMeta.source} · 집계 ${conflictsMeta.window} · 영토·주권 = 직접 큐레이션`}>UCDP · 직접</span></div>
           {/* 2줄: 칩=범례+스위치 (유형별 on/off) */}
           <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">
             {CONFLICT_LEGEND.map((l) => { const on = typeOn[l.group];
               return <button key={l.group} onClick={() => setTypeOn((o) => ({ ...o, [l.group]: !o[l.group] }))} title={`${l.help}\n(클릭 = 이 유형 켜기/끄기)`}
-                className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10px)] ${on ? "border-border" : "border-border/40 text-muted-foreground/50"}`}>
-                <span className="h-2 w-2 rounded-full" style={{ background: on ? l.color : "var(--ink-soft)" }} /><span className={on ? "" : "line-through"}>{l.ko}</span></button>; })}
+                className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${on ? "border-border" : "border-border/40 text-muted-foreground/50"}`}>
+                <span className="h-2 w-2 rounded-full" style={{ background: on ? l.color : "#9ca3af" }} /><span className={on ? "" : "line-through"}>{l.ko}</span></button>; })}
           </div>
           {/* 3줄: 접힌 목록 헤더(기본 접힘) */}
-          <button onClick={() => setListExpanded((v) => !v)} className="flex items-center gap-1.5 border-t border-border px-2.5 py-1.5 text-left text-[length:var(--font-size-11px)] hover:bg-muted/30">
+          <button onClick={() => setListExpanded((v) => !v)} className="flex items-center gap-1.5 border-t border-border px-2.5 py-1.5 text-left text-[11px] hover:bg-muted/30">
             <span className="font-medium">교전 중 {visConflicts.length}</span><span className="text-muted-foreground/60">·</span><span className="font-medium" style={{ color: TERRITORIAL_TEXT }}>영토 분쟁 {visDisputes.length}</span>
             <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${listExpanded ? "" : "-rotate-90"}`} />
           </button>
           {listExpanded && (
           <div className="min-h-0 overflow-auto border-t border-border">
-            <div className="px-2.5 py-1 text-[length:var(--font-size-10px)] text-muted-foreground">강도순 · <button onClick={() => setShowArmed((v) => !v)} title="연간 전투 사망 25명 이상~1,000명 미만도 표시 (기본은 전쟁급만)" className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "소규모 분쟁 포함"}</button></div>
+            <div className="px-2.5 py-1 text-[10px] text-muted-foreground">강도순 · <button onClick={() => setShowArmed((v) => !v)} title="연간 전투 사망 25명 이상~1,000명 미만도 표시 (기본은 전쟁급만)" className="text-primary hover:underline">{showArmed ? "전쟁만 보기" : "소규모 분쟁 포함"}</button></div>
             {visConflicts.map((c) => { const on = (sel?.kind === "conflict" && sel.id === c.id) || hoverConflict === c.id; const war = c.intensity === "war";
               return (<button key={c.id} onMouseEnter={() => setHoverConflict(c.id)} onMouseLeave={() => setHoverConflict(null)} onClick={() => goTo({ kind: "conflict", id: c.id })}
-                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11-5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: conflictColor(c.category) }} />
-                <span className="flex-1 truncate">{c.name_ko}</span><span className="shrink-0 text-[length:var(--font-size-9px)] text-muted-foreground">{CONFLICT_CAT_KO[c.category]}{war ? "" : " · 무력분쟁"}</span></button>); })}
-            {visDisputes.length > 0 && <div className="mt-0.5 border-t border-border px-2.5 pt-1 pb-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ color: TERRITORIAL_TEXT }}>영토·주권 분쟁 {visDisputes.length}</div>}
+                <span className="flex-1 truncate">{c.name_ko}</span><span className="shrink-0 text-[9px] text-muted-foreground">{CONFLICT_CAT_KO[c.category]}{war ? "" : " · 무력분쟁"}</span></button>); })}
+            {visDisputes.length > 0 && <div className="mt-0.5 border-t border-border px-2.5 pt-1 pb-0.5 text-[9px] font-semibold" style={{ color: TERRITORIAL_TEXT }}>영토·주권 분쟁 {visDisputes.length}</div>}
             {visDisputes.map((d) => { const on = sel?.kind === "dispute" && sel.id === d.id;
               return (<button key={d.id} onClick={() => goTo({ kind: "dispute", id: d.id })}
-                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11-5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                 <span className="h-2 w-2 shrink-0 rounded-full border" style={{ borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "33" }} />
-                <span className="flex-1 truncate">{d.star ? "★ " : ""}{d.name_ko}</span><span className="shrink-0 text-[length:var(--font-size-9px)] text-muted-foreground">{d.region}</span></button>); })}
+                <span className="flex-1 truncate">{d.star ? "★ " : ""}{d.name_ko}</span><span className="shrink-0 text-[9px] text-muted-foreground">{d.region}</span></button>); })}
           </div>
           )}
         </div>
@@ -1356,27 +1362,27 @@ export default function World() {
 
       {/* 개체 카드 — 유형별 필드, 칩 = 크로스링크 */}
       {sel && (
-        <div style={{ top: 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg glass">
+        <div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
           <button onClick={() => setSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
           {sel.kind === "country" && (() => { const f = features[sel.idx]; const cap = capByIso.get(f.properties.iso);
             return (<>
               <div className="text-base font-bold leading-tight">{f.properties.ko}</div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{f.properties.en}</div>
-              <div className="mt-2.5 flex items-center gap-1.5 text-[length:var(--font-size-12px)]"><span className="text-muted-foreground">수도</span><span className="font-medium">{cap ? cap.ko : "—"}</span>{cap?.en && <span className="text-[length:var(--font-size-11px)] text-muted-foreground">{cap.en}</span>}</div>
-              <div className="mt-2.5"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">인접국 {adj[sel.idx].length ? `· ${adj[sel.idx].length}` : ""}</div>
-                <div className="flex flex-wrap gap-1">{adj[sel.idx].length === 0 && <span className="text-[length:var(--font-size-11px)] text-muted-foreground">인접 국경 없음</span>}
+              <div className="text-[11px] text-muted-foreground">{f.properties.en}</div>
+              <div className="mt-2.5 flex items-center gap-1.5 text-[12px]"><span className="text-muted-foreground">수도</span><span className="font-medium">{cap ? cap.ko : "—"}</span>{cap?.en && <span className="text-[11px] text-muted-foreground">{cap.en}</span>}</div>
+              <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">인접국 {adj[sel.idx].length ? `· ${adj[sel.idx].length}` : ""}</div>
+                <div className="flex flex-wrap gap-1">{adj[sel.idx].length === 0 && <span className="text-[11px] text-muted-foreground">인접 국경 없음</span>}
                   {adj[sel.idx].map((ni) => <Chip key={ni} color={TEAL} onClick={() => goTo({ kind: "country", idx: ni })}>{features[ni].properties.ko}</Chip>)}</div></div>
             </>); })()}
           {sel.kind === "port" && portById.has(sel.id) && (() => { const p = portById.get(sel.id)!; const ctyIdx = isoToIdx.get(p.country_iso); const rts = (routesByNode.get(p.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
             return (<>
               <div className="flex items-center gap-1.5"><Anchor className="h-4 w-4" style={{ color: SEA }} /><span className="text-base font-bold leading-tight">{p.ko}</span></div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.en}</div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-12px)]">
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[length:var(--font-size-11px)] font-semibold" style={{ color: SEA }}>세계 {p.rank}위</span>
-                <span className="tabular-nums">{p.teu_m}M TEU</span><span className="text-[length:var(--font-size-10-5px)] text-muted-foreground">({infra._meta.data_year} 기준)</span>
+              <div className="text-[11px] text-muted-foreground">{p.en}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold" style={{ color: SEA }}>세계 {p.rank}위</span>
+                <span className="tabular-nums">{p.teu_m}M TEU</span><span className="text-[10.5px] text-muted-foreground">({infra._meta.data_year} 기준)</span>
               </div>
-              {ctyIdx != null && <div className="mt-2 text-[length:var(--font-size-11px)] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
+              {ctyIdx != null && <div className="mt-2 text-[11px] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={`https://lloydslist.com`} label={infra._meta.teu_source} />
             </>); })()}
           {sel.kind === "port" && !portById.has(sel.id) && minorPortById.has(sel.id) && (() => { const p = minorPortById.get(sel.id)! as any; const ctyIdx = isoToIdx.get(p.country_iso);
@@ -1384,27 +1390,27 @@ export default function World() {
             const rts = rids.map((id) => routeById.get(id)!).filter(Boolean);
             return (<>
               <div className="flex items-center gap-1.5"><Anchor className="h-4 w-4" style={{ color: SEA }} /><span className="text-base font-bold leading-tight">{p.ko}</span></div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.en}</div>
-              <div className="mt-2 text-[length:var(--font-size-11-5px)] leading-snug">{p.note}</div>
-              {ctyIdx != null && <div className="mt-2 text-[length:var(--font-size-11px)] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">연동 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
+              <div className="text-[11px] text-muted-foreground">{p.en}</div>
+              <div className="mt-2 text-[11.5px] leading-snug">{p.note}</div>
+              {ctyIdx != null && <div className="mt-2 text-[11px] text-muted-foreground">소속 국가 <Chip color={TEAL} onClick={() => goTo({ kind: "country", idx: ctyIdx })}>{features[ctyIdx].properties.ko}</Chip></div>}
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">연동 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               {p.source_url && <Src url={p.source_url} />}
             </>); })()}
           {sel.kind === "choke" && (() => { const c = chokeById.get(sel.id)!; const rts = (routesByNode.get(c.id) ?? []).map((id) => routeById.get(id)!).filter(Boolean);
             return (<>
               <div className="flex items-center gap-1.5"><Diamond className="h-4 w-4" style={{ color: AMBER }} /><span className="text-base font-bold leading-tight">{c.ko}</span>
-                <span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: AMBER + "22", color: AMBER }}>{c.tier === 1 ? "1급" : "2급"}</span></div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{c.en}</div>
-              <div className="mt-2 text-[length:var(--font-size-12px)]"><span className="text-muted-foreground">연결</span> {c.connects}</div>
-              <div className="mt-1.5 text-[length:var(--font-size-11-5px)] leading-snug">{c.throughput_note}</div>
-              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
+                <span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: AMBER + "22", color: AMBER }}>{c.tier === 1 ? "1급" : "2급"}</span></div>
+              <div className="text-[11px] text-muted-foreground">{c.en}</div>
+              <div className="mt-2 text-[12px]"><span className="text-muted-foreground">연결</span> {c.connects}</div>
+              <div className="mt-1.5 text-[11.5px] leading-snug">{c.throughput_note}</div>
+              {rts.length > 0 && <div className="mt-2"><div className="mb-1 text-[11px] text-muted-foreground">지나는 항로</div><div className="flex flex-wrap gap-1">{rts.map((r) => <Chip key={r.id} color={routeColor(r.id)} onClick={() => toggleCompare(r.id)}>{r.ko}</Chip>)}</div></div>}
               <Src url={c.source_url} />
             </>); })()}
           {sel.kind === "route" && (() => { const r = routeById.get(sel.id)!; const rc = routeCards[r.id];
-            if (!rc) return (<><div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold">{r.ko}</span></div><div className="mt-2 text-[length:var(--font-size-11-5px)] text-muted-foreground">{r.facts}</div></>);
+            if (!rc) return (<><div className="flex items-center gap-1.5"><Route className="h-4 w-4" style={{ color: routeColor(r.id) }} /><span className="text-base font-bold">{r.ko}</span></div><div className="mt-2 text-[11.5px] text-muted-foreground">{r.facts}</div></>);
             return (<>
-              <div className="flex items-center gap-1.5 pr-5"><Route className="h-4 w-4 shrink-0" style={{ color: routeColor(r.id) }} /><span className="text-[length:var(--font-size-15px)] font-bold leading-tight">{r.ko}</span>
-                {rc.candidate && <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold text-muted-foreground">후보 항로</span>}</div>
+              <div className="flex items-center gap-1.5 pr-5"><Route className="h-4 w-4 shrink-0" style={{ color: routeColor(r.id) }} /><span className="text-[15px] font-bold leading-tight">{r.ko}</span>
+                {rc.candidate && <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground">후보 항로</span>}</div>
               {/* ① 노선도식 경유지 — 원=항만·다이아=해협/운하, 클릭=개체 카드로 점프 */}
               <div className="mt-2.5 overflow-x-auto pb-0.5">
                 <div className="relative flex items-start" style={{ minWidth: Math.max(rc.stops.length * 56, 240) }}>
@@ -1416,35 +1422,35 @@ export default function World() {
                           : s.t === "seg" ? <span className="mx-auto mt-[3px] block h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
                             : <span className="block h-3 w-3 rounded-full border-[1.6px] bg-background" style={{ borderColor: SEA }} />}
                       </button>
-                      <span className={`mt-1 text-center text-[length:var(--font-size-9px)] leading-tight ${clk ? "font-medium" : "text-muted-foreground"}`}>{s.l}</span>
-                      {s.note && <span className="text-center text-[length:var(--font-size-8px)] leading-tight text-muted-foreground">{s.note}</span>}
+                      <span className={`mt-1 text-center text-[9px] leading-tight ${clk ? "font-medium" : "text-muted-foreground"}`}>{s.l}</span>
+                      {s.note && <span className="text-center text-[8px] leading-tight text-muted-foreground">{s.note}</span>}
                     </div>); })}
                 </div>
               </div>
-              <div className="mt-1 flex items-center gap-2 text-[length:var(--font-size-8-5px)] text-muted-foreground/80">
+              <div className="mt-1 flex items-center gap-2 text-[8.5px] text-muted-foreground/80">
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full border-[1.4px] bg-background" style={{ borderColor: SEA }} />항만</span>
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rotate-45 border-[1.4px] bg-background" style={{ borderColor: AMBER }} />{glossText("{{해협·운하|배가 반드시 지나야 하는 좁은 길목 — 막히면 항로 전체가 영향}}")}</span>
               </div>
-              {rc.fork_note && <div className="mt-1 text-[length:var(--font-size-9-5px)] leading-snug text-muted-foreground">⑂ {glossText(rc.fork_note)}</div>}
+              {rc.fork_note && <div className="mt-1 text-[9.5px] leading-snug text-muted-foreground">⑂ {glossText(rc.fork_note)}</div>}
               {/* ② 화물 구성 막대(톤 기준 개략) 또는 상태 칩 */}
               {rc.bar ? (<div className="mt-2.5">
-                <div className="mb-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">화물 구성 <span className="text-[length:var(--font-size-9px)]">(톤 기준 개략)</span></div>
+                <div className="mb-1 text-[10.5px] text-muted-foreground">화물 구성 <span className="text-[9px]">(톤 기준 개략)</span></div>
                 <div className="flex h-2.5 w-full overflow-hidden rounded-full" title="톤 기준 개략 · 연도별 변동">
-                  {rc.bar.map((b, i) => <div key={i} style={{ width: `${b.p}%`, background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other, boxShadow: i > 0 ? "var(--shadow-chart-separator)" : undefined }} />)}
+                  {rc.bar.map((b, i) => <div key={i} style={{ width: `${b.p}%`, background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other, boxShadow: i > 0 ? "inset 1.5px 0 0 hsl(var(--card))" : undefined }} />)}
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
-                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[length:var(--font-size-9-5px)] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{glossText(b.l)}</span>)}
+                  {rc.bar.map((b, i) => <span key={i} className="flex items-center gap-1 text-[9.5px] text-muted-foreground"><span className="h-2 w-2 rounded-full" style={{ background: CARGO_BAR_COLOR[b.c] || CARGO_BAR_COLOR.other }} />{glossText(b.l)}</span>)}
                 </div>
               </div>) : rc.status ? (<div className="mt-2.5 flex flex-col gap-1">
-                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[length:var(--font-size-10-5px)] leading-snug text-muted-foreground">{glossText(s)}</span>)}
+                {rc.status.map((s, i) => <span key={i} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[10.5px] leading-snug text-muted-foreground">{glossText(s)}</span>)}
               </div>) : null}
               {/* ③ 설명 — 끊긴 문장, 줄바꿈 유지 */}
-              <div className="mt-2.5 flex flex-col gap-1 text-[length:var(--font-size-11-5px)] leading-snug text-foreground/85">
+              <div className="mt-2.5 flex flex-col gap-1 text-[11.5px] leading-snug text-foreground/85">
                 {rc.lines.map((l, i) => <div key={i}>{glossText(l)}</div>)}
               </div>
               {/* ④ 관계 칩 */}
               {rc.rel && <div className="mt-2.5"><button onClick={() => rc.rel!.rk === "route" ? goTo({ kind: "route", id: rc.rel!.ref }) : goTo({ kind: "dispute", id: rc.rel!.ref })}
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[length:var(--font-size-11px)] font-medium hover:bg-muted"
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium hover:bg-muted"
                 style={rc.rel.k === "연동" ? { borderColor: TERRITORIAL_YELLOW, color: TERRITORIAL_TEXT } : { borderColor: SEA + "66", color: SEA }}>
                 {rc.rel.k} — {rc.rel.l}</button></div>}
             </>); })()}
@@ -1452,23 +1458,23 @@ export default function World() {
             const card = conflictCards[c.id]; const title = card?.title ?? c.name_ko; const badge = CONFLICT_LEGEND.find((l) => l.group === catGroup(c.category))?.ko ?? CONFLICT_CAT_KO[c.category];
             const pd = card?.period ?? `${c.started_year}~`; const pi = pd.indexOf("("); const pBig = pi >= 0 ? pd.slice(0, pi).trim() : pd; const pSub = pi >= 0 ? pd.slice(pi + 1).replace(")", "").trim() : "";
             return (<>
-              <div className="flex items-center gap-1.5 pr-5"><Swords className="h-4 w-4 shrink-0" style={{ color: cc }} /><span className="text-[length:var(--font-size-15px)] font-bold leading-tight">{title}</span>
-                <span className="shrink-0 rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: cc + "22", color: cc }}>{badge}</span></div>
+              <div className="flex items-center gap-1.5 pr-5"><Swords className="h-4 w-4 shrink-0" style={{ color: cc }} /><span className="text-[15px] font-bold leading-tight">{title}</span>
+                <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: cc + "22", color: cc }}>{badge}</span></div>
               {card && (card.left || card.right) && (
                 <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
-                  {card.left && <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-center text-[length:var(--font-size-11-5px)] font-semibold">{card.left}</span>}
-                  {card.left && card.right && <span className="text-[length:var(--font-size-10px)] text-muted-foreground">vs</span>}
-                  {card.right && <span className="rounded-full border px-2.5 py-1 text-center text-[length:var(--font-size-11-5px)] font-semibold" style={{ borderColor: cc + "66", color: cc, background: cc + "0f" }}>{card.right}</span>}
+                  {card.left && <span className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-center text-[11.5px] font-semibold">{card.left}</span>}
+                  {card.left && card.right && <span className="text-[10px] text-muted-foreground">vs</span>}
+                  {card.right && <span className="rounded-full border px-2.5 py-1 text-center text-[11.5px] font-semibold" style={{ borderColor: cc + "66", color: cc, background: cc + "0f" }}>{card.right}</span>}
                 </div>
               )}
-              <div className="mt-2.5 text-center"><div className="text-[length:var(--font-size-15px)] font-bold leading-tight tabular-nums">{pBig}</div>{pSub && <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground">{pSub}</div>}</div>
+              <div className="mt-2.5 text-center"><div className="text-[15px] font-bold leading-tight tabular-nums">{pBig}</div>{pSub && <div className="text-[10.5px] text-muted-foreground">{pSub}</div>}</div>
               {card && (card.need_left || card.need_right) && (
-                <div className="mt-2.5 border-t border-border pt-2 text-[length:var(--font-size-11px)] leading-snug">
+                <div className="mt-2.5 border-t border-border pt-2 text-[11px] leading-snug">
                   {card.need_left && <div><span className="font-semibold">{card.left}</span> — {card.need_left}</div>}
                   {card.need_right && <div className={card.need_left ? "mt-1" : ""}><span className="font-semibold" style={{ color: cc }}>{card.right}</span> — {card.need_right}</div>}
                 </div>
               )}
-              <div className="mt-2 text-[length:var(--font-size-9-5px)] text-muted-foreground">{badge} · 최근 12개월 사망 {c.deaths_12mo.toLocaleString()} · 집계 {conflictsMeta.window}</div>
+              <div className="mt-2 text-[9.5px] text-muted-foreground">{badge} · 최근 12개월 사망 {c.deaths_12mo.toLocaleString()} · 집계 {conflictsMeta.window}</div>
               <Src url={conflictsMeta.source_url} label="UCDP GED" />
             </>); })()}
           {sel.kind === "dispute" && (() => { const d = disputeById.get(sel.id); if (!d) return null; const lc = d.linked_conflict_id ? conflictById.get(d.linked_conflict_id) : null;
@@ -1478,33 +1484,33 @@ export default function World() {
               const bubSt = gray ? { borderColor: "hsl(var(--border))" } : p.controls ? { background: TERRITORIAL_YELLOW + "1a", borderColor: TERRITORIAL_YELLOW + "55" } : { borderColor: "hsl(var(--border))" };
               const inner = <>{p.controls && !gray ? "◎ " : ""}{p.name_ko}{p.control_note ? <span className="font-normal text-muted-foreground"> ·{p.control_note}</span> : null}</>;
               return (<div key={key} className="flex min-w-0 flex-col gap-1">
-                {idx != null && !gray ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] font-semibold hover:bg-muted" style={pillSt}>{inner}</button>
-                  : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] font-semibold" style={pillSt}>{inner}</span>}
-                <div className="rounded-lg border px-2 py-1.5 text-[length:var(--font-size-10-5px)] leading-snug" style={bubSt}>{glossText(p.claim)}</div>
+                {idx != null && !gray ? <button onClick={() => goTo({ kind: "country", idx })} className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted" style={pillSt}>{inner}</button>
+                  : <span className="w-fit max-w-full truncate rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold" style={pillSt}>{inner}</span>}
+                <div className="rounded-lg border px-2 py-1.5 text-[10.5px] leading-snug" style={bubSt}>{glossText(p.claim)}</div>
               </div>); };
             const layout = d.layout ?? "axis";
             return (<>
-              <div className="flex items-center gap-1.5 pr-5"><Diamond className="h-4 w-4 shrink-0" style={{ color: TERRITORIAL_TEXT, fill: TERRITORIAL_YELLOW }} /><span className="text-[length:var(--font-size-15px)] font-bold leading-tight">{d.star ? "★ " : ""}{d.name_ko}</span>
-                <span className="shrink-0 rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: TERRITORIAL_YELLOW + "33", color: TERRITORIAL_TEXT }}>영토·주권</span></div>
-              {d.note && <div className="mt-0.5 text-[length:var(--font-size-10px)] text-muted-foreground">{glossText(d.note)}</div>}
-              {lc && <button onClick={() => goTo({ kind: "conflict", id: lc.id })} className="mt-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" style={{ borderColor: CONFLICT_RED + "66", color: CONFLICT_RED }}><Swords className="h-3 w-3" />활성 분쟁 연동 · {lc.name_ko}</button>}
+              <div className="flex items-center gap-1.5 pr-5"><Diamond className="h-4 w-4 shrink-0" style={{ color: TERRITORIAL_TEXT, fill: TERRITORIAL_YELLOW }} /><span className="text-[15px] font-bold leading-tight">{d.star ? "★ " : ""}{d.name_ko}</span>
+                <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: TERRITORIAL_YELLOW + "33", color: TERRITORIAL_TEXT }}>영토·주권</span></div>
+              {d.note && <div className="mt-0.5 text-[10px] text-muted-foreground">{glossText(d.note)}</div>}
+              {lc && <button onClick={() => goTo({ kind: "conflict", id: lc.id })} className="mt-1.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold" style={{ borderColor: CONFLICT_RED + "66", color: CONFLICT_RED }}><Swords className="h-3 w-3" />활성 분쟁 연동 · {lc.name_ko}</button>}
               <div className="mt-2 flex flex-wrap gap-1">
-                {d.stakes.map((s, i) => <span key={i} className="rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10px)]" style={{ borderColor: TERRITORIAL_YELLOW + "88", background: TERRITORIAL_YELLOW + "14" }}><b style={{ color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</b> <span className="text-muted-foreground">— {glossText(s.note)}</span></span>)}
+                {d.stakes.map((s, i) => <span key={i} className="rounded-full border px-1.5 py-0.5 text-[10px]" style={{ borderColor: TERRITORIAL_YELLOW + "88", background: TERRITORIAL_YELLOW + "14" }}><b style={{ color: TERRITORIAL_TEXT }}>{STAKE_KO[s.type]}</b> <span className="text-muted-foreground">— {glossText(s.note)}</span></span>)}
               </div>
               {layout === "grid" ? (
                 <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-2">{d.parties.map((p, i) => pcol(p, i, !p.controls))}</div>
               ) : layout === "radial" ? (
                 <div className="mt-2.5 flex flex-col items-center gap-2">
                   {d.parties[0] && <div className="w-full max-w-[55%]">{pcol(d.parties[0], 0, true)}</div>}
-                  {d.center && <div className="rounded-full border-2 border-dashed px-4 py-2 text-center" style={{ borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "12" }}><div className="text-[length:var(--font-size-11px)] font-semibold" style={{ color: TERRITORIAL_TEXT }}>{d.center.name}</div><div className="text-[length:var(--font-size-9px)] text-muted-foreground">{d.center.sub}</div></div>}
+                  {d.center && <div className="rounded-full border-2 border-dashed px-4 py-2 text-center" style={{ borderColor: TERRITORIAL_YELLOW, background: TERRITORIAL_YELLOW + "12" }}><div className="text-[11px] font-semibold" style={{ color: TERRITORIAL_TEXT }}>{d.center.name}</div><div className="text-[9px] text-muted-foreground">{d.center.sub}</div></div>}
                   <div className="grid grid-cols-2 gap-2 self-stretch">{d.parties.slice(1).map((p, i) => pcol(p, i + 1, true))}</div>
-                  <div className="text-center text-[length:var(--font-size-9px)] text-muted-foreground">모든 주장이 같은 대상을 향함 — 실효 지배자 없음, 전원 동일 비중</div>
+                  <div className="text-center text-[9px] text-muted-foreground">모든 주장이 같은 대상을 향함 — 실효 지배자 없음, 전원 동일 비중</div>
                 </div>
               ) : layout === "split" && d.rows ? (
                 <div className="mt-2.5 flex flex-col gap-2">
                   {d.rows.map((row, ri) => (
                     <div key={ri} className={ri > 0 ? "border-t border-border pt-2" : ""}>
-                      {row.label && <div className="mb-1 text-[length:var(--font-size-10px)] font-semibold" style={{ color: TERRITORIAL_TEXT }}>{row.label}</div>}
+                      {row.label && <div className="mb-1 text-[10px] font-semibold" style={{ color: TERRITORIAL_TEXT }}>{row.label}</div>}
                       <div className="grid grid-cols-2 gap-2">{row.parties.map((pi) => (d.parties[pi] ? pcol(d.parties[pi], `${ri}-${pi}`) : null))}</div>
                     </div>
                   ))}
@@ -1516,19 +1522,19 @@ export default function World() {
                 const allCtrl = d.parties.every((p) => p.controls);
                 return (<>
                   <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-                    <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[length:var(--font-size-8-5px)] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
-                    <div className="self-center text-[length:var(--font-size-10px)] text-muted-foreground">vs</div>
+                    <div className="flex flex-col gap-1.5">{left.map((p, i) => (<div key={`L${i}`}>{i > 0 && d.internal && <div className="mb-1.5 flex items-center gap-1 text-[8.5px] text-muted-foreground"><span className="h-px flex-1 bg-border" />내부 쟁점 — {d.internal}<span className="h-px flex-1 bg-border" /></div>}{pcol(p, `l${i}`)}</div>))}</div>
+                    <div className="self-center text-[10px] text-muted-foreground">vs</div>
                     <div className="flex flex-col gap-1.5">{right.map((p, i) => pcol(p, `r${i}`))}</div>
                   </div>
-                  {symmetric && <div className="mt-1.5 text-center text-[length:var(--font-size-9px)] text-muted-foreground">{allCtrl ? "양측이 서로 다른 구역을 실효 지배 · 상호 미승인" : "실효 지배자 없음 · 양측 주장 중첩"}</div>}
-                  {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[length:var(--font-size-9px)] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[length:var(--font-size-9-5px)] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
+                  {symmetric && <div className="mt-1.5 text-center text-[9px] text-muted-foreground">{allCtrl ? "양측이 서로 다른 구역을 실효 지배 · 상호 미승인" : "실효 지배자 없음 · 양측 주장 중첩"}</div>}
+                  {d.sponsors && d.sponsors.length > 0 && <div className="mt-1.5 flex flex-wrap items-center gap-1"><span className="text-[9px] text-muted-foreground">후원·개입</span>{d.sponsors.map((s, i) => <span key={i} className="rounded-full border border-border px-1.5 py-0.5 text-[9.5px] text-muted-foreground">{s.name}{s.note ? ` ·${s.note}` : ""}</span>)}</div>}
                 </>); })()}
               {(d.linked_choke_ids.length > 0 || d.linked_route_ids.length > 0) && (
-                <div className="mt-2.5 flex flex-wrap items-center gap-1"><span className="text-[length:var(--font-size-10px)] text-muted-foreground">무역 지도</span>
+                <div className="mt-2.5 flex flex-wrap items-center gap-1"><span className="text-[10px] text-muted-foreground">무역 지도</span>
                   {d.linked_choke_ids.map((id) => { const ch = chokeById.get(id); return ch ? <Chip key={id} color={AMBER} onClick={() => goTo({ kind: "choke", id })}>{ch.ko}</Chip> : null; })}
                   {d.linked_route_ids.map((id) => { const rt = routeById.get(id); return rt ? <Chip key={id} color={SEA} onClick={() => goTo({ kind: "route", id })}>{rt.ko}</Chip> : null; })}</div>
               )}
-              <div className="mt-2 text-[length:var(--font-size-9px)] text-muted-foreground/80">말풍선 = 공표 입장 요지 (직접 인용 아님) · ◎ = 실효 지배</div>
+              <div className="mt-2 text-[9px] text-muted-foreground/80">말풍선 = 공표 입장 요지 (직접 인용 아님) · ◎ = 실효 지배</div>
               <Src url={d.source_url} label="출처(직접 큐레이션)" />
             </>); })()}
         </div>
@@ -1537,14 +1543,14 @@ export default function World() {
       {/* ── 데이터센터 모드 패널 ── */}
       {dcMode && (<>
         {/* 우상단 레이어 토글 — 세계·무역 모드의 항로/항만/해협 알약과 통일 */}
-        <div className="absolute right-4 flex gap-1" style={{ top: 16 }}>
+        <div className="absolute right-4 flex gap-1" style={{ top: dim.w < 560 ? 112 : dim.w < 1050 ? 64 : 16 }}>
           <div className="group relative">
             <button onClick={() => setDcNuke((v) => !v)}
-              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[length:var(--font-size-11px)] shadow-sm glass transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "var(--tone-green-600)" : undefined }} />원전</button>
+              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcNuke ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Atom className="h-3 w-3" style={{ color: dcNuke ? "#16a34a" : undefined }} />원전</button>
             <LegendCard title={`미국 원전 ${nuclearPlants.length}기`}>
-              <LegRow sw={<SwCircle c="var(--tone-green-600)" />} label="가동 중" />
-              <LegRow sw={<SwCircle c="var(--tone-orange-500)" />} label="재가동 추진" />
-              <LegRow sw={<SwCircle c="var(--line)" filled={false} />} label="퇴역" />
+              <LegRow sw={<SwCircle c="#16a34a" />} label="가동 중" />
+              <LegRow sw={<SwCircle c="#f59e0b" />} label="재가동 추진" />
+              <LegRow sw={<SwCircle c="#94a3b8" filled={false} />} label="퇴역" />
               <div className="my-1 border-t border-border/60" />
               <LegRow sw={<SwDiamond c={AI_SMR} solid />} label="AI 데이터센터 연계" />
               <LegRow sw={<SwDiamond c={AI_NEW} solid />} label="AI 신규 원전·SMR 계획" />
@@ -1552,55 +1558,55 @@ export default function World() {
           </div>
           <div className="group relative">
             <button onClick={() => setDcTx((v) => !v)}
-              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[length:var(--font-size-11px)] shadow-sm glass transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "var(--tone-blue-500)" : undefined }} />송전선</button>
+              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcTx ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Zap className="h-3 w-3" style={{ color: dcTx ? "#0ea5e9" : undefined }} />송전선</button>
             <LegendCard title="고압 송전망 · HIFLD 2022">
               <LegRow sw={<SwLine w={2.6} />} label="765kV+ 초고압" />
               <LegRow sw={<SwLine w={1.4} />} label="500kV" />
               <LegRow sw={<SwLine w={0.7} />} label="345kV" />
               <div className="my-1 border-t border-border/60" />
-              <div className="text-[length:var(--font-size-9px)] text-muted-foreground/70">사이트 확대 시 DC↔발전소 연결선</div>
-              <LegRow sw={<SwLine w={2.4} c="var(--tone-green-600)" />} label="초록 = 발전소 직결(실제 조류)" />
-              <LegRow sw={<SwLine w={1.8} dash="2 1.5" c="var(--tone-red-500)" />} label="빨강 = 계약 급전(전력망 경유)" />
+              <div className="text-[9px] text-muted-foreground/70">사이트 확대 시 DC↔발전소 연결선</div>
+              <LegRow sw={<SwLine w={2.4} c="#16a34a" />} label="초록 = 발전소 직결(실제 조류)" />
+              <LegRow sw={<SwLine w={1.8} dash="2 1.5" c="#dc2626" />} label="빨강 = 계약 급전(전력망 경유)" />
             </LegendCard>
           </div>
           <div className="group relative">
             <button onClick={() => { setDcFabs((v) => !v); setFabSel(null); }}
-              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[length:var(--font-size-11px)] shadow-sm glass transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "var(--tone-blue-500)" : undefined }} />반도체 팹</button>
+              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] shadow-sm backdrop-blur transition-opacity ${dcFabs ? "border-border bg-card/90" : "border-border/50 bg-card/50 text-muted-foreground opacity-55"}`}><Hexagon className="h-3 w-3" style={{ color: dcFabs ? "#2563eb" : undefined }} />반도체 팹</button>
             <LegendCard title={`반도체 팹 ${fabs.length}개`}>
-              <LegRow sw={<SwHex c="var(--tone-blue-500)" fill={0.85} />} label="가동" />
-              <LegRow sw={<SwHex c="var(--tone-blue-500)" fill={0.4} />} label="건설 중" />
-              <LegRow sw={<SwHex c="var(--tone-blue-500)" fill={0.12} />} label="발표(미착공)" />
-              <div className="mt-1 text-[length:var(--font-size-9-5px)] text-muted-foreground">색 = 회사 구분</div>
+              <LegRow sw={<SwHex c="#2563eb" fill={0.85} />} label="가동" />
+              <LegRow sw={<SwHex c="#2563eb" fill={0.4} />} label="건설 중" />
+              <LegRow sw={<SwHex c="#2563eb" fill={0.12} />} label="발표(미착공)" />
+              <div className="mt-1 text-[9.5px] text-muted-foreground">색 = 회사 구분</div>
             </LegendCard>
           </div>
         </div>
 
-        <div className="absolute left-4 w-60 space-y-2" style={{ top: 64 }}>
-          <div className="rounded-md border border-border bg-card/90 p-2.5 shadow-sm glass">
+        <div className="absolute left-4 w-60 space-y-2" style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }}>
+          <div className="rounded-md border border-border bg-card/90 p-2.5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-1.5 text-sm font-bold"><Server className="h-4 w-4" /> 미국 AI 데이터센터
-              <span className="ml-auto cursor-help text-[length:var(--font-size-12px)] font-normal text-muted-foreground" title="원 = 데이터센터 (크기 = IT 용량, 색 = 그룹). 자세한 단계·발전원·자금은 마커 클릭 시 카드에서. · 사각 = 발전소">ⓘ</span>
+              <span className="ml-auto cursor-help text-[12px] font-normal text-muted-foreground" title="원 = 데이터센터 (크기 = IT 용량, 색 = 그룹). 자세한 단계·발전원·자금은 마커 클릭 시 카드에서. · 사각 = 발전소">ⓘ</span>
             </div>
-            <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
+            <div className="text-[10.5px] text-muted-foreground">{dc.meta.as_of} · {dcSites.length}개 · 소유·자금·전력</div>
             {/* 마커 색 = 그룹 고정. A/B/C 칩 = 범례 겸 필터. (전력계통·신용등급은 각각 면 채색·사이트 카드로) */}
-            <div className="mt-2 flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">그룹 (마커 색)<span title="개발/자금 구조로 마커 색 구분. A 스타게이트 계열(개발사 SPV+투자등급 임차인 리스) · B 하이퍼스케일러 자체보유 · C 네오클라우드. 칩 클릭 = 필터. (전력계통 = 아래 '면 채색·전력시장', 신용등급 = 사이트 카드)" className="cursor-help">ⓘ</span></div>
+            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">그룹 (마커 색)<span title="개발/자금 구조로 마커 색 구분. A 스타게이트 계열(개발사 SPV+투자등급 임차인 리스) · B 하이퍼스케일러 자체보유 · C 네오클라우드. 칩 클릭 = 필터. (전력계통 = 아래 '면 채색·전력시장', 신용등급 = 사이트 카드)" className="cursor-help">ⓘ</span></div>
             <div className="mt-1 flex flex-wrap gap-1">
-              {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[length:var(--font-size-10px)] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
+              {(["A", "B", "C"] as const).map((g) => (<button key={g} onClick={() => setDcGroups((o) => ({ ...o, [g]: !o[g] }))} title="클릭 = 필터" className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${dcGroups[g] ? "border-border bg-muted/40" : "border-border/40 opacity-45"}`}><span className="h-2 w-2 rounded-full" style={{ background: GROUP_COLOR[g] }} />{g} {GROUP_LABEL[g]}</button>))}
             </div>
-            <div className="mt-2 flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">면 채색</div>
-            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[length:var(--font-size-10-5px)]">
+            <div className="mt-2 flex items-center gap-1 text-[10.5px] text-muted-foreground">면 채색</div>
+            <div className="mt-0.5 flex overflow-hidden rounded border border-border text-[10.5px]">
               {([["none", "없음"], ["rto", "전력시장"], ["load", "AI 부하 비중"]] as const).map(([m, lab]) => (<button key={m} onClick={() => setDcFill(m)} className={`flex-1 px-1 py-0.5 ${dcFill === m ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{lab}</button>))}
             </div>
-            {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[length:var(--font-size-9-5px)] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, var(--alpha-tone-orange-500-150), var(--alpha-tone-orange-500-350), var(--alpha-tone-red-500-600))" }} /><span>높음</span></div>)}
-            {dcFill === "rto" && (<div className="mt-1 text-[length:var(--font-size-9px)] text-muted-foreground/70">아래 <b className="font-semibold text-muted-foreground">전력계통</b> 목록 = 범례. 행·지도 권역 클릭 = 설명.</div>)}
+            {dcFill === "load" && (<div className="mt-1 flex items-center gap-1 text-[9.5px] text-muted-foreground"><span>낮음</span><span className="h-2 flex-1 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(234,88,12,0.35), rgba(220,38,38,0.6))" }} /><span>높음</span></div>)}
+            {dcFill === "rto" && (<div className="mt-1 text-[9px] text-muted-foreground/70">아래 <b className="font-semibold text-muted-foreground">전력계통</b> 목록 = 범례. 행·지도 권역 클릭 = 설명.</div>)}
           </div>
           {/* 채색 뷰 해설 패널(§3) — '전력시장' 채색 시에만. 아코디언 = 세로 범례, 행/지도 양방향, 접힘 기억 */}
           {dcFill === "rto" && (
-          <div className="flex max-h-[calc(100vh-15rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm glass">
+          <div className="flex max-h-[calc(100vh-15rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
             <button onClick={() => setGridPanelOpen((o) => !o)} className="flex items-center gap-1.5 p-2.5 pb-2 text-left hover:bg-muted/30">
               <Zap className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5"><span className="text-sm font-bold">전력계통</span><span className="text-[length:var(--font-size-9px)] text-muted-foreground">RTO/ISO 7 · 비ISO</span></span>
-                <span className="block text-[length:var(--font-size-9-5px)] leading-tight text-muted-foreground/80">권역 = 전기를 사고파는 시장의 경계 — 색이 곧 요금 문법</span>
+                <span className="flex items-center gap-1.5"><span className="text-sm font-bold">전력계통</span><span className="text-[9px] text-muted-foreground">RTO/ISO 7 · 비ISO</span></span>
+                <span className="block text-[9.5px] leading-tight text-muted-foreground/80">권역 = 전기를 사고파는 시장의 경계 — 색이 곧 요금 문법</span>
               </span>
               <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform ${gridPanelOpen ? "" : "-rotate-90"}`} />
             </button>
@@ -1609,33 +1615,33 @@ export default function World() {
               {/* 아코디언 폐기 — 각 권역 abbr + 3뱃지 상시 표시. 행 클릭/hover = 지도 권역 하이라이트. */}
               {RTO_ORDER.map((code) => { const hl = dcGridSel === code || dcGridHover === code;
                 return (<div key={code} onClick={() => setDcGridSel((c) => (c === code ? null : code))} onMouseEnter={() => setDcGridHover(code)} onMouseLeave={() => setDcGridHover(null)}
-                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[length:var(--font-size-11-5px)] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: RTO_FILL[code] }} /><span className="shrink-0 font-semibold">{rtoAbbr(code)}</span>
                   <GridBadges a={RTO_ATTR[code]} why={GRID_WHY[code]} />
                 </div>); })}
-              <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[length:var(--font-size-9px)] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
+              <div className="mt-0.5 border-t border-border px-2.5 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">비ISO · 수직통합 유틸 (무채색)</div>
               {NONISO_ROWS.map((r) => { const hl = dcGridSel === r.region || dcGridHover === r.region;
                 return (<div key={r.region} onClick={() => { setDcGridSel((c) => (c === r.region ? null : r.region)); }} onMouseEnter={() => setDcGridHover(r.region)} onMouseLeave={() => setDcGridHover(null)}
-                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[length:var(--font-size-11-5px)] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" style={hl ? { background: "var(--line)", borderColor: "var(--line)" } : undefined} /><span className="shrink-0 font-semibold">{r.region}</span>
+                  className={`flex flex-wrap items-center gap-1.5 cursor-pointer px-2.5 py-1.5 text-[11.5px] ${hl ? "bg-muted" : "hover:bg-muted/60"}`}>
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" style={hl ? { background: "#94a3b8", borderColor: "#94a3b8" } : undefined} /><span className="shrink-0 font-semibold">{r.region}</span>
                   <GridBadges a={r} why={GRID_WHY[r.region]} />
                 </div>); })}
-              <div className="px-2.5 pb-0.5 pt-1.5 text-[length:var(--font-size-9px)] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
+              <div className="px-2.5 pb-0.5 pt-1.5 text-[9px] leading-tight text-muted-foreground/70">{GRID_INTERCONNECT_NOTE}</div>
             </div>
             )}
           </div>
           )}
           {dcFabs && (
-          <div className="flex max-h-[calc(100vh-22rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm glass">
-            <div className="flex items-center gap-1.5 p-2.5 pb-1"><Hexagon className="h-4 w-4" style={{ color: "var(--tone-blue-500)" }} /><span className="text-sm font-bold">반도체 팹</span><span className="ml-auto cursor-help text-[length:var(--font-size-11px)] text-muted-foreground" title="육각 = 팹(원=DC · 사각=발전소). 채움 = 상태(가동 꽉참 · 건설 반채움 · 발표 점선 · 지연 앰버 플래그). 크기 = 발표 투자액. 색 = 회사.">ⓘ</span></div>
-            <div className="px-2.5 pb-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">{fabs.length}개 · 상태순 · 투자 발표치</div>
-            <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">{[...new Set(fabs.map((f) => f.company))].map((co) => <span key={co} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[length:var(--font-size-9px)]"><span className="h-2 w-2 rounded-sm" style={{ background: FAB_COLOR[co] }} />{FAB_COMPANY_KO[co]}</span>)}</div>
+          <div className="flex max-h-[calc(100vh-22rem)] min-h-0 flex-col rounded-md border border-border bg-card/90 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-1.5 p-2.5 pb-1"><Hexagon className="h-4 w-4" style={{ color: "#2563eb" }} /><span className="text-sm font-bold">반도체 팹</span><span className="ml-auto cursor-help text-[11px] text-muted-foreground" title="육각 = 팹(원=DC · 사각=발전소). 채움 = 상태(가동 꽉참 · 건설 반채움 · 발표 점선 · 지연 앰버 플래그). 크기 = 발표 투자액. 색 = 회사.">ⓘ</span></div>
+            <div className="px-2.5 pb-1 text-[10.5px] text-muted-foreground">{fabs.length}개 · 상태순 · 투자 발표치</div>
+            <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">{[...new Set(fabs.map((f) => f.company))].map((co) => <span key={co} className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[9px]"><span className="h-2 w-2 rounded-sm" style={{ background: FAB_COLOR[co] }} />{FAB_COMPANY_KO[co]}</span>)}</div>
             <div className="min-h-0 overflow-auto border-t border-border py-1">
               {fabsSorted.map((f) => { const on = f.id === fabSel;
                 return (<button key={f.id} onMouseEnter={() => setTip(null)} onClick={() => { setFabSel(f.id); setDcSel(null); flyPoint(f.location.lng, f.location.lat); }}
-                  className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[length:var(--font-size-11-5px)] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
+                  className={`flex w-full items-center gap-1.5 px-2.5 py-0.5 text-left text-[11.5px] ${on ? "bg-muted font-semibold" : "hover:bg-muted/60"}`}>
                   <span className="h-2 w-2 shrink-0 rotate-45" style={{ background: FAB_COLOR[f.company], opacity: f.status === "announced" ? 0.4 : 1 }} />
-                  <span className="flex-1 truncate">{f.site_name}</span><span className="shrink-0 text-[length:var(--font-size-9px)] text-muted-foreground">{FAB_STATUS_KO[f.status]}</span></button>); })}
+                  <span className="flex-1 truncate">{f.site_name}</span><span className="shrink-0 text-[9px] text-muted-foreground">{FAB_STATUS_KO[f.status]}</span></button>); })}
             </div>
           </div>
           )}
@@ -1644,10 +1650,10 @@ export default function World() {
         {dcSel && (() => { const s = dc.sites.find((x) => x.id === dcSel); if (!s) return null; const stageIdx = STAGES.indexOf(s.status_stage); const gen = primaryGen(s.power); const GenI = GEN_ICON[gen];
           // 신용보증인 = 임차인이면 임차 행에 등급을 합침. 다르면(밀람·로즈타운: 오픈AI vs 소프트뱅크) 별도 '신용 보증' 행. 접두 일치(IREN: MS vs "MS(선불)")는 동일 취급.
           const sameCredit = !!(s.credit_wrapper && s.tenant && (s.credit_wrapper === s.tenant || s.credit_wrapper.startsWith(s.tenant) || s.tenant.startsWith(s.credit_wrapper)));
-          return (<div style={{ top: 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg glass">
+          return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setDcSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: GROUP_COLOR[s.group] }} /><span className="text-base font-bold leading-tight">{s.name}</span></div>
-            <div className="mt-2 flex items-baseline gap-1.5 text-[length:var(--font-size-12px)]"><b className="tabular-nums">{s.capacity_operational_mw ?? "—"}MW</b><span className="text-muted-foreground">운영 / 목표 {s.capacity_target_mw.max ? (s.capacity_target_mw.min === s.capacity_target_mw.max ? `${s.capacity_target_mw.max}` : `${s.capacity_target_mw.min}~${s.capacity_target_mw.max}`) : "—"}MW</span></div>
+            <div className="mt-2 flex items-baseline gap-1.5 text-[12px]"><b className="tabular-nums">{s.capacity_operational_mw ?? "—"}MW</b><span className="text-muted-foreground">운영 / 목표 {s.capacity_target_mw.max ? (s.capacity_target_mw.min === s.capacity_target_mw.max ? `${s.capacity_target_mw.max}` : `${s.capacity_target_mw.min}~${s.capacity_target_mw.max}`) : "—"}MW</span></div>
             {/* 생애 단계 5칸 — 셰브론(화살표) 진행 리본. 각 칸 끝이 뾰족→다음 칸 홈에 맞물림. 양끝은 한쪽만 뾰족/옴폭. 현재 단계 굵게. */}
             <div className="mt-2 flex gap-[2px]">{STAGES.map((st, i) => { const done = i <= stageIdx; const cur = i === stageIdx;
               const first = i === 0, last = i === STAGES.length - 1, D = 6;
@@ -1655,21 +1661,21 @@ export default function World() {
                 : last ? `polygon(0 0, 100% 0, 100% 100%, 0 100%, ${D}px 50%)`
                 : `polygon(0 0, calc(100% - ${D}px) 0, 100% 50%, calc(100% - ${D}px) 100%, 0 100%, ${D}px 50%)`;
               return <div key={st} title={STAGE_KO[st]}
-                className={`flex-1 py-1 text-center text-[length:var(--font-size-9px)] leading-none ${cur ? "font-bold" : "font-medium"} ${first ? "pl-1.5 pr-2" : last ? "pl-2.5 pr-1" : "px-2"}`}
-                style={{ clipPath: clip, background: done ? GROUP_COLOR[s.group] : "hsl(var(--muted))", color: done ? "var(--surface)" : "hsl(var(--muted-foreground))" }}>{STAGE_KO[st]}</div>;
+                className={`flex-1 py-1 text-center text-[9px] leading-none ${cur ? "font-bold" : "font-medium"} ${first ? "pl-1.5 pr-2" : last ? "pl-2.5 pr-1" : "px-2"}`}
+                style={{ clipPath: clip, background: done ? GROUP_COLOR[s.group] : "hsl(var(--muted))", color: done ? "#fff" : "hsl(var(--muted-foreground))" }}>{STAGE_KO[st]}</div>;
             })}</div>
-            {s.status_note && <div className="mt-1 text-[length:var(--font-size-10-5px)] text-muted-foreground">{s.status_note}</div>}
-            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[length:var(--font-size-11-5px)]">
+            {s.status_note && <div className="mt-1 text-[10.5px] text-muted-foreground">{s.status_note}</div>}
+            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
               <span className="text-muted-foreground">개발/소유</span><span>{glossText(s.landlord)}</span>
               <span className="text-muted-foreground">임차</span><span className="flex flex-wrap items-center gap-1.5">{s.tenant ?? "—"}{s.lease_term_years ? ` · ${s.lease_term_years}년` : ""}
-                {sameCredit && s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" title="임차인 신용등급 — 전기·임대료를 낼 회사의 신용, 이 사업의 돈줄이 얼마나 튼튼한가 (AAA 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
+                {sameCredit && s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold" title="임차인 신용등급 — 전기·임대료를 낼 회사의 신용, 이 사업의 돈줄이 얼마나 튼튼한가 (AAA 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "22", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
               {!sameCredit && s.credit_wrapper && <>
-                <span className="tr-gloss pl-2.5 text-[length:var(--font-size-10-5px)] text-muted-foreground/55" title="임대·전기료를 대신 갚아줄 보증 회사 — 임차인과 다를 수 있음">↳ 신용 보증은</span>
-                <span className="flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-10-5px)] text-muted-foreground/70">{s.credit_wrapper}{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[length:var(--font-size-9-5px)] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "1e", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
+                <span className="tr-gloss pl-2.5 text-[10.5px] text-muted-foreground/55" title="임대·전기료를 대신 갚아줄 보증 회사 — 임차인과 다를 수 있음">↳ 신용 보증은</span>
+                <span className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-muted-foreground/70">{s.credit_wrapper}{s.credit_wrapper_rating && <span className="cursor-help rounded px-1.5 py-0.5 text-[9.5px] font-semibold" title="신용등급 — 돈 떼일 위험이 낮을수록 높음 (AAA가 최고)" style={{ background: creditColor(s.credit_wrapper_rating) + "1e", color: creditColor(s.credit_wrapper_rating) }}>{s.credit_wrapper_rating}</span>}</span>
               </>}
               <span className="text-muted-foreground">최종 사용</span><span>{s.end_user ?? "—"}</span></div>
             {s.power && (<div className="mt-2.5 rounded-md border border-border/60 p-2">
-              <div className="flex items-center gap-1.5 text-[length:var(--font-size-11-5px)] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 방법</div>
+              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold"><GenI className="h-3.5 w-3.5" style={{ color: gridColor(s.power.grid_operator) }} />전력 조달 방법</div>
               {/* 대분류 뱃지(혼합/자체중심은 2뱃지) + 하위 자체발전은 작은 텍스트. 막대·계통운영자·유틸 신설(비DC정보) 제외. */}
               {(() => {
                 const gs = (s.power.grid_share ?? "") as string; const num = Number((/^\s*(\d+)\s*%/.exec(gs) || [])[1]);
@@ -1680,41 +1686,41 @@ export default function World() {
                 const badges = POWER_TIER[tierKey];
                 const selfLines = onsite.map((g) => `${genTypeKo(g.type)}${g.mw ? ` ${g.mw}MW` : ""}${g.status === "planned" ? "(계획)" : ""}`);
                 return (<div className="mt-1.5">
-                  <div className="flex gap-1.5">{badges.map((bd, i) => <span key={i} className="flex-1 rounded-md px-2 py-1 text-center text-[length:var(--font-size-12px)] font-bold" style={{ background: bd.color + "18", color: bd.color }}>{bd.label}</span>)}</div>
-                  {onsite.length > 0 && <div className="mt-1 flex gap-1.5">{badges.length > 1 && <div className="flex-1" />}<div className="flex-1 space-y-0.5 text-center text-[length:var(--font-size-10px)] font-medium leading-tight" style={{ color: "var(--tone-indigo-400)" }}>{selfLines.map((ln, i) => <div key={i}>{ln}</div>)}</div></div>}
+                  <div className="flex gap-1.5">{badges.map((bd, i) => <span key={i} className="flex-1 rounded-md px-2 py-1 text-center text-[12px] font-bold" style={{ background: bd.color + "18", color: bd.color }}>{bd.label}</span>)}</div>
+                  {onsite.length > 0 && <div className="mt-1 flex gap-1.5">{badges.length > 1 && <div className="flex-1" />}<div className="flex-1 space-y-0.5 text-center text-[10px] font-medium leading-tight" style={{ color: "#7c3aed" }}>{selfLines.map((ln, i) => <div key={i}>{ln}</div>)}</div></div>}
                 </div>);
               })()}</div>)}
-            <div className="mt-2.5"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
-              <div className="space-y-0.5">{s.financing.map((f, i) => { const bucket = FIN_BUCKET[f.type] ?? (FIN_TYPE_KO[f.type] ?? f.type); const bc = FIN_BUCKET_COLOR[bucket] ?? "var(--ink-soft)";
-                return (<div key={i} className="flex items-baseline gap-1.5 text-[length:var(--font-size-11px)]"><span className="shrink-0 cursor-help rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" title={FIN_TYPE_KO[f.type] ?? f.type} style={{ background: bc + "22", color: bc }}>{bucket}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>); })}</div></div>
-            {s.notes && <div className="mt-2 text-[length:var(--font-size-11px)] leading-snug text-muted-foreground">{glossText(s.notes)}</div>}
+            <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">자금 조달 {s.financing_total_usd_bn ? `· 총 $${s.financing_total_usd_bn}B` : ""}</div>
+              <div className="space-y-0.5">{s.financing.map((f, i) => { const bucket = FIN_BUCKET[f.type] ?? (FIN_TYPE_KO[f.type] ?? f.type); const bc = FIN_BUCKET_COLOR[bucket] ?? "#78716c";
+                return (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 cursor-help rounded px-1 py-0.5 text-[9px] font-semibold" title={FIN_TYPE_KO[f.type] ?? f.type} style={{ background: bc + "22", color: bc }}>{bucket}</span><span className="truncate">{glossText(f.party)}</span><span className="ml-auto shrink-0 tabular-nums">{f.amount_usd_bn != null ? `$${f.amount_usd_bn}B` : "미공개"}</span></div>); })}</div></div>
+            {s.notes && <div className="mt-2 text-[11px] leading-snug text-muted-foreground">{glossText(s.notes)}</div>}
           </div>);
         })()}
 
-        {nukeSel && (() => { const p = nuclearPlants.find((x) => x.id === nukeSel); if (!p) return null; const col = NUKE_STATUS_COLOR[p.status] || "var(--line)";
-          return (<div style={{ top: 64 }} className="absolute right-4 w-72 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg glass">
+        {nukeSel && (() => { const p = nuclearPlants.find((x) => x.id === nukeSel); if (!p) return null; const col = NUKE_STATUS_COLOR[p.status] || "#94a3b8";
+          return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 w-72 rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setNukeSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><Atom className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{p.name}</span></div>
-            <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.state ?? ""} · 원자력</div>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--font-size-12px)]"><span className="rounded px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" style={{ background: col + "22", color: col }}>{NUKE_STATUS_KO[p.status]}</span>{p.capacity_mw && <span className="tabular-nums text-muted-foreground">{p.capacity_mw.toLocaleString()}MW</span>}{p.retired_year && <span className="text-[length:var(--font-size-11px)] text-muted-foreground">{p.retired_year} 퇴역</span>}</div>
-            {p.ai_linked && (<div className="mt-2 rounded-md border border-border/60 p-2 text-[length:var(--font-size-11-5px)]"><span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: AI_SMR + "22", color: AI_SMR }}>AI 연계</span> <span className="text-muted-foreground">{p.ai_note}</span></div>)}
-            <div className="mt-2 text-[length:var(--font-size-10px)] leading-tight text-muted-foreground">출처: {nuclearMeta.source}</div>
+            <div className="text-[11px] text-muted-foreground">{p.state ?? ""} · 원자력</div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]"><span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: col + "22", color: col }}>{NUKE_STATUS_KO[p.status]}</span>{p.capacity_mw && <span className="tabular-nums text-muted-foreground">{p.capacity_mw.toLocaleString()}MW</span>}{p.retired_year && <span className="text-[11px] text-muted-foreground">{p.retired_year} 퇴역</span>}</div>
+            {p.ai_linked && (<div className="mt-2 rounded-md border border-border/60 p-2 text-[11.5px]"><span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: AI_SMR + "22", color: AI_SMR }}>AI 연계</span> <span className="text-muted-foreground">{p.ai_note}</span></div>)}
+            <div className="mt-2 text-[10px] leading-tight text-muted-foreground">출처: {nuclearMeta.source}</div>
           </div>); })()}
 
         {fabSel && (() => { const f = fabs.find((x) => x.id === fabSel); if (!f) return null; const col = FAB_COLOR[f.company] || FAB_COLOR.other;
-          return (<div style={{ top: 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg glass">
+          return (<div style={{ top: dim.w < 560 ? 160 : dim.w < 1050 ? 112 : 64 }} className="absolute right-4 max-h-[calc(100%-5rem)] w-80 overflow-auto rounded-lg border border-border bg-card/95 p-3.5 shadow-lg backdrop-blur">
             <button onClick={() => setFabSel(null)} className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-1.5"><Hexagon className="h-4 w-4 shrink-0" style={{ color: col }} /><span className="text-base font-bold leading-tight">{f.site_name}</span></div>
-            <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{FAB_COMPANY_KO[f.company]} · {f.location.city}, {f.location.state} · {FAB_CAT_KO[f.category]}</div>
-            <div className="mt-2 flex items-center gap-1.5 text-[length:var(--font-size-12px)]"><span className="rounded px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-semibold" style={{ background: col + "22", color: col }}>{FAB_STATUS_KO[f.status]}</span><span className="text-muted-foreground">{f.status_as_of} 기준</span>{f.status === "paused" && <span className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: "var(--alpha-tone-orange-500-133)", color: "var(--tone-orange-600)" }}>지연 플래그</span>}</div>
-            <div className="mt-1 text-[length:var(--font-size-11px)] leading-snug text-muted-foreground">{f.status_note}</div>
-            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[length:var(--font-size-11-5px)]">
+            <div className="text-[11px] text-muted-foreground">{FAB_COMPANY_KO[f.company]} · {f.location.city}, {f.location.state} · {FAB_CAT_KO[f.category]}</div>
+            <div className="mt-2 flex items-center gap-1.5 text-[12px]"><span className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: col + "22", color: col }}>{FAB_STATUS_KO[f.status]}</span><span className="text-muted-foreground">{f.status_as_of} 기준</span>{f.status === "paused" && <span className="rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: "#f59e0b22", color: "#b45309" }}>지연 플래그</span>}</div>
+            <div className="mt-1 text-[11px] leading-snug text-muted-foreground">{f.status_note}</div>
+            <div className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11.5px]">
               <span className="text-muted-foreground">공정</span><span>{f.node_note}</span>
-              <span className="text-muted-foreground">발표 투자</span><span>{f.invest_announced_usd_bn ? `$${f.invest_announced_usd_bn}B` : "미공개"} <span className="text-[length:var(--font-size-10px)] text-muted-foreground">(발표 기준)</span></span>
+              <span className="text-muted-foreground">발표 투자</span><span>{f.invest_announced_usd_bn ? `$${f.invest_announced_usd_bn}B` : "미공개"} <span className="text-[10px] text-muted-foreground">(발표 기준)</span></span>
               <span className="text-muted-foreground">CHIPS 보조</span><span>{f.chips_award_usd_bn != null ? `$${f.chips_award_usd_bn}B` : "—"}</span>
               <span className="text-muted-foreground">목표 가동</span><span>{f.target_year ?? "—"}</span></div>
-            <div className="mt-2.5"><div className="mb-1 text-[length:var(--font-size-11px)] text-muted-foreground">상태 이력 <span className="text-[length:var(--font-size-10px)]">(트래킹의 실체)</span></div>
-              <div className="space-y-1">{f.status_log.map((l, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[length:var(--font-size-11px)]"><span className="shrink-0 tabular-nums text-muted-foreground">{l.changed_on}</span><span className="shrink-0 rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-semibold" style={{ background: col + "18", color: col }}>{FAB_STATUS_KO[l.status]}</span><span className="text-muted-foreground">{l.note}</span></div>))}</div></div>
+            <div className="mt-2.5"><div className="mb-1 text-[11px] text-muted-foreground">상태 이력 <span className="text-[10px]">(트래킹의 실체)</span></div>
+              <div className="space-y-1">{f.status_log.map((l, i) => (<div key={i} className="flex items-baseline gap-1.5 text-[11px]"><span className="shrink-0 tabular-nums text-muted-foreground">{l.changed_on}</span><span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold" style={{ background: col + "18", color: col }}>{FAB_STATUS_KO[l.status]}</span><span className="text-muted-foreground">{l.note}</span></div>))}</div></div>
             <Src url={f.source_url} label="출처" />
           </div>); })()}
       </>)}
@@ -1727,30 +1733,30 @@ function GRow({ mark, children }: { mark: React.ReactNode; children: React.React
   return <div className="flex items-start gap-2"><span className="mt-[3px] flex h-3.5 w-5 shrink-0 items-center justify-center">{mark}</span><span className="flex-1">{children}</span></div>;
 }
 function GSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div className="mt-3"><div className="mb-1 text-[length:var(--font-size-11px)] font-bold uppercase tracking-wide text-muted-foreground">{title}</div><div className="space-y-1 text-[length:var(--font-size-12px)] leading-snug">{children}</div></div>;
+  return <div className="mt-3"><div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{title}</div><div className="space-y-1 text-[12px] leading-snug">{children}</div></div>;
 }
 const dot = (c: string, sq = false) => <span className={`inline-block h-2.5 w-2.5 ${sq ? "rounded-sm" : "rounded-full"}`} style={{ background: c }} />;
 function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClose: () => void }) {
   const title = mode === "dc" ? "미국 데이터센터 — AI 인프라 지도" : mode === "conflict" ? "분쟁 — 전 세계 활성 분쟁 (UCDP)" : "세계·무역 — 무역 동맥 지도";
   const lead = mode === "dc" ? "AI 데이터센터가 미국 내 어디에 있으며, 전기는 얼마나 쓰는지를 봅니다." : mode === "conflict" ? "지금 벌어지는 무력 분쟁의 위치·규모·유형을 봅니다." : "배가 다니는 항로·항구·병목 해협과 나라를 봅니다.";
   return (
-    <div className="absolute bottom-14 left-4 z-20 max-h-[calc(100%-6rem)] w-[29rem] max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-border bg-card/97 p-4 shadow-xl glass">
+    <div className="absolute bottom-14 left-4 z-20 max-h-[calc(100%-6rem)] w-[29rem] max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-border bg-card/97 p-4 shadow-xl backdrop-blur">
       <button onClick={onClose} className="absolute right-2.5 top-2.5 rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
-      <div className="flex items-center gap-1.5 pr-6 text-[length:var(--font-size-15px)] font-bold"><Info className="h-4 w-4 shrink-0 text-muted-foreground" />{title}</div>
-      <div className="mt-1 text-[length:var(--font-size-12px)] text-muted-foreground">{lead}</div>
-      <div className="mt-2 text-[length:var(--font-size-11px)] text-muted-foreground">지도를 좌우로 끌면 지구가 돌고, 스크롤로 확대. 무엇이든 클릭하면 상세 카드가 뜹니다.</div>
+      <div className="flex items-center gap-1.5 pr-6 text-[15px] font-bold"><Info className="h-4 w-4 shrink-0 text-muted-foreground" />{title}</div>
+      <div className="mt-1 text-[12px] text-muted-foreground">{lead}</div>
+      <div className="mt-2 text-[11px] text-muted-foreground">지도를 좌우로 끌면 지구가 돌고, 스크롤로 확대. 무엇이든 클릭하면 상세 카드가 뜹니다.</div>
 
       {mode === "trade" && (<>
-        <div className="mt-1 text-[length:var(--font-size-12px)] leading-snug">세계 주요 항로, 항구, 주요 해협과 근접국들을 볼 수 있습니다.</div>
+        <div className="mt-1 text-[12px] leading-snug">세계 주요 항로, 항구, 주요 해협과 근접국들을 볼 수 있습니다.</div>
         <GSection title="레이어 (우측 상단 버튼으로 껐다 켜기)">
-          <GRow mark={<span className="h-0 w-4 border-t-2" style={{ borderColor: "var(--tone-blue-500)" }} />}><b>항로</b> — 색깔 있는 선 (색이 곧 항로 이름)</GRow>
-          <GRow mark={<Diamond className="h-3 w-3" style={{ color: "var(--tone-orange-500)" }} />}><b>해협</b> — ◆ 좁은 병목 지점</GRow>
-          <GRow mark={dot("var(--tone-blue-500)")}><b>항만</b> — ● 상위 20개 표기. <b>이름 앞 숫자 = 순위</b> (원이 클수록 물동량 많음)</GRow>
+          <GRow mark={<span className="h-0 w-4 border-t-2" style={{ borderColor: "#2563eb" }} />}><b>항로</b> — 색깔 있는 선 (색이 곧 항로 이름)</GRow>
+          <GRow mark={<Diamond className="h-3 w-3" style={{ color: "#f59e0b" }} />}><b>해협</b> — ◆ 좁은 병목 지점</GRow>
+          <GRow mark={dot("#2563eb")}><b>항만</b> — ● 상위 20개 표기. <b>이름 앞 숫자 = 순위</b> (원이 클수록 물동량 많음)</GRow>
         </GSection>
         <GSection title="🚢 배 흐름 = 그 항로의 운송량 (이번 추가)">
           <GRow mark="→"><b>진행 방향</b> = 그 항로의 주 무역 흐름 방향.</GRow>
           <GRow mark="⋯"><b>배 밀도(동시 몇 척)</b> = 연간 물동량 등급. 많을수록 큰 항로(주항로 여러 척 · 북극항로 1척).</GRow>
-          <GRow mark={<span className="text-[length:var(--font-size-10px)]">◗</span>}><b>유조선 실루엣</b> = 원유 항로. 왼쪽 패널 '배 색' 토글로 항로별↔화물별 전환.</GRow>
+          <GRow mark={<span className="text-[10px]">◗</span>}><b>유조선 실루엣</b> = 원유 항로. 왼쪽 패널 '배 색' 토글로 항로별↔화물별 전환.</GRow>
           <GRow mark="ⓘ">실시간 선박 위치(AIS) 아님 — <b>연간 물동량 등급의 연출</b>(출처: 운하청·UNCTAD).</GRow>
         </GSection>
         <GSection title="이걸 보고 싶으면">
@@ -1762,15 +1768,15 @@ function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClo
 
       {mode === "dc" && (<>
         <GSection title="우측 상단 버튼으로 일부 뱃지 껐다 켜기">
-          <GRow mark={dot("var(--tone-indigo-400)")}><b>데이터센터</b> (크기=용량, 색깔=그룹 구분)</GRow>
-          <GRow mark={<Hexagon className="h-3 w-3" style={{ color: "var(--tone-blue-500)" }} />}><b>반도체 팹</b></GRow>
-          <GRow mark={<Atom className="h-3 w-3" style={{ color: "var(--tone-green-600)" }} />}><b>원전</b> (색깔=가동 상태. 초록=가동 중 · 노랑=재가동(퇴역 복귀) · 회색=퇴역)</GRow>
-          <GRow mark={dot("var(--tone-orange-500)", true)}><b>발전소</b></GRow>
-          <GRow mark={<Zap className="h-3 w-3" style={{ color: "var(--tone-blue-500)" }} />}><b>송전선</b> (미국 고압 송전망. 하늘색으로 흐르며, 굵을수록 높은 전압)</GRow>
+          <GRow mark={dot("#7c3aed")}><b>데이터센터</b> (크기=용량, 색깔=그룹 구분)</GRow>
+          <GRow mark={<Hexagon className="h-3 w-3" style={{ color: "#2563eb" }} />}><b>반도체 팹</b></GRow>
+          <GRow mark={<Atom className="h-3 w-3" style={{ color: "#16a34a" }} />}><b>원전</b> (색깔=가동 상태. 초록=가동 중 · 노랑=재가동(퇴역 복귀) · 회색=퇴역)</GRow>
+          <GRow mark={dot("#f97316", true)}><b>발전소</b></GRow>
+          <GRow mark={<Zap className="h-3 w-3" style={{ color: "#0ea5e9" }} />}><b>송전선</b> (미국 고압 송전망. 하늘색으로 흐르며, 굵을수록 높은 전압)</GRow>
         </GSection>
-        <div className="mt-2 text-[length:var(--font-size-11px)] text-muted-foreground">마커는 <b>모양</b>으로 구분 — 원=데이터센터 · 육각형=반도체 팹 · ⚛=원전 · 사각형=발전소.</div>
+        <div className="mt-2 text-[11px] text-muted-foreground">마커는 <b>모양</b>으로 구분 — 원=데이터센터 · 육각형=반도체 팹 · ⚛=원전 · 사각형=발전소.</div>
         <GSection title="면 채색 (지도 배경) — 왼쪽 패널에서 선택">
-          <div className="text-[length:var(--font-size-11px)] text-muted-foreground">"전기를 얼마나 쓰는지"의 핵심입니다.</div>
+          <div className="text-[11px] text-muted-foreground">"전기를 얼마나 쓰는지"의 핵심입니다.</div>
           <GRow mark="▸"><b>AI 부하 비중</b>: 그 주 전체 전력 수요 중 AI 데이터센터가 차지하는 몫. 진할수록 무겁게 앉은 주.</GRow>
           <GRow mark="▸"><b>전력시장</b>: 이 지역이 어느 그리드(ERCOT=텍사스 · PJM=동부 등)에 속하는지.</GRow>
         </GSection>
@@ -1792,15 +1798,15 @@ function GuideCard({ mode, onClose }: { mode: "trade" | "dc" | "conflict"; onClo
           <GRow mark="▸"><b>유형·당사국·사망자</b> → 진앙/목록 클릭하면 카드에.</GRow>
           <GRow mark="▸"><b>과거 전쟁</b>은 왼쪽 '에피소드' — 개별 재생은 준비 중입니다.</GRow>
         </GSection>
-        <div className="mt-3 text-[length:var(--font-size-11px)] text-muted-foreground">정직성: 글로우·진앙은 최근 사건 <b>분포의 근사</b>이지 확정 전선·통제선이 아닙니다.</div>
+        <div className="mt-3 text-[11px] text-muted-foreground">정직성: 글로우·진앙은 최근 사건 <b>분포의 근사</b>이지 확정 전선·통제선이 아닙니다.</div>
       </>)}
     </div>
   );
 }
 
 function Chip({ children, color, onClick }: { children: React.ReactNode; color: string; onClick: () => void }) {
-  return <button onClick={onClick} className="rounded-full border px-2 py-0.5 text-[length:var(--font-size-11px)] hover:bg-muted" style={{ borderColor: color + "66" }}>{children}</button>;
+  return <button onClick={onClick} className="rounded-full border px-2 py-0.5 text-[11px] hover:bg-muted" style={{ borderColor: color + "66" }}>{children}</button>;
 }
 function Src({ url, label }: { url: string; label?: string }) {
-  return <a href={url} target="_blank" rel="noreferrer" className="mt-2.5 flex items-center gap-1 text-[length:var(--font-size-10-5px)] text-muted-foreground hover:text-foreground"><ExternalLink className="h-3 w-3" />{label ?? "출처"}</a>;
+  return <a href={url} target="_blank" rel="noreferrer" className="mt-2.5 flex items-center gap-1 text-[10.5px] text-muted-foreground hover:text-foreground"><ExternalLink className="h-3 w-3" />{label ?? "출처"}</a>;
 }

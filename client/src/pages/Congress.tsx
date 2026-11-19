@@ -18,8 +18,8 @@ import {
 } from "recharts";
 import { Landmark, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 
-const BUY = "var(--tone-green-500)";
-const SELL = "var(--tone-red-400)";
+const BUY = "#3fb950";
+const SELL = "#f85149";
 
 // ---------- shared small UI ----------
 function Sparkline({ perQ, quarters }: { perQ: Map<string, { buy: number; sell: number }>; quarters: string[] }) {
@@ -79,8 +79,8 @@ function TrendChart({ trades, quarters, groupBy, nameOf }: {
     <ResponsiveContainer width="100%" height={220}>
       <ComposedChart data={data} margin={{ top: 10, right: 8, left: -8, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis dataKey="label" tick={{ fontSize: "var(--font-size-10)", fill: "hsl(var(--muted-foreground))" }} />
-        <YAxis tick={{ fontSize: "var(--font-size-10)", fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmtMoney(v)} width={46} />
+        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+        <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmtMoney(v)} width={46} />
         <ReferenceLine y={0} stroke="hsl(var(--border))" />
         <RTooltip content={<TrendTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
         <Bar dataKey="buy" fill={BUY} radius={[3, 3, 0, 0]} />
@@ -93,7 +93,7 @@ function TrendChart({ trades, quarters, groupBy, nameOf }: {
 
 function PartyPill({ p, state }: { p: string | null; state?: string | null }) {
   const bg = p === "D" ? "bg-blue-500/15 text-blue-400" : p === "R" ? "bg-red-500/15 text-red-400" : "bg-muted text-muted-foreground";
-  return <span className={`text-[length:var(--font-size-10px)] px-1.5 py-0.5 rounded-full font-bold ${bg}`}>{p ?? "?"}{state ? `-${state}` : ""}</span>;
+  return <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${bg}`}>{p ?? "?"}{state ? `-${state}` : ""}</span>;
 }
 
 // ---------- context passed to views ----------
@@ -127,18 +127,18 @@ function MemberSideBox({ side, entries, ctx }: { side: "buy" | "sell"; entries: 
         const divider = p.chamber !== lastChamber ? (lastChamber = p.chamber, p.chamber) : null;
         return (
           <div key={slug}>
-            {divider && <div className="text-[length:var(--font-size-10-5px)] font-bold tracking-wide text-muted-foreground mt-2 mb-1">{divider === "senate" ? "상원 (Senate)" : "하원 (House)"}</div>}
+            {divider && <div className="text-[10.5px] font-bold tracking-wide text-muted-foreground mt-2 mb-1">{divider === "senate" ? "상원 (Senate)" : "하원 (House)"}</div>}
             <div className="py-1.5 border-b border-border/50 last:border-0 cursor-pointer rounded hover:bg-muted/40 px-1" onClick={() => ctx.openMember(slug)} title={`${p.name} 개인 페이지`}>
               <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full" style={{ background: partyColor(p.party) }} />
-                <span className="font-semibold text-[length:var(--font-size-13px)]">{p.name}</span>
+                <span className="font-semibold text-[13px]">{p.name}</span>
                 <PartyPill p={p.party} state={p.state} />
                 <ChevronRight className="h-3 w-3 text-primary" />
-                <span className="ml-auto text-[length:var(--font-size-12-5px)] font-bold tabular-nums" style={{ color }}>{side === "buy" ? "+" : "−"}{fmtMoney(amt)}</span>
+                <span className="ml-auto text-[12.5px] font-bold tabular-nums" style={{ color }}>{side === "buy" ? "+" : "−"}{fmtMoney(amt)}</span>
               </div>
               <div className="flex flex-wrap gap-1 mt-1 ml-3.5">
                 {(p.committees.length ? p.committees : ["__none__"]).map((cid) => (
-                  <span key={cid} className="text-[length:var(--font-size-10px)] text-muted-foreground bg-background border rounded px-1.5 py-0.5">
+                  <span key={cid} className="text-[10px] text-muted-foreground bg-background border rounded px-1.5 py-0.5">
                     {cid === "__none__" ? "무소속·지도부" : cmtLabel(ctx.cmtById.get(cid))}
                   </span>
                 ))}
@@ -152,7 +152,7 @@ function MemberSideBox({ side, entries, ctx }: { side: "buy" | "sell"; entries: 
 }
 
 function Kpi({ label, value, color }: { label: string; value: string; color?: string }) {
-  return <div><div className="text-lg font-bold tabular-nums" style={color ? { color } : undefined}>{value}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">{label}</div></div>;
+  return <div><div className="text-lg font-bold tabular-nums" style={color ? { color } : undefined}>{value}</div><div className="text-[11px] text-muted-foreground">{label}</div></div>;
 }
 
 function RankRow({ s, idx, maxVol, quarters, selected, onClick, ctx, showTradeCount }: {
@@ -165,10 +165,10 @@ function RankRow({ s, idx, maxVol, quarters, selected, onClick, ctx, showTradeCo
       <div className="text-xs text-muted-foreground text-center tabular-nums">{idx + 1}</div>
       <div className="flex items-center gap-1.5 font-bold text-sm">
         <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(s.symbol) }} />
-        {s.symbol}<span className="text-[length:var(--font-size-10px)] font-normal text-muted-foreground">{ctx.sectorOf(s.symbol)}</span>
+        {s.symbol}<span className="text-[10px] font-normal text-muted-foreground">{ctx.sectorOf(s.symbol)}</span>
       </div>
       <StackedBar s={s} maxVol={maxVol} />
-      <div className="text-right text-[length:var(--font-size-12-5px)] font-bold tabular-nums" style={{ color: s.net >= 0 ? BUY : SELL }}>{s.net >= 0 ? "+" : "−"}{fmtMoney(Math.abs(s.net))}</div>
+      <div className="text-right text-[12.5px] font-bold tabular-nums" style={{ color: s.net >= 0 ? BUY : SELL }}>{s.net >= 0 ? "+" : "−"}{fmtMoney(Math.abs(s.net))}</div>
       <div className="text-center text-xs text-muted-foreground tabular-nums">{showTradeCount ? `${s.trades.length}건` : `${tradersOf(s)}명`}</div>
       <div className="flex justify-center"><Sparkline perQ={s.perQ} quarters={quarters} /></div>
     </div>
@@ -177,7 +177,7 @@ function RankRow({ s, idx, maxVol, quarters, selected, onClick, ctx, showTradeCo
 
 function RankHead() {
   return (
-    <div className="grid items-center gap-2.5 px-2 py-1.5 text-[length:var(--font-size-11px)] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 92px 1fr 92px 52px 76px" }}>
+    <div className="grid items-center gap-2.5 px-2 py-1.5 text-[11px] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 92px 1fr 92px 52px 76px" }}>
       <div className="text-center">#</div><div>종목</div><div>매수/매도</div><div className="text-right">순매수</div><div className="text-center">거래자</div><div className="text-center">추이</div>
     </div>
   );
@@ -185,8 +185,8 @@ function RankHead() {
 
 // ---------- committee distribution donut (among buyers / sellers) ----------
 function cmtColor(id: string): string {
-  if (id === "__none__") return "var(--ink-soft)";
-  if (id === "__rest__") return "var(--ink)";
+  if (id === "__none__") return "#8b949e";
+  if (id === "__rest__") return "#3a3f47";
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
   return `hsl(${h} 60% 58%)`;
@@ -245,7 +245,7 @@ function CommitteePie({ side, entries, ctx }: { side: "buy" | "sell"; entries: M
         </PieChart>
         <div className="flex-1 min-w-0 space-y-0.5 max-h-[124px] overflow-y-auto pr-1">
           {data.map((d) => (
-            <div key={d.id} className="flex items-center gap-1.5 text-[length:var(--font-size-11px)]">
+            <div key={d.id} className="flex items-center gap-1.5 text-[11px]">
               <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: cmtColor(d.id) }} />
               <span className="truncate" title={d.label}>{d.label}</span>
               <span className="ml-auto tabular-nums text-muted-foreground shrink-0">{d.members}명 · {fmtMoney(d.amount)}</span>
@@ -275,8 +275,8 @@ function TickerDetail({ agg, quarters, ctx }: { agg: TickerAgg; quarters: string
       </div>
       {(agg.buyers.size > 0 || agg.sellers.size > 0) && (
         <div className="mb-3">
-          <div className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-1.5">위원회 분포 <span className="text-[length:var(--font-size-10-5px)]">· 슬라이스=의원 수 (다중 소속은 각 위원회에 집계)</span></div>
-          <div className="grid gap-2.5 grid-cols-2">
+          <div className="text-[11.5px] text-muted-foreground mb-1.5">위원회 분포 <span className="text-[10.5px]">· 슬라이스=의원 수 (다중 소속은 각 위원회에 집계)</span></div>
+          <div className="grid gap-2.5 sm:grid-cols-2">
             {agg.buyers.size > 0 && <CommitteePie side="buy" entries={agg.buyers} ctx={ctx} />}
             {agg.sellers.size > 0 && <CommitteePie side="sell" entries={agg.sellers} ctx={ctx} />}
           </div>
@@ -316,11 +316,11 @@ function CommitteeCards({ committees, trades, ctx, onPick, search }: {
         return (
           <Card key={c.id} className="p-4 cursor-pointer hover:border-primary transition-colors" onClick={() => onPick(c.id)}>
             <div className="font-semibold text-sm mb-2">{cmtLabel(c)}</div>
-            <div className="flex gap-3.5 text-[length:var(--font-size-11-5px)] text-muted-foreground">
+            <div className="flex gap-3.5 text-[11.5px] text-muted-foreground">
               <span>거래 <b className="text-foreground">{ts.length}</b></span>
               <span>의원 <b className="text-foreground">{memCount}</b></span>
             </div>
-            {top && <div className="text-[length:var(--font-size-11-5px)] text-muted-foreground mt-2">최다 거래: <b style={{ color: tickerColor(top.symbol) }}>{top.symbol}</b> ({ctx.sectorOf(top.symbol)})</div>}
+            {top && <div className="text-[11.5px] text-muted-foreground mt-2">최다 거래: <b style={{ color: tickerColor(top.symbol) }}>{top.symbol}</b> ({ctx.sectorOf(top.symbol)})</div>}
           </Card>
         );
       })}
@@ -341,7 +341,7 @@ function CommitteeDetail({ committee, trades, quarters, periodLabel, ctx, onBack
       <Button variant="ghost" size="sm" className="mb-3 text-primary" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" />위원회 목록</Button>
       <Card className="p-5 mb-4">
         <h2 className="text-base font-semibold">{cmtLabel(committee)}</h2>
-        <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mt-1 mb-3">집계 기간 <b>{periodLabel}</b> · 소속 의원 {memSlugs.size}명의 거래 {ts.length}건. 막대=분기 매수/매도, 점선=누적 순매수.</p>
+        <p className="text-[11.5px] text-muted-foreground mt-1 mb-3">집계 기간 <b>{periodLabel}</b> · 소속 의원 {memSlugs.size}명의 거래 {ts.length}건. 막대=분기 매수/매도, 점선=누적 순매수.</p>
         <div className="flex flex-wrap gap-2 mb-4">
           {[...memSlugs].map((slug) => { const p = ctx.polBySlug.get(slug)!; return (
             <span key={slug} className="flex items-center gap-1.5 text-xs border rounded-full pl-2 pr-2.5 py-1 cursor-pointer hover:border-primary" onClick={() => ctx.openMember(slug)}>
@@ -352,7 +352,7 @@ function CommitteeDetail({ committee, trades, quarters, periodLabel, ctx, onBack
       </Card>
       <Card className="p-5">
         <h2 className="text-base font-semibold mb-1">이 위원회의 종목 매매 랭킹 <span className="text-xs font-normal text-muted-foreground">· 집계 기간 {periodLabel}</span></h2>
-        <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-3">소속 의원들이 가장 많이 거래한 종목. 방산위라면 방산주가 상위에 오릅니다.</p>
+        <p className="text-[11.5px] text-muted-foreground mb-3">소속 의원들이 가장 많이 거래한 종목. 방산위라면 방산주가 상위에 오릅니다.</p>
         <RankHead />
         {ranked.map((s, i) => <RankRow key={s.symbol} s={s} idx={i} maxVol={maxVol} quarters={quarters} ctx={ctx} onClick={() => ctx.openTicker(s.symbol)} />)}
       </Card>
@@ -392,8 +392,8 @@ function MemberCards({ politicians, trades, ctx, onPick, search }: {
             <span className="truncate">{p.name}</span><PartyPill p={p.party} state={p.state} />
             <ChevronRight className="h-3 w-3 text-primary ml-auto shrink-0" />
           </div>
-          <div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1.5">{p.chamber === "senate" ? "상원" : "하원"}{p.committees.length ? ` · 위원회 ${p.committees.length}` : ""}</div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[length:var(--font-size-11-5px)]">
+          <div className="text-[11px] text-muted-foreground mb-1.5">{p.chamber === "senate" ? "상원" : "하원"}{p.committees.length ? ` · 위원회 ${p.committees.length}` : ""}</div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px]">
             <span>거래 <b className="text-foreground">{s.n}</b></span>
             <span style={{ color: BUY }}>매수 {fmtMoney(s.buy)}</span>
             <span style={{ color: SELL }}>매도 {fmtMoney(s.sell)}</span>
@@ -425,7 +425,7 @@ function MemberDetail({ slug, trades, quarters, periodLabel, ctx, onBack }: {
         <div className="text-xs text-muted-foreground mt-0.5">{p.chamber === "senate" ? "상원 (Senate)" : "하원 (House)"} · 집계기간 {periodLabel}</div>
         <div className="flex flex-wrap gap-1.5 mt-2.5">
           {(p.committees.length ? p.committees : ["__none__"]).map((cid) => (
-            <span key={cid} className="text-[length:var(--font-size-10-5px)] text-muted-foreground bg-background border rounded px-1.5 py-0.5">{cid === "__none__" ? "무소속·지도부" : cmtLabel(ctx.cmtById.get(cid))}</span>
+            <span key={cid} className="text-[10.5px] text-muted-foreground bg-background border rounded px-1.5 py-0.5">{cid === "__none__" ? "무소속·지도부" : cmtLabel(ctx.cmtById.get(cid))}</span>
           ))}
         </div>
         <div className="flex gap-5 mt-3.5 flex-wrap">
@@ -436,32 +436,32 @@ function MemberDetail({ slug, trades, quarters, periodLabel, ctx, onBack }: {
           <Kpi label="거래 건수" value={`${ts.length}`} />
         </div>
       </Card>
-      <div className="grid gap-4 mb-4 grid-cols-2">
+      <div className="grid gap-4 mb-4 lg:grid-cols-2">
         <Card className="p-5">
           <h2 className="text-base font-semibold">포트폴리오 변동 추이</h2>
-          <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-2">분기별 매수/매도 + 누적 순매수. 막대에 마우스를 올리면 종목별 내역.</p>
+          <p className="text-[11.5px] text-muted-foreground mb-2">분기별 매수/매도 + 누적 순매수. 막대에 마우스를 올리면 종목별 내역.</p>
           <TrendChart trades={ts} quarters={quarters} groupBy="ticker" nameOf={(s) => s} />
         </Card>
         <Card className="p-5">
           <h2 className="text-base font-semibold">종목별 거래</h2>
-          <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-2">총 거래액 순. 행 클릭 시 종목 상세로 이동.</p>
+          <p className="text-[11.5px] text-muted-foreground mb-2">총 거래액 순. 행 클릭 시 종목 상세로 이동.</p>
           <RankHead />
           {ranked.map((s, i) => <RankRow key={s.symbol} s={s} idx={i} maxVol={maxVol} quarters={quarters} ctx={ctx} showTradeCount onClick={() => ctx.openTicker(s.symbol)} />)}
         </Card>
       </div>
       <Card className="p-5">
         <h2 className="text-base font-semibold mb-2">거래 내역 <span className="text-xs font-normal text-muted-foreground">· {ts.length}건 (최신순)</span></h2>
-        <div className="grid items-center gap-2.5 px-0 py-1 text-[length:var(--font-size-10-5px)] text-muted-foreground border-b" style={{ gridTemplateColumns: "92px 1fr 56px 84px 124px" }}>
+        <div className="grid items-center gap-2.5 px-0 py-1 text-[10.5px] text-muted-foreground border-b" style={{ gridTemplateColumns: "92px 1fr 56px 84px 124px" }}>
           <span>거래일</span><span>종목</span><span>방향</span><span title="공시까지 걸린 일수(거래일→공시일). 짧을수록 신선">공시지연</span><span className="text-right">금액범위</span>
         </div>
         {[...ts].sort((a, b) => b.txnDate - a.txnDate).map((t) => {
           const ft = freshTier(t); const g = gapDays(t);
           return (
-          <div key={t.id} className="grid items-center gap-2.5 py-2 border-b border-border/50 last:border-0 text-[length:var(--font-size-13px)]" style={{ gridTemplateColumns: "92px 1fr 56px 84px 124px" }}>
+          <div key={t.id} className="grid items-center gap-2.5 py-2 border-b border-border/50 last:border-0 text-[13px]" style={{ gridTemplateColumns: "92px 1fr 56px 84px 124px" }}>
             <span className="text-muted-foreground tabular-nums">{new Date(t.txnDate).toISOString().slice(0, 10)}</span>
             <span className="font-bold cursor-pointer" style={{ color: tickerColor(t.symbol) }} onClick={() => ctx.openTicker(t.symbol)}>{t.symbol} <span className="text-muted-foreground font-normal text-xs">{ctx.sectorOf(t.symbol)}</span></span>
-            <span><span className="text-[length:var(--font-size-10-5px)] px-2 py-0.5 rounded font-bold" style={{ background: t.side === "sell" ? "var(--alpha-tone-red-400-150)" : "var(--alpha-tone-green-500-150)", color: t.side === "sell" ? SELL : BUY }}>{t.side === "sell" ? "매도" : "매수"}</span></span>
-            <span><span className={`text-[length:var(--font-size-10px)] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap ${FRESH_META[ft].cls}`} title={`거래일→공시일 ${g == null ? "미상" : g + "일"}`}>{g == null ? "미상" : `${g}d`} {FRESH_META[ft].ko}</span></span>
+            <span><span className="text-[10.5px] px-2 py-0.5 rounded font-bold" style={{ background: t.side === "sell" ? "rgba(248,81,73,.15)" : "rgba(63,185,80,.15)", color: t.side === "sell" ? SELL : BUY }}>{t.side === "sell" ? "매도" : "매수"}</span></span>
+            <span><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap ${FRESH_META[ft].cls}`} title={`거래일→공시일 ${g == null ? "미상" : g + "일"}`}>{g == null ? "미상" : `${g}d`} {FRESH_META[ft].ko}</span></span>
             <span className="text-right text-muted-foreground tabular-nums">{fmtMoney(t.amountLow ?? 0)}–{fmtMoney(t.amountHigh ?? 0)}</span>
           </div>
           );
@@ -564,7 +564,7 @@ export default function Congress() {
         </div>
         <div className="ml-auto flex items-end gap-3 flex-wrap">
           <div>
-            <div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">기간</div>
+            <div className="text-[11px] text-muted-foreground mb-1">기간</div>
             <div className="flex items-center gap-2">
               <Select value={period} onValueChange={setPeriod}>
                 <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
@@ -585,28 +585,28 @@ export default function Congress() {
           </div>
           {view === "tickers" && <>
             <div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">위원회 필터</div>
+              <div className="text-[11px] text-muted-foreground mb-1">위원회 필터</div>
               <Select value={committeeFilter} onValueChange={(v) => { setCommitteeFilter(v); setSelTicker(null); }}>
                 <SelectTrigger className="w-56 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="all">전체</SelectItem>{cmts.map((c) => <SelectItem key={c.id} value={c.id}>{cmtLabel(c)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">정렬 기준</div>
+              <div className="text-[11px] text-muted-foreground mb-1">정렬 기준</div>
               <Select value={sort} onValueChange={(v) => setSort(v as SortMetric)}>
                 <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="vol">총 거래액 순</SelectItem><SelectItem value="net">매수 우위 순</SelectItem><SelectItem value="traders">거래 의원 수 순</SelectItem></SelectContent>
               </Select>
             </div>
             <div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">신선도 (공시지연)</div>
+              <div className="text-[11px] text-muted-foreground mb-1">신선도 (공시지연)</div>
               <Select value={freshFilter} onValueChange={(v) => { setFreshFilter(v as "all" | "21" | "7"); setSelTicker(null); }}>
                 <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="all">전체</SelectItem><SelectItem value="21">≤21일</SelectItem><SelectItem value="7">≤7일</SelectItem></SelectContent>
               </Select>
             </div>
             <div>
-              <div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">신선도 가중</div>
+              <div className="text-[11px] text-muted-foreground mb-1">신선도 가중</div>
               <Button variant={freshWeighted ? "secondary" : "outline"} size="sm" className="h-9" onClick={() => setFreshWeighted((v) => !v)} title="거래일→공시일 gap 반감기 14일 지수감쇠로 랭킹 가중 (기본 off)">
                 {freshWeighted ? "ON" : "OFF"}
               </Button>
@@ -628,12 +628,12 @@ export default function Congress() {
       )}
 
       {view === "tickers" && (
-        <div className="grid gap-5 items-start grid-cols-[1.5fr_1fr]">
+        <div className="grid gap-5 items-start lg:grid-cols-[1.5fr_1fr]">
           <Card className="p-4">
             <h2 className="text-sm font-semibold mb-0.5">종목 랭킹 <span className="text-xs font-normal text-muted-foreground">· 집계기간 {periodLabel} · {committeeFilter === "all" ? `전체 ${tickerAggs.length}종목` : `${cmtLabel(cmtById.get(committeeFilter))} 소속`}{freshFilter !== "all" ? ` · 신선 ≤${freshFilter}일` : ""}{freshWeighted ? " · 가중 ON" : ""}</span></h2>
-            <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-1">막대=매수(초록)/매도(빨강) 활동량, 스파크라인=분기별 순매수 추이. 행 클릭 시 거래 의원·추이 표시.</p>
+            <p className="text-[11.5px] text-muted-foreground mb-1">막대=매수(초록)/매도(빨강) 활동량, 스파크라인=분기별 순매수 추이. 행 클릭 시 거래 의원·추이 표시.</p>
             {/* B 게이트 측정: 신선도 가중이 상위 랭킹을 실제로 바꾸는가 (안 바꾸면 풀 스코어 엔진 불필요) */}
-            <p className="text-[length:var(--font-size-11px)] mb-3" style={{ color: topChange.moved ? "var(--primary)" : undefined }}>
+            <p className="text-[11px] mb-3" style={{ color: topChange.moved ? "var(--primary)" : undefined }}>
               <span className="text-muted-foreground">신선도 가중 영향: </span>
               top-{topChange.n} 중 <b className={topChange.moved ? "text-primary" : "text-muted-foreground"}>{topChange.moved}칸</b> 순위 변동{topChange.entered ? ` · 신규진입 ${topChange.entered}` : ""}
               {topChange.moved === 0 && <span className="text-muted-foreground"> (가중 효과 미미 — 포지셔닝 신호 가설 지지)</span>}

@@ -25,7 +25,7 @@ interface FedMatWeek { date: string; bills: number; notesBonds: number; tips: nu
 interface DailyPoint { date: string; netLiq: number; sp500: number | null }
 interface Overview { weeks: WeekPoint[]; daily: DailyPoint[]; treasury?: { monthly: TreasuryMonth[]; fedWeekly: FedMatWeek[] }; updatedAt: string }
 
-const AMBER = "var(--tone-orange-500)", GREY = "var(--line)";
+const AMBER = "#f59e0b", GREY = "#94a3b8";
 const fmtDate = (d?: string) => (d ? d.slice(2).replace(/-/g, ".") : "—");
 const fmtPct = (v: number, digits = 1) => (Number.isFinite(v) ? `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}%` : "—");
 const fmtNum = (v: number, digits = 2, unit = "") => (Number.isFinite(v) ? `${v.toFixed(digits)}${unit}` : "—");
@@ -33,12 +33,12 @@ const latest = (obs?: Obs[]) => (obs && obs.length ? obs[obs.length - 1] : null)
 // 띠 전용 0.1억 표기. asMoney(억 정수)로는 149M×3 이 "$1억+$1억+$1억=$4억"으로 읽혀 항등식이 깨져 보인다(Codex F4).
 const fmtEok = (v: number) => (Number.isFinite(v) ? `${v < 0 ? "−" : "+"}$${(Math.abs(v) / 100).toFixed(1)}억` : "—");
 const MAT_COLOR: Record<Maturity, string> = { bills: TB.bill, notes: TB.note, bonds: TB.bond, tips: TB.tips, frn: TB.frn };
-const BIDDER_COLOR: Record<Bidder, string> = { soma: A_SOMA, dealer: "var(--tone-blue-600)", direct: "var(--tone-blue-500)", indirect: "var(--line)", noncomp: "var(--tone-blue-200)" };
+const BIDDER_COLOR: Record<Bidder, string> = { soma: A_SOMA, dealer: "#475569", direct: "#64748b", indirect: "#94a3b8", noncomp: "#cbd5e1" };
 
-function Note({ children }: { children: ReactNode }) { return <div className="text-[length:var(--font-size-11px)] text-muted-foreground leading-snug">{children}</div>; }
+function Note({ children }: { children: ReactNode }) { return <div className="text-[11px] text-muted-foreground leading-snug">{children}</div>; }
 function Pill({ options, value, onChange }: { options: { k: string; label: string }[]; value: string; onChange: (k: any) => void }) {
   return (
-    <div className="flex rounded-full border border-border overflow-hidden text-[length:var(--font-size-11px)]">
+    <div className="flex rounded-full border border-border overflow-hidden text-[11px]">
       {options.map((o) => <button key={o.k} type="button" onClick={() => onChange(o.k)} className={`px-2.5 py-0.5 ${value === o.k ? "bg-muted font-semibold" : "text-muted-foreground hover:bg-muted/50"}`}>{o.label}</button>)}
     </div>
   );
@@ -86,21 +86,21 @@ function ReservoirBars({ rows }: { rows: { label: string; value: number; sub: st
     <div className="flex flex-col gap-1.5">
       {rows.map((r) => (
         <div key={r.label} className="grid grid-cols-[92px_minmax(0,1fr)_78px] items-center gap-2">
-          <div className={`text-[length:var(--font-size-11px)] font-semibold ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.label}</div>
+          <div className={`text-[11px] font-semibold ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.label}</div>
           {r.placeholder ? <div className="h-3.5 rounded border border-dashed border-border" /> : (
             <div className="relative h-3.5 rounded bg-muted">
               <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
               {Number.isFinite(r.value) && (
                 <div className="absolute inset-y-0" style={{
                   left: r.value < 0 ? `${50 - (Math.abs(r.value) / max) * 48}%` : "50%", width: `${(Math.abs(r.value) / max) * 48}%`,
-                  background: r.strong ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))", borderRadius: "var(--radius-3)", opacity: r.strong ? 0.92 : 0.65,
+                  background: r.strong ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))", borderRadius: 3, opacity: r.strong ? 0.92 : 0.65,
                 }} />
               )}
             </div>
           )}
           <div className="text-right">
-            <div className={`text-[length:var(--font-size-12px)] font-semibold tabular-nums ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.placeholder ? "출처 확정 후" : Number.isFinite(r.value) ? fmtEok(r.value) : "자료 부족"}</div>
-            <div className="text-[length:var(--font-size-9-5px)] text-muted-foreground leading-none">{r.sub}</div>
+            <div className={`text-[12px] font-semibold tabular-nums ${r.placeholder ? "text-muted-foreground/60" : ""}`}>{r.placeholder ? "출처 확정 후" : Number.isFinite(r.value) ? fmtEok(r.value) : "자료 부족"}</div>
+            <div className="text-[9.5px] text-muted-foreground leading-none">{r.sub}</div>
           </div>
         </div>
       ))}
@@ -124,7 +124,7 @@ function SankeyNodeShape(props: any) {
 }
 function SankeyLinkShape(props: any) {
   const { sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX, linkWidth, index, payload } = props;
-  const color = MAT_COLOR[payload?.source?.key as Maturity] ?? "var(--line)";
+  const color = MAT_COLOR[payload?.source?.key as Maturity] ?? "#94a3b8";
   const d = `M${sourceX},${sourceY + linkWidth / 2} C${sourceControlX},${sourceY + linkWidth / 2} ${targetControlX},${targetY + linkWidth / 2} ${targetX},${targetY + linkWidth / 2}`
     + ` L${targetX},${targetY - linkWidth / 2} C${targetControlX},${targetY - linkWidth / 2} ${sourceControlX},${sourceY - linkWidth / 2} ${sourceX},${sourceY - linkWidth / 2} Z`;
   return <path key={`l${index}`} d={d} fill={color} fillOpacity={0.28} stroke="none" />;
@@ -231,16 +231,16 @@ export default function LiquidityBeta() {
   if (!sel) return <div className="p-6 text-sm text-muted-foreground">데이터가 없습니다.</div>;
 
   return (
-    <div className="p-6 space-y-3 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-3 max-w-6xl mx-auto">
       {/* 헤더 — 주 선택 + 비교 기간 */}
       <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap">
-        <h1 className="text-base font-bold shrink-0">미국 유동성 <span className="text-[length:var(--font-size-11px)] font-semibold text-amber-700 align-middle">A안</span></h1>
-        <span className="text-[length:var(--font-size-11px)] text-muted-foreground">얼마나 → 어디서 → 어디로 · H.4.1 주간 · 기존 페이지는 그대로</span>
+        <h1 className="text-base font-bold shrink-0">미국 유동성 <span className="text-[11px] font-semibold text-amber-700 align-middle">A안</span></h1>
+        <span className="text-[11px] text-muted-foreground">얼마나 → 어디서 → 어디로 · H.4.1 주간 · 기존 페이지는 그대로</span>
         <span className="ml-auto flex items-center gap-1.5">
-          <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" className="px-1 text-[length:var(--font-size-13px)] text-foreground/70 hover:text-foreground disabled:opacity-25">◀</button>
-          <select aria-label="조회 주차" value={sel.date} onChange={e => setIdx(weeks.findIndex(w => w.date === e.target.value))} className="max-w-[230px] bg-background rounded border px-2 py-1 text-[length:var(--font-size-11-5px)] font-semibold tabular-nums">{[...weeks].reverse().map(w => <option key={w.date} value={w.date}>{w.date.slice(0, 4)}년 {weekLabel(w.date)} ({w.date})</option>)}</select>
-          <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" className="px-1 text-[length:var(--font-size-13px)] text-foreground/70 hover:text-foreground disabled:opacity-25">▶</button>
-          {curIdx < weeks.length - 1 && <button type="button" onClick={() => setIdx(-1)} className="rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[length:var(--font-size-10-5px)] hover:bg-amber-500/10">현재로</button>}
+          <button type="button" onClick={() => setIdx(Math.max(0, curIdx - 1))} disabled={curIdx <= 0} aria-label="이전 주" className="px-1 text-[13px] text-foreground/70 hover:text-foreground disabled:opacity-25">◀</button>
+          <select aria-label="조회 주차" value={sel.date} onChange={e => setIdx(weeks.findIndex(w => w.date === e.target.value))} className="max-w-[230px] bg-background rounded border px-2 py-1 text-[11.5px] font-semibold tabular-nums">{[...weeks].reverse().map(w => <option key={w.date} value={w.date}>{w.date.slice(0, 4)}년 {weekLabel(w.date)} ({w.date})</option>)}</select>
+          <button type="button" onClick={() => setIdx(Math.min(weeks.length - 1, curIdx + 1))} disabled={curIdx >= weeks.length - 1} aria-label="다음 주" className="px-1 text-[13px] text-foreground/70 hover:text-foreground disabled:opacity-25">▶</button>
+          {curIdx < weeks.length - 1 && <button type="button" onClick={() => setIdx(-1)} className="rounded border border-amber-500/50 text-amber-700 px-1.5 py-0.5 text-[10.5px] hover:bg-amber-500/10">현재로</button>}
           <Pill options={[{ k: "4", label: "4주 전 대비" }, { k: "13", label: "13주 전 대비" }]} value={String(cmp)} onChange={(k) => setCmp(Number(k) as 4 | 13)} />
         </span>
       </div>
@@ -248,36 +248,36 @@ export default function LiquidityBeta() {
       {/* ── 띠: 얼마나 → 어디서 → 어디로 ── */}
       <Card className="p-4">
         {!band ? (
-          <div className="text-[length:var(--font-size-12px)] text-muted-foreground">{cmp}주 전({prev ? prev.date : "관측 없음"}) 비교 시점의 관측이 없어 띠를 그릴 수 없습니다. 다른 주를 선택하세요.</div>
+          <div className="text-[12px] text-muted-foreground">{cmp}주 전({prev ? prev.date : "관측 없음"}) 비교 시점의 관측이 없어 띠를 그릴 수 없습니다. 다른 주를 선택하세요.</div>
         ) : (
-          <div className="grid grid-cols-[220px_24px_minmax(0,1fr)_24px_300px] gap-y-4 gap-x-0 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[220px_24px_minmax(0,1fr)_24px_300px] gap-x-4 gap-y-4 xl:gap-x-0 items-stretch">
             {/* 얼마나 */}
-            <div className="flex flex-col gap-2 order-none">
-              <div><div className="text-[length:var(--font-size-13px)] font-bold">얼마나</div><Note>지금 얼마나 풀려 있나</Note></div>
+            <div className="flex flex-col gap-2 md:order-1 xl:order-none">
+              <div><div className="text-[13px] font-bold">얼마나</div><Note>지금 얼마나 풀려 있나</Note></div>
               <div>
                 <Note>순유동성 · 연준 자산 − TGA − 역레포</Note>
-                <div className="text-[length:var(--font-size-30px)] font-bold leading-none tabular-nums mt-0.5">{asMoney(band.netLiqNow)}</div>
+                <div className="text-[30px] font-bold leading-none tabular-nums mt-0.5">{asMoney(band.netLiqNow)}</div>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-[length:var(--font-size-15px)] font-semibold tabular-nums" style={{ color: band.dNetLiq >= 0 ? POS : NEG }}>{fmtEok(bandDisp!.total)}</span>
+                  <span className="text-[15px] font-semibold tabular-nums" style={{ color: band.dNetLiq >= 0 ? POS : NEG }}>{fmtEok(bandDisp!.total)}</span>
                   <Note>{cmp}주 변화{band.taxDates.length ? <span className="text-amber-700"> · 세금일 포함({band.taxDates.map((d) => d.slice(5).replace("-", "/")).join(", ")})</span> : null}</Note>
                 </div>
               </div>
               <div className="border-t border-border pt-2 flex items-baseline gap-2">
                 <Note>M2 전년비</Note>
-                <span className="text-[length:var(--font-size-14px)] font-semibold tabular-nums">{m2Yoy ? fmtPct(m2Yoy.pct) : "—"}</span>
+                <span className="text-[14px] font-semibold tabular-nums">{m2Yoy ? fmtPct(m2Yoy.pct) : "—"}</span>
                 <Note>{m2Yoy ? `월간 · ${m2Yoy.to.date.slice(0, 7)}` : ctxErr.m2 || ctxFailed ? "자료 부족" : "…"}</Note>
               </div>
             </div>
-            <div className="flex items-center justify-center border-l border-border text-muted-foreground">›</div>
+            <div className="hidden xl:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
             {/* 어디서 */}
-            <div className="flex flex-col gap-1.5 order-none col-span-1 px-3">
-              <div><div className="text-[length:var(--font-size-13px)] font-bold">어디서</div><Note>무엇이 {fmtEok(bandDisp!.total)}를 만들었나 — H.4.1 항등식 · 표시는 0.1억, 반올림 차이는 최대 항목에 흡수</Note></div>
+            <div className="flex flex-col gap-1.5 md:order-3 md:col-span-2 xl:order-none xl:col-span-1 xl:px-3">
+              <div><div className="text-[13px] font-bold">어디서</div><Note>무엇이 {fmtEok(bandDisp!.total)}를 만들었나 — H.4.1 항등식 · 표시는 0.1억, 반올림 차이는 최대 항목에 흡수</Note></div>
               <BandWaterfall band={band} disp={bandDisp!} />
             </div>
-            <div className="flex items-center justify-center border-l border-border text-muted-foreground">›</div>
+            <div className="hidden xl:flex items-center justify-center border-l border-border text-muted-foreground">›</div>
             {/* 어디로 */}
-            <div className="flex flex-col gap-2 order-none pl-3">
-              <div><div className="text-[length:var(--font-size-13px)] font-bold">어디로</div><Note>같은 기간, 돈이 앉은 곳 — 잔액 변화</Note></div>
+            <div className="flex flex-col gap-2 md:order-2 xl:order-none xl:pl-3">
+              <div><div className="text-[13px] font-bold">어디로</div><Note>같은 기간, 돈이 앉은 곳 — 잔액 변화</Note></div>
               <ReservoirBars rows={[
                 { label: "지급준비금", value: reservesDisp, sub: `${fmtDate(band.from)}→${fmtDate(band.to)} · 항등식`, strong: true },
                 { label: "은행 예금", value: depChg ? depChg.delta : NaN, sub: depChg ? `${fmtDate(depChg.from.date)}→${fmtDate(depChg.to.date)} · H.8 주간` : ctxErr.deposits || ctxFailed ? "자료 부족" : "H.8 주간 · 구간 관측 없음" },
@@ -293,8 +293,8 @@ export default function LiquidityBeta() {
       {/* ── 얼마나 · 5년 ── */}
       <Card className="p-3.5">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <div className="text-sm font-semibold">얼마나 — 5년 <span className="text-[length:var(--font-size-11px)] font-normal text-muted-foreground">순유동성 · M2 · 전년비 %</span></div>
-          <div className="flex items-center gap-3 text-[length:var(--font-size-11px)] text-muted-foreground">
+          <div className="text-sm font-semibold">얼마나 — 5년 <span className="text-[11px] font-normal text-muted-foreground">순유동성 · M2 · 전년비 %</span></div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5" style={{ background: L_RES }} />순유동성</span>
             <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-muted-foreground" />M2</span>
             <button type="button" onClick={() => setSpOverlay((v) => !v)} className={`rounded-full border px-2 py-0.5 ${spOverlay ? "bg-muted font-semibold text-foreground" : "border-border/60"}`}>S&amp;P 500 겹치기 {spOverlay ? "켬" : "끔"}</button>
@@ -303,14 +303,14 @@ export default function LiquidityBeta() {
         <div className="h-[220px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <XAxis dataKey="date" tickFormatter={(d) => String(d).slice(0, 4)} minTickGap={48} tick={{ fontSize: "var(--font-size-10)", fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
-              <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: "var(--font-size-10)", fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
-              <Tooltip contentStyle={{ fontSize: "var(--font-size-12)", borderRadius: "var(--radius-8)" }} formatter={(v: any, n: any) => [Number.isFinite(v) ? fmtPct(v) : "—", n]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
+              <XAxis dataKey="date" tickFormatter={(d) => String(d).slice(0, 4)} minTickGap={48} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} className="text-muted-foreground" />
+              <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "currentColor" }} axisLine={false} tickLine={false} width={40} className="text-muted-foreground" />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any, n: any) => [Number.isFinite(v) ? fmtPct(v) : "—", n]} labelFormatter={(l) => `${weekLabel(String(l))} (${l})`} />
               <ReferenceLine y={0} stroke="hsl(var(--border))" />
               <ReferenceLine x={sel.date} stroke={NEG} strokeOpacity={0.5} strokeDasharray="3 3" />
               <Line dataKey="netLiq" name="순유동성 전년비" stroke={L_RES} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls={false} />
               <Line dataKey="m2" name="M2 전년비" stroke="hsl(var(--muted-foreground))" strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls={false} />
-              {spOverlay && <Line dataKey="sp" name="S&P 500 전년비" stroke="var(--line)" strokeWidth={1.4} strokeDasharray="5 3" dot={false} isAnimationActive={false} connectNulls={false} />}
+              {spOverlay && <Line dataKey="sp" name="S&P 500 전년비" stroke="#b3b3b3" strokeWidth={1.4} strokeDasharray="5 3" dot={false} isAnimationActive={false} connectNulls={false} />}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -318,12 +318,12 @@ export default function LiquidityBeta() {
       </Card>
 
       {/* ── 깊이: 연준 T계정 | 재무부 생키 ── */}
-      <div className="grid grid-cols-2 gap-3 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <Card className="p-3.5">
-          <div className="mb-2 text-sm font-semibold">어디서 · 연준 — T계정 <span className="text-[length:var(--font-size-11px)] font-normal text-muted-foreground">{weekLabel(sel.date)} · 구성비 · 기존 컴포넌트</span></div>
+          <div className="mb-2 text-sm font-semibold">어디서 · 연준 — T계정 <span className="text-[11px] font-normal text-muted-foreground">{weekLabel(sel.date)} · 구성비 · 기존 컴포넌트</span></div>
           <TAccount w={sel} />
           {/* 비교기간 Δ + SOMA 만기별 3줄 — 컴포넌트 밖에서 렌더(순수 재사용) */}
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[length:var(--font-size-11px)] tabular-nums">
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px] tabular-nums">
             {prev ? ([["국채(SOMA)", sel.treast - prev.treast], ["MBS", sel.mbs - prev.mbs], ["대출·스왑", sel.loans - prev.loans], ["총자산", sel.total - prev.total],
               ["지급준비금", sel.reserves - prev.reserves], ["역레포", sel.rrp - prev.rrp], ["TGA", sel.tga - prev.tga], ["현금통화", sel.currency - prev.currency]] as [string, number][])
               .map(([k, v]) => <div key={k} className="flex justify-between border-b border-border/40 py-0.5"><span className="text-muted-foreground">{k} {cmp}주 Δ</span><b style={{ color: Number.isFinite(v) ? (v >= 0 ? POS : NEG) : undefined }}>{Number.isFinite(v) ? signed(v) : "자료 부족"}</b></div>)
@@ -331,7 +331,7 @@ export default function LiquidityBeta() {
           </div>
           {sel && !somaSel && <Note>국채(SOMA) 만기별 · {sel.date} 보유 관측 없음 — 자료 부족</Note>}
           {somaSel && (
-            <div className="mt-2 text-[length:var(--font-size-11px)] tabular-nums">
+            <div className="mt-2 text-[11px] tabular-nums">
               <Note>국채(SOMA) 만기별 · {somaSel.date}{somaPrev ? ` · Δ는 ${cmp}주(${fmtDate(somaPrev.date)}→${fmtDate(somaSel.date)})` : prev ? ` · ${cmp}주 전(${fmtDate(prev.date)}) 보유 관측 없음 — Δ 자료 부족` : ""}</Note>
               <div className="grid grid-cols-3 gap-2 mt-0.5">
                 {([["단기 Bills", somaSel.bills, somaPrev?.bills, TB.bill], ["중장기 N·B·FRN", somaSel.notesBonds, somaPrev?.notesBonds, TB.note], ["TIPS", somaSel.tips, somaPrev?.tips, TB.tips]] as [string, number, number | undefined, string][]).map(([k, v, p, c]) => (
@@ -347,20 +347,20 @@ export default function LiquidityBeta() {
 
         <Card className="p-3.5 flex flex-col">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-            <div className="text-sm font-semibold">어디서 · 재무부 — 누가 국채를 받았나 <span className="text-[length:var(--font-size-11px)] font-normal text-muted-foreground">입찰 낙찰 · 결제일 기준</span></div>
+            <div className="text-sm font-semibold">어디서 · 재무부 — 누가 국채를 받았나 <span className="text-[11px] font-normal text-muted-foreground">입찰 낙찰 · 결제일 기준</span></div>
             <Pill options={[{ k: "3", label: "3개월" }, { k: "1", label: "1개월" }]} value={String(months)} onChange={(k) => setMonths(Number(k) as 3 | 1)} />
           </div>
           {auctions.isLoading ? <Skeleton className="h-[260px] w-full" /> : !auctions.data || auctions.data.errors.auctions || !auctions.data.sankey ? (
-            <div className="text-[length:var(--font-size-12px)] text-muted-foreground py-6">입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></div>
+            <div className="text-[12px] text-muted-foreground py-6">입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></div>
           ) : auctions.data.sankey.links.length === 0 ? (
-            <div className="text-[length:var(--font-size-12px)] text-muted-foreground py-6">{auctions.data.start} ~ {auctions.data.end} 집계 가능한 입찰이 없습니다{agg && agg.skipped ? <> — <b className="text-amber-700">{agg.skipped}건 제외</b>(결과 미공표 · 0 으로 치지 않음)</> : null}{agg && agg.unknownTypes.length ? <> · 미매핑 종류: {agg.unknownTypes.join(", ")}</> : null}.</div>
+            <div className="text-[12px] text-muted-foreground py-6">{auctions.data.start} ~ {auctions.data.end} 집계 가능한 입찰이 없습니다{agg && agg.skipped ? <> — <b className="text-amber-700">{agg.skipped}건 제외</b>(결과 미공표 · 0 으로 치지 않음)</> : null}{agg && agg.unknownTypes.length ? <> · 미매핑 종류: {agg.unknownTypes.join(", ")}</> : null}.</div>
           ) : (
             <>
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <Sankey data={auctions.data.sankey} nodeWidth={10} nodePadding={18} linkCurvature={0.5} iterations={32} margin={{ top: 8, right: 120, bottom: 8, left: 120 }}
                     node={<SankeyNodeShape />} link={<SankeyLinkShape />}>
-                    <Tooltip contentStyle={{ fontSize: "var(--font-size-12)", borderRadius: "var(--radius-8)" }} formatter={(v: any) => [asMoney(v), "낙찰"]} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: any) => [asMoney(v), "낙찰"]} />
                   </Sankey>
                 </ResponsiveContainer>
               </div>
@@ -378,7 +378,7 @@ export default function LiquidityBeta() {
           {life && !life.unavailable && (
             <div className="mt-3">
               <Note>만기별 생애주기 · 발행·인수·보유 변화 모두 H.4.1 보유 관측 구간 <b className="text-foreground">{life.from} → {life.to}</b> 기준 (입찰은 그 사이 결제분만 — 위 생키의 창 {auctions.data?.start}~{auctions.data?.end} 와 다를 수 있음)</Note>
-              <table className="mt-1 w-full text-[length:var(--font-size-11px)] tabular-nums">
+              <table className="mt-1 w-full text-[11px] tabular-nums">
                 <thead><tr className="text-muted-foreground"><th className="text-left font-medium py-0.5">만기</th><th className="text-right font-medium">발행</th><th className="text-right font-medium">연준 인수</th><th className="text-right font-medium">연준 보유</th><th className="text-right font-medium">보유 변화</th><th className="text-right font-medium">만기상환(추정)</th></tr></thead>
                 <tbody>
                   {life.rows.map((r) => (
@@ -401,7 +401,7 @@ export default function LiquidityBeta() {
 
       {/* ── 맥락 띠 — 숫자와 점만 ── */}
       <Card className="p-3 border-dashed">
-        <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-[length:var(--font-size-11px)]">
+        <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-[11px]">
           <span className="font-semibold">맥락</span>
           <span className="text-muted-foreground">선택 주차 기준</span>
           <span className="w-px h-3.5 bg-border" />
@@ -413,23 +413,23 @@ export default function LiquidityBeta() {
             ["NFCI", nfci ? fmtNum(nfci.value, 2) : "자료 부족", nfci?.date],
           ] as [string, string, string | undefined][]).map(([k, v, d]) => (
             <span key={k} className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">{k}</span><b className="tabular-nums">{v}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(d)}</span>
+              <span className="text-muted-foreground">{k}</span><b className="tabular-nums">{v}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(d)}</span>
             </span>
           ))}
           <span className="w-px h-3.5 bg-border" />
           <span className="font-semibold text-muted-foreground">가격</span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실질금리 10년</span><b className="tabular-nums">{dfii ? `${dfii.value.toFixed(2)}%` : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(dfii?.date)}</span></span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">광의달러 3개월</span><b className="tabular-nums">{dxy3m ? fmtPct(dxy3m.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(dxy3m?.to.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실질금리 10년</span><b className="tabular-nums">{dfii ? `${dfii.value.toFixed(2)}%` : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(dfii?.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">광의달러 3개월</span><b className="tabular-nums">{dxy3m ? fmtPct(dxy3m.pct) : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(dxy3m?.to.date)}</span></span>
           <span className="w-px h-3.5 bg-border" />
           <span className="font-semibold text-muted-foreground">사이클</span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">산업생산 전년비</span><b className="tabular-nums">{indproYoy ? fmtPct(indproYoy.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(indproYoy?.to.date)}</span></span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실업률</span><b className="tabular-nums">{unrate ? `${unrate.value.toFixed(1)}%` : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(unrate?.date)}</span></span>
-          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">근원 PCE 전년비</span><b className="tabular-nums">{pceYoy ? fmtPct(pceYoy.pct) : "자료 부족"}</b><span className="text-[length:var(--font-size-9-5px)] text-muted-foreground">{fmtDate(pceYoy?.to.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">산업생산 전년비</span><b className="tabular-nums">{indproYoy ? fmtPct(indproYoy.pct) : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(indproYoy?.to.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">실업률</span><b className="tabular-nums">{unrate ? `${unrate.value.toFixed(1)}%` : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(unrate?.date)}</span></span>
+          <span className="flex items-center gap-1.5"><span className="text-muted-foreground">근원 PCE 전년비</span><b className="tabular-nums">{pceYoy ? fmtPct(pceYoy.pct) : "자료 부족"}</b><span className="text-[9.5px] text-muted-foreground">{fmtDate(pceYoy?.to.date)}</span></span>
           {(ctxFailed || Object.keys(ctxErr).length > 0) && <span className="ml-auto text-amber-700" role="alert">{ctxFailed ? "맥락 지표 요청 실패" : `일부 지표 조회 실패(${Object.keys(ctxErr).join(", ")})`} <button className="underline" onClick={() => void context.refetch()}>다시 불러오기</button></span>}
         </div>
       </Card>
       <CreditMonitor asOf={sel.date} />
-      <Card className="p-5"><FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={sel.date} /></Card>
+      <Card className="p-4 md:p-5"><FundingRateChart sofr={ctx.sofr ?? []} iorb={ctx.iorb ?? []} asOf={sel.date} /></Card>
     </div>
   );
 }

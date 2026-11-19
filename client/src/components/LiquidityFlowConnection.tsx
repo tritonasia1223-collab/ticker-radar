@@ -9,7 +9,7 @@ export function LiquidityFlowConnection({ children, revision }: { children: Reac
     if (!element) return;
     const measure = () => {
       const bounds = element.getBoundingClientRect();
-      const next = [4, 13].flatMap(weeks => {
+      const next = window.innerWidth < 768 ? [] : [4, 13].flatMap(weeks => {
         const from = element.querySelector(`[data-total-band="source-${weeks}"]`)?.getBoundingClientRect();
         const to = element.querySelector(`[data-total-band="destination-${weeks}"]`)?.getBoundingClientRect();
         if (!from || !to || !bounds.width || Math.abs(from.left - to.left) > 2) return [];
@@ -27,7 +27,7 @@ export function LiquidityFlowConnection({ children, revision }: { children: Reac
   }, [revision]);
   return <div ref={root} className="relative" data-testid="liquidity-flow-connection">
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-      {bands.map((band, index) => <div key={index} data-testid="liquidity-total-band" className="absolute rounded-xl" style={{ ...band, background: 'var(--alpha-tone-amber-500-90)', border: '1px solid var(--alpha-tone-amber-500-130)' }} />)}
+      {bands.map((band, index) => <div key={index} data-testid="liquidity-total-band" className="absolute rounded-xl" style={{ ...band, background: 'rgba(148, 133, 68, 0.09)', border: '1px solid rgba(148, 133, 68, 0.13)' }} />)}
     </div>
     <div className="relative">{children}</div>
   </div>;

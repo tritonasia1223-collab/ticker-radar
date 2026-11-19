@@ -37,21 +37,21 @@ function EduInner() {
   const Scene = curStep?.sceneId ? SCENES[curStep.sceneId] : undefined;
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-4">
+    <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-4">
       {/* 헤더 */}
       <header className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold">블록체인 구조 <span className="text-sm font-normal text-muted-foreground">L1/L2 인터랙티브 학습</span></h1>
-          <p className="text-[length:var(--font-size-12px)] text-muted-foreground">돈이 층을 오가며 수수료가 어떻게 쪼개지는지 8챕터로 따라갑니다.</p>
+          <p className="text-[12px] text-muted-foreground">돈이 층을 오가며 수수료가 어떻게 쪼개지는지 8챕터로 따라갑니다.</p>
         </div>
         <button onClick={() => { if (confirm("학습 진행과 원장을 초기화할까요?")) reset(); }}
-          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[length:var(--font-size-12px)] font-medium hover:bg-accent transition-colors">
+          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12px] font-medium hover:bg-accent transition-colors">
           <RotateCcw className="h-3.5 w-3.5" /> 처음부터 다시
         </button>
       </header>
 
       {/* 상단 고정(sticky): 금액 슬라이더 — 씬을 스크롤해도 항상 보임 */}
-      <div className="sticky top-0 z-20 border-b border-border bg-background/95 py-2 glass -mx-6 px-6">
+      <div className="sticky top-0 z-20 -mx-4 border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm md:-mx-6 md:px-6">
         <AmountSlider />
       </div>
 
@@ -64,11 +64,11 @@ function EduInner() {
             <button key={c.id} onClick={() => setActiveId(c.id)}
               className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
                 on ? "border-primary bg-primary/10" : "border-border hover:bg-accent"}`}>
-              <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[length:var(--font-size-11px)] font-bold ${
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
                 on ? "bg-primary text-primary-foreground" : done ? "bg-emerald-500 text-white" : "bg-secondary text-secondary-foreground"}`}>
                 {done && !on ? <Check className="h-3.5 w-3.5" /> : c.num}
               </span>
-              <span className="text-[length:var(--font-size-12px)] font-medium whitespace-nowrap">{c.title.split(" — ")[0]}</span>
+              <span className="text-[12px] font-medium whitespace-nowrap">{c.title.split(" — ")[0]}</span>
             </button>
           );
         })}
@@ -87,13 +87,13 @@ function EduInner() {
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <h3 className="text-[length:var(--font-size-14px)] font-bold">돈의 행방 <span className="text-[length:var(--font-size-11-5px)] font-normal text-muted-foreground">· 현재 거래: <b className="text-foreground">{ACTION_LABEL[action]}</b></span></h3>
-            <p className="text-[length:var(--font-size-11px)] text-muted-foreground">거래 종류를 고르고 금액을 바꿔 수수료가 누구에게 가는지 보세요.</p>
+            <h3 className="text-[14px] font-bold">돈의 행방 <span className="text-[11.5px] font-normal text-muted-foreground">· 현재 거래: <b className="text-foreground">{ACTION_LABEL[action]}</b></span></h3>
+            <p className="text-[11px] text-muted-foreground">거래 종류를 고르고 금액을 바꿔 수수료가 누구에게 가는지 보세요.</p>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums">원장 {state.ledger.length}건</span>
+            <span className="text-[11px] text-muted-foreground tabular-nums">원장 {state.ledger.length}건</span>
             <button onClick={() => addLedger({ chapterId: activeId, action: ACTION_LABEL[action], feeBreakdown: splits })}
-              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[length:var(--font-size-11-5px)] font-medium hover:bg-accent transition-colors">
+              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11.5px] font-medium hover:bg-accent transition-colors">
               <Save className="h-3.5 w-3.5" /> 원장에 기록
             </button>
           </div>
@@ -103,7 +103,7 @@ function EduInner() {
         <div className="mb-2 flex flex-wrap gap-1.5">
           {ACTIONS.map((a) => (
             <button key={a} onClick={() => setAction(a)}
-              className={`rounded-full border px-2.5 py-1 text-[length:var(--font-size-11-5px)] font-medium transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
                 a === action ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"}`}>
               {ACTION_LABEL[a]}
             </button>

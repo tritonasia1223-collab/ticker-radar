@@ -23,7 +23,7 @@ export function ComparisonSparkline({ chart, label, color }: { chart: NonNullabl
       </svg>
       <span data-testid="sparkline-start" className="absolute whitespace-nowrap text-xs leading-4 tabular-nums text-muted-foreground" style={{ left: `${first.x / 280 * 100}%`, top: endpointLabelTop(first, afterFirst, !!turning && turning.x < 84) }} title={`첫 관측값 · ${first.point.date}`}><span className="sr-only">시작 </span>{oneDecimal(first.point.raw)}</span>
       <span data-testid="sparkline-end" className="absolute -translate-x-full whitespace-nowrap text-xs font-medium leading-4 tabular-nums text-foreground" style={{ left: `${last.x / 280 * 100}%`, top: endpointLabelTop(last, beforeLast, !!turning && turning.x > 196) }} title={`마지막 관측값 · ${last.point.date}`}><span className="sr-only">끝 </span>{oneDecimal(last.point.raw)}</span>
-      {turning && <span className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap text-[length:var(--font-size-11px)] font-medium leading-4 tabular-nums text-foreground/75" style={{ left: `${turning.x / 280 * 100}%`, top: turning.y * chartHeight / 76 + (turning.kind === "high" ? -18 : 4) }}>{oneDecimal(turning.point.raw)}</span>}
+      {turning && <span className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-4 tabular-nums text-foreground/75" style={{ left: `${turning.x / 280 * 100}%`, top: turning.y * chartHeight / 76 + (turning.kind === "high" ? -18 : 4) }}>{oneDecimal(turning.point.raw)}</span>}
     </div>
   </div>;
 }

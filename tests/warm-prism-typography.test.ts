@@ -34,11 +34,11 @@ describe('site typography compatibility', () => {
       const [fontSize, options] = spec as [string, { lineHeight: string }];
       expect(declarations.get(`.text-${size}`)).toMatchObject({ 'font-size': fontSize, 'line-height': options.lineHeight });
     }
-    const fractional = [...source.matchAll(/text-\[length:var\(--font-size-(\d+)-(\d+)px\)\]/g)];
+    const fractional = [...source.matchAll(/text-\[(\d+\.\d+)px\]/g)];
     expect(fractional.length).toBeGreaterThan(50);
     for (const match of fractional) {
-      const selector = '.' + match[0].replace(/[\[\]:()]/g, '\\$&');
-      expect(declarations.get(selector)?.['font-size']).toBe(`${match[1]}.${match[2]}px`);
+      const selector = '.' + match[0].replace(/[\[\].]/g, '\\$&');
+      expect(declarations.get(selector)?.['font-size']).toBe(match[1] + 'px');
     }
   });
 

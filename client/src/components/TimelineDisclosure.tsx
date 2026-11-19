@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { springHeight } from "@/lib/warm-prism/spring.js";
+import { springHeight } from "@/lib/glass-spring/spring.js";
 
 /** React adapter only; the portable motion module has no React dependency. */
 export function TimelineDisclosure({ open, id, children }: { open: boolean; id: string; children: ReactNode }) {

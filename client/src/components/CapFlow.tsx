@@ -75,7 +75,7 @@ function Node({
         dragOver ? "ring-2 ring-rose-400 ring-offset-1" : ""
       } ${
         focused
-          ? "bg-amber-100/70 ring-2 ring-amber-400/80"
+          ? "bg-amber-100/70 ring-2 ring-amber-400/80 dark:bg-amber-400/15 dark:ring-amber-400/60"
           : ""
       }`}
       onMouseEnter={() => { setHover(true); if (hasMemo) onFocusNode?.(node.id); }}
@@ -140,9 +140,9 @@ function Node({
           data-testid={`fnode-text-${node.id}`}
         >
           {node.text.trim() ? (
-            <CapRichText text={node.text} className="block text-center text-[length:var(--font-size-12-5px)] leading-snug text-foreground" onJump={onJump} />
+            <CapRichText text={node.text} className="block text-center text-[12.5px] leading-snug text-foreground" onJump={onJump} />
           ) : (
-            <span className="block text-center text-[length:var(--font-size-12-5px)] italic leading-snug text-muted-foreground/50">
+            <span className="block text-center text-[12.5px] italic leading-snug text-muted-foreground/50">
               (빈 칸 — 클릭해 입력)
             </span>
           )}
@@ -227,7 +227,7 @@ function Node({
             <button
               type="button"
               title="아래로 칸 추가"
-              className="absolute left-1/2 -bottom-2 z-20 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground text-[length:var(--font-size-11px)] leading-none shadow hover:scale-110 transition-transform"
+              className="absolute left-1/2 -bottom-2 z-20 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] leading-none shadow hover:scale-110 transition-transform"
               onClick={(e) => { e.stopPropagation(); onAdd(node.id, "down"); }}
               data-testid={`add-down-${node.id}`}
             >
@@ -240,7 +240,7 @@ function Node({
             <button
               type="button"
               title="오른쪽으로 분기 추가"
-              className="absolute -right-2 top-1/2 z-20 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background text-[length:var(--font-size-11px)] leading-none shadow hover:scale-110 transition-transform"
+              className="absolute -right-2 top-1/2 z-20 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/70 text-background text-[11px] leading-none shadow hover:scale-110 transition-transform"
               onClick={(e) => { e.stopPropagation(); onAdd(node.id, "branch-right"); }}
               data-testid={`add-branch-right-${node.id}`}
             >
@@ -271,16 +271,16 @@ const MEMO_COL_W = 240;
 type MemoVariant = "yellow" | "blue";
 const MEMO_STYLE: Record<MemoVariant, { focused: string; base: string; hover: string; ta: string; ph: string }> = {
   yellow: {
-    focused: "border-amber-400/80 bg-amber-100/80 ring-2 ring-amber-400/70",
-    base: "border-amber-300/50 bg-amber-50/70",
-    hover: "hover:bg-amber-100/50",
+    focused: "border-amber-400/80 bg-amber-100/80 ring-2 ring-amber-400/70 dark:border-amber-400/60 dark:bg-amber-400/20 dark:ring-amber-400/50",
+    base: "border-amber-300/50 bg-amber-50/70 dark:border-amber-400/25 dark:bg-amber-400/10",
+    hover: "hover:bg-amber-100/50 dark:hover:bg-amber-400/10",
     ta: "border-amber-300/60 focus:ring-amber-400",
     ph: "메모 입력 (자동 저장 · Esc 닫기 · ⌘/Ctrl+Enter 완료 · 비워서 저장하면 삭제)",
   },
   blue: {
-    focused: "border-blue-400/80 bg-blue-100/80 ring-2 ring-blue-400/70",
-    base: "border-blue-300/50 bg-blue-50/70",
-    hover: "hover:bg-blue-100/50",
+    focused: "border-blue-400/80 bg-blue-100/80 ring-2 ring-blue-400/70 dark:border-blue-400/60 dark:bg-blue-400/20 dark:ring-blue-400/50",
+    base: "border-blue-300/50 bg-blue-50/70 dark:border-blue-400/25 dark:bg-blue-400/10",
+    hover: "hover:bg-blue-100/50 dark:hover:bg-blue-400/10",
     ta: "border-blue-300/60 focus:ring-blue-400",
     ph: "보충·첨삭 메모 입력 (자동 저장 · Esc 닫기 · ⌘/Ctrl+Enter 완료 · 비워서 저장하면 삭제)",
   },
@@ -386,12 +386,12 @@ function MemoCard({
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(); }
           }}
           placeholder={st.ph}
-          className={`block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border bg-background px-1.5 py-1 text-[length:var(--font-size-12-5px)] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${st.ta}`}
+          className={`block max-h-[320px] min-h-[56px] w-full resize-none overflow-hidden rounded border bg-background px-1.5 py-1 text-[12.5px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${st.ta}`}
           data-testid={`memo-input-${variant}-${node.id}`}
         />
       ) : (
         <p
-          className={`whitespace-pre-wrap text-[length:var(--font-size-12-5px)] leading-relaxed text-foreground/90 ${editable ? `cursor-text rounded ${st.hover}` : ""}`}
+          className={`whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground/90 ${editable ? `cursor-text rounded ${st.hover}` : ""}`}
           onClick={startEdit}
           title={editable ? "클릭해 메모 수정" : undefined}
           data-testid={`memo-text-${variant}-${node.id}`}
@@ -894,34 +894,34 @@ export function FlowColumn({
                 value={dateDraft}
                 onChange={(e) => setDateDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit(null); } }}
-                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-10-5px)] tabular-nums text-foreground"
+                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10.5px] tabular-nums text-foreground"
                 data-testid={`edit-date-${flow.slug}`}
               />
-              <span className="text-[length:var(--font-size-10-5px)] text-muted-foreground">~</span>
+              <span className="text-[10.5px] text-muted-foreground">~</span>
               <input
                 type="date"
                 value={endDateDraft}
                 min={dateDraft || undefined}
                 onChange={(e) => setEndDateDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") commitDate(); if (e.key === "Escape") { setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit(null); } }}
-                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-10-5px)] tabular-nums text-foreground"
+                className="flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10.5px] tabular-nums text-foreground"
                 data-testid={`edit-enddate-${flow.slug}`}
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[length:var(--font-size-9px)] text-muted-foreground/70">종료일 입력 시 기간으로 표시</span>
+              <span className="text-[9px] text-muted-foreground/70">종료일 입력 시 기간으로 표시</span>
               <div className="flex gap-1">
                 {endDateDraft ? (
                   <button
                     type="button"
-                    className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] text-muted-foreground hover:bg-muted/60"
+                    className="rounded px-1 py-0.5 text-[9px] text-muted-foreground hover:bg-muted/60"
                     onClick={() => setEndDateDraft("")}
                     data-testid={`clear-enddate-${flow.slug}`}
                   >기간 해제</button>
                 ) : null}
                 <button
                   type="button"
-                  className="rounded px-1 py-0.5 text-[length:var(--font-size-9px)] font-medium text-primary hover:bg-muted/60"
+                  className="rounded px-1 py-0.5 text-[9px] font-medium text-primary hover:bg-muted/60"
                   onClick={commitDate}
                   data-testid={`save-date-${flow.slug}`}
                 >저장</button>
@@ -930,7 +930,7 @@ export function FlowColumn({
           </div>
         ) : (
           <div
-            className={`text-[length:var(--font-size-10-5px)] tabular-nums text-muted-foreground ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
+            className={`text-[10.5px] tabular-nums text-muted-foreground ${editable ? "cursor-text rounded hover:bg-muted/40" : ""}`}
             onClick={(e) => { if (editable) { e.stopPropagation(); setDateDraft(flow.date); setEndDateDraft(flow.endDate ?? ""); setMetaEdit("date"); } }}
             title={editable ? "클릭해 날짜/기간 수정" : undefined}
             data-testid={`text-date-${flow.slug}`}

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { TimelineDisclosure } from "@/components/TimelineDisclosure";
-import { captureGrid, springGrid, springScroll } from "@/lib/warm-prism/spring.js";
+import { captureGrid, springGrid, springScroll } from "@/lib/glass-spring/spring.js";
+import "@/lib/glass-spring/glass.css";
 import { Plus, Download, FileText, ArrowUp, MoreHorizontal, Trash2, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -8,9 +9,10 @@ import { parseTimelineDate, withTimelineDate } from "@/lib/international-timelin
 import { readTimelineDraft, deleteTimelineEvent, restoreTimelineEvent, type TimelineDraft } from "@/lib/international-timeline-draft";
 import { CapRichEditor } from "@/components/CapRichEditor";
 import { CapRichText } from "@/components/CapRichText";
-import { useTimelinePeriod } from "@/components/TimelinePeriodIndicator";
+import { TimelinePeriodContext, usePeriodInteraction, useTimelinePeriod } from "@/components/TimelinePeriodIndicator";
 import { periodEnd, periodDateLabel } from "@/lib/international-timeline-period";
 import { useEditMode } from "@/components/EditModeProvider";
+import { useTheme } from "@/components/ThemeProvider";
 import { REGIONS, type Region, type TimelineEvent, type TimelineLane } from "@/data/international-timeline";
 import { COUNTRY_LANES, eventLanes, eventLaneSpan } from "@/lib/international-timeline-lanes";
 import { mergeInsightTimeline } from "@/lib/international-timeline-insights";
@@ -46,6 +48,7 @@ function readDraft(): { draft: TimelineDraft; error: string } {
 }
 
 function EventMenu({ event, labels, remove, changeDate, patch }: { event: TimelineEvent; labels: (next: string[]) => void; remove: () => void; changeDate: (date: NonNullable<ReturnType<typeof parseTimelineDate>>) => void; patch: (body: string) => void }) {
+  const { theme } = useTheme();
   const [open, setOpen] = useState(false);
   const [dateText, setDateText] = useState("");
   const [dateError, setDateError] = useState("");
@@ -55,12 +58,12 @@ function EventMenu({ event, labels, remove, changeDate, patch }: { event: Timeli
   const choices = event.region === "europe" ? ["독일", "영국", "프랑스"] : [REGIONS.find(r => r.id === event.region)!.name];
   return <Popover open={open} onOpenChange={next => { if (next) { setDateText(event.date || `${event.year}${event.month ? `.${event.month}` : ""}`); setDateError(""); } setOpen(next); }}>
     <PopoverTrigger asChild><button className="it-event-menu" aria-label={`${event.id} 사건 메뉴`} title="날짜 · 라벨 · 삭제"><MoreHorizontal size={16} /></button></PopoverTrigger>
-    <PopoverContent ref={menuRef} align="end" className="it-glass-portal glass w-64 p-3" onOpenAutoFocus={e => { if (event.scope === "global") { e.preventDefault(); requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>("[data-richeditor]")?.focus()); } }}>
+    <PopoverContent ref={menuRef} data-theme={theme} align="end" className="it-glass-portal glass w-64 p-3" onOpenAutoFocus={e => { if (event.scope === "global") { e.preventDefault(); requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>("[data-richeditor]")?.focus()); } }}>
       {event.scope === "global" && <div className="it-band-title-edit mb-3"><p className="mb-1 text-xs text-muted-foreground">제목</p><CapRichEditor spellCheck={false} align="left" rows={1} ariaLabel="대사건 제목" value={band.title} placeholder="제목 입력" onChange={title => patch(band.prefix + title + (band.details ? `\n${band.details}` : ""))} /></div>}
       <form className="mb-3 border-b pb-3" onSubmit={e => { e.preventDefault(); const parsed = parseTimelineDate(dateText); if (!parsed) { setDateError("유효한 날짜나 기간을 입력해 주세요."); return; } changeDate(parsed); setOpen(false); }}>
         <label htmlFor={`date-${event.id}`} className="mb-1 block text-xs text-muted-foreground">날짜</label>
         <div className="flex gap-1.5"><input id={`date-${event.id}`} type="text" spellCheck={false} className="min-w-0 flex-1 rounded border bg-background px-2 py-1 text-xs" value={dateText} onChange={e => { setDateText(e.target.value); setDateError(""); }} aria-invalid={!!dateError} aria-describedby={`date-hint-${event.id}`} /><button type="submit" className="rounded border px-2 text-xs">적용</button></div>
-        <p id={`date-hint-${event.id}`} className="mt-1 text-[length:var(--font-size-10px)] leading-relaxed text-muted-foreground">1971 · 1971.8 · 1971.8.15<br />기간: 1981.7~82.11</p>
+        <p id={`date-hint-${event.id}`} className="mt-1 text-[10px] leading-relaxed text-muted-foreground">1971 · 1971.8 · 1971.8.15<br />기간: 1981.7~82.11</p>
         {dateError && <p role="alert" className="mt-1 text-xs text-destructive">{dateError}</p>}
       </form>
       {event.scope !== "global" && <div className="mb-3">
@@ -82,7 +85,11 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
   const tags = event.labels ?? [];
   const band = bandText(event);
   const editorText = global ? band.details : view.text;
+  const { mobile, tapped, setTapped } = usePeriodInteraction();
   const period = !global && periodEnd(event);
+  const expanded = tapped === event.id;
+  const mobileCollapsed = !!period && mobile && !expanded;
+  const togglePeriod = () => setTapped(current => current === event.id ? null : event.id);
   const descriptionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const editor = descriptionRef.current?.querySelector<HTMLElement>("[data-richeditor]");
@@ -92,7 +99,7 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
     const observer = new MutationObserver(sync);
     observer.observe(editor, { childList: true });
     return () => observer.disconnect();
-  }, [editable]);
+  }, [editable, mobileCollapsed]);
   const labelRef = useRef<HTMLDivElement>(null);
   const [labelWidth, setLabelWidth] = useState(0);
   useEffect(() => {
@@ -101,14 +108,17 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
     observer.observe(labelRef.current);
     return () => observer.disconnect();
   }, []);
-  return <article data-event-id={event.id} data-period-event={period ? event.id : undefined} className={`it-event ${global ? "it-global-event" : ""} ${editable && !global ? "it-event-editable" : ""}`} style={{ ...ink(countryColor(event.country, event.region)), "--it-label-width": `${labelWidth ? labelWidth + 8 : 0}px` } as CSSProperties}>
+  return <article data-event-id={event.id} data-period-event={period ? event.id : undefined} className={`it-event ${global ? "it-global-event" : ""} ${editable && !global ? "it-event-editable" : ""}`} style={{ ...ink(countryColor(event.country, event.region)), "--it-label-width": `${labelWidth ? labelWidth + 8 : 0}px` } as CSSProperties}
+    onClick={e => { if (period && mobile && !(e.target as HTMLElement).closest("button, input, [contenteditable]")) togglePeriod(); }}>
     {editable && !global && <EventMenu event={event} labels={labels} remove={remove} changeDate={changeDate} patch={patch} />}
-    {period && <button type="button" className="it-period-date" aria-label={`${periodDateLabel(event)} 기간 범위`}>{periodDateLabel(event)}</button>}
+    {period && <button type="button" className="it-period-date" aria-label={`${periodDateLabel(event)} 기간 범위${mobile ? expanded ? " 접기" : " 펼치기" : ""}`} aria-expanded={mobile ? expanded : undefined} aria-controls={mobile ? `period-body-${event.id}` : undefined}
+      onClick={e => { e.stopPropagation(); if (mobile) togglePeriod(); }}>{periodDateLabel(event)}</button>}
     <div ref={labelRef} className="it-event-meta">
+      {!global && <span className="it-mobile-region">{REGIONS.find(r => r.id === event.region)?.name}</span>}
       {!global && tags.map(tag => <span key={tag} data-country-label className="it-tag" style={ink(countryColor(tag, event.region))}>{tag}</span>)}
     </div>
     <div ref={descriptionRef} id={period ? `period-body-${event.id}` : undefined} className="it-description">
-      {editable ? <CapRichEditor inline spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={editorText} onChange={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} onBlur={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} placeholder={global ? "설명 입력" : "제목 입력"} />
+      {mobileCollapsed ? <CapRichText text={band.title} className="it-read-description" /> : editable ? <CapRichEditor inline spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={editorText} onChange={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} onBlur={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} placeholder={global ? "설명 입력" : "제목 입력"} />
         : <CapRichText text={editorText} className="it-read-description" />}
     </div>
   </article>;
@@ -154,6 +164,7 @@ export default function InternationalTimeline() {
   const [showSource, setShowSource] = useState(false);
   const [openBands, setOpenBands] = useState<Set<string>>(() => new Set());
   const { editable } = useEditMode();
+  const { theme } = useTheme();
   const canEdit = editable && !initial.error;
   useEffect(() => { const old = document.title; document.title = "국제 연표 — 피스쿠스"; return () => { document.title = old; }; }, []);
   useEffect(() => {
@@ -236,7 +247,7 @@ export default function InternationalTimeline() {
     const entry = scrollRef.current?.querySelector<HTMLElement>(`[data-year-section="${year}"]`);
     if (entry) scrollToEntry(entry);
   }
-  return <div ref={scrollRef} onFocusCapture={e => { const id = (e.target as HTMLElement).closest<HTMLElement>("[data-event-id]")?.dataset.eventId; if (id) setEditingId(id); }} className="international-document it-five-countries" data-testid="international-timeline" style={{ "--it-columns": `repeat(${visibleRegions.length}, minmax(0, 1fr))`, "--it-board-width": `${68 + visibleRegions.length * 180}px`, "--it-head-height": `${headerHeight}px` } as CSSProperties}>
+  return <div ref={scrollRef} data-theme={theme} onFocusCapture={e => { const id = (e.target as HTMLElement).closest<HTMLElement>("[data-event-id]")?.dataset.eventId; if (id) setEditingId(id); }} className="international-document it-five-countries" data-testid="international-timeline" style={{ "--it-columns": `repeat(${visibleRegions.length}, minmax(0, 1fr))`, "--it-board-width": `${68 + visibleRegions.length * 180}px`, "--it-head-height": `${headerHeight}px` } as CSSProperties}>
     <div className="it-wrap">
       <header className="it-page-header">
         <div className="it-toolbar">
@@ -245,13 +256,14 @@ export default function InternationalTimeline() {
             <input className="it-search" type="search" aria-label="연표 검색" placeholder="사건 검색…" list="timeline-type-options" title="검색어와 type:policy, type:stat, type:event를 함께 입력할 수 있습니다." value={search} onChange={e => { setEditingId(null); setSearch(e.target.value); }} />
             <datalist id="timeline-type-options">{types.map(type => <option key={type} value={`type:${type}`} />)}</datalist>
             <div className="it-lane-toggles" aria-label="비교 국가 선택">{COUNTRY_LANES.slice(0, 5).map(r => <button style={ink(r.color)} aria-pressed={regions.includes(r.id)} disabled={regions.length === 1 && regions.includes(r.id)} key={r.id} onClick={() => toggleRegion(r.id)}>{r.name}</button>)}</div>
-            <button className="it-btn" onClick={() => { setOpenBands(openBands.size ? new Set() : new Set(events.filter(e => e.scope === "global").map(e => e.id))); }}>{openBands.size ? "대사건 접기" : "대사건 펼치기"}</button>
+            <button className="it-btn" onClick={() => { if (openBands.size && events.some(e => e.id === periodUI.interaction.tapped && e.scope === "global")) periodUI.interaction.setTapped(null); setOpenBands(openBands.size ? new Set() : new Set(events.filter(e => e.scope === "global").map(e => e.id))); }}>{openBands.size ? "대사건 접기" : "대사건 펼치기"}</button>
             <span className="it-count">{filtered.length}개 사건</span>
           </div>
         </div>
         <p className="it-reading-hint">같은 월의 정책을 나란히 비교 · 독일은 통일 이전 서독 · 좁은 화면에서는 좌우로 이동</p>
         {(initial.error || saveError) && <p role="alert" className="text-xs text-destructive">{initial.error || saveError} {saveError && <button onClick={() => persist(latestDraft.current)}>다시 저장</button>}</p>}
       </header>
+      <TimelinePeriodContext.Provider value={periodUI.interaction}>
       <div ref={periodUI.boardRef} {...periodUI.handlers} className="it-board" data-testid="timeline-board">
         <div ref={headRef} className="it-lane-head glass"><div className="it-gutter">연월</div>{visibleRegions.map(r => <div key={r.id} style={ink(r.color)} data-region-heading={r.id}><h2>{r.name}</h2></div>)}</div>
         {years.map(year => <section key={year.year} data-year-section={year.year} className="it-year-section">
@@ -260,7 +272,7 @@ export default function InternationalTimeline() {
           {year.items.map(item => item.kind === "band" ? <div key={item.key} className="it-band" data-global-marker={item.events[0].id} data-period-row={item.key} data-period-event={periodEnd(item.events[0]) ? item.events[0].id : undefined}>
             <div className={`it-gutter it-band-gutter ${periodEnd(item.events[0]) ? "it-period-band-date" : ""}`} style={periodUI.gutterStyle(item.key)} title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}>{periodEnd(item.events[0]) ? periodDateLabel(item.events[0]) : item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}{!periodEnd(item.events[0]) && /^\d{4}\.\d{1,2}\.\d{1,2}$/.test(item.events[0].date) && <small className="it-band-day">{Number(item.events[0].date.split(".")[2])}일</small>}</div>
             <div className="it-band-content">{item.events.map(event => <div key={event.id}>
-              <div className="it-band-heading"><button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => { setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; }); }}>
+              <div className="it-band-heading"><button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => { if (periodUI.interaction.mobile && periodEnd(event)) periodUI.interaction.setTapped(openBands.has(event.id) ? null : event.id); setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; }); }}>
                 <span className="it-band-title">{plainText(bandText(event).title) || "새 대사건"}</span>
               </button>{canEdit && <EventMenu event={event} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} patch={body => patch(event.id, body)} />}</div>
               <TimelineDisclosure open={openBands.has(event.id)} id={`band-${event.id}`}><TimelineEntry event={event} global editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></TimelineDisclosure>
@@ -273,13 +285,14 @@ export default function InternationalTimeline() {
             </div>)}
             {item.events.filter(e => eventLanes(e).length > 1).map(event => {
               const span = eventLaneSpan(event, visibleLaneIds);
-              return span && <div key={event.id} className="it-europe-shared" data-shared-event={event.id} style={{ gridColumn: `${span.start} / span ${span.span}` }}><span className="it-shared-label">유럽 공동</span><TimelineEntry event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></div>;
+              return span && <div key={event.id} className="it-europe-shared glass" data-shared-event={event.id} style={{ gridColumn: `${span.start} / span ${span.span}` }}><span className="it-shared-label">유럽 공동</span><TimelineEntry event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></div>;
             })}
           </div>)}
         </section>)}
         {!years.length && <p className="it-empty">조건에 맞는 사건이 없습니다. 검색어나 국가 필터를 바꿔 주세요.</p>}
         {periodUI.overlay}
       </div>
+      </TimelinePeriodContext.Provider>
       <footer className="it-note">
         <span>설명을 클릭해 바로 편집 · 글을 선택해 색과 하이라이트 적용 · 브라우저에 자동 저장</span>
         <div className="it-actions">
@@ -293,10 +306,10 @@ export default function InternationalTimeline() {
       </footer>
     </div>
     {canEdit && lastDeletedId && draft.deleted.some(d => d.event.id === lastDeletedId) && <div className="it-undo glass" role="status"><span>사건을 삭제했습니다.</span><button onClick={() => restore(lastDeletedId)}>되돌리기</button><button aria-label="삭제 알림 닫기" onClick={() => setLastDeletedId(null)}>×</button></div>}
-    <Dialog open={showDeleted} onOpenChange={setShowDeleted}><DialogContent className="it-glass-portal glass-strong max-h-[80vh] overflow-auto max-w-xl"><DialogHeader><DialogTitle>삭제한 사건</DialogTitle><DialogDescription>삭제한 본문과 라벨을 복원할 수 있습니다. 이 브라우저에 보관됩니다.</DialogDescription></DialogHeader>
+    <Dialog open={showDeleted} onOpenChange={setShowDeleted}><DialogContent data-theme={theme} className="it-glass-portal glass-strong max-h-[80vh] overflow-auto sm:max-w-xl"><DialogHeader><DialogTitle>삭제한 사건</DialogTitle><DialogDescription>삭제한 본문과 라벨을 복원할 수 있습니다. 이 브라우저에 보관됩니다.</DialogDescription></DialogHeader>
       {!draft.deleted.length && <p className="text-sm text-muted-foreground">삭제한 사건이 없습니다.</p>}
       {draft.deleted.map(({ event }) => <div key={event.id} className="flex items-start gap-3 border-b py-3"><div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{event.date || event.year} · {event.scope === "global" ? "대사건" : REGIONS.find(r => r.id === event.region)?.name}</p><p className="break-words text-sm">{plainText(descriptionView(event).text).split("\n")[0] || "제목 없는 사건"}</p></div><button disabled={!canEdit} onClick={() => restore(event.id)} className="rounded border px-3 py-1 text-xs">복원</button></div>)}
     </DialogContent></Dialog>
-    <Dialog open={showSource} onOpenChange={setShowSource}><DialogContent className="it-glass-portal glass-strong max-h-[85vh] overflow-auto max-w-3xl"><DialogHeader><DialogTitle>참고 자료 · 1969–1992</DialogTitle><DialogDescription>유형을 분류한 최신 제공본을 우선 반영했습니다. 이후 화면에서 수정한 내용은 로컬에 저장됩니다.</DialogDescription></DialogHeader><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{classifiedSourceText + "\n\n" + insightSourceText + "\n\n" + sourceText + "\n\n" + usSourceText}</pre></DialogContent></Dialog>
+    <Dialog open={showSource} onOpenChange={setShowSource}><DialogContent data-theme={theme} className="it-glass-portal glass-strong max-h-[85vh] overflow-auto sm:max-w-3xl"><DialogHeader><DialogTitle>참고 자료 · 1969–1992</DialogTitle><DialogDescription>유형을 분류한 최신 제공본을 우선 반영했습니다. 이후 화면에서 수정한 내용은 로컬에 저장됩니다.</DialogDescription></DialogHeader><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{classifiedSourceText + "\n\n" + insightSourceText + "\n\n" + sourceText + "\n\n" + usSourceText}</pre></DialogContent></Dialog>
   </div>;
 }

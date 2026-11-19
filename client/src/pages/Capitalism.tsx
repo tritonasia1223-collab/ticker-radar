@@ -1,9 +1,10 @@
-import { springScroll } from "@/lib/warm-prism/spring.js";
 // 자본주의 경제사 타임라인 — 상단 인과 플로우(연도 그룹) + 하단 FRED 그래프 스택.
 // 연도가 대분류, 그 안의 사건들이 소분류로 묶인다. 슬라이더로 연도 스크럽.
 // 편집은 전부 인라인(팝업 없음): 카드 클릭→텍스트 편집, 호버 +버튼→칸 추가, X→칸 삭제.
 import { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback, useSyncExternalStore, Fragment } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence, useReducedMotion, LayoutGroup } from "framer-motion";
+import { spring, fadeRise, reducedTransition } from "@/lib/motion-presets";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Undo2, X, CornerUpLeft } from "lucide-react";
@@ -210,7 +211,7 @@ export default function Capitalism() {
     programScrollRef.current = true;
     if (programScrollTimer.current) window.clearTimeout(programScrollTimer.current);
     programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
-    springScroll(board, Math.max(0, target));
+    board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
   }, [fromY, toY]);
 
   // 카드 선택 — playYear(슬라이더/그래프)만 그 시점으로 갱신하고 '보드는 스크롤하지 않는다'.
@@ -238,7 +239,7 @@ export default function Capitalism() {
     programScrollRef.current = true;
     if (programScrollTimer.current) window.clearTimeout(programScrollTimer.current);
     programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
-    springScroll(board, Math.max(0, target));
+    board.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
   }, [flows, fromY, toY, seekToYear]);
 
   // 링크 클릭용 래퍼 — 점프 '직전' 위치를 스택에 쌓은 뒤 이동(그래야 "돌아가기"로 원위치 복귀).
@@ -259,7 +260,7 @@ export default function Capitalism() {
       programScrollRef.current = true;
       if (programScrollTimer.current) window.clearTimeout(programScrollTimer.current);
       programScrollTimer.current = window.setTimeout(() => { programScrollRef.current = false; }, 650);
-      springScroll(board, prev.top);
+      board.scrollTo({ top: prev.top, behavior: "smooth" });
     }
     setPlayYear(prev.year);
   }, [backStack]);
@@ -406,6 +407,8 @@ export default function Capitalism() {
 
   const onPanels = PANELS.filter((p) => enabled[p.id]);
   // 동작 최소화 선호 시 스프링을 끄고 즉시 전환.
+  const reduceMotion = useReducedMotion();
+  const panelSpring = reduceMotion ? reducedTransition : spring.ios;
 
   const saveFlow = useCallback(async (slug: string, remember = false) => { saveFlowDraft(slug, remember); }, []);
 
@@ -608,7 +611,7 @@ export default function Capitalism() {
         {backStack.length > 0 ? (
           <button
             onClick={goBack}
-            className="absolute bottom-4 left-4 z-30 flex items-center gap-1.5 rounded-full border border-border bg-background/95 px-3 py-2 text-[length:var(--font-size-12px)] font-medium shadow-md glass transition-colors hover:bg-accent"
+            className="absolute bottom-4 left-4 z-30 flex items-center gap-1.5 rounded-full border border-border bg-background/95 px-3 py-2 text-[12px] font-medium shadow-md backdrop-blur transition-colors hover:bg-accent"
             title="링크로 이동하기 전 위치로 돌아갑니다"
             data-testid="cap-jump-back"
           >
@@ -647,7 +650,7 @@ export default function Capitalism() {
                     <div className="absolute left-[19px] top-0 bottom-0 w-[2px] -translate-x-1/2 bg-border" aria-hidden />
 
                     {/* 연도 대분류 헤더 — 연도 · 건수 · 당시 대통령/연준 의장. sticky top-0 으로 스크롤 시 상단 고정(현재 연도만 표시, 다음 연도 진입 시 교체) */}
-                    <div className="sticky top-0 z-20 -ml-12 mb-2 flex items-baseline gap-2 bg-background/95 py-1.5 pl-12 glass supports-[backdrop-filter]:bg-background/80">
+                    <div className="sticky top-0 z-20 -ml-12 mb-2 flex items-baseline gap-2 bg-background/95 py-1.5 pl-12 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                       {/* 세로 레일 위의 연도 노드(원) — 선(left-[19px])과 동일 x기준, 선이 원 중심을 관통 */}
                       <span
                         className={`absolute left-[19px] top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full ring-4 transition-all ${
@@ -658,13 +661,13 @@ export default function Capitalism() {
                         aria-hidden
                       />
                       <span className="text-lg font-bold tabular-nums text-primary">{g.year}</span>
-                      <span className="text-[length:var(--font-size-11px)] text-muted-foreground">· {g.items.length}건</span>
+                      <span className="text-[11px] text-muted-foreground">· {g.items.length}건</span>
                       {(() => {
                         const L = leadersForYear(g.year);
                         if (!L) return null;
                         return (
                           <span
-                            className="text-[length:var(--font-size-10px)] leading-tight text-muted-foreground/70 whitespace-nowrap"
+                            className="text-[10px] leading-tight text-muted-foreground/70 whitespace-nowrap"
                             data-testid={`text-leaders-${g.year}`}
                             title={`당시 미국 대통령 / 연준 의장`}
                           >
@@ -691,7 +694,7 @@ export default function Capitalism() {
                             <button
                               type="button"
                               onClick={() => seekToYear(toFracYear(f.date))}
-                              className={`mb-1 self-start rounded px-1 text-[length:var(--font-size-10px)] tabular-nums transition-colors ${
+                              className={`mb-1 self-start rounded px-1 text-[10px] tabular-nums transition-colors ${
                                 isActive ? "font-semibold text-primary" : "text-muted-foreground/70 hover:text-primary"
                               }`}
                               title={isPeriod ? `${f.date} ~ ${f.endDate}` : fracYearToLabel(toFracYear(f.date))}
@@ -774,7 +777,7 @@ export default function Capitalism() {
         {/* 평소엔 우측 컬럼. 인사이트 모드면 전체 영역을 덮는 '블러 배경'으로 전환(z-0) → 그 위로 카드+인사이트가 얹힌다. */}
         <aside
           ref={asideRef}
-          className={`transition-[filter,opacity] ${insightMode ? "absolute right-0 top-0 bottom-0 z-0 overflow-hidden blur-[3px] opacity-50 pointer-events-none select-none" : "min-w-[480px] flex-1 relative h-full"}`}
+          className={`transition-[filter,opacity] duration-200 ${insightMode ? "absolute right-0 top-0 bottom-0 z-0 overflow-hidden blur-[3px] opacity-50 pointer-events-none select-none" : "min-w-[480px] flex-1 relative h-full"}`}
           style={insightMode && graphWidth ? { width: graphWidth } : undefined}
         >
           <div className="flex h-full flex-col gap-3 overflow-y-auto cap-noscrollbar">
@@ -783,20 +786,20 @@ export default function Capitalism() {
           <section className="rounded-lg border border-border bg-card/40 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
               {editable ? (
-                <button
+                <motion.button
                   type="button"
                   onClick={() => void doUndo()}
                   disabled={!canUndo || undoBusy}
                   title="되돌리기 (Ctrl+Z)"
                   aria-label="되돌리기"
-                  
-                  
-                  className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                  transition={spring.snappy}
+                  className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   data-testid="button-undo"
                 >
                   <Undo2 className="h-3.5 w-3.5" />
                   되돌리기
-                </button>
+                </motion.button>
               ) : null}
               <span className="text-sm font-medium">연도</span>
               {decades.length > 0 ? (
@@ -804,13 +807,13 @@ export default function Capitalism() {
                   {decades.map((d) => {
                     const isActive = d.decade === activeDecade;
                     return (
-                      <button
+                      <motion.button
                         key={d.decade}
                         type="button"
-                        
-                        
+                        whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+                        transition={spring.snappy}
                         onClick={() => seekToYear(d.firstFrac)}
-                        className={`rounded-full border px-2.5 py-0.5 text-[length:var(--font-size-11px)] font-medium tabular-nums transition-colors ${
+                        className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums transition-colors ${
                           isActive
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
@@ -818,7 +821,7 @@ export default function Capitalism() {
                         data-testid={`decade-${d.decade}`}
                       >
                         {d.label}
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -832,7 +835,7 @@ export default function Capitalism() {
                 const clamped = Math.min(94, Math.max(6, pct));
                 return (
                   <div
-                    className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[length:var(--font-size-11px)] font-semibold tabular-nums text-primary-foreground shadow"
+                    className="absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground shadow"
                     style={{ left: `${clamped}%`, bottom: 0 }}
                     data-testid="text-playyear"
                   >
@@ -851,14 +854,14 @@ export default function Capitalism() {
               className="w-full accent-primary"
               data-testid="slider-year"
             />
-            <div className="flex justify-between text-[length:var(--font-size-10px)] text-muted-foreground tabular-nums">
+            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
               <span>{fromY}</span><span>{toY}</span>
             </div>
           </section>
 
           {/* ── Y축 범위 모드 토글 — 전체 범위 고정 vs 시점 따라 유동 ── */}
           <div className="flex items-center justify-between">
-            <span className="text-[length:var(--font-size-12px)] font-medium text-muted-foreground">그래프</span>
+            <span className="text-[12px] font-medium text-muted-foreground">그래프</span>
             <div
               className="inline-flex items-center rounded-md border border-border bg-card/40 p-0.5"
               role="group"
@@ -871,14 +874,14 @@ export default function Capitalism() {
               ]).map((opt) => {
                 const active = yMode === opt.v;
                 return (
-                  <button
+                  <motion.button
                     key={opt.v}
                     type="button"
                     onClick={() => setYMode(opt.v)}
                     title={opt.title}
-                    
-                    
-                    className={`rounded px-2.5 py-1 text-[length:var(--font-size-11px)] font-medium transition-colors ${
+                    whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                    transition={spring.snappy}
+                    className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       active
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground"
@@ -886,30 +889,30 @@ export default function Capitalism() {
                     data-testid={`ymode-${opt.v}`}
                   >
                     {opt.label}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
           </div>
 
           {/* ── 그래프 스택 — 4개 이하면 1열(넓게), 5개 이상이면 2열. 시점(playYear) 동기화 유지 ── */}
-          {/* Chart geometry stays crisp; filter state updates without entrance animation. */}
-          <>
-            <section className={`grid gap-3 ${onPanels.length >= 5 ? "grid-cols-2" : "grid-cols-1"}`}>
+          {/* 1↔2열 전환 시 각 패널이 iOS 스프링으로 제자리를 찾아가고(layout), 추가/제거 시 fade+rise로 등장/퇴장. */}
+          <LayoutGroup>
+            <section className={`grid gap-3 ${onPanels.length >= 5 ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
               {onPanels.length === 0 ? (
                 <div className="text-center text-sm text-muted-foreground py-8">
                   표시할 지표를 아래에서 선택하세요.
                 </div>
               ) : (
-                <>
+                <AnimatePresence mode="popLayout" initial={false}>
                   {onPanels.map((p) => (
-                    <div
+                    <motion.div
                       key={p.id}
-                      
-                      
-                      
-                      
-                      
+                      layout
+                      transition={panelSpring}
+                      initial={reduceMotion ? false : fadeRise.initial}
+                      animate={fadeRise.animate}
+                      exit={reduceMotion ? undefined : fadeRise.exit}
                     >
                       <CapChartPanel
                         panel={p}
@@ -920,19 +923,19 @@ export default function Capitalism() {
                         band={activeBand}
                         yMode={yMode}
                       />
-                    </div>
+                    </motion.div>
                   ))}
-                </>
+                </AnimatePresence>
               )}
             </section>
-          </>
+          </LayoutGroup>
 
           {/* ── 체크박스 (카테고리별) ── */}
           <section className="rounded-lg border border-border bg-card/40 p-3">
             <div className="flex flex-col gap-3">
               {Object.entries(CATEGORIES).map(([catKey, cat]) => (
                 <div key={catKey} className="flex flex-col gap-1.5">
-                  <span className="text-[length:var(--font-size-11px)] font-semibold" style={{ color: cat.color }}>{cat.label}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: cat.color }}>{cat.label}</span>
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                     {PANELS.filter((p) => p.cat === catKey).map((p) => {
                       // 슬라이더 현재 시점에 아직 데이터가 없는 지표는 흐리게 표시(회색 + 도트 투명도 저하).
@@ -941,7 +944,7 @@ export default function Capitalism() {
                       return (
                         <label
                           key={p.id}
-                          className={`flex items-center gap-1.5 text-[length:var(--font-size-12px)] cursor-pointer transition-colors ${
+                          className={`flex items-center gap-1.5 text-[12px] cursor-pointer transition-colors ${
                             noData ? "text-muted-foreground/50" : ""
                           }`}
                           data-testid={`toggle-${p.id}`}
@@ -973,7 +976,7 @@ export default function Capitalism() {
           <button
             type="button"
             onClick={exitInsightMode}
-            className="absolute right-2 top-2 z-20 flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[length:var(--font-size-11px)] font-medium text-muted-foreground shadow-sm glass transition-colors hover:border-primary/50 hover:text-foreground"
+            className="absolute right-2 top-2 z-20 flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground"
             title="그래프로 돌아가기"
             data-testid="insight-exit"
           >
@@ -1012,7 +1015,7 @@ function InsertZone({ onInsert, disabled, label, testid }: { onInsert: () => voi
           <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-current">
             <Plus className="h-4 w-4" />
           </span>
-          <span className="text-[length:var(--font-size-11px)] font-medium">{label}</span>
+          <span className="text-[11px] font-medium">{label}</span>
         </button>
       ) : (
         <div className="mx-auto my-auto h-px w-3/5 bg-transparent transition-colors hover:bg-primary/30" />

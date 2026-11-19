@@ -1,96 +1,107 @@
 import type { Config } from "tailwindcss";
+
 export default {
-    content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
-    theme: {
-        screens: {},
-        spacing: { "0": "var(--space-scale-0)", "1": "var(--space-scale-1)", "2": "var(--space-scale-2)", "3": "var(--space-scale-3)", "4": "var(--space-scale-4)", "5": "var(--space-scale-5)", "6": "var(--space-scale-6)", "7": "var(--space-scale-7)", "8": "var(--space-scale-8)", "9": "var(--space-scale-9)", "10": "var(--space-scale-10)", "11": "var(--space-scale-11)", "12": "var(--space-scale-12)", "14": "var(--space-scale-14)", "16": "var(--space-scale-16)", "20": "var(--space-scale-20)", "24": "var(--space-scale-24)", "28": "var(--space-scale-28)", "32": "var(--space-scale-32)", "36": "var(--space-scale-36)", "40": "var(--space-scale-40)", "44": "var(--space-scale-44)", "48": "var(--space-scale-48)", "52": "var(--space-scale-52)", "56": "var(--space-scale-56)", "60": "var(--space-scale-60)", "64": "var(--space-scale-64)", "72": "var(--space-scale-72)", "80": "var(--space-scale-80)", "96": "var(--space-scale-96)", "px": "var(--space-scale-px)", "0.5": "var(--space-scale-0-5)", "1.5": "var(--space-scale-1-5)", "2.5": "var(--space-scale-2-5)", "3.5": "var(--space-scale-3-5)" },
-        fontSize: { "xs": ["var(--type-xs)", { "lineHeight": "var(--type-leading-xs)" }], "sm": ["var(--type-sm)", { "lineHeight": "var(--type-leading-sm)" }], "base": ["var(--type-base)", { "lineHeight": "var(--type-leading-base)" }], "lg": ["var(--type-lg)", { "lineHeight": "var(--type-leading-lg)" }], "xl": ["var(--type-xl)", { "lineHeight": "var(--type-leading-xl)" }], "2xl": ["var(--type-2xl)", { "lineHeight": "var(--type-leading-2xl)" }], "3xl": ["var(--type-3xl)", { "lineHeight": "var(--type-leading-3xl)" }], "4xl": ["var(--type-4xl)", { "lineHeight": "var(--type-leading-4xl)" }], "5xl": ["var(--type-5xl)", { "lineHeight": "var(--type-leading-5xl)" }], "6xl": ["var(--type-6xl)", { "lineHeight": "var(--type-leading-6xl)" }], "7xl": ["var(--type-7xl)", { "lineHeight": "var(--type-leading-7xl)" }], "8xl": ["var(--type-8xl)", { "lineHeight": "var(--type-leading-8xl)" }], "9xl": ["var(--type-9xl)", { "lineHeight": "var(--type-leading-9xl)" }] },
-        extend: {
-            borderRadius: { DEFAULT: "var(--radius-sm)", none: "var(--radius-none)", xl: "var(--radius-xl)", "2xl": "var(--radius-2xl)", "3xl": "var(--radius-2xl)", full: "var(--radius-full)",
-                lg: "var(--radius-lg)", /* 9px */
-                md: "var(--radius-md)", /* 6px */
-                sm: "var(--radius-sm)", /* 3px */
-            },
-            colors: {
-                ...{ "red": { "50": "rgb(from var(--tone-red-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-red-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-red-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-red-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-red-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-red-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-red-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-red-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-red-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-red-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-red-950) r g b / <alpha-value>)" }, "rose": { "50": "rgb(from var(--tone-rose-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-rose-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-rose-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-rose-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-rose-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-rose-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-rose-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-rose-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-rose-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-rose-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-rose-950) r g b / <alpha-value>)" }, "pink": { "50": "rgb(from var(--tone-rose-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-rose-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-rose-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-rose-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-rose-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-rose-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-rose-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-rose-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-rose-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-rose-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-rose-950) r g b / <alpha-value>)" }, "fuchsia": { "50": "rgb(from var(--tone-violet-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-violet-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-violet-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-violet-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-violet-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-violet-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-violet-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-violet-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-violet-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-violet-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-violet-950) r g b / <alpha-value>)" }, "orange": { "50": "rgb(from var(--tone-orange-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-orange-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-orange-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-orange-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-orange-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-orange-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-orange-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-orange-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-orange-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-orange-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-orange-950) r g b / <alpha-value>)" }, "amber": { "50": "rgb(from var(--tone-amber-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-amber-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-amber-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-amber-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-amber-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-amber-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-amber-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-amber-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-amber-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-amber-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-amber-950) r g b / <alpha-value>)" }, "yellow": { "50": "rgb(from var(--tone-yellow-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-yellow-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-yellow-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-yellow-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-yellow-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-yellow-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-yellow-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-yellow-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-yellow-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-yellow-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-yellow-950) r g b / <alpha-value>)" }, "lime": { "50": "rgb(from var(--tone-lime-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-lime-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-lime-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-lime-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-lime-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-lime-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-lime-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-lime-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-lime-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-lime-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-lime-950) r g b / <alpha-value>)" }, "green": { "50": "rgb(from var(--tone-green-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-green-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-green-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-green-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-green-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-green-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-green-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-green-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-green-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-green-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-green-950) r g b / <alpha-value>)" }, "emerald": { "50": "rgb(from var(--tone-green-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-green-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-green-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-green-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-green-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-green-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-green-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-green-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-green-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-green-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-green-950) r g b / <alpha-value>)" }, "teal": { "50": "rgb(from var(--tone-teal-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-teal-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-teal-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-teal-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-teal-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-teal-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-teal-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-teal-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-teal-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-teal-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-teal-950) r g b / <alpha-value>)" }, "cyan": { "50": "rgb(from var(--tone-teal-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-teal-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-teal-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-teal-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-teal-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-teal-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-teal-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-teal-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-teal-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-teal-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-teal-950) r g b / <alpha-value>)" }, "sky": { "50": "rgb(from var(--tone-blue-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-blue-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-blue-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-blue-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-blue-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-blue-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-blue-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-blue-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-blue-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-blue-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-blue-950) r g b / <alpha-value>)" }, "blue": { "50": "rgb(from var(--tone-blue-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-blue-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-blue-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-blue-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-blue-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-blue-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-blue-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-blue-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-blue-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-blue-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-blue-950) r g b / <alpha-value>)" }, "indigo": { "50": "rgb(from var(--tone-indigo-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-indigo-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-indigo-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-indigo-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-indigo-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-indigo-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-indigo-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-indigo-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-indigo-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-indigo-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-indigo-950) r g b / <alpha-value>)" }, "violet": { "50": "rgb(from var(--tone-violet-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-violet-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-violet-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-violet-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-violet-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-violet-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-violet-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-violet-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-violet-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-violet-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-violet-950) r g b / <alpha-value>)" }, "purple": { "50": "rgb(from var(--tone-violet-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-violet-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-violet-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-violet-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-violet-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-violet-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-violet-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-violet-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-violet-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-violet-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-violet-950) r g b / <alpha-value>)" }, "slate": { "50": "rgb(from var(--tone-neutral-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-neutral-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-neutral-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-neutral-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-neutral-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-neutral-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-neutral-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-neutral-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-neutral-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-neutral-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-neutral-950) r g b / <alpha-value>)" }, "gray": { "50": "rgb(from var(--tone-neutral-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-neutral-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-neutral-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-neutral-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-neutral-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-neutral-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-neutral-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-neutral-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-neutral-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-neutral-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-neutral-950) r g b / <alpha-value>)" }, "zinc": { "50": "rgb(from var(--tone-neutral-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-neutral-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-neutral-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-neutral-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-neutral-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-neutral-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-neutral-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-neutral-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-neutral-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-neutral-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-neutral-950) r g b / <alpha-value>)" }, "neutral": { "50": "rgb(from var(--tone-neutral-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-neutral-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-neutral-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-neutral-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-neutral-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-neutral-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-neutral-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-neutral-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-neutral-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-neutral-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-neutral-950) r g b / <alpha-value>)" }, "stone": { "50": "rgb(from var(--tone-neutral-50) r g b / <alpha-value>)", "100": "rgb(from var(--tone-neutral-100) r g b / <alpha-value>)", "200": "rgb(from var(--tone-neutral-200) r g b / <alpha-value>)", "300": "rgb(from var(--tone-neutral-300) r g b / <alpha-value>)", "400": "rgb(from var(--tone-neutral-400) r g b / <alpha-value>)", "500": "rgb(from var(--tone-neutral-500) r g b / <alpha-value>)", "600": "rgb(from var(--tone-neutral-600) r g b / <alpha-value>)", "700": "rgb(from var(--tone-neutral-700) r g b / <alpha-value>)", "800": "rgb(from var(--tone-neutral-800) r g b / <alpha-value>)", "900": "rgb(from var(--tone-neutral-900) r g b / <alpha-value>)", "950": "rgb(from var(--tone-neutral-950) r g b / <alpha-value>)" } },
-                black: "rgb(from var(--ink) r g b / <alpha-value>)", white: "rgb(from var(--surface) r g b / <alpha-value>)",
-                // Flat / base colors (regular buttons)
-                background: "hsl(var(--background) / <alpha-value>)",
-                foreground: "hsl(var(--foreground) / <alpha-value>)",
-                border: "hsl(var(--border) / <alpha-value>)",
-                input: "hsl(var(--input) / <alpha-value>)",
-                card: {
-                    DEFAULT: "hsl(var(--card) / <alpha-value>)",
-                    foreground: "hsl(var(--card-foreground) / <alpha-value>)",
-                    border: "hsl(var(--card-border) / <alpha-value>)",
-                },
-                popover: {
-                    DEFAULT: "hsl(var(--popover) / <alpha-value>)",
-                    foreground: "hsl(var(--popover-foreground) / <alpha-value>)",
-                    border: "hsl(var(--popover-border) / <alpha-value>)",
-                },
-                primary: {
-                    DEFAULT: "hsl(var(--primary) / <alpha-value>)",
-                    foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
-                    border: "var(--primary-border)",
-                },
-                secondary: {
-                    DEFAULT: "hsl(var(--secondary) / <alpha-value>)",
-                    foreground: "hsl(var(--secondary-foreground) / <alpha-value>)",
-                    border: "var(--secondary-border)",
-                },
-                muted: {
-                    DEFAULT: "hsl(var(--muted) / <alpha-value>)",
-                    foreground: "hsl(var(--muted-foreground) / <alpha-value>)",
-                    border: "var(--muted-border)",
-                },
-                accent: {
-                    DEFAULT: "hsl(var(--accent) / <alpha-value>)",
-                    foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
-                    border: "var(--accent-border)",
-                },
-                destructive: {
-                    DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
-                    foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",
-                    border: "var(--destructive-border)",
-                },
-                ring: "hsl(var(--ring) / <alpha-value>)",
-                chart: {
-                    "1": "rgb(from var(--tone-teal) r g b / <alpha-value>)",
-                    "2": "rgb(from var(--tone-amber) r g b / <alpha-value>)",
-                    "3": "rgb(from var(--tone-blue) r g b / <alpha-value>)",
-                    "4": "rgb(from var(--tone-violet) r g b / <alpha-value>)",
-                    "5": "rgb(from var(--tone-rose) r g b / <alpha-value>)",
-                },
-                sidebar: {
-                    ring: "hsl(var(--sidebar-ring) / <alpha-value>)",
-                    DEFAULT: "hsl(var(--sidebar) / <alpha-value>)",
-                    foreground: "hsl(var(--sidebar-foreground) / <alpha-value>)",
-                    border: "hsl(var(--sidebar-border) / <alpha-value>)",
-                },
-                "sidebar-primary": {
-                    DEFAULT: "hsl(var(--sidebar-primary) / <alpha-value>)",
-                    foreground: "hsl(var(--sidebar-primary-foreground) / <alpha-value>)",
-                    border: "var(--sidebar-primary-border)",
-                },
-                "sidebar-accent": {
-                    DEFAULT: "hsl(var(--sidebar-accent) / <alpha-value>)",
-                    foreground: "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
-                    border: "var(--sidebar-accent-border)"
-                },
-                status: {
-                    online: "var(--signal-success)",
-                    away: "var(--signal-warning)",
-                    busy: "var(--signal-danger)",
-                    offline: "var(--ink-soft)",
-                },
-            },
-            boxShadow: { '2xs': 'var(--shadow-xs)', xs: 'var(--shadow-xs)', sm: 'var(--shadow-sm)', DEFAULT: 'var(--shadow-sm)', md: 'var(--shadow-md)', lg: 'var(--shadow-lg)', xl: 'var(--shadow-xl)', '2xl': 'var(--shadow-xl)', inner: 'var(--shadow-inset)' }, transitionDuration: { DEFAULT: 'var(--motion-fast)' }, fontFamily: {
-                sans: ["var(--font-sans)"],
-                serif: ["var(--font-serif)"],
-                mono: ["var(--font-mono)"],
-            },
+  darkMode: ["class"],
+  content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      borderRadius: {
+        lg: ".5625rem", /* 9px */
+        md: ".375rem", /* 6px */
+        sm: ".1875rem", /* 3px */
+      },
+      colors: {
+        // Flat / base colors (regular buttons)
+        background: "hsl(var(--background) / <alpha-value>)",
+        foreground: "hsl(var(--foreground) / <alpha-value>)",
+        border: "hsl(var(--border) / <alpha-value>)",
+        input: "hsl(var(--input) / <alpha-value>)",
+        card: {
+          DEFAULT: "hsl(var(--card) / <alpha-value>)",
+          foreground: "hsl(var(--card-foreground) / <alpha-value>)",
+          border: "hsl(var(--card-border) / <alpha-value>)",
         },
+        popover: {
+          DEFAULT: "hsl(var(--popover) / <alpha-value>)",
+          foreground: "hsl(var(--popover-foreground) / <alpha-value>)",
+          border: "hsl(var(--popover-border) / <alpha-value>)",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary) / <alpha-value>)",
+          foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
+          border: "var(--primary-border)",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary) / <alpha-value>)",
+          foreground: "hsl(var(--secondary-foreground) / <alpha-value>)",
+          border: "var(--secondary-border)",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted) / <alpha-value>)",
+          foreground: "hsl(var(--muted-foreground) / <alpha-value>)",
+          border: "var(--muted-border)",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent) / <alpha-value>)",
+          foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
+          border: "var(--accent-border)",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
+          foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",
+          border: "var(--destructive-border)",
+        },
+        ring: "hsl(var(--ring) / <alpha-value>)",
+        chart: {
+          "1": "hsl(var(--chart-1) / <alpha-value>)",
+          "2": "hsl(var(--chart-2) / <alpha-value>)",
+          "3": "hsl(var(--chart-3) / <alpha-value>)",
+          "4": "hsl(var(--chart-4) / <alpha-value>)",
+          "5": "hsl(var(--chart-5) / <alpha-value>)",
+        },
+        sidebar: {
+          ring: "hsl(var(--sidebar-ring) / <alpha-value>)",
+          DEFAULT: "hsl(var(--sidebar) / <alpha-value>)",
+          foreground: "hsl(var(--sidebar-foreground) / <alpha-value>)",
+          border: "hsl(var(--sidebar-border) / <alpha-value>)",
+        },
+        "sidebar-primary": {
+          DEFAULT: "hsl(var(--sidebar-primary) / <alpha-value>)",
+          foreground: "hsl(var(--sidebar-primary-foreground) / <alpha-value>)",
+          border: "var(--sidebar-primary-border)",
+        },
+        "sidebar-accent": {
+          DEFAULT: "hsl(var(--sidebar-accent) / <alpha-value>)",
+          foreground: "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
+          border: "var(--sidebar-accent-border)"
+        },
+        status: {
+          online: "rgb(34 197 94)",
+          away: "rgb(245 158 11)",
+          busy: "rgb(239 68 68)",
+          offline: "rgb(156 163 175)",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)"],
+        serif: ["var(--font-serif)"],
+        mono: ["var(--font-mono)"],
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+      },
     },
-    plugins: [require("@tailwindcss/typography")],
+  },
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

@@ -14,7 +14,7 @@ export function DialogHeader(props: React.HTMLAttributes<HTMLDivElement>) {
 export function DialogContent({ children, className, ...props }: React.ComponentPropsWithoutRef<typeof Primitive.Content>) {
   return <Primitive.Portal>
     <Primitive.Overlay className="fixed inset-0 z-50 bg-black/45" />
-    <Primitive.Content {...props} className={cn("fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-xl border glass-strong prism-edge p-6 shadow-xl focus:outline-none", className)}>
+    <Primitive.Content {...props} className={cn("fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-xl border bg-background p-6 shadow-xl focus:outline-none", className)}>
       {children}
       <Primitive.Close aria-label="닫기" className="absolute right-3 top-3 rounded p-1 text-muted-foreground hover:bg-accent"><X size={16} /></Primitive.Close>
     </Primitive.Content>

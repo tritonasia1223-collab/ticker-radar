@@ -17,22 +17,24 @@ export interface MarkStyle {
   style: React.CSSProperties;
 }
 
-// Saved marker keys and author-selected colors stay stable; theme.css owns their values.
+// 이 화면은 라이트 모드(흰 배경)로만 렌더된다 — tailwind darkMode:["class"] 인데 dark 클래스를
+// 붙이는 곳이 없다. 색을 고를 때 배경은 항상 흰색으로 보면 된다.
+// 아래 값은 실제 화면에서 눈으로 맞춘 결과다. 수치 기준으로 임의로 다시 조정하지 말 것.
 export const MARK_STYLES: MarkStyle[] = [
   // 형광펜 — 반투명 파스텔.
-  { key: "hl-y", label: "노랑 형광", kind: "hl", swatch: "var(--editor-hl-y)", style: { background: "var(--editor-hl-y-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
-  { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "var(--editor-hl-g)", style: { background: "var(--editor-hl-g-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
-  { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "var(--editor-hl-b)", style: { background: "var(--editor-hl-b-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
-  { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "var(--editor-hl-p)", style: { background: "var(--editor-hl-p-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
-  { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "var(--editor-hl-v)", style: { background: "var(--editor-hl-v-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
-  { key: "hl-gray", label: "연회색 형광", kind: "hl", swatch: "var(--editor-hl-gray)", style: { background: "var(--editor-hl-gray-value)", borderRadius: "var(--radius-3)", padding: "0 var(--space-2px)" } },
+  { key: "hl-y", label: "노랑 형광", kind: "hl", swatch: "#facc15", style: { background: "rgba(250,204,21,0.32)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-g", label: "초록 형광", kind: "hl", swatch: "#4ade80", style: { background: "rgba(74,222,128,0.30)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-b", label: "파랑 형광", kind: "hl", swatch: "#60a5fa", style: { background: "rgba(96,165,250,0.30)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-p", label: "분홍 형광", kind: "hl", swatch: "#f472b6", style: { background: "rgba(244,114,182,0.32)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-v", label: "청보라 형광", kind: "hl", swatch: "#8b5cf6", style: { background: "rgba(139,92,246,0.28)", borderRadius: 3, padding: "0 2px" } },
+  { key: "hl-gray", label: "연회색 형광", kind: "hl", swatch: "#d1d5db", style: { background: "rgba(156,163,175,0.22)", borderRadius: 3, padding: "0 2px" } },
   // 글자색 — 채도 높은 색. 키 순서는 기존 버튼 위치 유지를 위해 그대로 두고 신규만 뒤에 추가.
-  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "var(--editor-c-r)", style: { color: "var(--editor-c-r-value)", fontWeight: 600 } },
-  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "var(--editor-c-b)", style: { color: "var(--editor-c-b-value)", fontWeight: 600 } },
-  { key: "c-g", label: "초록 글자", kind: "c", swatch: "var(--editor-c-g)", style: { color: "var(--editor-c-g-value)", fontWeight: 600 } },
-  { key: "c-o", label: "주황 글자", kind: "c", swatch: "var(--editor-c-o)", style: { color: "var(--editor-c-o-value)", fontWeight: 600 } },
-  { key: "c-v", label: "청보라 글자", kind: "c", swatch: "var(--editor-c-v)", style: { color: "var(--editor-c-v-value)", fontWeight: 600 } },
-  { key: "c-bold", label: "굵게 (검정)", kind: "c", swatch: "var(--editor-c-bold)", style: { color: "var(--editor-c-bold-value)", fontWeight: 700 } },
+  { key: "c-r", label: "빨강 글자", kind: "c", swatch: "#ff2e2e", style: { color: "#ff2e2e", fontWeight: 600 } },
+  { key: "c-b", label: "파랑 글자", kind: "c", swatch: "#146aff", style: { color: "#146aff", fontWeight: 600 } },
+  { key: "c-g", label: "초록 글자", kind: "c", swatch: "#008738", style: { color: "#008738", fontWeight: 600 } },
+  { key: "c-o", label: "주황 글자", kind: "c", swatch: "#ff7a00", style: { color: "#ff7a00", fontWeight: 600 } },
+  { key: "c-v", label: "청보라 글자", kind: "c", swatch: "#8c4aff", style: { color: "#8c4aff", fontWeight: 600 } },
+  { key: "c-bold", label: "굵게 (검정)", kind: "c", swatch: "#111827", style: { color: "#111827", fontWeight: 700 } },
 ];
 
 export const MARK_BY_KEY: Record<string, MarkStyle> = Object.fromEntries(
@@ -49,7 +51,7 @@ export interface RichSeg {
 export const LINK_PREFIX = "link:";
 // A standalone line only. Plain text storage keeps old clients/copy/paste readable.
 export const DIVIDER_LINE = "───";
-export const DIVIDER_BACKGROUND = "linear-gradient(var(--line-soft), var(--line-soft)) center / 100% 1px no-repeat";
+export const DIVIDER_BACKGROUND = "linear-gradient(#d1d5db, #d1d5db) center / 100% 1px no-repeat";
 
 export function insertRichDivider(raw: string, offset: number) {
   const { before, after } = splitRichTextAt(raw, offset);

@@ -48,7 +48,7 @@ export const SECTOR: Record<string, string> = {
   ADM: "농업", DE: "농업/기계", DIS: "기타",
 };
 
-export const partyColor = (p: string | null) => (p === "D" ? "var(--tone-blue-300)" : p === "R" ? "var(--tone-red-300)" : "var(--ink-soft)");
+export const partyColor = (p: string | null) => (p === "D" ? "#58a6ff" : p === "R" ? "#ff7b72" : "#8b949e");
 
 export const mid = (t: Trade) =>
   t.amountLow == null ? 0 : Math.round((t.amountLow + (t.amountHigh ?? t.amountLow)) / 2);

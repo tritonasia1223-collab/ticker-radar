@@ -10,8 +10,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { UserSearch, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft, Info } from "lucide-react";
 
-const BUY = "var(--tone-green-500)";
-const SELL = "var(--tone-red-400)";
+const BUY = "#3fb950";
+const SELL = "#f85149";
 
 interface RankRow {
   symbol: string; company: string | null; sector: string | null;
@@ -50,12 +50,12 @@ const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 type Tier = 1 | 2 | 3 | 4;
 // 색 = 시그널 티어. 라이트/다크 모두 가독되게 mode별 톤(light=진한 텍스트, dark=밝은 텍스트).
 const TIER_META: Record<Tier, { name: string; cls: string }> = {
-  1: { name: "전사·재무", cls: "bg-rose-500/15 text-rose-700 border-rose-500/40" },
-  2: { name: "운영 임원", cls: "bg-amber-500/15 text-amber-700 border-amber-500/40" },
-  3: { name: "기능 임원", cls: "bg-teal-500/15 text-teal-700 border-teal-500/40" },
-  4: { name: "이사", cls: "bg-zinc-500/20 text-zinc-600 border-zinc-500/40" },
+  1: { name: "전사·재무", cls: "bg-rose-500/15 text-rose-700 border-rose-500/40 dark:bg-rose-500/20 dark:text-rose-200" },
+  2: { name: "운영 임원", cls: "bg-amber-500/15 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200" },
+  3: { name: "기능 임원", cls: "bg-teal-500/15 text-teal-700 border-teal-500/40 dark:bg-teal-500/20 dark:text-teal-300" },
+  4: { name: "이사", cls: "bg-zinc-500/20 text-zinc-600 border-zinc-500/40 dark:bg-zinc-500/25 dark:text-zinc-300" },
 };
-const OWNER_CLS = "bg-violet-500/15 text-violet-700 border-violet-500/40";
+const OWNER_CLS = "bg-violet-500/15 text-violet-700 border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200";
 const UNCONF_CLS = "border-dashed border-muted-foreground/50 text-muted-foreground bg-transparent";
 
 // 우선순위 순서(위에서 먼저 매칭 = primary). 복합 직책은 최상위 시그널이 대표.
@@ -99,7 +99,7 @@ function RoleBadges({ role, className = "" }: { role: string | null; className?:
   if (!chips.length) return null;
   return (
     <span className={`inline-flex flex-wrap items-center gap-1 ${className}`} title={c.raw || "역할 미확인(See Remarks/결측)"}>
-      {chips.map((ch) => <span key={ch.key} className={`text-[length:var(--font-size-10px)] font-bold border rounded px-1.5 py-0.5 ${ch.cls}`}>{ch.label}</span>)}
+      {chips.map((ch) => <span key={ch.key} className={`text-[10px] font-bold border rounded px-1.5 py-0.5 ${ch.cls}`}>{ch.label}</span>)}
     </span>
   );
 }
@@ -113,8 +113,8 @@ function TierLegend() {
   ];
   return (
     <div className="flex flex-wrap items-center gap-1 mb-2.5">
-      <span className="text-[length:var(--font-size-10px)] text-muted-foreground mr-0.5">직책 티어(시그널 순):</span>
-      {items.map((i) => <span key={i.label} className={`text-[length:var(--font-size-9-5px)] font-bold border rounded px-1.5 py-0.5 ${i.cls}`}>{i.label}</span>)}
+      <span className="text-[10px] text-muted-foreground mr-0.5">직책 티어(시그널 순):</span>
+      {items.map((i) => <span key={i.label} className={`text-[9.5px] font-bold border rounded px-1.5 py-0.5 ${i.cls}`}>{i.label}</span>)}
     </div>
   );
 }
@@ -132,23 +132,23 @@ function TierGuide() {
   return (
     <HoverCard openDelay={80} closeDelay={80}>
       <HoverCardTrigger asChild>
-        <button type="button" className="h-9 inline-flex items-center gap-1 rounded-md border bg-background px-2.5 text-[length:var(--font-size-12px)] text-muted-foreground hover:text-foreground hover:border-primary cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-ring" aria-label="직책 티어 기준 설명">
+        <button type="button" className="h-9 inline-flex items-center gap-1 rounded-md border bg-background px-2.5 text-[12px] text-muted-foreground hover:text-foreground hover:border-primary cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-ring" aria-label="직책 티어 기준 설명">
           직책 티어 <Info className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </HoverCardTrigger>
       <HoverCardContent align="start" className="w-[360px] p-3">
         <div className="text-xs font-semibold mb-1">직책 티어 = 정보 접근도(시그널 가치)</div>
-        <p className="text-[length:var(--font-size-11px)] text-muted-foreground mb-2 leading-snug">같은 매수·매도라도 <b>누가</b> 했느냐로 정보가치가 다릅니다. 색은 직책 문자열이 아니라 그 사람이 회사 실태를 얼마나 아는지로 가중합니다. (복합 직책은 최상위 시그널이 대표)</p>
+        <p className="text-[11px] text-muted-foreground mb-2 leading-snug">같은 매수·매도라도 <b>누가</b> 했느냐로 정보가치가 다릅니다. 색은 직책 문자열이 아니라 그 사람이 회사 실태를 얼마나 아는지로 가중합니다. (복합 직책은 최상위 시그널이 대표)</p>
         <div className="space-y-0">
           {TIER_GUIDE.map((t) => (
             <div key={t.label} className="flex items-start gap-2 py-1.5 border-t">
               <div className="flex flex-col items-center shrink-0 mt-0.5 w-[58px]">
-                <span className={`text-[length:var(--font-size-10px)] font-bold border rounded px-1.5 py-0.5 w-full text-center ${t.cls}`}>{t.label}</span>
-                <span className="text-[length:var(--font-size-9px)] text-muted-foreground/70 tabular-nums mt-0.5">{t.w}</span>
+                <span className={`text-[10px] font-bold border rounded px-1.5 py-0.5 w-full text-center ${t.cls}`}>{t.label}</span>
+                <span className="text-[9px] text-muted-foreground/70 tabular-nums mt-0.5">{t.w}</span>
               </div>
               <div className="min-w-0">
-                <div className="text-[length:var(--font-size-11-5px)] font-medium leading-snug">{t.ex}</div>
-                <div className="text-[length:var(--font-size-10-5px)] text-muted-foreground leading-snug">{t.why}</div>
+                <div className="text-[11.5px] font-medium leading-snug">{t.ex}</div>
+                <div className="text-[10.5px] text-muted-foreground leading-snug">{t.why}</div>
               </div>
             </div>
           ))}
@@ -193,13 +193,13 @@ function InsiderRow({ r, color, sign, ctx }: { r: InsiderGroup; color: string; s
       {/* 이름(말줄임+호버 전체) + 직책 티어 라벨을 이름 아래 스티커로 */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
-          <span className="font-semibold text-[length:var(--font-size-13px)] truncate" title={r.name}>{r.name}</span>
+          <span className="font-semibold text-[13px] truncate" title={r.name}>{r.name}</span>
           <ChevronRight className="h-3 w-3 text-primary shrink-0" />
         </div>
         <RoleBadges role={r.role} className="mt-0.5" />
       </div>
-      <span className="text-[length:var(--font-size-12px)] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
-      <span className="text-[length:var(--font-size-12-5px)] font-bold tabular-nums shrink-0" style={{ color }}>{sign}{fmtMoney(r.value)}</span>
+      <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtShares(r.shares)}주</span>
+      <span className="text-[12.5px] font-bold tabular-nums shrink-0" style={{ color }}>{sign}{fmtMoney(r.value)}</span>
     </div>
   );
 }
@@ -218,8 +218,8 @@ function InsiderListBox({ title, subtitle, color, sign, rows, ctx, dim, collapsi
       >
         {collapsible && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} style={{ color }} />}
         <span className="text-xs font-bold" style={{ color }}>{title} ({rows.length})</span>
-        {subtitle && <span className="text-[length:var(--font-size-10-5px)] font-normal text-muted-foreground ml-1">{subtitle}</span>}
-        {collapsible && !open && <span className="ml-auto text-[length:var(--font-size-10-5px)] text-muted-foreground/70">펼치기</span>}
+        {subtitle && <span className="text-[10.5px] font-normal text-muted-foreground ml-1">{subtitle}</span>}
+        {collapsible && !open && <span className="ml-auto text-[10.5px] text-muted-foreground/70">펼치기</span>}
       </div>
       {open && (
         <div className="px-2.5 pb-2.5">
@@ -245,7 +245,7 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
   }
   const groups = [...byInsider.values()].sort((a, b) => b.list.length - a.list.length);
   return (
-    <div className="rounded-lg border bg-background/50" style={{ borderLeft: "3px solid var(--ink-soft)" }}>
+    <div className="rounded-lg border bg-background/50" style={{ borderLeft: "3px solid #8b949e" }}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/30 rounded-lg"
@@ -254,7 +254,7 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} />
         ⚪ 보상·옵션행사·세금 등
         <span className="font-normal">({groups.length}명 · {others.length}건)</span>
-        <span className="ml-auto font-normal text-[length:var(--font-size-10-5px)] text-muted-foreground/70">매매 신호 아님 · 펼치기</span>
+        <span className="ml-auto font-normal text-[10.5px] text-muted-foreground/70">매매 신호 아님 · 펼치기</span>
       </button>
       {open && (
         <div className="px-2.5 pb-2.5 space-y-2">
@@ -263,18 +263,18 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
               <div className="flex items-center gap-1.5 cursor-pointer rounded hover:bg-muted/40 px-1 py-0.5" onClick={() => ctx.openInsider(g.slug, g.name)} title={`${g.name} 거래 보기`}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-[length:var(--font-size-13px)] truncate" title={g.name}>{g.name}</span>
+                    <span className="font-semibold text-[13px] truncate" title={g.name}>{g.name}</span>
                     <ChevronRight className="h-3 w-3 text-primary shrink-0" />
                   </div>
                   <RoleBadges role={g.role} className="mt-0.5" />
                 </div>
-                <span className="text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums shrink-0">{g.list.length}건</span>
+                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{g.list.length}건</span>
               </div>
               <div className="mt-1 ml-1">
                 {[...g.list].sort((a, b) => b.txnDate - a.txnDate).map((t) => (
-                  <div key={t.id} className="grid items-center gap-2 py-0.5 text-[length:var(--font-size-11-5px)] text-muted-foreground" style={{ gridTemplateColumns: "78px 60px 1fr 84px" }}>
+                  <div key={t.id} className="grid items-center gap-2 py-0.5 text-[11.5px] text-muted-foreground" style={{ gridTemplateColumns: "78px 60px 1fr 84px" }}>
                     <span className="tabular-nums">{ymd(t.txnDate)}</span>
-                    <span><span className="text-[length:var(--font-size-10px)] px-1.5 py-0.5 rounded font-bold bg-muted/60 text-muted-foreground">{SIDE_KO[t.side] || t.side}</span></span>
+                    <span><span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-muted/60 text-muted-foreground">{SIDE_KO[t.side] || t.side}</span></span>
                     <span className="tabular-nums">{fmtShares(t.shares)}주{t.price ? ` @ $${t.price.toFixed(2)}` : ""}</span>
                     <span className="text-right tabular-nums">{t.value ? fmtMoney(t.value) : "—"}</span>
                   </div>
@@ -292,13 +292,13 @@ function OtherTradesBox({ trades, ctx }: { trades: ITrade[]; ctx: Ctx }) {
 const mdDate = (ms: number) => { const d = new Date(ms); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
 // 보유 대비 비중을 방향까지 담은 한 단어로 번역: 신규 매수(pre=0만) / X% 추가 / 전량 매도 / X% 매도.
 function pctSemantic(pct: number | null, side: string, isNew: boolean): { label: string; cls: string } {
-  if (side === "buy" && isNew) return { label: "신규 매수", cls: "text-amber-700 font-bold" };
+  if (side === "buy" && isNew) return { label: "신규 매수", cls: "text-amber-700 font-bold dark:text-amber-300" };
   if (pct == null) return { label: "—", cls: "text-muted-foreground/50" };
   // #1: 보유 기저가 ~0(신규선임 이사 등)이면 qty/pre 가 무의미하게 폭증(예 NCLH Pagliuca 15485%) → '보유 대비'로
   //   실제 CEO(16%)보다 컨빅션 높아 보이는 왜곡. pct>9(매수가 직전보유의 >10배=포지션 대부분 신규)면 '신규 대량'으로
   //   표기하고 절대금액($25M)이 신호를 끌게 함. 표시 전용 — 점수(holdingsMultiplier 는 >0.5면 ×1.5로 이미 saturate)는 불변.
-  if (side === "buy" && pct > 9) return { label: "신규 대량", cls: "text-amber-700 font-bold" };
-  const cls = pct > 0.5 ? "text-amber-700 font-bold" : pct >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50";
+  if (side === "buy" && pct > 9) return { label: "신규 대량", cls: "text-amber-700 font-bold dark:text-amber-300" };
+  const cls = pct > 0.5 ? "text-amber-700 font-bold dark:text-amber-300" : pct >= 0.1 ? "text-muted-foreground" : "text-muted-foreground/50";
   const label = side === "buy"
     ? `${Math.round(pct * 100)}% 추가` // pre>0 이면 보유 대비 추가매집(대량이면 337% 추가 등)
     : (pct >= 1 ? "전량 매도" : `${Math.round(pct * 100)}% 매도`);
@@ -311,11 +311,11 @@ function FlagInfo({ label, cls, tip }: { label: string; cls: string; tip: string
     <Popover>
       <PopoverTrigger asChild>
         <button type="button" onClick={(e) => e.stopPropagation()} title={tip} aria-label={`${label}: ${tip}`}
-          className={`inline-flex items-center gap-0.5 text-[length:var(--font-size-9px)] px-1 py-0.5 rounded shrink-0 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}`}>
+          className={`inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded shrink-0 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}`}>
           {label}<Info className="h-2.5 w-2.5 opacity-70" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-60 text-[length:var(--font-size-11-5px)] leading-snug p-2.5">{tip}</PopoverContent>
+      <PopoverContent side="top" align="start" className="w-60 text-[11.5px] leading-snug p-2.5">{tip}</PopoverContent>
     </Popover>
   );
 }
@@ -326,25 +326,25 @@ function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (s
   return (
     <div onClick={() => onPick(c.symbol)} className="shrink-0 w-[258px] rounded-lg border p-3 cursor-pointer hover:border-primary bg-background/50" style={{ borderLeft: `3px solid ${color}` }} data-testid={`cluster-${c.symbol}-${c.side}`}>
       <div className="flex items-center gap-1.5">
-        <span className={`text-[length:var(--font-size-11px)] font-bold tabular-nums shrink-0 rounded px-1 ${rank <= 3 ? "bg-primary/15 text-primary" : "text-muted-foreground/70"}`} title={`이 섹션 점수 ${rank}위`}>#{rank}</span>
+        <span className={`text-[11px] font-bold tabular-nums shrink-0 rounded px-1 ${rank <= 3 ? "bg-primary/15 text-primary" : "text-muted-foreground/70"}`} title={`이 섹션 점수 ${rank}위`}>#{rank}</span>
         <span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(c.symbol) }} />
         <span className="font-bold text-sm">{c.symbol}</span>
-        <span className="text-[length:var(--font-size-10px)] text-muted-foreground truncate max-w-[64px]">{sectorLabel(c.sector)}</span>
+        <span className="text-[10px] text-muted-foreground truncate max-w-[64px]">{sectorLabel(c.sector)}</span>
         {c.thin && <FlagInfo label="얇음" cls="bg-muted text-muted-foreground" tip="참가자 2명 — 합의 근거가 약해 점수를 보정했습니다. 고티어 2인(CEO+CFO 등)은 실제 신호일 수 있습니다." />}
-        {c.gated && <FlagInfo label="구조적?" cls="bg-zinc-500/15 text-zinc-600" tip="임원 다수가 동시에 보유 전량 매도 — 외국 발행사의 보고 아티팩트일 수 있어 점수를 낮췄습니다." />}
-        <span className="ml-auto text-2xl font-bold tabular-nums shrink-0" style={{ color }}>{c.insiderCount}<span className="text-[length:var(--font-size-11px)] font-normal">명</span></span>
+        {c.gated && <FlagInfo label="구조적?" cls="bg-zinc-500/15 text-zinc-600 dark:bg-zinc-700/50 dark:text-zinc-400" tip="임원 다수가 동시에 보유 전량 매도 — 외국 발행사의 보고 아티팩트일 수 있어 점수를 낮췄습니다." />}
+        <span className="ml-auto text-2xl font-bold tabular-nums shrink-0" style={{ color }}>{c.insiderCount}<span className="text-[11px] font-normal">명</span></span>
       </div>
       {/* 메타: 한 줄을 라벨 단 칩으로 — 각 숫자가 '뭔지'를 달고 있음 */}
       <div className="flex flex-wrap items-center gap-1 mt-1.5">
-        <span className="text-[length:var(--font-size-9-5px)] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
-        <span className="text-[length:var(--font-size-9-5px)] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
+        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">합산 {fmtMoney(c.totalValue)}</span>
+        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c.spanDays === 0 ? `같은 날 (${mdDate(c.windowFromMs)})` : `${c.spanDays}일 (${mdDate(c.windowFromMs)}~${mdDate(c.windowToMs)})`}</span>
         {/* #3 동기간 반대매도(falsification): 매수클러스터인데 같은 창에 유의미한 재량 매도가 있으면 경고 — 매수≥0.5배 & ≥$1M */}
         {c.side === "buy" && (c.opposingSellValue ?? 0) >= Math.max(1e6, 0.5 * c.totalValue) && (
-          <span className="text-[length:var(--font-size-9-5px)] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 font-semibold" title="같은 윈도우에 같은 종목 인사이더의 재량 매도(10b5 플랜 제외)가 있습니다. 매수 신호가 net 관점에서 희석될 수 있어요.">⚠ 동기간 반대매도 {fmtMoney(c.opposingSellValue!)}</span>
+          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold" title="같은 윈도우에 같은 종목 인사이더의 재량 매도(10b5 플랜 제외)가 있습니다. 매수 신호가 net 관점에서 희석될 수 있어요.">⚠ 동기간 반대매도 {fmtMoney(c.opposingSellValue!)}</span>
         )}
       </div>
       {/* 컬럼 헤더 */}
-      <div className="flex items-center text-[length:var(--font-size-9px)] text-muted-foreground/70 mt-2 mb-0.5 px-0.5">
+      <div className="flex items-center text-[9px] text-muted-foreground/70 mt-2 mb-0.5 px-0.5">
         <span className="flex-1">인사이더</span>
         <span className="w-[58px] text-right">보유 대비</span>
         <span className="w-[50px] text-right">금액</span>
@@ -353,15 +353,15 @@ function ClusterCard({ c, rank, onPick }: { c: Cluster; rank: number; onPick: (s
         {c.participants.slice(0, 4).map((p) => {
           const sem = pctSemantic(p.pctOfHoldings, c.side, p.isNew);
           return (
-            <div key={p.slug} className="flex items-center gap-1 text-[length:var(--font-size-11px)] px-0.5">
+            <div key={p.slug} className="flex items-center gap-1 text-[11px] px-0.5">
               <span className="truncate max-w-[64px] shrink-0">{p.name}</span>
               <RoleBadges role={p.role} />
-              <span className={`ml-auto w-[58px] text-right text-[length:var(--font-size-9-5px)] tabular-nums shrink-0 ${sem.cls}`} title="거래 직전 보유 대비 거래 비중">{sem.label}</span>
-              <span className="w-[50px] text-right text-[length:var(--font-size-10px)] tabular-nums text-muted-foreground/80 shrink-0">{fmtMoney(p.value)}</span>
+              <span className={`ml-auto w-[58px] text-right text-[9.5px] tabular-nums shrink-0 ${sem.cls}`} title="거래 직전 보유 대비 거래 비중">{sem.label}</span>
+              <span className="w-[50px] text-right text-[10px] tabular-nums text-muted-foreground/80 shrink-0">{fmtMoney(p.value)}</span>
             </div>
           );
         })}
-        {c.participants.length > 4 && <div className="text-[length:var(--font-size-10px)] text-muted-foreground px-0.5">+{c.participants.length - 4}명 더</div>}
+        {c.participants.length > 4 && <div className="text-[10px] text-muted-foreground px-0.5">+{c.participants.length - 4}명 더</div>}
       </div>
     </div>
   );
@@ -373,7 +373,7 @@ function ClusterSection({ title, subtitle, accent, clusters, onPick }: { title: 
     <Card className="p-4">
       <div className="flex items-baseline gap-2 mb-2 flex-wrap">
         <h2 className="text-sm font-semibold" style={{ color: accent }}>{title} <span className="text-xs font-normal text-muted-foreground">· {clusters.length}건</span></h2>
-        <span className="text-[length:var(--font-size-11-5px)] text-muted-foreground">{subtitle}</span>
+        <span className="text-[11.5px] text-muted-foreground">{subtitle}</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {clusters.map((c, i) => <ClusterCard key={c.symbol + c.side} c={c} rank={i + 1} onPick={onPick} />)}
@@ -390,7 +390,7 @@ function ClusterWidget({ from, to, onPick }: { from?: number; to?: number; onPic
   const clusters = data ?? [];
   if (data === undefined) return null; // 로딩 중 — '없음' 깜빡임 방지
   if (!clusters.length) return (
-    <div className="mb-5 text-[length:var(--font-size-13px)] text-muted-foreground rounded-lg border border-dashed px-4 py-3">
+    <div className="mb-5 text-[13px] text-muted-foreground rounded-lg border border-dashed px-4 py-3">
       해당 기간 클러스터 없음 — 2명 이상이 같은 종목·같은 방향으로 거래한 합의가 없어요. <span className="text-foreground font-medium">기간을 늘려보세요</span> (최근 7일은 짧아 잘 안 잡힙니다).
     </div>
   );
@@ -398,7 +398,7 @@ function ClusterWidget({ from, to, onPick }: { from?: number; to?: number; onPic
   const sells = clusters.filter((c) => c.side === "sell");
   return (
     <div className="mb-5 space-y-3">
-      <div className="text-[length:var(--font-size-11px)] text-muted-foreground">같은 ~30일 윈도우에 다수 인사이더가 같은 방향. 점수 = 티어(정보접근도) × <b>보유 대비 비중</b> × 절대규모(바닥필터). 10b5-1 플랜 매도 제외. 카드 #=섹션 점수 순위, %=보유 대비 거래 비중.</div>
+      <div className="text-[11px] text-muted-foreground">같은 ~30일 윈도우에 다수 인사이더가 같은 방향. 점수 = 티어(정보접근도) × <b>보유 대비 비중</b> × 절대규모(바닥필터). 10b5-1 플랜 매도 제외. 카드 #=섹션 점수 순위, %=보유 대비 거래 비중.</div>
       <ClusterSection title="🟢 매수 클러스터" subtitle="누가 베팅하나 — 기회 탐색" accent={BUY} clusters={buys} onPick={onPick} />
       <ClusterSection title="🔴 매도 클러스터" subtitle="누가 빠져나가나 — 리스크 경보" accent={SELL} clusters={sells} onPick={onPick} />
     </div>
@@ -419,12 +419,12 @@ function TickerDetail({ row, from, to, ctx }: { row: RankRow; from?: number; to?
         <span className="text-xs text-muted-foreground">{sectorLabel(row.sector)}{row.company ? ` · ${row.company}` : ""}{koCompany(row.symbol) ? ` (${koCompany(row.symbol)})` : ""}</span>
       </div>
       <div className="flex gap-5 my-3 flex-wrap">
-        <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(row.buyValue)}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">내부자 매수</div></div>
-        <div><div className="text-lg font-bold tabular-nums" style={{ color: SELL }}>{fmtMoney(row.sellValue)}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">내부자 매도</div></div>
-        <div><div className="text-lg font-bold tabular-nums" style={{ color: row.netValue >= 0 ? BUY : SELL }}>{row.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(row.netValue))}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">순매수</div></div>
+        <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(row.buyValue)}</div><div className="text-[11px] text-muted-foreground">내부자 매수</div></div>
+        <div><div className="text-lg font-bold tabular-nums" style={{ color: SELL }}>{fmtMoney(row.sellValue)}</div><div className="text-[11px] text-muted-foreground">내부자 매도</div></div>
+        <div><div className="text-lg font-bold tabular-nums" style={{ color: row.netValue >= 0 ? BUY : SELL }}>{row.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(row.netValue))}</div><div className="text-[11px] text-muted-foreground">순매수</div></div>
         <div>
           <div className="text-lg font-bold tabular-nums">{row.insiderCount}명</div>
-          <div className="text-[length:var(--font-size-11px)] text-muted-foreground">매수·매도 인사이더{row.otherInsiderCount > 0 && <span className="ml-1 text-muted-foreground/70">· 보상·옵션 {row.otherInsiderCount}명</span>}</div>
+          <div className="text-[11px] text-muted-foreground">매수·매도 인사이더{row.otherInsiderCount > 0 && <span className="ml-1 text-muted-foreground/70">· 보상·옵션 {row.otherInsiderCount}명</span>}</div>
         </div>
       </div>
       {isLoading ? <Skeleton className="h-40 w-full" /> : (
@@ -433,7 +433,7 @@ function TickerDetail({ row, from, to, ctx }: { row: RankRow; from?: number; to?
           <InsiderListBox title="🟢 매수한 인사이더" color={BUY} sign="+" rows={groupRows(list, (t) => t.side === "buy")} ctx={ctx} />
           <InsiderListBox title="🔴 재량적 매도" subtitle="플랜 없는 자발적 매도 · 진짜 시그널" color={SELL} sign="−" rows={groupRows(list, (t) => t.side === "sell" && t.plan10b5 !== true)} ctx={ctx} />
           {list.some((t) => t.side === "sell" && t.plan10b5 === true) && (
-            <InsiderListBox title="🔇 10b5-1·정기 매도" subtitle="사전 약정 매도 · 노이즈" color="var(--ink-soft)" sign="−" rows={groupRows(list, (t) => t.side === "sell" && t.plan10b5 === true)} ctx={ctx} dim collapsible testid="toggle-plan-sells" />
+            <InsiderListBox title="🔇 10b5-1·정기 매도" subtitle="사전 약정 매도 · 노이즈" color="#8b949e" sign="−" rows={groupRows(list, (t) => t.side === "sell" && t.plan10b5 === true)} ctx={ctx} dim collapsible testid="toggle-plan-sells" />
           )}
           <OtherTradesBox trades={list} ctx={ctx} />
         </div>
@@ -459,24 +459,24 @@ function InsiderDetail({ slug, name, from, to, ctx, onBack }: { slug: string; na
           <RoleBadges role={list.find((t) => t.role)?.role ?? null} />
         </div>
         <div className="flex gap-5 mt-3 flex-wrap">
-          <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(buyV)}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">매수</div></div>
-          <div><div className="text-lg font-bold tabular-nums" style={{ color: SELL }}>{fmtMoney(sellV)}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">매도</div></div>
-          <div><div className="text-lg font-bold tabular-nums">{companies.size}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">거래 종목</div></div>
-          <div><div className="text-lg font-bold tabular-nums">{list.length}</div><div className="text-[length:var(--font-size-11px)] text-muted-foreground">거래 건수</div></div>
+          <div><div className="text-lg font-bold tabular-nums" style={{ color: BUY }}>{fmtMoney(buyV)}</div><div className="text-[11px] text-muted-foreground">매수</div></div>
+          <div><div className="text-lg font-bold tabular-nums" style={{ color: SELL }}>{fmtMoney(sellV)}</div><div className="text-[11px] text-muted-foreground">매도</div></div>
+          <div><div className="text-lg font-bold tabular-nums">{companies.size}</div><div className="text-[11px] text-muted-foreground">거래 종목</div></div>
+          <div><div className="text-lg font-bold tabular-nums">{list.length}</div><div className="text-[11px] text-muted-foreground">거래 건수</div></div>
         </div>
       </Card>
       <Card className="p-5">
         <h2 className="text-base font-semibold mb-2">거래 내역 <span className="text-xs font-normal text-muted-foreground">· {list.length}건 (최신순)</span></h2>
         {isLoading ? <Skeleton className="h-40 w-full" /> : (
           <div>
-            <div className="grid items-center gap-2.5 px-1.5 py-1.5 text-[length:var(--font-size-11px)] text-muted-foreground border-b" style={{ gridTemplateColumns: "90px 80px 56px 1fr 110px 110px" }}>
+            <div className="grid items-center gap-2.5 px-1.5 py-1.5 text-[11px] text-muted-foreground border-b" style={{ gridTemplateColumns: "90px 80px 56px 1fr 110px 110px" }}>
               <div>거래일</div><div>종목</div><div>유형</div><div>수량</div><div className="text-right">단가</div><div className="text-right">금액</div>
             </div>
             {list.map((t) => (
-              <div key={t.id} className="grid items-center gap-2.5 px-1.5 py-2 border-b border-border/50 last:border-0 text-[length:var(--font-size-13px)]" style={{ gridTemplateColumns: "90px 80px 56px 1fr 110px 110px" }}>
+              <div key={t.id} className="grid items-center gap-2.5 px-1.5 py-2 border-b border-border/50 last:border-0 text-[13px]" style={{ gridTemplateColumns: "90px 80px 56px 1fr 110px 110px" }}>
                 <span className="text-muted-foreground tabular-nums">{ymd(t.txnDate)}</span>
                 <span className="font-bold cursor-pointer" style={{ color: tickerColor(t.symbol) }} onClick={() => ctx.openTicker(t.symbol)}>{t.symbol}</span>
-                <span><span className="text-[length:var(--font-size-10-5px)] px-1.5 py-0.5 rounded font-bold" style={{ background: t.side === "buy" ? "var(--alpha-tone-green-500-150)" : t.side === "sell" ? "var(--alpha-tone-red-400-150)" : "var(--alpha-ink-soft-150)", color: t.side === "buy" ? BUY : t.side === "sell" ? SELL : "var(--muted-foreground)" }}>{SIDE_KO[t.side] || t.side}</span></span>
+                <span><span className="text-[10.5px] px-1.5 py-0.5 rounded font-bold" style={{ background: t.side === "buy" ? "rgba(63,185,80,.15)" : t.side === "sell" ? "rgba(248,81,73,.15)" : "rgba(139,148,158,.15)", color: t.side === "buy" ? BUY : t.side === "sell" ? SELL : "var(--muted-foreground)" }}>{SIDE_KO[t.side] || t.side}</span></span>
                 <span className="tabular-nums">{fmtShares(t.shares)}</span>
                 <span className="text-right tabular-nums text-muted-foreground">{t.price ? `$${t.price.toFixed(2)}` : "—"}</span>
                 <span className="text-right tabular-nums">{t.value ? fmtMoney(t.value) : "—"}</span>
@@ -535,13 +535,13 @@ export default function Insider() {
         <span className="text-xs text-muted-foreground">SEC Form 4 · 추적 종목(우리 DB + S&P500)</span>
         <div className="ml-auto flex items-end gap-3 flex-wrap">
           <TierGuide />
-          <div><div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">기간</div>
+          <div><div className="text-[11px] text-muted-foreground mb-1">기간</div>
             <Select value={period} onValueChange={(v) => { setPeriod(v); setSelSymbol(null); }}>
               <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="7">최근 7일</SelectItem><SelectItem value="30">최근 30일</SelectItem><SelectItem value="90">최근 90일</SelectItem><SelectItem value="all">전체</SelectItem></SelectContent>
             </Select>
           </div>
-          <div><div className="text-[length:var(--font-size-11px)] text-muted-foreground mb-1">정렬 기준</div>
+          <div><div className="text-[11px] text-muted-foreground mb-1">정렬 기준</div>
             <Select value={metric} onValueChange={(v) => setMetric(v as Metric)}>
               <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -563,21 +563,21 @@ export default function Insider() {
         <>
         {/* ── 상단 섹션: 클러스터(다수 합의) ── */}
         <div className="mb-3">
-          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">🔥 클러스터 시그널 <span className="text-[length:var(--font-size-13px)] font-medium text-muted-foreground">여러 명이 뭉친 곳은? (합의 신호)</span></h2>
+          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">🔥 클러스터 시그널 <span className="text-[13px] font-medium text-muted-foreground">여러 명이 뭉친 곳은? (합의 신호)</span></h2>
         </div>
         <ClusterWidget from={from} to={to} onPick={(s) => setSelSymbol(s)} />
         {/* ── 하단 섹션: 종목 랭킹(전체 스캔) ── */}
         <div className="border-t mt-6 pt-5 mb-3">
-          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">📋 종목 랭킹 <span className="text-[length:var(--font-size-13px)] font-medium text-muted-foreground">단독이든 뭉쳤든, 가장 큰/유의미한 거래는? (전체 스캔)</span></h2>
+          <h2 className="text-lg font-bold flex items-baseline gap-2 flex-wrap">📋 종목 랭킹 <span className="text-[13px] font-medium text-muted-foreground">단독이든 뭉쳤든, 가장 큰/유의미한 거래는? (전체 스캔)</span></h2>
         </div>
-        <div className="grid gap-5 items-start grid-cols-[1.5fr_1fr]">
+        <div className="grid gap-5 items-start lg:grid-cols-[1.5fr_1fr]">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <h2 className="text-sm font-semibold text-muted-foreground">{period === "all" ? "전체 기간" : `최근 ${period}일`} · {sorted.length}종목</h2>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="종목/회사 검색" className="h-8 w-44 rounded-md border bg-background px-2.5 text-[length:var(--font-size-13px)]" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="종목/회사 검색" className="h-8 w-44 rounded-md border bg-background px-2.5 text-[13px]" />
             </div>
-            <p className="text-[length:var(--font-size-11-5px)] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
-            <div className="grid items-center gap-2.5 px-2 py-1.5 text-[length:var(--font-size-11px)] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 110px 1fr 96px 52px" }}>
+            <p className="text-[11.5px] text-muted-foreground mb-3">기본 정렬=<b>시그널(유의미도)</b> — 상단 클러스터와 동일 6레버 점수(티어·보유%·10b5-1 제외), 단독 거래 포함. 막대=매수(초록)/매도(빨강) 금액. 행 클릭 시 상세.</p>
+            <div className="grid items-center gap-2.5 px-2 py-1.5 text-[11px] text-muted-foreground border-b" style={{ gridTemplateColumns: "24px 110px 1fr 96px 52px" }}>
               <div className="text-center">#</div><div>종목</div><div>매수/매도</div><div className="text-right">순매수</div><div className="text-center">인사이더</div>
             </div>
             {sorted.length === 0 && <div className="text-sm text-muted-foreground py-10 text-center">데이터가 없습니다 (수집 필요)</div>}
@@ -585,9 +585,9 @@ export default function Insider() {
               <div key={r.symbol} className={`grid items-center gap-2.5 px-2 py-2 rounded-lg border cursor-pointer ${r.symbol === selSymbol ? "border-primary bg-muted/40" : "border-transparent hover:bg-muted/30"}`}
                 style={{ gridTemplateColumns: "24px 110px 1fr 96px 52px" }} onClick={() => setSelSymbol(r.symbol)}>
                 <div className="text-xs text-muted-foreground text-center tabular-nums">{i + 1}</div>
-                <div className="flex items-center gap-1.5 font-bold text-sm"><span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(r.symbol) }} />{r.symbol}<span className="text-[length:var(--font-size-10px)] font-normal text-muted-foreground">{sectorLabel(r.sector)}</span></div>
+                <div className="flex items-center gap-1.5 font-bold text-sm"><span className="h-2.5 w-2.5 rounded" style={{ background: tickerColor(r.symbol) }} />{r.symbol}<span className="text-[10px] font-normal text-muted-foreground">{sectorLabel(r.sector)}</span></div>
                 <StackedBar r={r} maxVol={maxVol} />
-                <div className="text-right text-[length:var(--font-size-12-5px)] font-bold tabular-nums" style={{ color: r.netValue >= 0 ? BUY : SELL }}>{r.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(r.netValue))}</div>
+                <div className="text-right text-[12.5px] font-bold tabular-nums" style={{ color: r.netValue >= 0 ? BUY : SELL }}>{r.netValue >= 0 ? "+" : "−"}{fmtMoney(Math.abs(r.netValue))}</div>
                 <div className="text-center text-xs text-muted-foreground tabular-nums">{r.insiderCount}명</div>
               </div>
             ))}

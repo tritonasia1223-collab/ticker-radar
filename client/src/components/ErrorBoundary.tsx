@@ -50,18 +50,18 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="flex min-h-full items-center justify-center p-6">
         <div className="w-full max-w-lg rounded-xl border border-destructive/40 bg-card p-5 shadow-sm">
           <div className="text-base font-semibold text-foreground">이 화면에서 문제가 발생했습니다</div>
-          <p className="mt-1 text-[length:var(--font-size-13px)] text-muted-foreground">
+          <p className="mt-1 text-[13px] text-muted-foreground">
             사이트는 정상입니다. 다른 탭으로 이동하거나 새로고침 해주세요. 아래 오류 내용을 개발자에게 전달하면 원인 파악에 도움이 됩니다.
           </p>
 
           <div className="mt-3 rounded-md border border-border bg-muted/40 p-2.5">
-            <div className="font-mono text-[length:var(--font-size-12px)] font-semibold text-destructive break-words">
+            <div className="font-mono text-[12px] font-semibold text-destructive break-words">
               {error.name}: {error.message}
             </div>
             {(error.stack || componentStack) && (
               <details className="mt-2">
-                <summary className="cursor-pointer text-[length:var(--font-size-11px)] text-muted-foreground">스택 보기</summary>
-                <pre className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[length:var(--font-size-10-5px)] leading-snug text-muted-foreground">
+                <summary className="cursor-pointer text-[11px] text-muted-foreground">스택 보기</summary>
+                <pre className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[10.5px] leading-snug text-muted-foreground">
 {(error.stack || "") + (componentStack ? "\n\n--- component stack ---" + componentStack : "")}
                 </pre>
               </details>
@@ -72,14 +72,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={() => location.reload()}
-              className="rounded-md bg-primary px-3 py-1.5 text-[length:var(--font-size-13px)] font-medium text-primary-foreground hover:opacity-90"
+              className="rounded-md bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground hover:opacity-90"
             >
               새로고침
             </button>
             <a
               href="#/"
               onClick={() => this.setState({ error: null, componentStack: "" })}
-              className="rounded-md border border-border px-3 py-1.5 text-[length:var(--font-size-13px)] font-medium text-foreground hover:bg-muted"
+              className="rounded-md border border-border px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-muted"
             >
               홈으로
             </a>

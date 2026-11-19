@@ -9,7 +9,7 @@ export function periodChange(id: string, points: ComparePoint[], from: string, t
 }
 
 export const oneDecimal = (value: number) => (Number(value.toFixed(1)) || 0).toLocaleString("ko", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-export const directionClass = (direction: string) => direction === "up" ? "text-rose-500" : direction === "down" ? "text-blue-500" : "text-muted-foreground";
+export const directionClass = (direction: string) => direction === "up" ? "text-rose-500 dark:text-rose-400" : direction === "down" ? "text-blue-500 dark:text-blue-400" : "text-muted-foreground";
 
 export function changePresentation(result: { first: { raw: number }; last: { raw: number }; change: number }) {
   const rounded = Number(result.change.toFixed(1)) || 0;

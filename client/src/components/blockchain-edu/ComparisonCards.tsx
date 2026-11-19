@@ -5,16 +5,16 @@ export interface CompareCard { name: string; initial: string; accent: string; ro
 
 export default function ComparisonCards({ cards, rightsMode }: { cards: CompareCard[]; rightsMode?: boolean }) {
   return (
-    <div className="grid w-full gap-2.5 grid-cols-3">
+    <div className="grid w-full gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((c) => (
         <div key={c.name} className="rounded-lg border border-border bg-background p-3">
           <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md text-[length:var(--font-size-13px)] font-bold text-white" style={{ background: c.accent }}>{c.initial}</span>
-            <span className="text-[length:var(--font-size-13px)] font-bold leading-tight">{c.name}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-md text-[13px] font-bold text-white" style={{ background: c.accent }}>{c.initial}</span>
+            <span className="text-[13px] font-bold leading-tight">{c.name}</span>
           </div>
           <dl className="space-y-1">
             {c.rows.map((r) => (
-              <div key={r.label} className="flex items-start justify-between gap-2 text-[length:var(--font-size-11-5px)]">
+              <div key={r.label} className="flex items-start justify-between gap-2 text-[11.5px]">
                 <dt className="shrink-0 text-muted-foreground">{r.label}</dt>
                 <dd className={`text-right font-medium ${rightsMode ? (r.on ? "text-emerald-600" : "text-red-500 line-through decoration-red-400/60") : "text-foreground"}`}>
                   {rightsMode && (r.on ? "✓ " : "✗ ")}{r.value}
@@ -22,7 +22,7 @@ export default function ComparisonCards({ cards, rightsMode }: { cards: CompareC
               </div>
             ))}
           </dl>
-          {c.note && <p className="mt-2 border-t border-border pt-1.5 text-[length:var(--font-size-10-5px)] text-muted-foreground">{c.note}</p>}
+          {c.note && <p className="mt-2 border-t border-border pt-1.5 text-[10.5px] text-muted-foreground">{c.note}</p>}
         </div>
       ))}
     </div>

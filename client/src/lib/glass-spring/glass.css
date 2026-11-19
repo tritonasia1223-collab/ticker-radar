@@ -1,0 +1,62 @@
+/* Bind --glass-host-bg to a COMPLETE CSS color (e.g. var(--surface), or
+   hsl(var(--background))). Canvas/CanvasText are system colors, not a palette. */
+:root {
+  --glass-blur: 12px;
+  --glass-saturate: 1.4;
+  --glass-bg-alpha: 0.75;
+  --glass-strong-alpha: 0.9;
+  --glass-border-alpha: 0.14;
+  --glass-border: 1px solid;
+  --glass-strong-blur: 20px;
+}
+
+/* Explicit theme wins over the OS; the host owns the actual colors. */
+:is(.dark, [data-theme="dark"]) {
+  --glass-bg-alpha: 0.82;
+  --glass-strong-alpha: 0.94;
+  --glass-border-alpha: 0.22;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]) {
+    --glass-bg-alpha: 0.82;
+    --glass-strong-alpha: 0.94;
+    --glass-border-alpha: 0.22;
+  }
+}
+:is(.light, [data-theme="light"]) {
+  --glass-bg-alpha: 0.75;
+  --glass-strong-alpha: 0.9;
+  --glass-border-alpha: 0.14;
+}
+
+/* Derived tokens resolve here, so a host binding on any ancestor (including
+   a portal's content node) is honored instead of resolving once at :root. */
+.glass, .glass-strong {
+  --glass-surface: color-mix(in srgb, var(--glass-host-bg, Canvas) calc(var(--glass-bg-alpha) * 100%), transparent);
+  background-color: var(--glass-host-bg, Canvas);
+  border: var(--glass-border) var(--glass-host-border, var(--glass-host-fg, CanvasText));
+  border-color: color-mix(in srgb, var(--glass-host-fg, CanvasText) calc(var(--glass-border-alpha) * 100%), transparent);
+}
+.glass-strong {
+  --glass-bg-alpha: var(--glass-strong-alpha);
+  --glass-blur: var(--glass-strong-blur);
+}
+
+/* Both features are required: old browsers always keep the opaque base. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and (background: color-mix(in srgb, Canvas 75%, transparent)) {
+  .glass, .glass-strong {
+    background-color: var(--glass-surface);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .glass-strong { background-color: var(--glass-host-bg, Canvas); }
+}
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  .glass, .glass-strong {
+    background-color: var(--glass-host-bg, Canvas);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

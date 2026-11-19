@@ -21,33 +21,33 @@ export function Ch5Withdraw() {
       <div className="flex gap-1.5">
         {(["optimistic", "zk"] as const).map((p) => (
           <button key={p} onClick={() => setProof(p)}
-            className={`flex-1 rounded-lg border px-3 py-1.5 text-[length:var(--font-size-12px)] font-semibold transition-colors ${
+            className={`flex-1 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
               p === proof ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"}`}>
             {p === "optimistic" ? "Optimistic" : "ZK"}
           </button>
         ))}
       </div>
       <div className="rounded-lg border p-2.5" style={{ borderColor: LAYER.L2.solid, background: LAYER.L2.soft }}>
-        <div className="text-[length:var(--font-size-12px)] font-bold" style={{ color: LAYER.L2.ink }}>{proofDesc.title} <span className="ml-1 text-[length:var(--font-size-10px)] font-normal">· {proofDesc.tag}</span></div>
-        <p className="mt-1 text-[length:var(--font-size-11-5px)]" style={{ color: LAYER.L2.ink }}>{proofDesc.body}</p>
+        <div className="text-[12px] font-bold" style={{ color: LAYER.L2.ink }}>{proofDesc.title} <span className="ml-1 text-[10px] font-normal">· {proofDesc.tag}</span></div>
+        <p className="mt-1 text-[11.5px]" style={{ color: LAYER.L2.ink }}>{proofDesc.body}</p>
       </div>
 
       <div>
         <div className="mb-1.5 flex gap-1.5">
           {(["normal", "down", "reject"] as const).map((s) => (
             <button key={s} onClick={() => setScenario(s)}
-              className={`rounded-full border px-2.5 py-1 text-[length:var(--font-size-11px)] font-medium transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                 s === scenario ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"}`}>
               {{ normal: "정상", down: "시퀀서 멈춤", reject: "시퀀서가 거부" }[s]}
             </button>
           ))}
         </div>
-        <div className={`rounded-lg border p-2.5 text-[length:var(--font-size-11-5px)] ${scen.tone === "warn" ? "border-amber-400/50 bg-amber-50 text-amber-900" : "border-border text-muted-foreground"}`}>
+        <div className={`rounded-lg border p-2.5 text-[11.5px] ${scen.tone === "warn" ? "border-amber-400/50 bg-amber-50 text-amber-900" : "border-border text-muted-foreground"}`}>
           {scen.body}
         </div>
       </div>
 
-      <p className="text-[length:var(--font-size-11px)] font-medium">escape hatch는 장애 대비책이 아니라 <b>검열 저항의 최후 보루</b> — 이것이 진짜 L2와 사설 DB의 경계선입니다. L2의 보안은 L1에서 상속됩니다.</p>
+      <p className="text-[11px] font-medium">escape hatch는 장애 대비책이 아니라 <b>검열 저항의 최후 보루</b> — 이것이 진짜 L2와 사설 DB의 경계선입니다. L2의 보안은 L1에서 상속됩니다.</p>
     </div>
   );
 }

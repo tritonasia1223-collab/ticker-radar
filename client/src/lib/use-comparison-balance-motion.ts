@@ -1,24 +1,47 @@
 import { useLayoutEffect, useRef } from "react";
-import { useMotionValue } from "framer-motion";
-import { spring, springPresets } from "./warm-prism/spring.js";
+import { animate, useMotionValue, useReducedMotion } from "framer-motion";
 import type { InsightBalance } from "../../../shared/comparison-balance";
 
-// MotionValue only binds SVG attributes. All animation runs through warm-prism.
-export function useComparisonBalanceMotion(value: InsightBalance | null | undefined, initialFrom?: InsightBalance | null, _entryDelay = 0) {
-  const money = useMotionValue<number>(value?.money ?? initialFrom?.money ?? 0);
-  const goods = useMotionValue<number>(value?.goods ?? initialFrom?.goods ?? 0);
-  const labelOpacity = useMotionValue(1), comparisonOpacity = useMotionValue(1), resultOpacity = useMotionValue(1);
-  const mounted = useRef(false);
+// Owned by the sidebar: changing the keyed prose editor must not reset the bars.
+export function useComparisonBalanceMotion(value: InsightBalance | null | undefined, initialFrom?: InsightBalance | null, entryDelay = 0) {
+  const money = useMotionValue<number>(value?.money ?? initialFrom?.money ?? 0), goods = useMotionValue<number>(value?.goods ?? initialFrom?.goods ?? 0);
+  const labelOpacity = useMotionValue(1);
+  const comparisonOpacity = useMotionValue(1), resultOpacity = useMotionValue(1);
+  const previousVisible = useRef(false);
+  const reduced = useReducedMotion();
+  const visible = !!value;
   useLayoutEffect(() => {
-    labelOpacity.set(1); comparisonOpacity.set(1); resultOpacity.set(1);
-    if (!value) { mounted.current = false; return; }
-    if (!mounted.current) { mounted.current = true; money.set(value.money); goods.set(value.goods); return; }
-    const motions = [[money, value.money], [goods, value.goods]].map(([state, target]) => {
-      const binding = state as typeof money;
-      return spring(document.createElement('div'), { ...springPresets.smooth, from: binding.get(), to: target as number, onUpdate: v => binding.set(v) });
+    const connect = visible && (previousVisible.current || !!initialFrom) && !reduced;
+    const entering = visible && !previousVisible.current;
+    previousVisible.current = visible;
+    money.stop(); goods.stop(); labelOpacity.stop(); comparisonOpacity.stop(); resultOpacity.stop();
+    if (entering && initialFrom && !reduced) { money.set(initialFrom.money); goods.set(initialFrom.goods); }
+    const moving = visible && (Math.abs(money.get() - value!.money) > .0001 || Math.abs(goods.get() - value!.goods) > .0001);
+    const showResult = () => { labelOpacity.set(1); comparisonOpacity.set(1); resultOpacity.set(1); };
+    if (!visible) {
+      if (initialFrom) { money.set(initialFrom.money); goods.set(initialFrom.goods); }
+      labelOpacity.set(0); comparisonOpacity.set(0); resultOpacity.set(0); return;
+    }
+    if (!connect || !moving) { money.set(value!.money); goods.set(value!.goods); showResult(); return; }
+    // Animate from current rendered values, in either direction, including interruptions.
+    // Give the reader time to follow the zero crossing, rather than settling immediately.
+    const transition = { type: "tween" as const, duration: 1.1, delay: entering ? entryDelay : 0, ease: [0.45, 0, 0.55, 1] as const };
+    labelOpacity.set(0);
+    comparisonOpacity.set(0); resultOpacity.set(0);
+    let active = true;
+    const a = animate(money, value!.money, transition), b = animate(goods, value!.goods, transition);
+    // Interrupted transitions must not reveal the new labels before their own motion ends.
+    Promise.all([a, b]).then(async () => {
+      if (!active) return;
+      // One fade rhythm, staggered slightly so the explanation follows the settled bars.
+      const reveal = { duration: .18, ease: "easeOut" as const };
+      animate(labelOpacity, 1, reveal);
+      await animate(comparisonOpacity, 1, { ...reveal, delay: .08 });
+      if (active) animate(resultOpacity, 1, reveal);
     });
-    return () => motions.forEach(m => m.cancel());
-  }, [!!value, value?.money, value?.goods, money, goods, labelOpacity, comparisonOpacity, resultOpacity]);
+    return () => { active = false; a.stop(); b.stop(); labelOpacity.stop(); comparisonOpacity.stop(); resultOpacity.stop(); };
+  }, [visible, value?.money, value?.goods, reduced, money, goods, labelOpacity, comparisonOpacity, resultOpacity, initialFrom?.money, initialFrom?.goods, entryDelay]);
   return { money, goods, labelOpacity, comparisonOpacity, resultOpacity };
 }
 export type BalanceMotion = ReturnType<typeof useComparisonBalanceMotion>;
+

@@ -90,7 +90,7 @@ function FreshnessBadge({ lastAt }: { lastAt?: number | null }) {
         <TooltipTrigger asChild>
           <div
             className={`shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border cursor-help whitespace-nowrap ${
-              stale ? "border-amber-500/40 bg-amber-500/10 text-amber-600" : "text-muted-foreground"
+              stale ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400" : "text-muted-foreground"
             }`}
             data-testid="freshness-badge"
           >
@@ -141,7 +141,7 @@ function CollectButton() {
 
   return (
     <Button size="sm" variant="outline" disabled={busy} onClick={start} data-testid="button-collect">
-      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${busy ? "" : ""}`} />
+      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${busy ? "animate-spin" : ""}`} />
       {busy ? "수집 중…" : "갱신"}
     </Button>
   );
@@ -183,7 +183,7 @@ export default function Discover() {
         </div>
       </header>
 
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <StatCard icon={Users2} label="추적 계정" value={stats?.accounts ?? 0} />
         <StatCard icon={MessageCircle} label="수집 트윗" value={stats?.tweets ?? 0} />
         <StatCard icon={Hash} label="언급 종목" value={stats?.symbols ?? 0} />
@@ -253,9 +253,9 @@ export default function Discover() {
                   data-testid={`newcomer-${r.symbol}`}
                 >
                   <div className="font-medium text-sm truncate leading-tight">{n.primary}</div>
-                  <div className="text-[length:var(--font-size-11px)] text-muted-foreground truncate leading-tight">{n.secondary || r.symbol}</div>
+                  <div className="text-[11px] text-muted-foreground truncate leading-tight">{n.secondary || r.symbol}</div>
                   <div className="mt-1.5 text-xs tabular-nums">
-                    <span className="text-amber-600 font-semibold">{r.recentAccounts}명</span>
+                    <span className="text-amber-600 dark:text-amber-500 font-semibold">{r.recentAccounts}명</span>
                     <span className="text-muted-foreground"> · {r.recentMentions}회</span>
                   </div>
                 </button>
@@ -279,13 +279,13 @@ export default function Discover() {
         <Card className="overflow-hidden">
           <TooltipProvider delayDuration={150}>
           {/* header */}
-          <div className="flex items-center gap-6 px-4 py-2.5 border-b text-[length:var(--font-size-11px)] font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="flex items-center gap-6 px-4 py-2.5 border-b text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
             <Th className="w-6 justify-center" label="#" tip="'명'(서로 다른 계정 수)이 많은 순으로 정렬됩니다 — 한 계정이 도배해도 1명이라, 진짜 여러 명이 주목한 종목이 위로 옵니다." />
             <div className="flex-1 min-w-0">종목</div>
             <Th className="w-12 justify-end" label="명" tip="중복 배제 — 이 종목을 언급한 서로 다른 계정 수입니다. 한 계정이 여러 번 올려도 1명. 순위 기준이에요." />
             <Th className="w-14 justify-end" label="언급" tip="중복 포함 — 총 게시물 수입니다. 같은 계정의 여러 글도 모두 셉니다." />
             <Th className="w-16 justify-end" label="추세" tip="직전 같은 기간 대비 추세입니다. 이전에 없던 종목이면 🆕신규, 2배 이상이면 급증. 언급이 적으면(3회 미만) 신뢰도가 낮아 흐리게 표시됩니다." />
-            <Th className="w-20 justify-end flex" label="추이" tip="최근 14일간 일별 언급 횟수의 추이입니다." />
+            <Th className="w-20 justify-end hidden md:flex" label="추이" tip="최근 14일간 일별 언급 횟수의 추이입니다." />
           </div>
           {/* rows */}
           {rows.map((row, idx) => {
@@ -301,14 +301,14 @@ export default function Discover() {
                 <div className="flex-1 min-w-0 flex items-center gap-2">
                   <div className="min-w-0">
                     <div className="font-medium text-sm truncate leading-tight">{n.primary}</div>
-                    {n.secondary && <div className="text-[length:var(--font-size-11px)] text-muted-foreground truncate leading-tight">{n.secondary}</div>}
+                    {n.secondary && <div className="text-[11px] text-muted-foreground truncate leading-tight">{n.secondary}</div>}
                   </div>
-                  <span className="shrink-0 text-[length:var(--font-size-11px)] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{row.symbol}</span>
+                  <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{row.symbol}</span>
                 </div>
                 <div className="w-12 text-right tabular-nums text-sm font-medium">{row.recentAccounts}</div>
                 <div className="w-14 text-right tabular-nums text-sm text-muted-foreground">{row.recentMentions.toLocaleString()}</div>
                 <div className="w-16 text-right"><StatusBadge recent={row.recentMentions} prior={row.priorMentions} market={market} /></div>
-                <div className="w-20 block"><Sparkline data={row.trend} /></div>
+                <div className="w-20 hidden md:block"><Sparkline data={row.trend} /></div>
               </div>
             );
           })}
@@ -346,7 +346,7 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full max-w-lg overflow-auto">
+      <SheetContent className="w-full sm:max-w-lg overflow-auto">
         {row && (
           <>
             <SheetHeader>
@@ -372,14 +372,14 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
                     <div className="mt-2.5 pt-2.5 border-t flex flex-wrap gap-1.5">
                       {sources.slice(0, 6).map((s, i) => (
                         <a key={i} href={s.url} target="_blank" rel="noreferrer"
-                          className="text-[length:var(--font-size-11px)] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground hover:underline truncate max-w-[12rem]"
+                          className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground hover:underline truncate max-w-[12rem]"
                           data-testid={`report-source-${i}`}>
                           {s.title || s.url}
                         </a>
                       ))}
                     </div>
                   )}
-                  <div className="text-[length:var(--font-size-11px)] text-muted-foreground mt-2">{report.model} · {timeAgo(report.generatedAt)} 생성</div>
+                  <div className="text-[11px] text-muted-foreground mt-2">{report.model} · {timeAgo(report.generatedAt)} 생성</div>
                 </Card>
               </div>
             )}
@@ -391,9 +391,9 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={tl} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="day" tick={{ fontSize: "var(--font-size-10)", fill: "hsl(var(--muted-foreground))" }} tickFormatter={(d) => d.slice(5)} />
-                      <YAxis tick={{ fontSize: "var(--font-size-10)", fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-                      <RTooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius-8)", fontSize: "var(--font-size-12)" }} />
+                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(d) => d.slice(5)} />
+                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                      <RTooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                       <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -408,12 +408,12 @@ function SymbolDetail({ row, market, onClose }: { row: DetailRow | null; market:
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-mono text-primary">@{t.handle}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[length:var(--font-size-11px)] text-muted-foreground">{timeAgo(t.tweetedAt)}</span>
+                      <span className="text-[11px] text-muted-foreground">{timeAgo(t.tweetedAt)}</span>
                       {t.url && <a href={t.url} target="_blank" rel="noreferrer" data-testid={`link-tweet-${t.tweetId}`}><ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" /></a>}
                     </div>
                   </div>
                   <p className="text-sm leading-snug">{t.text}</p>
-                  <div className="flex gap-4 mt-2 text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums">
+                  <div className="flex gap-4 mt-2 text-[11px] text-muted-foreground tabular-nums">
                     <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{t.likeCount}</span>
                     <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3" />{t.retweetCount}</span>
                     <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{t.replyCount}</span>

@@ -5,7 +5,7 @@ import postcss from 'postcss';
 
 const root = path.resolve('client/src');
 const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
-const cssFiles = files(root).filter(file => file.endsWith('.css'));
+const cssFiles = [path.join(root, 'lib/warm-prism/theme.css')];
 const theme = postcss.parse(readFileSync(path.join(root, 'lib/warm-prism/theme.css'), 'utf8'));
 
 describe('warm-prism integration policy', () => {
@@ -30,17 +30,18 @@ describe('warm-prism integration policy', () => {
     const body = theme.nodes.find(node => node.type === 'rule' && node.selector === 'body');
     expect(body?.toString()).toContain('min-width: 1080px');
     expect(theme.toString()).toContain('prefers-reduced-motion: reduce');
-    expect(readFileSync('client/index.html', 'utf8')).toContain('content="width=1080"');
+    expect(readFileSync('client/src/main.tsx', 'utf8')).not.toContain('warm-prism/theme.css');
+    expect(readFileSync('client/index.html', 'utf8')).toContain('width=device-width');
   });
 
-  it('prism stays masked at the edge, and repeated shared events have no glass', () => {
+  it('portable prism stays masked; the site retains its pre-theme timeline presentation', () => {
     const prismPaints: string[] = [];
     theme.walkDecls(decl => { if (/^background/.test(decl.prop) && decl.value.includes('var(--prism)')) prismPaints.push(decl.parent?.toString() ?? ''); });
     expect(prismPaints).toHaveLength(1);
     expect(prismPaints[0]).toContain('.prism-edge::before');
     expect(prismPaints[0]).toContain('mask-composite: exclude');
     const timeline = readFileSync(path.join(root, 'pages/InternationalTimeline.tsx'), 'utf8');
-    expect(timeline).not.toMatch(/it-europe-shared glass/);
-    expect(timeline).toContain('warm-prism/spring.js');
+    expect(timeline).toMatch(/it-europe-shared glass/);
+    expect(timeline).toContain('glass-spring/spring.js');
   });
 });

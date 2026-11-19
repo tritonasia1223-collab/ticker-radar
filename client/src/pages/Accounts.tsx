@@ -12,8 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, Trash2, AtSign } from "lucide-react";
 
 const PLATFORM: Record<string, { label: string; badge: string; border: string; dot: string }> = {
-  x: { label: "X (트위터)", badge: "bg-sky-500/15 text-sky-600 border-sky-500/30", border: "border-l-sky-500", dot: "bg-sky-500" },
-  threads: { label: "Threads", badge: "bg-violet-500/15 text-violet-600 border-violet-500/30", border: "border-l-violet-500", dot: "bg-violet-500" },
+  x: { label: "X (트위터)", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30", border: "border-l-sky-500", dot: "bg-sky-500" },
+  threads: { label: "Threads", badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30", border: "border-l-violet-500", dot: "bg-violet-500" },
 };
 
 export default function Accounts() {
@@ -96,7 +96,7 @@ export default function Accounts() {
       {isLoading ? null : accounts.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">아직 추적 계정이 없습니다. 위에서 핸들을 추가하세요.</Card>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           {(["x", "threads"] as const).map((p) => {
             const list = accounts.filter((a) => (p === "x" ? a.platform !== "threads" : a.platform === "threads"));
             const meta = PLATFORM[p];
@@ -117,10 +117,10 @@ export default function Accounts() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="font-medium text-sm truncate">{a.displayName || `@${a.handle}`}</span>
-                            {a.displayName && <span className="font-mono text-[length:var(--font-size-11px)] text-muted-foreground truncate">@{a.handle}</span>}
-                            {!a.active && <Badge variant="secondary" className="text-[length:var(--font-size-10px)] shrink-0">비활성</Badge>}
+                            {a.displayName && <span className="font-mono text-[11px] text-muted-foreground truncate">@{a.handle}</span>}
+                            {!a.active && <Badge variant="secondary" className="text-[10px] shrink-0">비활성</Badge>}
                           </div>
-                          <div className="text-[length:var(--font-size-11px)] text-muted-foreground">
+                          <div className="text-[11px] text-muted-foreground">
                             마지막 수집 {timeAgo(a.lastSyncedAt)} {a.lastTweetId ? `· 커서 …${a.lastTweetId.slice(-6)}` : a.lastSyncedAt ? "· 수집됨" : "· 미수집"}
                           </div>
                         </div>

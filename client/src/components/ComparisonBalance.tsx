@@ -44,21 +44,21 @@ export function ComparisonBalance({ value, canEdit, onChange, motionValues, init
       </g>)}
       <line x1={compact ? (editing && canEdit ? 40 : 15) : (editing && canEdit ? 94 : 38)} x2={compact ? 245 : 338} y1="82" y2="82" className="stroke-foreground/35" strokeDasharray="3 4" />
       {!editing && <text x={compact ? 4 : 25} y="86" fontSize="11" className="fill-muted-foreground">0</text>}
-      <BalanceBar id="money" label="돈" x={compact ? 75 : 128} labelWidth={compact ? 100 : 124} color="var(--tone-amber-500)" edge="var(--tone-amber-500)" text="fill-yellow-700" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} onLines={setMoneyLines} extra={extra} />
-      <BalanceBar id="goods" label="물건" x={compact ? 185 : 263} labelWidth={compact ? 100 : 124} color="var(--tone-indigo-300)" edge="var(--tone-indigo-300)" text="fill-violet-600" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} onLines={setGoodsLines} extra={extra} />
-      <motion.text data-testid="balance-comparison-symbol" x={center} y={165 + extra} textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
+      <BalanceBar id="money" label="돈" x={compact ? 75 : 128} labelWidth={compact ? 100 : 124} color="#eab308" edge="#ca8a04" text="fill-yellow-700 dark:fill-yellow-300" target={value.money} wording={value.moneyLabel} level={motionValues.money} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={money => onChange({ money })} onWording={moneyLabel => onChange({ moneyLabel })} onLines={setMoneyLines} extra={extra} />
+      <BalanceBar id="goods" label="물건" x={compact ? 185 : 263} labelWidth={compact ? 100 : 124} color="#8b5cf6" edge="#8b5cf6" text="fill-violet-600 dark:fill-violet-300" target={value.goods} wording={value.goodsLabel} level={motionValues.goods} labelOpacity={motionValues.labelOpacity} editing={editing && canEdit} onCommit={goods => onChange({ goods })} onWording={goodsLabel => onChange({ goodsLabel })} onLines={setGoodsLines} extra={extra} />
+      <motion.text data-testid="balance-comparison-symbol" x={center} y={165 + extra} textAnchor="middle" fontSize="23" fontWeight="700" className="fill-teal-700 dark:fill-teal-300" opacity={editing ? 1 : motionValues.comparisonOpacity}>{comparison}</motion.text>
       <BalanceResult center={center} width={compact ? 240 : 280} text={result} opacity={motionValues.resultOpacity} editing={editing && canEdit} onLines={setResultLines} extra={extra} onCommit={outcomeLabel => onChange({ outcomeLabel })} />
     </svg>
     {editing && canEdit && <div className="mt-1 px-2" data-testid="balance-controls">
-      <p className="text-center text-[length:var(--font-size-11px)] text-muted-foreground">막대는 드래그 · 문구는 클릭해서 수정</p>
-      <div className="flex items-center justify-between pt-1"><button className="text-[length:var(--font-size-11px)] text-muted-foreground hover:text-red-500" onClick={() => { if (onChange(null)) setEditing(false); }}>도표 제거</button><button className="rounded-md bg-foreground px-3 py-1.5 text-xs text-background" onClick={closeEditor}>완료</button></div>
+      <p className="text-center text-[11px] text-muted-foreground">막대는 드래그 · 문구는 클릭해서 수정</p>
+      <div className="flex items-center justify-between pt-1"><button className="text-[11px] text-muted-foreground hover:text-red-500" onClick={() => { if (onChange(null)) setEditing(false); }}>도표 제거</button><button className="rounded-md bg-foreground px-3 py-1.5 text-xs text-background" onClick={closeEditor}>완료</button></div>
     </div>}
   </section>;
 }
 
 function BalanceResult({ center, width, text, opacity, editing, onCommit, onLines, extra }: { center: number; width: number; text: string; opacity: MotionValue<number>; editing: boolean; onCommit: (text: string) => boolean; onLines: (count: number) => void; extra: number }) {
   return <motion.g opacity={editing ? 1 : opacity}>
-    <InlineChartText testId="balance-result" text={text} placeholder={editing ? "결과 문구 입력" : ""} x={center} y={201 + extra} inputY={201 + extra} width={width} fontSize={15} className="fill-teal-700" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} onLines={onLines} highlight />
+    <InlineChartText testId="balance-result" text={text} placeholder={editing ? "결과 문구 입력" : ""} x={center} y={201 + extra} inputY={201 + extra} width={width} fontSize={15} className="fill-teal-700 dark:fill-teal-300" editable={editing} ariaLabel="도표 결과 문구" maxLength={40} onCommit={onCommit} onLines={onLines} highlight />
   </motion.g>;
 }
 
@@ -208,7 +208,7 @@ function InlineChartText({ text, placeholder = "", x, y, inputY, width, fontSize
         if (e.key === "Escape") { e.preventDefault(); cancelled.current = true; setActive(false); }
       }} />
   </foreignObject> : <>
-    {highlight && lines.map((line, index) => <rect key={index} data-testid="balance-result-highlight" x={x - line.width / 2 - 5} y={inputY - 6 + index * lineHeight} width={line.width + 10} height="10" rx="2" className="fill-teal-400/20" />)}
+    {highlight && lines.map((line, index) => <rect key={index} data-testid="balance-result-highlight" x={x - line.width / 2 - 5} y={inputY - 6 + index * lineHeight} width={line.width + 10} height="10" rx="2" className="fill-teal-400/20 dark:fill-teal-300/20" />)}
     <motion.text data-testid={testId} x={x} y={y} opacity={opacity} textAnchor="middle" fontSize={fontSize} fontWeight={weight}
     role={editable ? "button" : undefined} tabIndex={editable ? 0 : undefined} aria-label={editable ? `${ariaLabel} 수정` : undefined}
     className={`${className}${editable ? " cursor-text underline decoration-dotted underline-offset-4 outline-none focus:decoration-solid" : ""}`}
