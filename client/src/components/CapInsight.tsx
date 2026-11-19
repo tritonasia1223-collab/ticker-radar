@@ -135,9 +135,9 @@ export function InsightPanel({
     <div ref={rootRef} className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3" onFocusCapture={onFocusCapture} onKeyDownCapture={onKeyDownCapture} onInputCapture={onInputCapture}>
       <div className="flex items-start justify-between gap-2 border-b border-border/50 pb-2">
         <div className="min-w-0">
-          <div className="text-[11px] tabular-nums text-muted-foreground">
+          <div className="text-[length:var(--font-size-11px)] tabular-nums text-muted-foreground">
             {flow.endDate ? `${flow.date} ~ ${flow.endDate}` : flow.date}
-            {draft.dirty ? <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600" data-testid="insight-unsaved">저장 안 됨</span> : null}
+            {draft.dirty ? <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-medium text-amber-600" data-testid="insight-unsaved">저장 안 됨</span> : null}
           </div>
           <div className="flex items-center gap-1.5 text-sm font-semibold">
             <Star className="h-3.5 w-3.5 shrink-0 text-red-500" fill="currentColor" />
@@ -149,7 +149,7 @@ export function InsightPanel({
             <button
               type="button"
               onClick={finishEditing}
-              className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+              className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[length:var(--font-size-11px)] font-medium text-primary transition-colors hover:bg-primary/10"
               title="저장하고 읽기 화면으로 (편집 중 Ctrl+S: 저장만)"
               data-testid="insight-done"
             >
@@ -159,7 +159,7 @@ export function InsightPanel({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
               title="인사이트 편집"
               data-testid="insight-edit"
             >
@@ -170,7 +170,7 @@ export function InsightPanel({
             <button
               type="button"
               onClick={closePanel}
-              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
               title="그래프로 돌아가기 (저장 안 된 변경은 저장)"
               data-testid="insight-close"
             >
@@ -182,7 +182,7 @@ export function InsightPanel({
 
       {showEditor ? (
         <>
-          <div className="text-[11px] text-muted-foreground/70">
+          <div className="text-[length:var(--font-size-11px)] text-muted-foreground/70">
             이 사건과 <b className="text-foreground/80">지금</b>을 어떻게 연결할 수 있을까? — 과거↔현재 인사이트
           </div>
           <BlockStack
@@ -193,7 +193,7 @@ export function InsightPanel({
       ) : hasVisibleBlock(blocks) ? (
         <BlockStack blocks={blocks} editing={false} allow={{}} eventFrac={eventFrac} onChange={() => {}} />
       ) : (
-        <div className="py-2 text-[12px] italic text-muted-foreground/60">
+        <div className="py-2 text-[length:var(--font-size-12px)] italic text-muted-foreground/60">
           {editable ? "아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요." : "아직 인사이트가 없습니다."}
         </div>
       )}
@@ -267,18 +267,18 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
         )}
         {editable ? (
           <div className="flex shrink-0 items-center gap-1.5">
-            {draft.dirty ? <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600" data-testid="meta-unsaved">저장 안 됨</span> : null}
+            {draft.dirty ? <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[length:var(--font-size-10px)] font-medium text-amber-600" data-testid="meta-unsaved">저장 안 됨</span> : null}
             {showEditor ? (
               <button type="button" onClick={finishEditing} title="저장하고 읽기 화면으로 (편집 중 Ctrl+S: 저장만)"
-                className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+                className="flex items-center gap-1 rounded-md border border-primary/50 px-2 py-1 text-[length:var(--font-size-11px)] font-medium text-primary transition-colors hover:bg-primary/10"
                 data-testid="meta-done"><Check className="h-3.5 w-3.5" /> 저장</button>
             ) : (
               <button type="button" onClick={() => setEditing(true)}
-                className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                 data-testid="meta-edit"><Pencil className="h-3 w-3" /> 편집</button>
             )}
             <button type="button" onClick={removeCard} title="카드 삭제"
-              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground/70 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+              className="flex items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] text-muted-foreground/70 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
               data-testid="meta-delete"><Trash2 className="h-3 w-3" /></button>
           </div>
         ) : null}
@@ -292,7 +292,7 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
       ) : hasVisibleBlock(blocks) ? (
         <BlockStack blocks={blocks} editing={false} allow={{}} onChange={() => {}} onJump={onJump} />
       ) : editable ? (
-        <button type="button" onClick={() => setEditing(true)} className="text-[12px] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
+        <button type="button" onClick={() => setEditing(true)} className="text-[length:var(--font-size-12px)] text-muted-foreground/70 hover:text-primary">+ 메타 인사이트 작성</button>
       ) : null}
     </section>
   );
@@ -321,7 +321,7 @@ function MetaCards({ cards, onSave, onJump, editable = true }: {
       ))}
       {editable ? (
         <button type="button" onClick={addCard}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 py-2.5 text-[12px] font-medium text-primary/80 transition-colors hover:border-primary/70 hover:bg-primary/[0.04] hover:text-primary"
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 py-2.5 text-[length:var(--font-size-12px)] font-medium text-primary/80 transition-colors hover:border-primary/70 hover:bg-primary/[0.04] hover:text-primary"
           data-testid="meta-add-card">
           <Plus className="h-4 w-4" /> 메타 인사이트 카드 추가
         </button>
@@ -361,7 +361,7 @@ export function InsightsCollection({
         <article key={f.slug} className="border-b border-border/40 pb-6 last:border-0">
           <header className="mb-2 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-[11px] tabular-nums text-muted-foreground">
+              <div className="text-[length:var(--font-size-11px)] tabular-nums text-muted-foreground">
                 {f.endDate ? `${f.date} ~ ${f.endDate}` : f.date}
               </div>
               <h3 className="flex items-center gap-1.5 text-base font-bold">
@@ -373,7 +373,7 @@ export function InsightsCollection({
               <button
                 type="button"
                 onClick={() => onOpenInsight(f.slug)}
-                className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                 title="타임라인에서 편집"
                 data-testid={`insight-edit-${f.slug}`}
               >

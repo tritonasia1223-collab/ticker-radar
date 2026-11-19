@@ -145,8 +145,8 @@ export function TableCard({
       ref={hostRef}
       className={`rounded-md border p-1.5 shadow-sm transition-all ${
         focused
-          ? "border-sky-400/80 bg-sky-100/70 ring-2 ring-sky-400/60 dark:border-sky-400/60 dark:bg-sky-400/15 dark:ring-sky-400/50"
-          : "border-sky-300/50 bg-sky-50/60 dark:border-sky-400/25 dark:bg-sky-400/10"
+          ? "border-sky-400/80 bg-sky-100/70 ring-2 ring-sky-400/60"
+          : "border-sky-300/50 bg-sky-50/60"
       }`}
       onClick={(e) => e.stopPropagation()}
       onMouseEnter={() => onFocusNode?.(node.id)}
@@ -162,11 +162,11 @@ export function TableCard({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={(e) => { editingRef.current = false; commit(setTitle(e.currentTarget.value)); }}
           placeholder="표 제목 (선택)"
-          className="mb-1 w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-[12px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:bg-background/60"
+          className="mb-1 w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-[length:var(--font-size-12px)] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:bg-background/60"
           data-testid={`table-title-${node.id}`}
         />
       ) : (t.title && t.title.trim() ? (
-        <div className="mb-1 px-1 text-center text-[12px] font-semibold text-foreground" data-testid={`table-title-${node.id}`}>{t.title}</div>
+        <div className="mb-1 px-1 text-center text-[length:var(--font-size-12px)] font-semibold text-foreground" data-testid={`table-title-${node.id}`}>{t.title}</div>
       ) : null)}
 
       {t.cells.map((row, r) => (
@@ -193,7 +193,7 @@ export function TableCard({
                 key={c}
                 // 헤더(1행 또는 1열)는 배경을 약간 진하게 — 라이트/다크 모두에서 대비.
                 className={`group/col relative border border-border/60 ${
-                  r === 0 || c === 0 ? "bg-black/[0.06] dark:bg-white/[0.09]" : ""
+                  r === 0 || c === 0 ? "bg-black/[0.06]" : ""
                 }`}
                 style={{ flexGrow: t.widths[c] || 1, flexBasis: 0, minWidth: 0 }}
               >
@@ -230,11 +230,11 @@ export function TableCard({
                       onPendingChange={() => { dirty.current = true; }}
                       onChange={(value) => { setCell(r, c, value); }}
                       onBlur={(value) => { editingRef.current = false; commit(setCell(r, c, value)); }}
-                      className="rounded-none border-0 bg-transparent px-1 py-0.5 text-[11.5px] leading-snug text-foreground focus:bg-background/60"
+                      className="rounded-none border-0 bg-transparent px-1 py-0.5 text-[length:var(--font-size-11_5px)] leading-snug text-foreground focus:bg-background/60"
                     />
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap break-words px-1 py-0.5 text-[11.5px] leading-snug text-foreground"><CapRichText text={cell || "\u200b"} /></div>
+                  <div className="whitespace-pre-wrap break-words px-1 py-0.5 text-[length:var(--font-size-11_5px)] leading-snug text-foreground"><CapRichText text={cell || "\u200b"} /></div>
                 )}
 
                 {/* 열 경계 드래그 핸들 — 마지막 열 제외(이웃과 너비 교환), 첫 행에만 표시(열 전체 작용) */}
@@ -256,18 +256,18 @@ export function TableCard({
       {editable ? (
         <div className="mt-1 flex items-center gap-1">
           <button type="button" onClick={addCol} title="열 추가(총 너비 고정·균등 분할)"
-            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-sky-100/60 hover:text-sky-600 dark:hover:bg-sky-400/15"
+            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[length:var(--font-size-10px)] text-muted-foreground hover:bg-sky-100/60 hover:text-sky-600"
             data-testid={`add-col-${node.id}`}>
             <Plus className="h-2.5 w-2.5" /> 열
           </button>
           <button type="button" onClick={addRow} title="행 추가"
-            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-sky-100/60 hover:text-sky-600 dark:hover:bg-sky-400/15"
+            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[length:var(--font-size-10px)] text-muted-foreground hover:bg-sky-100/60 hover:text-sky-600"
             data-testid={`add-row-${node.id}`}>
             <Plus className="h-2.5 w-2.5" /> 행
           </button>
           <span className="flex-1" />
           <button type="button" onClick={deleteTable} title="표 삭제"
-            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive"
+            className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[length:var(--font-size-10px)] text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive"
             data-testid={`del-table-${node.id}`}>
             <Trash2 className="h-2.5 w-2.5" /> 표 삭제
           </button>

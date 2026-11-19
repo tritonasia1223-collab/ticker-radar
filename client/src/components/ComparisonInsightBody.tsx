@@ -1,6 +1,5 @@
 import { Fragment, forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useInView } from "framer-motion";
 import { ArrowUp, ArrowDown, Plus, Trash2, Move, X, Minus } from "lucide-react";
 import { CapRichEditor, type CapRichEditorHandle, type CapRichEditorProps } from "./CapRichEditor";
 import { collaboration } from "@/lib/cap-collab-client";
@@ -94,7 +93,7 @@ export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read
   };
   const beginPlacement = (id: string) => { setPlacementError(""); setPlacing(id); };
   return <div ref={body} className="mt-3" data-testid="insight-body">
-    {canEdit && placing && <div role="status" className="sticky top-0 z-20 mb-2 flex items-center justify-between gap-2 rounded-md border border-teal-500/20 bg-background px-3 py-2 text-xs text-teal-700 dark:text-teal-300">
+    {canEdit && placing && <div role="status" className="sticky top-0 z-20 mb-2 flex items-center justify-between gap-2 rounded-md border border-teal-500/20 bg-background px-3 py-2 text-xs text-teal-700">
       <span>{placementError || "본문의 원하는 위치를 클릭하세요. 문장 중간에도 넣을 수 있습니다."}</span><button aria-label="도표 배치 취소" className="shrink-0 rounded p-1 hover:bg-muted" onClick={() => setPlacing(null)}><X size={14} /></button>
     </div>}
     {canEdit && placing && target && createPortal(<div className="fixed z-[110] flex items-center gap-1 rounded-md border border-teal-500/25 bg-background p-1 shadow-md" style={{ left: target.x, top: target.y }} onPointerDown={e => e.preventDefault()}>
@@ -125,7 +124,7 @@ export function ComparisonInsightBody({ resourceKey, note, canEdit, onJump, read
         {canEdit ? <div className="relative" data-testid="insight-text-section" data-insight-section={part.after ?? ""}>
           <div className="sticky top-0 z-10 flex justify-end bg-background/95 py-1">
             <button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted" title="커서 위치에 구분선 삽입 · 빈 줄에서 --- 입력 후 Enter" onPointerDown={e => e.preventDefault()} onClick={() => editors.current.get(part.after ?? "lead")?.insertDivider()}><Minus size={12} />구분선</button>
-            <button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-teal-700 hover:bg-teal-500/5 dark:text-teal-300 disabled:opacity-30" disabled={(note.scenes?.length ?? 0) >= 30} title="본문에서 원하는 위치를 선택해 도표를 넣습니다." onPointerDown={e => e.preventDefault()} onClick={() => beginPlacement("new")}><Plus size={12} />도표</button>
+            <button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-teal-700 hover:bg-teal-500/5 disabled:opacity-30" disabled={(note.scenes?.length ?? 0) >= 30} title="본문에서 원하는 위치를 선택해 도표를 넣습니다." onPointerDown={e => e.preventDefault()} onClick={() => beginPlacement("new")}><Plus size={12} />도표</button>
           </div>
           <BufferedInsightEditor resourceKey={resourceKey} ref={el => { if (el) editors.current.set(part.after ?? "lead", el); else editors.current.delete(part.after ?? "lead"); }} ariaLabel={index ? `인사이트 본문 ${index + 1}` : "인사이트 본문"} value={part.text} onChange={text => editText(part.after, text)} onBlur={text => editText(part.after, text)} commitOnUnmount rows={parts.length === 1 ? (note.tables?.length ? 4 : 12) : 2} align="left" className="rounded-sm border-0 text-sm font-normal leading-[22px] text-foreground focus:ring-sky-500/20" placeholder="흐름과 생각을 적어보세요. 문단 뒤에 도표를 넣어 변화를 이어갈 수 있습니다." />
         </div> : <CapRichText text={part.text || (parts.length === 1 && !note.tables?.length ? "아직 작성된 내용이 없습니다." : "")} onJump={onJump} className="block whitespace-pre-wrap break-words text-sm leading-[22px]" />}
@@ -151,7 +150,6 @@ function InlineBalance({ scene, previous, canEdit, initiallyEditing, onChange, c
   onChange: (patch: Partial<InsightBalance> | null) => boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const visible = useInView(ref, { once: true, amount: .35 });
-  const motion = useComparisonBalanceMotion(visible ? scene.balance : null, previous ?? { money: 0, goods: 0, outcome: null });
+  const motion = useComparisonBalanceMotion(scene.balance, previous ?? { money: 0, goods: 0, outcome: null });
   return <div ref={ref}><ComparisonBalance compact={compact} value={scene.balance} motionValues={motion} canEdit={canEdit} initiallyEditing={initiallyEditing} onChange={onChange} /></div>;
 }

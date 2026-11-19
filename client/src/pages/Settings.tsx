@@ -53,7 +53,7 @@ export default function Settings() {
           <div>
             <Label className="text-xs">Apify API 토큰</Label>
             <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={settings?.hasToken ? "••••••• (저장됨, 변경 시에만 입력)" : "apify_api_..."} data-testid="input-token" />
-            <p className="text-[11px] text-muted-foreground mt-1">토큰은 서버 DB에 저장되어 actor 실행에만 사용됩니다. 환경변수 APIFY_TOKEN이 있으면 그것이 우선합니다.</p>
+            <p className="text-[length:var(--font-size-11px)] text-muted-foreground mt-1">토큰은 서버 DB에 저장되어 actor 실행에만 사용됩니다. 환경변수 APIFY_TOKEN이 있으면 그것이 우선합니다.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -95,7 +95,7 @@ export default function Settings() {
                   요청 {l.handlesRequested} · 수집 {l.tweetsFetched} · 신규 {l.tweetsNew} · 언급 {l.mentionsNew}
                   {l.attempts > 1 && <span className="text-amber-500"> · 재시도 {l.attempts}회</span>}
                 </span>
-                {l.error && <span className="text-[11px] text-destructive truncate max-w-[180px]" title={l.error}>{l.error}</span>}
+                {l.error && <span className="text-[length:var(--font-size-11px)] text-destructive truncate max-w-[180px]" title={l.error}>{l.error}</span>}
               </div>
             ))}
           </div>
@@ -113,5 +113,5 @@ function StatusBadge({ status }: { status: string }) {
     running: { label: "실행중", variant: "secondary" },
   };
   const s = map[status] ?? { label: status, variant: "secondary" };
-  return <Badge variant={s.variant} className="text-[10px] w-12 justify-center">{s.label}</Badge>;
+  return <Badge variant={s.variant} className="text-[length:var(--font-size-10px)] w-12 justify-center">{s.label}</Badge>;
 }

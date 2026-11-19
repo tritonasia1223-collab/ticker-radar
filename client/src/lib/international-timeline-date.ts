@@ -17,9 +17,10 @@ export function parseTimelineDate(input: string): Pick<TimelineEvent, "year" | "
   let end: DatePart | null = null;
   if (match[4]) {
     const n = Number(match[4]);
-    const monthOnly = match[4].length <= 2 && n <= 12 && start.month !== null && !match[5];
-    const endYear = monthOnly ? start.year : match[4].length === 4 ? n : match[4].length === 2 ? Math.floor(start.year / 100) * 100 + n : 0;
-    end = part(endYear, monthOnly ? n : match[5] ? Number(match[5]) : null, match[6] ? Number(match[6]) : null);
+    const dayOnly = start.day !== null && !match[5] && match[4].length <= 2;
+    const monthOnly = !dayOnly && match[4].length <= 2 && n <= 12 && start.month !== null && !match[5];
+    const endYear = dayOnly || monthOnly ? start.year : match[4].length === 4 ? n : match[4].length === 2 ? Math.floor(start.year / 100) * 100 + n : 0;
+    end = part(endYear, dayOnly ? start.month : monthOnly ? n : match[5] ? Number(match[5]) : null, dayOnly ? n : match[6] ? Number(match[6]) : null);
     if (!end || Date.UTC(end.year, (end.month ?? 12) - 1, end.day ?? new Date(Date.UTC(end.year, end.month ?? 12, 0)).getUTCDate()) < Date.UTC(start.year, (start.month ?? 1) - 1, start.day ?? 1)) return null;
   }
   return { year: start.year, month: start.month, date: `${label(start)}${end ? `~${label(end)}` : ""}`, endYear: end?.year ?? null, endMonth: end?.month ?? null };
@@ -27,5 +28,6 @@ export function parseTimelineDate(input: string): Pick<TimelineEvent, "year" | "
 
 /** Only replace the hidden source date prefix; never rewrite the user's explanation. */
 export function withTimelineDate(event: TimelineEvent, date: NonNullable<ReturnType<typeof parseTimelineDate>>): TimelineEvent {
-  return { ...event, ...date, body: event.date && event.body.startsWith(`${event.date}\n`) ? `${date.date}\n${event.body.slice(event.date.length + 1)}` : event.body };
+  const { endY, endM, ...rest } = event;
+  return { ...rest, ...date, ...(date.endYear ? { endY: date.endYear, ...(date.endMonth ? { endM: date.endMonth } : {}) } : {}), body: event.date && event.body.startsWith(`${event.date}\n`) ? `${date.date}\n${event.body.slice(event.date.length + 1)}` : event.body };
 }

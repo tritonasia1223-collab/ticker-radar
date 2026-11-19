@@ -11,7 +11,7 @@ export function ReviewText({ text, amounts = [], className = "" }: { text: strin
     const index = text.indexOf(amount.text, cursor);
     if (index < 0) continue;
     parts.push(lines(text.slice(cursor, index)));
-    parts.push(<span key={`${index}-${amount.text}`} className="font-semibold" style={{ color: amount.value > 0 ? "#1F7A4D" : amount.value < 0 ? "#B3402E" : undefined }}>{amount.text}</span>);
+    parts.push(<span key={`${index}-${amount.text}`} className="font-semibold" style={{ color: amount.value > 0 ? "var(--tone-green-700)" : amount.value < 0 ? "var(--tone-red-500)" : undefined }}>{amount.text}</span>);
     cursor = index + amount.text.length;
   }
   parts.push(lines(text.slice(cursor)));

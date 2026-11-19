@@ -1,5 +1,5 @@
 export function SloosStandardsNote() {
-  return <div className="space-y-5 text-sm leading-[1.85] text-[#3B3934]" data-testid="sloos-standards-note">
+  return <div className="space-y-5 text-sm leading-[1.85] text-[color:var(--ink)]" data-testid="sloos-standards-note">
     <p>이 %는 금리가 아니라 <strong className="font-semibold">조였다는 은행 비율에서 풀었다는 은행 비율을 뺀 값</strong>입니다. 예를 들어 100개 은행 중 20곳이 조이고 5곳이 풀고 75곳이 그대로면 +15입니다.</p>
     <section className="space-y-3">
       <h4 className="text-sm font-semibold">부호로 읽습니다</h4>

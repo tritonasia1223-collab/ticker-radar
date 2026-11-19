@@ -5,6 +5,7 @@
 | 현재 안내 | 내용 |
 |---|---|
 | [프로젝트 README](../README.md) | 기능 상태, 실행·검증·운영 원칙 |
+| [Warm-prism 디자인 시스템](../client/src/lib/warm-prism/SKILL.md) | 공통 팔레트·글래스·프리즘·상태 전환·라이트 데스크톱 정책 |
 | [CAPITALISM](CAPITALISM.md) | 경제사 데이터·편집·차트 구조 |
 | [그래프 비교(베타)](GRAPH-COMPARE.md) | 지표 겹침·기간 탐색·원본 노드의 시간축 배치 |
 | [데이터 갱신 목록](DATA-UPDATES.md) | 자동 일정·수동 갱신·최근 실행·자료 기준일 |

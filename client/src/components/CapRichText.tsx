@@ -46,9 +46,9 @@ export function CapRichText({
             onClick={(e) => { e.stopPropagation(); onJump?.(slug); }}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump?.(slug); } }}
             style={{
-              color: "#60a5fa",
+              color: "var(--tone-blue-300)",
               textDecoration: "underline",
-              textDecorationColor: "rgba(96,165,250,0.6)",
+              textDecorationColor: "var(--alpha-tone-blue-300-600)",
               textUnderlineOffset: 2,
               cursor: onJump ? "pointer" : "default",
               fontWeight: 600,
@@ -94,7 +94,7 @@ export function CapRichText({
                 display: "flex",
                 textAlign: "left",
                 paddingLeft: `${lvl * 0.85}em`,
-                gap: "0.3em",
+                gap: "var(--space-0_3em)",
                 alignItems: "baseline",
                 // 레벨이 깊을수록 줄 전체를 미미하게 흐릿하게.
                 opacity: BULLET_OPACITY[lvl],

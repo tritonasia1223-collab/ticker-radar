@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261119-warm-prism",
+  "title": "Warm-prism portable design system and whole-site adoption",
+  "baseRef": "master",
+  "requirement": "Absorb glass-spring into theme.css + spring.js + SKILL.md; replace hardcoded presentation colors/shadows/motion with tokens; remove dark mode and mobile layouts; desktop minimum width 1080px.",
+  "acceptanceCriteria": [
+    "Warm neutral palette, tokenized type/space/radius/shadows; warm lemon/peach/lilac prism only on interaction edges.",
+    "Glass only floating layers; European shared events return to ordinary surfaces.",
+    "No dark theme, responsive layout variants, or entrance/continuous decorative motion in source.",
+    "Preserve chart/data/editor semantics, user records and existing unrelated edits.",
+    "Typecheck, build, regression tests and desktop/narrow viewport verification. Production deployment explicitly requested by user on 2026-11-19."
+  ],
+  "requiredChecks": [
+    "npm.cmd run check",
+    "npx.cmd vite build",
+    "npx.cmd vitest run"
+  ],
+  "requiresEvaluationDatabase": false,
+  "notes": "Source snapshot: tmp/warm-prism-before-20261119.zip. Release is based on origin/master db1e0f1; retain newer production editing features and all server/data code. Root: 452 tests. Release: 614 tests."
+}

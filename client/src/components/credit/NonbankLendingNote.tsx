@@ -1,5 +1,5 @@
 export function NonbankLendingNote() {
-  return <div className="space-y-5 text-sm leading-[1.85] text-[#3B3934]" data-testid="nonbank-lending-note">
+  return <div className="space-y-5 text-sm leading-[1.85] text-[color:var(--ink)]" data-testid="nonbank-lending-note">
     <section className="space-y-3">
       <h4 className="text-sm font-semibold">비은행 금융회사의 예시</h4>
       <p>예금을 받지 않으면서 돈을 빌려주거나 굴리는 금융회사 전부입니다. 은행이 이들에게 빌려준 돈이 이 그래프의 잔액입니다.</p>

@@ -13,6 +13,7 @@ function makeEvent(index: number, date: string, body: string, global: boolean, s
   const formatted = formatTimelineSource(body.replace(/🔴\s*/g, "").replace(/\s*\(대사건\)/g, "").replace(/\(대사건, G5\)/g, "(G5)"));
   const parts = date.match(/^(\d{4})(?:\.(\d{1,2}))?/)!;
   return {
+    type: "event",
     id: existing[index] !== undefined && !suffix ? `mark-revision-20261118-${String(existing[index]).padStart(2, "0")}` : `us-source-20261118-${index}${suffix}`,
     year: Number(parts[1]), month: parts[2] ? Number(parts[2]) : null, date,
     region: index === 20 ? "japan" : "us", country: index === 20 ? "일본" : "미국",

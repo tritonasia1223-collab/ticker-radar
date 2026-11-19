@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import { fedWaterfall, holdingSegments, treasuryWaterfall, waterfallBars, type TreasuryTransactions, type WaterfallItem } from "@shared/treasury-transactions";
 
-const FED = "#0d9488", OTHER = "#3b82f6", SUPPLY = "#7c3aed", NEGATIVE = "#f97316";
+const FED = "var(--tone-teal-600)", OTHER = "var(--tone-blue-400)", SUPPLY = "var(--tone-indigo-400)", NEGATIVE = "var(--tone-orange-500)";
 const money = (v: number) => {
   if (!Number.isFinite(v)) return "—";
   const a = Math.abs(v);
@@ -42,7 +42,7 @@ function HoldingsBar({ supply, fed }: { supply: number; fed: number }) {
           <rect x={x(Math.min(segment.start, segment.end))} y={24} width={Math.max(0, Math.abs(x(segment.end) - x(segment.start)))} height={25} rx={1} fill={segment.key === "fed" ? FED : OTHER}>
             <title>{segment.key === "fed" ? "연준 보유 증감" : "연준 외 보유 증감(추정)"}: {signed(segment.value)}</title>
           </rect>
-          {Math.abs(x(segment.end) - x(segment.start)) > 90 && <text x={(x(segment.start) + x(segment.end)) / 2} y={41} textAnchor="middle" fill="white" fontSize={11}>{signed(segment.value)}</text>}
+          {Math.abs(x(segment.end) - x(segment.start)) > 90 && <text x={(x(segment.start) + x(segment.end)) / 2} y={41} textAnchor="middle" fill="var(--surface)" fontSize={11}>{signed(segment.value)}</text>}
         </g>)}
         <line x1={x(0)} x2={x(0)} y1={19} y2={56} stroke="currentColor" opacity={0.35} />
         <line x1={x(supply)} x2={x(supply)} y1={15} y2={57} stroke="currentColor" strokeDasharray="3 3" opacity={0.7} />
@@ -52,7 +52,7 @@ function HoldingsBar({ supply, fed }: { supply: number; fed: number }) {
       </>}
     </svg>
     {/* Inline legend only. No repeated metric cards beneath the bar. */}
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[length:var(--font-size-11px)] text-muted-foreground">
       <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-sm" style={{ background: FED }} />연준 보유 증감</span>
       <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-sm" style={{ background: OTHER }} />연준 외 보유 증감 · 추정</span>
     </div>
@@ -82,7 +82,7 @@ function TransactionsWaterfall({ items }: { items: WaterfallItem[] }) {
           const upper = y(Math.max(bar.start, bar.end)), lower = y(Math.min(bar.start, bar.end));
           const labelY = upper - (width < 560 && i % 2 ? 21 : 7);
           return <g key={`${bar.label}-${i}`}>
-            <rect x={x(i)} y={upper} width={bw} height={Math.max(lower - upper, 1)} rx={1} fill={bar.total ? SUPPLY : bar.estimated ? "#94a3b8" : bar.value < 0 ? NEGATIVE : FED}>
+            <rect x={x(i)} y={upper} width={bw} height={Math.max(lower - upper, 1)} rx={1} fill={bar.total ? SUPPLY : bar.estimated ? "var(--line)" : bar.value < 0 ? NEGATIVE : FED}>
               <title>{bar.label}: {signed(bar.value)}{bar.estimated ? " · 추정 또는 자료 대조 차이" : ""}</title>
             </rect>
             {i < bars.length - 1 && <line x1={x(i) + bw} x2={x(i + 1)} y1={y(bar.end)} y2={y(bar.end)} stroke="currentColor" opacity={0.3} strokeDasharray="3 3" />}
@@ -127,7 +127,7 @@ export function TreasuryFlowDetails({ month, bucketLabel, selected, total }: {
   return <Card className="p-3.5" data-testid="treasury-flow-details">
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
       <h3 className="text-sm font-semibold">국채 증감 분해</h3>
-      <span className="text-[11px] text-muted-foreground">{month} · {bucketLabel}</span>
+      <span className="text-[length:var(--font-size-11px)] text-muted-foreground">{month} · {bucketLabel}</span>
     </div>
     {selected ? <HoldingsBar supply={selected.sup} fed={selected.fed} /> : <div className="py-5 text-center text-xs text-muted-foreground">선택 시점의 증감 자료가 없습니다.</div>}
     <div className="mt-3 border-t border-border/50 pt-2">
@@ -136,21 +136,21 @@ export function TreasuryFlowDetails({ month, bucketLabel, selected, total }: {
       </button>
       {open && <div className="mt-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          {tabs.map(tab => <button key={tab.key} type="button" aria-pressed={kind === tab.key} onClick={() => setKind(tab.key)} className={`rounded border px-2 py-1 text-[11px] ${kind === tab.key ? "border-foreground/40 bg-muted font-semibold" : "border-border hover:bg-muted/50"}`}>{tab.label}</button>)}
-          <span className="ml-auto text-[10px] text-muted-foreground">{month} · 전체 국채 · 액면 기준</span>
+          {tabs.map(tab => <button key={tab.key} type="button" aria-pressed={kind === tab.key} onClick={() => setKind(tab.key)} className={`rounded border px-2 py-1 text-[length:var(--font-size-11px)] ${kind === tab.key ? "border-foreground/40 bg-muted font-semibold" : "border-border hover:bg-muted/50"}`}>{tab.label}</button>)}
+          <span className="ml-auto text-[length:var(--font-size-10px)] text-muted-foreground">{month} · 전체 국채 · 액면 기준</span>
         </div>
         {!enabled ? <p className="py-8 text-center text-xs text-muted-foreground">선택 시점의 대조 자료가 없습니다.</p>
           : query.isFetching && !data ? <p className="py-8 text-center text-xs text-muted-foreground" role="status">공식 거래 내역 불러오는 중…</p>
           : items ? <>
             <TransactionsWaterfall items={items} />
-            <div className="text-[11px] leading-relaxed text-muted-foreground">
+            <div className="text-[length:var(--font-size-11px)] leading-relaxed text-muted-foreground">
               {kind === "treasury" && <>발행·상환: DTS {data?.treasury?.asOf}. 상환액에 포함된 바이백을 한 번만 분리합니다. 회색 막대는 기존 MSPD 잔액 증감과의 자료 간 차이입니다.</>}
               {kind === "fed" && <>실행액은 달력 월 결제일 기준입니다. 만기도래는 직전 수요일 SOMA 종목별 보유로 추정하며, 기존 그래프의 마지막 수요일 보유 증감과 남는 차이를 회색으로 표시합니다. RMP·재투자 목적별 계획과 실제 매입액은 구분합니다.</>}
               {kind === "buybacks" && <>총 {data?.buybacks?.count}건의 실제 낙찰·결제액입니다. 발표 한도액을 사용하지 않으며, 재무부 발행·소각에 이미 포함된 금액입니다.</>}
             </div>
           </> : <div className="py-8 text-center text-xs text-muted-foreground">{query.isError ? "공식 거래 자료를 불러오지 못했습니다." : data?.errors[kind] ?? "자료가 불완전해 거래 내역을 분해할 수 없습니다."}</div>}
         {enabled && (query.isError || (data && Object.keys(data.errors).length > 0) || (!items && !query.isFetching)) && <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()} className="mt-2 rounded border px-2 py-1 text-xs disabled:opacity-50">{query.isFetching ? "확인 중…" : "다시 불러오기"}</button>}
-        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[length:var(--font-size-10px)] text-muted-foreground">
           <a className="underline" href="https://fiscaldata.treasury.gov/datasets/daily-treasury-statement/public-debt-transactions" target="_blank" rel="noreferrer">재무부 발행·상환</a>
           <a className="underline" href="https://www.newyorkfed.org/markets/desk-operations/treasury-securities" target="_blank" rel="noreferrer">연준 국채 거래</a>
           <a className="underline" href="https://www.treasurydirect.gov/auctions/announcements-data-results/buy-backs/" target="_blank" rel="noreferrer">재무부 바이백</a>

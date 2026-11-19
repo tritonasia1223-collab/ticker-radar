@@ -12,13 +12,13 @@ export default function AmountSlider() {
   return (
     <div className="rounded-lg border border-border bg-card px-4 py-2.5">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor="bc-amount" className="text-[12px] font-medium text-muted-foreground">거래 금액 <span className="text-[10.5px]">(로그 스케일)</span></label>
-        <span className="text-[17px] font-bold tabular-nums">{fmtUSD(state.amountUSD)}</span>
+        <label htmlFor="bc-amount" className="text-[length:var(--font-size-12px)] font-medium text-muted-foreground">거래 금액 <span className="text-[length:var(--font-size-10_5px)]">(로그 스케일)</span></label>
+        <span className="text-[length:var(--font-size-17px)] font-bold tabular-nums">{fmtUSD(state.amountUSD)}</span>
       </div>
       <input id="bc-amount" type="range" min={0} max={1000} value={toSlider(state.amountUSD)}
         onChange={(e) => setAmount(toAmount(Number(e.target.value)))}
         className="mt-1.5 w-full accent-primary" />
-      <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground">
+      <div className="flex justify-between text-[length:var(--font-size-10px)] tabular-nums text-muted-foreground">
         <span>$10</span><span>$1K</span><span>$1M</span>
       </div>
     </div>

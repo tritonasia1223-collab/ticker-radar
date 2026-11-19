@@ -8,7 +8,7 @@ import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip
 
 // 국장 보조지표 → 한국 관례(빨강 상승 / 파랑 하락)
 const KR = "kr";
-const LINE_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#06b6d4", "#ec4899", "#84cc16"];
+const LINE_COLORS = ["var(--tone-red-400)", "var(--tone-blue-400)", "var(--tone-green-500)", "var(--tone-orange-500)", "var(--tone-violet-400)", "var(--tone-teal-500)", "var(--tone-rose-400)", "var(--tone-lime-500)"];
 const fmt = (n: number) => n.toLocaleString();
 const nm = (r: { name: string | null; symbol: string }) => r.name || r.symbol;
 
@@ -58,17 +58,17 @@ export default function Interest() {
         <div className="space-y-6">
           {/* 추이 / 무버 — 이틀 이상 쌓였을 때만 */}
           {dates.length >= 2 && (
-            <div className="grid lg:grid-cols-3 gap-4">
-              <Card className="lg:col-span-2 p-4">
+            <div className="grid grid-cols-3 gap-4">
+              <Card className="col-span-2 p-4">
                 <div className="text-sm font-medium mb-3">등록 건수 추이 (상위 종목)</div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={48} tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v} />
-                      <RTooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <XAxis dataKey="date" tick={{ fontSize: "var(--font-size-10)", fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis tick={{ fontSize: "var(--font-size-10)", fill: "hsl(var(--muted-foreground))" }} width={48} tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v} />
+                      <RTooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius-8)", fontSize: "var(--font-size-12)" }} />
+                      <Legend wrapperStyle={{ fontSize: "var(--font-size-11)" }} />
                       {(trend?.series ?? []).map((s, i) => (
                         <Line key={s.symbol} type="monotone" dataKey={s.symbol} name={nm(s)} stroke={LINE_COLORS[i % LINE_COLORS.length]} strokeWidth={1.8} dot={false} isAnimationActive={false} />
                       ))}
@@ -87,25 +87,25 @@ export default function Interest() {
 
           {/* 오늘 리스트 */}
           <Card className="overflow-hidden">
-            <div className="flex items-center gap-4 px-4 py-2.5 border-b text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="flex items-center gap-4 px-4 py-2.5 border-b text-[length:var(--font-size-11px)] font-medium text-muted-foreground uppercase tracking-wide">
               <div className="w-8 text-center">#</div>
               <div className="flex-1">종목</div>
               <div className="w-24 text-right">관심등록</div>
               <div className="w-16 text-right">등락률</div>
-              <div className="w-20 text-right hidden sm:block">현재가</div>
+              <div className="w-20 text-right block">현재가</div>
             </div>
             {rows.map((r) => (
               <div key={r.symbol} className="flex items-center gap-4 px-4 py-2.5 border-b last:border-0" data-testid={`interest-${r.symbol}`}>
                 <div className="w-8 text-center text-sm font-mono text-muted-foreground tabular-nums">{r.rank}</div>
                 <div className="flex-1 min-w-0 flex items-center gap-2">
                   <span className="text-sm font-medium truncate">{nm(r)}</span>
-                  <span className="shrink-0 text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{r.symbol}</span>
+                  <span className="shrink-0 text-[length:var(--font-size-11px)] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{r.symbol}</span>
                 </div>
                 <div className="w-24 text-right tabular-nums text-sm font-medium">{fmt(r.regCount)}</div>
                 <div className={`w-16 text-right tabular-nums text-sm ${r.changePct == null ? "text-muted-foreground" : changeColorClass(r.changePct, KR)}`}>
                   {r.changePct == null ? "—" : `${r.changePct >= 0 ? "+" : ""}${r.changePct}%`}
                 </div>
-                <div className="w-20 text-right tabular-nums text-sm text-muted-foreground hidden sm:block">{r.price ? fmt(r.price) : "—"}</div>
+                <div className="w-20 text-right tabular-nums text-sm text-muted-foreground block">{r.price ? fmt(r.price) : "—"}</div>
               </div>
             ))}
           </Card>

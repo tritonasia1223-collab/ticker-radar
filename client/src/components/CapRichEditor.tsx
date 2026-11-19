@@ -15,9 +15,9 @@ function isKnownKey(key: string | null | undefined): key is string {
 }
 // 링크 span 스타일(편집기 내 미리보기 — 렌더러와 동일한 파란 밑줄).
 const LINK_STYLE: Record<string, string> = {
-  color: "#60a5fa",
+  color: "var(--tone-blue-300)",
   textDecoration: "underline",
-  textDecorationColor: "rgba(96,165,250,0.6)",
+  textDecorationColor: "var(--alpha-tone-blue-300-600)",
   textUnderlineOffset: "2px",
   fontWeight: "600",
 };
@@ -92,7 +92,7 @@ function makeLineDiv(parts: LineSeg[]): HTMLDivElement {
     div.style.background = DIVIDER_BACKGROUND;
     div.style.paddingBlock = "6px";
     div.style.color = "transparent";
-    div.style.caretColor = "#6b7280";
+    div.style.caretColor = "var(--ink-soft)";
     div.appendChild(document.createTextNode(DIVIDER_LINE));
     return div;
   }
@@ -1085,7 +1085,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
               style={
                 m.kind === "hl"
                   ? { background: m.swatch }
-                  : { background: "transparent", color: m.swatch, fontWeight: 700, fontSize: 11, lineHeight: "1" }
+                  : { background: "transparent", color: m.swatch, fontWeight: 700, fontSize: "var(--font-size-11)", lineHeight: "1" }
               }
               onClick={() => applyMark(m.key)}
             >
@@ -1098,7 +1098,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
               <button
                 type="button"
                 title="선택 단어에 다른 카드로 가는 링크 걸기"
-                className="flex h-5 items-center gap-0.5 rounded-sm px-1 text-[10px] text-sky-400 hover:bg-muted hover:text-sky-300"
+                className="flex h-5 items-center gap-0.5 rounded-sm px-1 text-[length:var(--font-size-10px)] text-sky-400 hover:bg-muted hover:text-sky-300"
                 onClick={() => openLinkPanel()}
                 data-testid="mark-link"
               >
@@ -1110,7 +1110,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
           <button
             type="button"
             title="선택 구간 표식 제거(링크 포함)"
-            className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="h-5 px-1 rounded-sm text-[length:var(--font-size-10px)] text-muted-foreground hover:text-foreground hover:bg-muted"
             onClick={() => applyMark(null)}
             data-testid="mark-clear-selection"
           >
@@ -1119,7 +1119,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
           {showClearAll && <button
             type="button"
             title="이 칸 전체 표식 초기화"
-            className="h-5 px-1 rounded-sm text-[10px] text-muted-foreground hover:text-destructive hover:bg-muted"
+            className="h-5 px-1 rounded-sm text-[length:var(--font-size-10px)] text-muted-foreground hover:text-destructive hover:bg-muted"
             onClick={() => clearAllMarks()}
             data-testid="mark-clear-all"
           >
@@ -1137,10 +1137,10 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
           data-testid="link-panel"
         >
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-muted-foreground">어떤 카드로 연결?</span>
+            <span className="text-[length:var(--font-size-11px)] font-medium text-muted-foreground">어떤 카드로 연결?</span>
             <button
               type="button"
-              className="text-[11px] text-muted-foreground hover:text-foreground"
+              className="text-[length:var(--font-size-11px)] text-muted-foreground hover:text-foreground"
               onClick={() => closeLinkPanel()}
             >
               ✕
@@ -1152,12 +1152,12 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
             value={linkQuery}
             onChange={(e) => setLinkQuery(e.target.value)}
             placeholder="연도·제목 검색"
-            className="mb-1.5 w-full rounded border border-border bg-background px-2 py-1 text-[12px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+            className="mb-1.5 w-full rounded border border-border bg-background px-2 py-1 text-[length:var(--font-size-12px)] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
             data-testid="link-search"
           />
           <div className="max-h-44 overflow-y-auto">
             {filteredTargets.length === 0 ? (
-              <div className="px-1 py-2 text-center text-[11px] text-muted-foreground/60">일치하는 카드 없음</div>
+              <div className="px-1 py-2 text-center text-[length:var(--font-size-11px)] text-muted-foreground/60">일치하는 카드 없음</div>
             ) : (
               filteredTargets.map((t) => (
                 <button
@@ -1167,8 +1167,8 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
                   onClick={() => chooseLink(t.slug)}
                   data-testid={`link-opt-${t.slug}`}
                 >
-                  <span className="shrink-0 text-[11px] font-semibold text-sky-400">{t.year}</span>
-                  <span className="truncate text-[12px] text-foreground">{t.title}</span>
+                  <span className="shrink-0 text-[length:var(--font-size-11px)] font-semibold text-sky-400">{t.year}</span>
+                  <span className="truncate text-[length:var(--font-size-12px)] text-foreground">{t.title}</span>
                 </button>
               ))
             )}

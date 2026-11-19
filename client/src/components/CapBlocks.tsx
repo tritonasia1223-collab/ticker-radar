@@ -13,9 +13,9 @@ import type { CapBlock, CapInsight, CapInsightChart, CapMetaCard, CapTableData, 
 import { useCapSeries, type SeriesMap } from "@/lib/capitalism-series";
 
 // Keep the text content box and typography identical when toggling edit/read mode.
-const insightTextLayout = "w-full min-w-0 rounded-md border px-2.5 py-2 text-[13.5px] leading-relaxed whitespace-pre-wrap break-words text-left text-foreground";
+const insightTextLayout = "w-full min-w-0 rounded-md border px-2.5 py-2 text-[length:var(--font-size-13_5px)] leading-relaxed whitespace-pre-wrap break-words text-left text-foreground";
 
-const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? (key === "gdp_growth" ? { ...PANELS[0], id: key, series: key, label: "실질 GDP 성장률(이전 지표)", unit: "%", start: "1930", zeroLine: true, kind: "area" as const } : undefined) ?? (key === "trade" ? { ...PANELS[0], id: key, series: key, label: "실질 순수출(이전 지표)", unit: "십억 2017달러·연율", color: "#e0a050", start: "1929", zeroLine: true, kind: "area" as const } : undefined) ?? { ...PANELS[0], id: key, series: key, label: key === "dollar" ? "기존 달러지수(삭제됨)" : key === "cpi_level" ? "CPI 수준(이전 지표)" : "사용할 수 없는 지표", unit: "" };
+const panelFor = (key: string) => PANELS.find((p) => p.series === key) ?? (key === "gdp_growth" ? { ...PANELS[0], id: key, series: key, label: "실질 GDP 성장률(이전 지표)", unit: "%", start: "1930", zeroLine: true, kind: "area" as const } : undefined) ?? (key === "trade" ? { ...PANELS[0], id: key, series: key, label: "실질 순수출(이전 지표)", unit: "십억 2017달러·연율", color: "var(--tone-orange-400)", start: "1929", zeroLine: true, kind: "area" as const } : undefined) ?? { ...PANELS[0], id: key, series: key, label: key === "dollar" ? "기존 달러지수(삭제됨)" : key === "cpi_level" ? "CPI 수준(이전 지표)" : "사용할 수 없는 지표", unit: "" };
 // series 미로드 시(undefined) 안전 기본값. 로드 후엔 실제 데이터 범위.
 function lastYearOf(series: SeriesMap | undefined, key: string): number {
   const arr = series?.[key];
@@ -127,8 +127,8 @@ function InsightChartView({ chart, mark = 0 }: { chart: CapInsightChart; mark?: 
     <div className="rounded-md border border-border/60 bg-background/40 p-2">
       <div className="mb-0.5 flex items-center gap-1.5 px-0.5">
         <span className="h-2 w-2 rounded-sm" style={{ background: panel.color }} />
-        <span className="text-[11px] font-medium">{panel.label}</span>
-        <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit} · {from}~{to}</span>
+        <span className="text-[length:var(--font-size-11px)] font-medium">{panel.label}</span>
+        <span className="text-[length:var(--font-size-10px)] text-muted-foreground tabular-nums">{panel.unit} · {from}~{to}</span>
       </div>
       <PanelChart panel={panel} series={series?.[chart.series]} fromYear={from} toYear={to} playYear={mark} yMode="window" height={150} unit={panel.unit} />
     </div>
@@ -246,7 +246,7 @@ export function BlockStack({
 
   // 삽입 버튼 묶음(allow 에 따라). main=하단 상시 노출 / 사이 갭은 hover 시 팝.
   const insertBar = (pos: number, main?: boolean) => {
-    const btn = "flex items-center gap-1 rounded-md border border-dashed border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary";
+    const btn = "flex items-center gap-1 rounded-md border border-dashed border-border/70 px-2 py-1 text-[length:var(--font-size-11px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary";
     const buttons = (
       <>
         {allow.text ? <button type="button" onClick={() => insertAt(pos, newText())} className={btn} data-testid={`block-add-text-${pos}`}><TypeIcon className="h-3.5 w-3.5" /> 텍스트</button> : null}
@@ -257,7 +257,7 @@ export function BlockStack({
         {allow.divider ? <button type="button" onClick={() => insertAt(pos, newDivider())} className={btn} data-testid={`block-add-divider-${pos}`}><Minus className="h-3.5 w-3.5" /> 구분선</button> : null}
       </>
     );
-    if (main) return <div className="flex flex-wrap items-center justify-center gap-1 pt-0.5">{buttons}{allow.image ? <span className="ml-1 text-[10px] text-muted-foreground/60">또는 Ctrl+V 붙여넣기</span> : null}</div>;
+    if (main) return <div className="flex flex-wrap items-center justify-center gap-1 pt-0.5">{buttons}{allow.image ? <span className="ml-1 text-[length:var(--font-size-10px)] text-muted-foreground/60">또는 Ctrl+V 붙여넣기</span> : null}</div>;
     // 사이 갭: 얇은 줄, hover 시 버튼 팝업.
     return (
       <div className="group/ins relative flex h-2 items-center justify-center">
@@ -277,7 +277,7 @@ export function BlockStack({
           {allow.divider && <div className="flex justify-end">
             <button type="button" onMouseDown={(e) => e.preventDefault()}
               onClick={() => editorRefs.current.get(i)?.insertDivider()}
-              className="flex items-center gap-1 rounded border border-border/60 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+              className="flex items-center gap-1 rounded border border-border/60 px-2 py-1 text-[length:var(--font-size-11px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
               title="커서 위치에 구분선 삽입 (빈 줄에서 --- 입력 후 Enter도 가능)"
               data-testid={`text-insert-divider-${i}`}>
               <Minus className="h-3.5 w-3.5" /> 구분선 삽입
@@ -310,19 +310,19 @@ export function BlockStack({
         onChange(blocks.map((x, j) => (j === i ? { type: "html", html: { ...h, ...p } } : x)), doCommit);
       return (
         <div className="space-y-1.5 rounded-md border border-border/60 bg-background/40 p-2">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Code2 className="h-3.5 w-3.5" /> HTML 미니앱 <span className="text-[10px]">(sandbox 격리·외부 CDN 허용)</span>
+          <div className="flex items-center gap-1.5 text-[length:var(--font-size-11px)] text-muted-foreground">
+            <Code2 className="h-3.5 w-3.5" /> HTML 미니앱 <span className="text-[length:var(--font-size-10px)]">(sandbox 격리·외부 CDN 허용)</span>
             <label className="ml-auto flex items-center gap-1">높이
               <input type="number" value={h.height ?? 560} min={120} max={2000}
                 onChange={(e) => patch({ height: Number(e.target.value) || 560 }, false)} onBlur={() => onChange(blocks, true)}
-                className="w-16 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-foreground" />
+                className="w-16 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-11px)] tabular-nums text-foreground" />
             </label>
           </div>
           <textarea value={h.src} onChange={(e) => patch({ src: e.target.value }, false)} onBlur={() => onChange(blocks, true)}
             rows={6} spellCheck={false} data-testid={`block-html-src-${i}`}
             placeholder="<div>…</div> + <script>…</script>  (D3 등 외부 CDN 스크립트 가능)"
-            className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono text-[11px] leading-snug text-foreground" />
-          {h.src.trim() ? <HtmlBlockView html={h} /> : <div className="py-3 text-center text-[11px] text-muted-foreground">미리보기 — HTML을 입력하세요</div>}
+            className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono text-[length:var(--font-size-11px)] leading-snug text-foreground" />
+          {h.src.trim() ? <HtmlBlockView html={h} /> : <div className="py-3 text-center text-[length:var(--font-size-11px)] text-muted-foreground">미리보기 — HTML을 입력하세요</div>}
         </div>
       );
     }
@@ -343,20 +343,20 @@ export function BlockStack({
       <div className="rounded-md border border-border/60 bg-background/40 p-2">
         <div className="mb-1 flex items-center gap-1.5">
           <select value={c.series} onChange={(e) => patch({ series: e.target.value }, true)}
-            className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[11px] text-foreground" data-testid={`block-chart-series-${i}`}>
+            className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-11px)] text-foreground" data-testid={`block-chart-series-${i}`}>
             {!PANELS.some(p => p.series === c.series) && <option value={c.series} disabled>{panel.label}</option>}
             {PANELS.map((p) => <option key={p.id} value={p.series}>{p.label}</option>)}
           </select>
           <input type="number" value={c.from} min={lo} max={hi} onChange={(e) => patch({ from: Number(e.target.value) }, false)} onBlur={() => onChange(blocks, true)}
-            className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-foreground" title="시작 연도" />
-          <span className="text-[11px] text-muted-foreground">~</span>
+            className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-11px)] tabular-nums text-foreground" title="시작 연도" />
+          <span className="text-[length:var(--font-size-11px)] text-muted-foreground">~</span>
           <input type="number" value={c.to} min={lo} max={hi} onChange={(e) => patch({ to: Number(e.target.value) }, false)} onBlur={() => onChange(blocks, true)}
-            className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-foreground" title="끝 연도" />
+            className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[length:var(--font-size-11px)] tabular-nums text-foreground" title="끝 연도" />
         </div>
         <div className="mb-0.5 flex items-center gap-1.5 px-0.5">
           <span className="h-2 w-2 rounded-sm" style={{ background: panel.color }} />
-          <span className="text-[11px] font-medium">{panel.label}</span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">{panel.unit}</span>
+          <span className="text-[length:var(--font-size-11px)] font-medium">{panel.label}</span>
+          <span className="text-[length:var(--font-size-10px)] text-muted-foreground tabular-nums">{panel.unit}</span>
         </div>
         <PanelChart panel={panel} series={series?.[c.series]} fromYear={Math.min(c.from, c.to)} toYear={Math.max(c.from, c.to)}
           playYear={eventFrac ?? 0} yMode="window" height={130} unit={panel.unit} />
@@ -406,18 +406,18 @@ export function BlockStack({
                 (중간 블록은 안 겹치니 유지 — 글 중간 커서 삽입 기능 보존). */}
             {b.type === "text" && activeText === i && i !== last && (allow.table || allow.image || allow.chart || allow.divider) ? (
               <div className="flex flex-wrap items-center gap-1 pt-0.5" onMouseDown={(e) => e.preventDefault()}>
-                <span className="text-[10px] text-muted-foreground/60">커서 위치에 삽입:</span>
+                <span className="text-[length:var(--font-size-10px)] text-muted-foreground/60">커서 위치에 삽입:</span>
                 {allow.table ? <button type="button" onClick={() => splitInsert(i, newTable())}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-table-${i}`}><TableIcon className="h-3 w-3" /> 표</button> : null}
                 {allow.image ? <button type="button" onClick={() => splitInsertImage(i)}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-image-${i}`}><ImagePlus className="h-3 w-3" /> 이미지</button> : null}
                 {allow.chart ? <button type="button" onClick={() => splitInsert(i, newChart())}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-chart-${i}`}><ChartIcon className="h-3 w-3" /> 그래프</button> : null}
                 {allow.divider ? <button type="button" onClick={() => splitInsert(i, newDivider())}
-                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+                  className="flex items-center gap-0.5 rounded border border-border/60 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
                   data-testid={`block-caret-divider-${i}`}><Minus className="h-3 w-3" /> 구분선</button> : null}
               </div>
             ) : null}

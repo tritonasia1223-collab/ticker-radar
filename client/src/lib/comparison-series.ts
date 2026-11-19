@@ -5,10 +5,10 @@ import { historyNote } from "./capitalism-history";
 // Comparison-only catalog: keep the economic-history panels and source data intact.
 const excludedIds = new Set(["sp500", "mktcap", "monbase", "walcl", "wresbal", "rrp", "tb3ms", "gs10", "fedfunds", "unrate", "inflation"]);
 export const COMPARE_CATEGORIES = {
-  dollar: { label: "달러·환율", color: "#0ea5e9" },
-  money: { label: "금리·통화", color: "#0d9488" },
-  assets: { label: "자산 가격", color: "#d4af37" },
-  economy: { label: "경제·무역", color: "#8b5cf6" },
+  dollar: { label: "달러·환율", color: "var(--tone-blue-500)" },
+  money: { label: "금리·통화", color: "var(--tone-teal-600)" },
+  assets: { label: "자산 가격", color: "var(--tone-amber-500)" },
+  economy: { label: "경제·무역", color: "var(--tone-indigo-300)" },
 };
 const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
   dollar: ["dxy", "reer", "usd_purchasing_power", "fx_krw", "fx_jpy", "fx_dem", "fx_eur"],
@@ -20,7 +20,7 @@ const categoryIds: Record<keyof typeof COMPARE_CATEGORIES, string[]> = {
 const ids: Record<string, string> = { real_gdp: "GDPC1", inflation: "CPIAUCSL", unrate: "UNRATE", debt_gdp: "GFDEGDQ188S", mktcap: "NCBEILQ027S", sp500: "SPASTT01USM661N", nasdaq: "NASDAQCOM", fedfunds: "FEDFUNDS", tb3ms: "TB3MS", gs10: "GS10", usd_purchasing_power: "CPIAUCNS", reer: "RBUSBIS", oil: "WTISPLC", net_exports_gdp: "NETEXP", m2: "M2SL", monbase: "BOGMBASE", walcl: "WALCL", wresbal: "WRESBAL", rrp: "RRPONTSYD" };
 export interface CompareSeriesDef { id: string; label: string; unit: string; color: string; cadence: number; note: string; url: string; category: string }
 export const COMPARE_SERIES: CompareSeriesDef[] = [
-  { id: "cpi_level", label: "미국 소비자물가 수준(CPI)", unit: "idx", color: "#e0c267", cadence: 1, category: "economy", note: "1860~1912 역사 추정·연간 / 1913~ BLS·월간·비계절조정 · 1913년 연평균 기준 연결 · 1982~1984=100 · 상승률 아닌 물가 수준", url: "https://fred.stlouisfed.org/series/CPIAUCNS" },
+  { id: "cpi_level", label: "미국 소비자물가 수준(CPI)", unit: "idx", color: "var(--tone-amber-400)", cadence: 1, category: "economy", note: "1860~1912 역사 추정·연간 / 1913~ BLS·월간·비계절조정 · 1913년 연평균 기준 연결 · 1982~1984=100 · 상승률 아닌 물가 수준", url: "https://fred.stlouisfed.org/series/CPIAUCNS" },
   ...PANELS.filter(p => !excludedIds.has(p.id)).map(p => ({ id: p.series, label: p.label,
     unit: p.unit, color: p.color, category: ["real_tb3ms", "usd_purchasing_power"].includes(p.id) ? "money" : p.cat,
     cadence: ["real_gdp", "debt_gdp", "mktcap", "net_exports_gdp"].includes(p.id) ? 3 : 1,
@@ -32,13 +32,35 @@ export const COMPARE_SERIES: CompareSeriesDef[] = [
       : ["nasdaq", "walcl", "wresbal", "rrp"].includes(p.id) ? "일·주간 자료의 각 월 마지막 관측값"
       : ["real_gdp", "debt_gdp", "mktcap"].includes(p.id) ? "분기 자료 (일부 초기 구간은 연간 자료)" : "월간 자료 · 기존 경제사 계열",
     url: p.id === "net_exports_gdp" ? "https://fred.stlouisfed.org/graph/?id=NETEXP,GDP" : p.id === "real_tb3ms" ? "https://fred.stlouisfed.org/graph/?id=TB3MS,CPIAUCSL" : p.id === "dxy" ? "https://finance.yahoo.com/quote/DX-Y.NYB/history/" : p.id === "gold" ? "https://datahub.io/core/gold-prices" : `https://fred.stlouisfed.org/series/${ids[p.id]}` })),
-  { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "#f472b6", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
-  { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "#a78bfa", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
-  { id: "fx_dem", label: "마르크/달러 환율", unit: "마르크 / 1달러", color: "#64748b", cadence: 1, category: "dollar", note: "1971~1998 월평균 · 1달러당 독일 마르크 · 상승=달러 강세/마르크 약세 · 1999년 이후 유로 환산값 제외", url: "https://fred.stlouisfed.org/series/EXGEUS" },
-  { id: "fx_eur", label: "유로/달러 환율", unit: "달러 / 1유로", color: "#38bdf8", cadence: 1, category: "money", note: "월평균 · 시장 관행(EUR/USD)대로 1유로당 달러 · 상승=유로 강세/달러 약세(원·엔 환율과 방향 반대) · 1999년 유로 도입 이후 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXUSEU" },
+  { id: "fx_krw", label: "원/달러 환율", unit: "원 / 1달러", color: "var(--tone-rose-300)", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/원화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXKOUS" },
+  { id: "fx_jpy", label: "엔/달러 환율", unit: "엔 / 1달러", color: "var(--tone-indigo-200)", cadence: 1, category: "money", note: "월평균 · 상승=달러 강세/엔화 약세 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXJPUS" },
+  { id: "fx_dem", label: "마르크/달러 환율", unit: "마르크 / 1달러", color: "var(--tone-blue-500)", cadence: 1, category: "dollar", note: "1971~1998 월평균 · 1달러당 독일 마르크 · 상승=달러 강세/마르크 약세 · 1999년 이후 유로 환산값 제외", url: "https://fred.stlouisfed.org/series/EXGEUS" },
+  { id: "fx_eur", label: "유로/달러 환율", unit: "달러 / 1유로", color: "var(--tone-blue-400)", cadence: 1, category: "money", note: "월평균 · 시장 관행(EUR/USD)대로 1유로당 달러 · 상승=유로 강세/달러 약세(원·엔 환율과 방향 반대) · 1999년 유로 도입 이후 · 완료된 월만 수록", url: "https://fred.stlouisfed.org/series/EXUSEU" },
   // 미국 대외거래 — 명목 상품·서비스 무역수지.
-  { id: "trade_bal", label: "미국 무역수지", unit: "$B", color: "#fb923c", cadence: 1, category: "money", note: "상품·서비스 명목 무역수지(국제수지 기준) · 십억 달러/월 · 초기 연간÷12, 이후 계절조정 월간 · 음수=적자", url: "https://fred.stlouisfed.org/series/BOPGSTB" },
+  { id: "trade_bal", label: "미국 무역수지", unit: "$B", color: "var(--tone-orange-400)", cadence: 1, category: "money", note: "상품·서비스 명목 무역수지(국제수지 기준) · 십억 달러/월 · 초기 연간÷12, 이후 계절조정 월간 · 음수=적자", url: "https://fred.stlouisfed.org/series/BOPGSTB" },
 ];
+// Stable, distinct chart colors; theme tokens own every hue.
+const compareColors: Record<string, string> = {
+  "dxy": "var(--tone-blue-700)",
+  "reer": "var(--tone-blue-500)",
+  "usd_purchasing_power": "var(--tone-teal-700)",
+  "fx_krw": "var(--tone-rose-600)",
+  "fx_jpy": "var(--tone-violet-500)",
+  "fx_dem": "var(--tone-green-700)",
+  "fx_eur": "var(--tone-teal-500)",
+  "real_tb3ms": "var(--tone-orange-700)",
+  "m2": "var(--tone-yellow-700)",
+  "gold": "var(--tone-amber-600)",
+  "oil": "var(--tone-rose-800)",
+  "nasdaq": "var(--tone-indigo-600)",
+  "real_gdp": "var(--tone-green-500)",
+  "cpi_level": "var(--tone-orange-500)",
+  "debt_gdp": "var(--tone-violet-700)",
+  "trade_bal": "var(--tone-amber-800)",
+  "net_exports_gdp": "var(--tone-blue-400)"
+};
+for (const series of COMPARE_SERIES) series.color = compareColors[series.id] ?? series.color;
+
 // 과거 확장 구간이 있는 지표는 출처 목록 설명에 구간을 덧붙인다(수록 기간은 데이터에서 자동으로 첫 관측일이 된다).
 for (const s of COMPARE_SERIES) { const h = historyNote(s.id); if (h) s.note = `${s.note} · ${h}`; }
 for (const [category, seriesIds] of Object.entries(categoryIds)) {

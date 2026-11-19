@@ -21,6 +21,7 @@ export function mergeInsightTimeline(draft: TimelineDraft): TimelineDraft {
     const date = dateEdited ? saved.date : next.date;
     return {
       ...saved, ...next,
+      type: saved.type ?? next.type ?? "event",
       ...(dateEdited ? { year: saved.year, month: saved.month, date: saved.date, endYear: saved.endYear, endMonth: saved.endMonth } : { endYear: null, endMonth: null }),
       // Preserve the exact rich text, including its hidden date prefix, when edited.
       ...(textEdited ? { title: saved.title, body: saved.body } : { body: next.body.replace(`${next.date}\n`, `${date}\n`) }),

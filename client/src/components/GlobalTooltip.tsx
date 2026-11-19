@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // 네이티브 툴팁을 억제하고(title→data-native-title 로 스태시) 스타일 팝오버를 띄운다.
 // 지도 커서 추적 툴팁(World 의 setTip)은 동일 시각 토큰(TIP_CLASS)을 공유.
 export const TIP_CLASS =
-  "rounded-lg border border-border bg-popover/95 px-2.5 py-1.5 text-[11px] font-normal leading-snug text-popover-foreground/80 shadow-lg backdrop-blur-sm";
+  "rounded-lg border border-border bg-popover/95 px-2.5 py-1.5 text-[length:var(--font-size-11px)] font-normal leading-snug text-popover-foreground/80 shadow-lg glass";
 
 const GAP = 8, MARGIN = 8;
 
@@ -92,7 +92,7 @@ export default function GlobalTooltip() {
         wordBreak: "keep-all",
         opacity: ready ? 1 : 0,
         transform: ready ? "translateY(0)" : "translateY(2px)",
-        transition: "opacity .1s ease, transform .1s ease",
+        transition: "var(--transition-state)",
       }}
     >
       {tip.text}

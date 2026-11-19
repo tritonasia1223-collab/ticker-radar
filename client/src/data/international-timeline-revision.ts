@@ -6,6 +6,7 @@ export const TIMELINE_REVISION = "mark-europe-1970-1990-v3";
 // Source wording is preserved here; only the initial import splits headings and details.
 const sourceEvents: TimelineEvent[] = [
   {
+    "type": "event",
     "id": "mark-revision-20261118-00",
     "year": 1970,
     "month": 6,
@@ -20,6 +21,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 0
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-01",
     "year": 1970,
     "month": 7,
@@ -34,6 +36,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 1
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-02",
     "year": 1971,
     "month": 1,
@@ -50,6 +53,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 5
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-03",
     "year": 1971,
     "month": 5,
@@ -64,6 +68,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 3
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-04",
     "year": 1972,
     "month": 3,
@@ -78,6 +83,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 4
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-05",
     "year": 1972,
     "month": 4,
@@ -92,6 +98,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 5
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-06",
     "year": 1972,
     "month": null,
@@ -106,6 +113,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 6
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-07",
     "year": 1973,
     "month": 1,
@@ -120,6 +128,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 7
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-08",
     "year": 1973,
     "month": 2,
@@ -134,6 +143,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 8
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-09",
     "year": 1973,
     "month": 3,
@@ -148,6 +158,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 9
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-10",
     "year": 1973,
     "month": 6,
@@ -162,6 +173,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 10
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-11",
     "year": 1973,
     "month": null,
@@ -176,6 +188,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 11
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-12",
     "year": 1973,
     "month": null,
@@ -192,6 +205,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-13",
     "year": 1974,
     "month": 1,
@@ -206,6 +220,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 13
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-14",
     "year": 1974,
     "month": 6,
@@ -220,6 +235,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 14
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-15",
     "year": 1974,
     "month": 12,
@@ -234,6 +250,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 15
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-16",
     "year": 1975,
     "month": 1,
@@ -248,6 +265,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 16
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-17",
     "year": 1975,
     "month": 6,
@@ -262,6 +280,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 17
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-18",
     "year": 1975,
     "month": 9,
@@ -276,6 +295,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 18
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-19",
     "year": 1975,
     "month": null,
@@ -290,6 +310,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 19
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-20",
     "year": 1976,
     "month": 3,
@@ -304,6 +325,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 20
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-21",
     "year": 1977,
     "month": 12,
@@ -318,6 +340,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 21
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-22",
     "year": 1978,
     "month": 4,
@@ -334,6 +357,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 12
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-23",
     "year": 1978,
     "month": 11,
@@ -348,6 +372,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 23
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-24",
     "year": 1979,
     "month": 3,
@@ -362,6 +387,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 24
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-25",
     "year": 1979,
     "month": 3,
@@ -378,6 +404,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 11
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-26",
     "year": 1979,
     "month": 10,
@@ -392,6 +419,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 26
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-27",
     "year": 1979,
     "month": null,
@@ -408,6 +436,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-28",
     "year": 1979,
     "month": null,
@@ -422,6 +451,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 28
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-29",
     "year": 1979,
     "month": null,
@@ -438,6 +468,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-30",
     "year": 1980,
     "month": 2,
@@ -454,6 +485,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 5
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-31",
     "year": 1980,
     "month": 3,
@@ -468,6 +500,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 31
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-32",
     "year": 1980,
     "month": null,
@@ -484,6 +517,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-33",
     "year": 1980,
     "month": 12,
@@ -498,6 +532,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 33
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-34",
     "year": 1980,
     "month": null,
@@ -512,6 +547,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 34
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-35",
     "year": 1980,
     "month": null,
@@ -526,6 +562,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 35
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-36",
     "year": 1981,
     "month": 5,
@@ -540,6 +577,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 36
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-37",
     "year": 1981,
     "month": 10,
@@ -554,6 +592,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 37
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-38",
     "year": 1981,
     "month": null,
@@ -570,6 +609,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-39",
     "year": 1982,
     "month": 8,
@@ -584,6 +624,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 39
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-40",
     "year": 1982,
     "month": null,
@@ -598,6 +639,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 40
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-41",
     "year": 1983,
     "month": 3,
@@ -612,6 +654,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 41
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-42",
     "year": 1983,
     "month": 11,
@@ -626,6 +669,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 42
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-43",
     "year": 1983,
     "month": null,
@@ -642,6 +686,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-44",
     "year": 1984,
     "month": 6,
@@ -656,6 +701,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 44
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-45",
     "year": 1984,
     "month": 8,
@@ -670,6 +716,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 45
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-46",
     "year": 1984,
     "month": 12,
@@ -684,6 +731,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 46
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-47",
     "year": 1985,
     "month": 2,
@@ -698,6 +746,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 47
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-48",
     "year": 1985,
     "month": 5,
@@ -712,6 +761,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 48
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-49",
     "year": 1985,
     "month": 9,
@@ -726,6 +776,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 49
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-50",
     "year": 1985,
     "month": null,
@@ -740,6 +791,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 50
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-51",
     "year": 1986,
     "month": null,
@@ -756,6 +808,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-52",
     "year": 1986,
     "month": 3,
@@ -770,6 +823,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 52
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-53",
     "year": 1986,
     "month": 5,
@@ -786,6 +840,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 6
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-54",
     "year": 1986,
     "month": 9,
@@ -800,6 +855,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 54
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-55",
     "year": 1986,
     "month": 10,
@@ -814,6 +870,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 55
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-56",
     "year": 1986,
     "month": 12,
@@ -828,6 +885,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 56
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-57",
     "year": 1987,
     "month": 2,
@@ -842,6 +900,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 57
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-58",
     "year": 1987,
     "month": null,
@@ -858,6 +917,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-59",
     "year": 1987,
     "month": 9,
@@ -872,6 +932,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 59
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-60",
     "year": 1987,
     "month": 10,
@@ -886,6 +947,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 60
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-61",
     "year": 1987,
     "month": 12,
@@ -900,6 +962,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 61
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-62",
     "year": 1987,
     "month": 12,
@@ -914,6 +977,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 62
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-63",
     "year": 1987,
     "month": null,
@@ -930,6 +994,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": null
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-64",
     "year": 1988,
     "month": 6,
@@ -944,6 +1009,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 64
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-65",
     "year": 1988,
     "month": 7,
@@ -960,6 +1026,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 8
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-66",
     "year": 1988,
     "month": null,
@@ -974,6 +1041,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 66
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-67",
     "year": 1989,
     "month": 1,
@@ -990,6 +1058,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 10
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-68",
     "year": 1989,
     "month": 4,
@@ -1004,6 +1073,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 68
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-69",
     "year": 1989,
     "month": 5,
@@ -1020,6 +1090,7 @@ const sourceEvents: TimelineEvent[] = [
     "endMonth": 12
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-70",
     "year": 1989,
     "month": 11,
@@ -1034,6 +1105,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 70
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-71",
     "year": 1989,
     "month": 12,
@@ -1048,6 +1120,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 71
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-72",
     "year": 1989,
     "month": null,
@@ -1062,6 +1135,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 72
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-73",
     "year": 1989,
     "month": null,
@@ -1076,6 +1150,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 73
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-74",
     "year": 1990,
     "month": 7,
@@ -1090,6 +1165,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 74
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-75",
     "year": 1990,
     "month": 10,
@@ -1104,6 +1180,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 75
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-76",
     "year": 1990,
     "month": 10,
@@ -1118,6 +1195,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 76
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-77",
     "year": 1990,
     "month": null,
@@ -1132,6 +1210,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 77
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-78",
     "year": 1990,
     "month": null,
@@ -1146,6 +1225,7 @@ const sourceEvents: TimelineEvent[] = [
     "sourceIndex": 78
   },
   {
+    "type": "event",
     "id": "mark-revision-20261118-79",
     "year": 1990,
     "month": null,

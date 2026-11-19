@@ -1,7 +1,6 @@
 // 블록체인 학습 탭 — 돈의 행방 패널(§5). 이 탭의 정체성. 수수료가 수취인별로 쪼개져 흐르는
 //   생키 스타일. 좌측 '수수료 총액' → 우측 수취인 노드(레이어 색상). 리본 두께 ∝ 비중, 흐름 draw-in.
 //   차분한 톤: 과한 반복 애니메이션 대신 값 변경 시 한 번 그려짐. reduced-motion 시 정적.
-import { motion, useReducedMotion } from "framer-motion";
 import type { FeeSplit } from "@/lib/blockchain-edu/feeEngine";
 import { recipientPalette, RECIPIENT_META } from "@/lib/blockchain-edu/layers";
 import { fmtUSDprecise, fmtPct } from "@/lib/blockchain-edu/format";
@@ -10,12 +9,11 @@ const W = 600, H = 220, PAD = 16;
 const SRC_X = 136, DST_X = 452, NODE_W = 132;
 
 export default function MoneyFlowPanel({ splits, flowKey }: { splits: FeeSplit[]; flowKey: string }) {
-  const reduce = useReducedMotion();
   const nodes = [...splits].filter((s) => s.amountUSD > 0).sort((a, b) => b.amountUSD - a.amountUSD);
   const total = nodes.reduce((s, x) => s + x.amountUSD, 0);
 
   if (total <= 0) {
-    return <div className="flex h-[120px] items-center justify-center text-[12px] text-muted-foreground">아직 흐를 수수료가 없습니다.</div>;
+    return <div className="flex h-[120px] items-center justify-center text-[length:var(--font-size-12px)] text-muted-foreground">아직 흐를 수수료가 없습니다.</div>;
   }
 
   const n = nodes.length;
@@ -32,11 +30,11 @@ export default function MoneyFlowPanel({ splits, flowKey }: { splits: FeeSplit[]
         const sw = 1.5 + share * 26;
         const d = `M ${SRC_X},${srcY} C ${(SRC_X + DST_X) / 2},${srcY} ${(SRC_X + DST_X) / 2},${y} ${DST_X},${y}`;
         return (
-          <motion.path key={`${flowKey}-${s.recipient}`} d={d} fill="none" stroke={pal.solid} strokeWidth={sw}
+          <path style={{...({}),opacity: 0.55}} key={`${flowKey}-${s.recipient}`} d={d} fill="none" stroke={pal.solid} strokeWidth={sw}
             strokeOpacity={0.55} strokeLinecap="round"
-            initial={reduce ? false : { pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 0.55 }}
-            transition={{ duration: reduce ? 0 : 0.6, ease: "easeOut", delay: reduce ? 0 : i * 0.06 }} />
+            
+            
+             />
         );
       })}
 

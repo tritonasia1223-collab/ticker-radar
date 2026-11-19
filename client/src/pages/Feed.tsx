@@ -37,12 +37,12 @@ export default function Feed() {
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-sm font-mono text-primary">@{t.handle}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground">{timeAgo(t.tweetedAt)}</span>
+                  <span className="text-[length:var(--font-size-11px)] text-muted-foreground">{timeAgo(t.tweetedAt)}</span>
                   {t.url && <a href={t.url} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" /></a>}
                 </div>
               </div>
               <p className="text-sm leading-snug">{renderText(t.text)}</p>
-              <div className="flex gap-4 mt-2 text-[11px] text-muted-foreground tabular-nums">
+              <div className="flex gap-4 mt-2 text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums">
                 <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{t.likeCount}</span>
                 <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3" />{t.retweetCount}</span>
                 <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{t.replyCount}</span>

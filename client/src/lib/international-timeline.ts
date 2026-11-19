@@ -114,13 +114,14 @@ export function mergeTimelineRevision(saved: TimelineEvent[] = []): TimelineEven
 
 /** A view adapter only: it never changes the underlying dates, descriptions or IDs. */
 export function documentTimeline(events: TimelineEvent[]) {
-  type Item = { key: string; year: number; month: number | null; kind: "slice" | "band"; events: TimelineEvent[]; order: number };
+  type Item = { key: string; year: number; month: number | null; period?: string; kind: "slice" | "band"; events: TimelineEvent[]; order: number };
   const items: Item[] = globalGroups(events).map(group => ({ key: `global-${group[0].id}`, year: group[0].year, month: eventMonth(group[0]), kind: "band", events: group, order: group[0].year * 100 + (eventMonth(group[0]) ?? 13) - 0.5 }));
   const slices = new Map<string, Item>();
   for (const event of events.filter(e => e.scope !== "global")) {
     const month = eventMonth(event);
-    const key = `${event.year}-${month ?? "annual"}`;
-    if (!slices.has(key)) slices.set(key, { key, year: event.year, month, kind: "slice", events: [], order: event.year * 100 + (month ?? 13) });
+    const period = month === null ? event.date.match(/상반기|하반기/)?.[0] : undefined;
+    const key = `${event.year}-${month ?? period ?? "annual"}`;
+    if (!slices.has(key)) slices.set(key, { key, year: event.year, month, period, kind: "slice", events: [], order: event.year * 100 + (month ?? (period === "상반기" ? 6.5 : period === "하반기" ? 12.5 : 13)) });
     slices.get(key)!.events.push(event);
   }
   items.push(...slices.values());

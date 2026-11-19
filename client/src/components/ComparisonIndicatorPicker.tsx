@@ -8,22 +8,22 @@ export function ComparisonIndicatorPicker({ ids, hiddenCategories, onToggleCateg
   ids: string[]; hiddenCategories: ToggleCategory[]; onToggleCategory: (category: ToggleCategory) => void;
   onToggle: (id: string, on: boolean) => void; onClear: () => void; onClose: () => void;
 }) {
-  return <section id="comparison-indicators" aria-label="표시 지표 선택" className="fixed bottom-3 left-3 right-3 z-30 max-h-[70vh] max-w-[900px] overflow-auto rounded-xl border bg-background shadow-xl sm:absolute sm:bottom-auto sm:top-full sm:mt-1">
-    <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-3 py-2.5 sm:px-4">
+  return <section id="comparison-indicators" aria-label="표시 지표 선택" className="left-3 right-3 z-30 max-h-[70vh] max-w-[900px] overflow-auto rounded-xl border bg-background shadow-xl absolute bottom-auto top-full mt-1">
+    <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background py-2.5 px-4">
       <span className="text-xs font-semibold">표시할 지표 선택</span>
-      <button type="button" disabled={!ids.length} onClick={onClear} className="rounded border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-40">전체 선택 해제</button>
-      <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{ids.length}개 선택</span>
+      <button type="button" disabled={!ids.length} onClick={onClear} className="rounded border px-2 py-1 text-[length:var(--font-size-11px)] text-muted-foreground hover:bg-muted disabled:opacity-40">전체 선택 해제</button>
+      <span className="ml-auto text-[length:var(--font-size-11px)] tabular-nums text-muted-foreground">{ids.length}개 선택</span>
       <button type="button" aria-label="지표 선택 닫기" onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-muted"><X size={16} /></button>
     </div>
-    <div className="divide-y px-3 sm:px-4">{Object.entries(COMPARE_CATEGORIES).map(([key, group]) => {
+    <div className="divide-y px-4">{Object.entries(COMPARE_CATEGORIES).map(([key, group]) => {
       const toggleable = isToggleCategory(key);
       const hidden = toggleable && hiddenCategories.includes(key);
       const selectedCount = COMPARE_SERIES.filter(s => s.category === key && ids.includes(s.id)).length;
-      return <div key={key} role="group" aria-labelledby={"indicator-group-" + key} className="py-2.5 sm:flex sm:items-start sm:gap-3">
-      <div className="mb-2 flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-muted-foreground sm:mb-0 sm:w-20 sm:pt-2">
+      return <div key={key} role="group" aria-labelledby={"indicator-group-" + key} className="py-2.5 flex items-start gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 text-[length:var(--font-size-11px)] font-semibold text-muted-foreground mb-0 w-20 pt-2">
         <span className="h-1 w-1 rounded-full" style={{ background: group.color }} />
         {toggleable ? <button type="button" id={"indicator-group-" + key} aria-label={group.label} aria-pressed={!hidden} disabled={!selectedCount && !hidden} onClick={() => onToggleCategory(key)} title={hidden ? `선택한 ${selectedCount}개 지표 다시 표시` : `선택한 ${selectedCount}개 지표 잠시 숨기기`} className={"rounded-sm text-left underline decoration-1 underline-offset-4 transition-colors hover:text-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 disabled:opacity-40 " + (hidden ? "text-muted-foreground" : "text-foreground")}>
-          {group.label}{hidden && <span className="mt-1 block text-[10px] font-normal">숨김</span>}
+          {group.label}{hidden && <span className="mt-1 block text-[length:var(--font-size-10px)] font-normal">숨김</span>}
         </button> : <span id={"indicator-group-" + key}>{group.label}</span>}
       </div>
       <div className="flex min-w-0 flex-wrap gap-1.5">{COMPARE_SERIES.filter(s => s.category === key).map(s => {
@@ -34,6 +34,6 @@ export function ComparisonIndicatorPicker({ ids, hiddenCategories, onToggleCateg
         </label>;
       })}</div>
     </div>; })}</div>
-    <p className="border-t px-3 py-2 text-[11px] text-muted-foreground sm:px-4">밑줄 친 카테고리를 누르면 선택은 유지한 채 숨기거나 다시 표시합니다.</p>
+    <p className="border-t py-2 text-[length:var(--font-size-11px)] text-muted-foreground px-4">밑줄 친 카테고리를 누르면 선택은 유지한 채 숨기거나 다시 표시합니다.</p>
   </section>;
 }

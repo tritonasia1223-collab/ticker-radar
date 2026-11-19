@@ -13,6 +13,6 @@ export function SpreadControls({ value, onChange, onClose }: { value: SpreadSpec
       <button className="rounded bg-violet-600 px-3 py-1.5 text-white disabled:opacity-40" disabled={!valid} onClick={() => { onChange(draft); onClose(); }}>스프레드 적용</button>
       {value && <button className="rounded border px-2 py-1.5" onClick={() => onChange(null)}>제거</button>}
     </div>
-    <p className="text-[11px] text-muted-foreground">{valid ? "금리의 원래 값으로 계산 · %p / bp · 두 금리의 관측값이 있는 월만 표시합니다. 위 그래프의 지표를 바꿔도 이 계산은 유지됩니다." : "A와 B에 서로 다른 금리를 선택하세요."}</p>
+    <p className="text-[length:var(--font-size-11px)] text-muted-foreground">{valid ? "금리의 원래 값으로 계산 · %p / bp · 두 금리의 관측값이 있는 월만 표시합니다. 위 그래프의 지표를 바꿔도 이 계산은 유지됩니다." : "A와 B에 서로 다른 금리를 선택하세요."}</p>
   </section>;
 }

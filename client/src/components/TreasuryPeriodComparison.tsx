@@ -2,8 +2,8 @@ import { useQueries } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { debtWindow, type TreasuryFlow, type TreasuryFlowResponse } from '@shared/treasury-flow';
 
-const caption = 'text-xs leading-relaxed text-[#918D83]';
-const color = (v: number) => v > 0 ? '#1F7A4D' : v < 0 ? '#B3402E' : '#777369';
+const caption = 'text-xs leading-relaxed text-[color:var(--ink-soft)]';
+const color = (v: number) => v > 0 ? 'var(--tone-green-700)' : v < 0 ? 'var(--tone-red-500)' : 'var(--ink-soft)';
 const number = (v: number | null | undefined, signed = false) => v == null || !Number.isFinite(v) ? '—' : `${signed && v > 0 ? '+' : ''}${Math.round(v / 100).toLocaleString('ko-KR')}`;
 const tableRows: { name: string; value: (f: TreasuryFlow) => number; signed?: boolean; muted?: boolean; total?: boolean; detail?: boolean }[] = [
   { name: '발행 (+)', value: f => f.issues },
@@ -31,16 +31,16 @@ export function TreasuryPeriodComparison({ asOf, weeks, current }: { asOf: strin
     <div className="flex flex-wrap items-baseline justify-between gap-3"><h3 className="text-lg font-semibold">국채 발행·상환·순증감</h3><span className={caption}>결제일 기준 · 단위: 억 달러</span></div>
     <div className="overflow-x-auto">
       <table data-testid="treasury-flow-table" className="w-full text-sm text-right" style={{ minWidth: 520, fontVariantNumeric: 'tabular-nums' }}>
-        <thead><tr className="border-b border-[#D9D5CA]">
-          <th scope="col" className="text-left font-normal py-4 pr-3 text-[#777369]">구분</th>
+        <thead><tr className="border-b border-[var(--line-soft)]">
+          <th scope="col" className="text-left font-normal py-4 pr-3 text-[color:var(--ink-soft)]">구분</th>
           {periods.map(p => <th scope="col" key={p.end} className="font-medium py-4 pl-3">
             {p.label}
-            <div className="text-[11px] text-[#918D83] font-normal mt-1">{p.flow?.start ?? debtWindow(p.end, weeks).start}<br />~{p.end}</div>
+            <div className="text-[length:var(--font-size-11px)] text-[color:var(--ink-soft)] font-normal mt-1">{p.flow?.start ?? debtWindow(p.end, weeks).start}<br />~{p.end}</div>
           </th>)}
         </tr></thead>
-        <tbody>{tableRows.map(row => <tr key={row.name} className={row.total ? 'border-t-2 border-[#1A1A18]' : row.detail ? '' : 'border-b border-[#E4E0D7]'}>
-          <th scope="row" className={`text-left ${row.total ? 'font-semibold py-4' : row.detail ? 'font-normal py-2 pl-4 text-xs text-[#777369]' : 'font-normal py-3'} ${row.muted ? 'text-[#918D83] text-xs' : ''}`}>{row.name}</th>
-          {periods.map(p => { const value = p.flow ? row.value(p.flow) : null; return <td key={p.end} className={`pl-3 ${row.total ? 'py-4 text-lg font-semibold' : row.detail ? 'py-2 text-xs' : 'py-3'} ${row.muted ? 'text-xs text-[#918D83]' : ''}`} style={{ color: row.signed && !row.muted && value != null ? color(value) : undefined }}>{number(value, row.signed)}</td>; })}
+        <tbody>{tableRows.map(row => <tr key={row.name} className={row.total ? 'border-t-2 border-[var(--ink)]' : row.detail ? '' : 'border-b border-[var(--line-soft)]'}>
+          <th scope="row" className={`text-left ${row.total ? 'font-semibold py-4' : row.detail ? 'font-normal py-2 pl-4 text-xs text-[color:var(--ink-soft)]' : 'font-normal py-3'} ${row.muted ? 'text-[color:var(--ink-soft)] text-xs' : ''}`}>{row.name}</th>
+          {periods.map(p => { const value = p.flow ? row.value(p.flow) : null; return <td key={p.end} className={`pl-3 ${row.total ? 'py-4 text-lg font-semibold' : row.detail ? 'py-2 text-xs' : 'py-3'} ${row.muted ? 'text-xs text-[color:var(--ink-soft)]' : ''}`} style={{ color: row.signed && !row.muted && value != null ? color(value) : undefined }}>{number(value, row.signed)}</td>; })}
         </tr>)}</tbody>
       </table>
     </div>

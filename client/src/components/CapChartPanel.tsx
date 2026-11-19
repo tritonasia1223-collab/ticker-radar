@@ -97,7 +97,7 @@ export function PanelChart({
 
   if (empty) {
     return (
-      <div className="flex items-center justify-center text-[11.5px] text-muted-foreground" style={{ height }}>
+      <div className="flex items-center justify-center text-[length:var(--font-size-11_5px)] text-muted-foreground" style={{ height }}>
         이 구간 데이터 없음
       </div>
     );
@@ -110,10 +110,10 @@ export function PanelChart({
         <XAxis
           dataKey="t" type="number" domain={[fromYear, toYear]} allowDataOverflow
           tickFormatter={(v) => String(Math.round(v))}
-          tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground"
+          tick={{ fontSize: "var(--font-size-10)" }} stroke="currentColor" className="text-muted-foreground"
           tickCount={tickCount}
         />
-        <YAxis domain={yDomain} allowDataOverflow tick={{ fontSize: 10 }} tickFormatter={tickFmt} stroke="currentColor" className="text-muted-foreground" width={40} />
+        <YAxis domain={yDomain} allowDataOverflow tick={{ fontSize: "var(--font-size-10)" }} tickFormatter={tickFmt} stroke="currentColor" className="text-muted-foreground" width={40} />
         {/* 컴팩트 툴팁 — 한 줄(연·월 + 값), 상단 고정으로 데이터 라인을 가리지 않음. 패널 이름은 헤더에 있어 생략. */}
         <Tooltip
           isAnimationActive={false}
@@ -126,7 +126,7 @@ export function PanelChart({
             if (v == null) return null;
             const seg = history ? segmentAt(history.segments, Number(label)) : null;
             return (
-              <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[10.5px] leading-tight text-popover-foreground shadow-sm backdrop-blur-sm">
+              <div className="pointer-events-none whitespace-nowrap rounded border border-border bg-popover/95 px-1.5 py-0.5 text-[length:var(--font-size-10_5px)] leading-tight text-popover-foreground shadow-sm glass">
                 <span className="text-muted-foreground tabular-nums">{fracYearToLabel(Number(label))}</span>
                 {" · "}
                 <span className="font-semibold tabular-nums" style={{ color: panel.color }}>{Number(v).toLocaleString("ko", { maximumFractionDigits: 2 })}</span>
@@ -207,21 +207,21 @@ export function CapChartPanel({
           data-testid={`panel-expand-${panel.id}`}
         >
           <span className="h-2.5 w-2.5 rounded-sm" style={{ background: panel.color }} />
-          <span className="text-[13px] font-medium">{panel.label}</span>
+          <span className="text-[length:var(--font-size-13px)] font-medium">{panel.label}</span>
           <Maximize2 className="h-3 w-3 text-muted-foreground/40 transition-colors group-hover:text-primary" />
         </button>
         {conv ? (
           <button
             type="button"
             onClick={() => setKrw((k) => !k)}
-            className="rounded px-1 text-[10.5px] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
+            className="rounded px-1 text-[length:var(--font-size-10_5px)] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-primary"
             title={`클릭하면 ${krw ? "달러" : "원화"}로 전환 (고정 환율 1$=${USD_KRW.toLocaleString("ko")}원)`}
             data-testid={`panel-unit-${panel.id}`}
           >
             {displayUnit} · {fullRange ? fullRange[0] : panel.start}~
           </button>
         ) : (
-          <span className="text-[10.5px] text-muted-foreground tabular-nums">{panel.unit} · {fullRange ? fullRange[0] : panel.start}~</span>
+          <span className="text-[length:var(--font-size-10_5px)] text-muted-foreground tabular-nums">{panel.unit} · {fullRange ? fullRange[0] : panel.start}~</span>
         )}
       </div>
 
@@ -232,11 +232,11 @@ export function CapChartPanel({
         scale={scale} unit={displayUnit}
       />
 
-      {/* 전체 범위 모달 — framer-motion transform 컨테이닝블록을 벗어나도록 포털로 body 에 렌더. */}
+      {/* 전체 범위 모달 — body 포털에서 띄우는 레이어. */}
       {expanded && fullRange
         ? createPortal(
             <div
-              className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+              className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 glass"
               onClick={() => setExpanded(false)}
               data-testid={`panel-modal-${panel.id}`}
             >
@@ -248,7 +248,7 @@ export function CapChartPanel({
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-sm" style={{ background: panel.color }} />
                     <span className="text-sm font-semibold">{panel.label}</span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                    <span className="text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums">
                       전체 구간 {fullRange[0]}~{fullRange[1]} · {displayUnit}
                     </span>
                   </div>

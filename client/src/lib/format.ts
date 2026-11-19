@@ -51,11 +51,11 @@ export function koCompany(symbol: string): string {
 }
 
 const PALETTE: Record<string, string> = {
-  LMT: "#ac8e68", RTX: "#b08d57", NOC: "#8a7048", GD: "#9c8254",
-  NVDA: "#30d158", AAPL: "#0a84ff", MSFT: "#34c759", GOOGL: "#bf5af2", META: "#5e5ce6",
-  AMZN: "#ff9f0a", TSLA: "#ff453a", JPM: "#64d2ff", GS: "#5ac8fa", BAC: "#4aa3df",
-  XOM: "#ffd60a", CVX: "#e6c200", PFE: "#ff6482", UNH: "#26c6da", LLY: "#ff8fab",
-  ADM: "#a3c585", DE: "#7cb342", DIS: "#a2845e",
+  LMT: "var(--tone-orange-500)", RTX: "var(--tone-orange-500)", NOC: "var(--tone-orange-500)", GD: "var(--tone-orange-500)",
+  NVDA: "var(--tone-green-500)", AAPL: "var(--tone-blue-500)", MSFT: "var(--tone-green-500)", GOOGL: "var(--tone-violet-400)", META: "var(--tone-blue-400)",
+  AMZN: "var(--tone-orange-500)", TSLA: "var(--tone-red-400)", JPM: "var(--tone-blue-300)", GS: "var(--tone-blue-300)", BAC: "var(--tone-blue-400)",
+  XOM: "var(--tone-amber-500)", CVX: "var(--tone-amber-500)", PFE: "var(--tone-rose-300)", UNH: "var(--tone-teal-500)", LLY: "var(--tone-rose-200)",
+  ADM: "var(--tone-lime-400)", DE: "var(--tone-lime-500)", DIS: "var(--tone-orange-500)",
 };
 export function tickerColor(sym: string): string {
   if (PALETTE[sym]) return PALETTE[sym];

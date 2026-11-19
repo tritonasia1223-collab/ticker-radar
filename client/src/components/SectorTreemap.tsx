@@ -9,10 +9,10 @@ import { Layers, ChevronRight, X } from "lucide-react";
 
 // Tile color encodes mention surge (recent vs prior window), not price. Direction follows
 // each market's convention: US = green up / red down; KR = red up / blue down. Slate = 잠잠.
-const RED = (p: number) => (p >= 100 ? "#b91c1c" : p >= 40 ? "#dc2626" : "#ef4444");
-const GREEN = (p: number) => (p >= 100 ? "#15803d" : p >= 40 ? "#16a34a" : "#22c55e");
-const BLUE = (p: number) => (p <= -100 ? "#1d4ed8" : p <= -40 ? "#2563eb" : "#3b82f6");
-const SLATE = "#475569";
+const RED = (p: number) => (p >= 100 ? "var(--tone-red-500)" : p >= 40 ? "var(--tone-red-500)" : "var(--tone-red-400)");
+const GREEN = (p: number) => (p >= 100 ? "var(--tone-green-700)" : p >= 40 ? "var(--tone-green-600)" : "var(--tone-green-500)");
+const BLUE = (p: number) => (p <= -100 ? "var(--tone-blue-500)" : p <= -40 ? "var(--tone-blue-500)" : "var(--tone-blue-400)");
+const SLATE = "var(--tone-blue-600)";
 function tileColor(pct: number, market: string): string {
   if (pct > -10 && pct < 10) return SLATE; // 잠잠
   const up = pct >= 0;
@@ -37,9 +37,9 @@ function TreeCell(props: any) {
   return (
     <g style={{ cursor: "pointer" }}>
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="hsl(var(--background))" strokeWidth={2} rx={3} />
-      {showName && <text x={x + 7} y={y + 18} fontSize={12} fontWeight={700} fill="#fff">{sectorLabel(sector)}</text>}
+      {showName && <text x={x + 7} y={y + 18} fontSize={12} fontWeight={700} fill="var(--surface)">{sectorLabel(sector)}</text>}
       {showStatus && (
-        <text x={x + 7} y={y + 37} fontSize={12} fontWeight={600} fill="#fff" opacity={st.dim ? 0.65 : 1}>
+        <text x={x + 7} y={y + 37} fontSize={12} fontWeight={600} fill="var(--surface)" opacity={st.dim ? 0.65 : 1}>
           {st.emoji ? <tspan fontSize={15}>{st.emoji} </tspan> : null}
           <tspan>{st.label}{showCount ? ` · ${recentMentions}회` : ""}</tspan>
         </text>
@@ -88,7 +88,7 @@ export default function SectorTreemap({
       </div>
 
       {/* full-width treemap; floating card overlays it on tile click */}
-      <div ref={wrapRef} className="relative h-72 md:h-80">
+      <div ref={wrapRef} className="relative h-80">
         <ResponsiveContainer width="100%" height="100%">
           <Treemap
             data={rows}
@@ -104,13 +104,13 @@ export default function SectorTreemap({
 
         {active && (
           <div
-            className="absolute z-20 rounded-lg border bg-popover text-popover-foreground shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-150"
+            className="absolute z-20 rounded-lg border bg-popover text-popover-foreground shadow-xl flex flex-col"
             style={cardStyle}
           >
             <div className="flex items-center justify-between gap-2 px-3 py-2 border-b">
               <div className="min-w-0">
                 <div className="text-sm font-semibold truncate">{sectorLabel(active.sector)}</div>
-                <div className="text-[11px] text-muted-foreground">{active.recentAccounts}명 · {active.recentMentions}회</div>
+                <div className="text-[length:var(--font-size-11px)] text-muted-foreground">{active.recentAccounts}명 · {active.recentMentions}회</div>
               </div>
               <button onClick={() => setPicked(null)} className="shrink-0 text-muted-foreground hover:text-foreground" data-testid="sector-popover-close">
                 <X className="h-4 w-4" />
@@ -126,7 +126,7 @@ export default function SectorTreemap({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-sm truncate leading-tight">{stockName(s)}</div>
-                    <div className="text-[11px] text-muted-foreground tabular-nums">{s.recentAccounts}명 · {s.recentMentions}회</div>
+                    <div className="text-[length:var(--font-size-11px)] text-muted-foreground tabular-nums">{s.recentAccounts}명 · {s.recentMentions}회</div>
                   </div>
                   {(() => { const st = surgeStatus(s.recentMentions, s.priorMentions); return (
                     <span className={`text-xs shrink-0 whitespace-nowrap ${statusColorClass(st.tone, market)} ${st.dim ? "opacity-40" : ""}`}>{st.emoji} {st.label}</span>

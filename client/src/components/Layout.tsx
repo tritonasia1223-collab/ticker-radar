@@ -1,7 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Presentation, Pencil, Globe } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, History, Layers, Building2, Blocks, Presentation, Pencil, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/components/ThemeProvider";
 import { useEditMode } from "@/components/EditModeProvider";
 import GlobalTooltip from "@/components/GlobalTooltip";
 
@@ -27,7 +26,7 @@ const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: t
   //   블록체인 구조 { href: "/learn/blockchain", icon: Blocks } · CLO 모니터 { href: "/clo", icon: Layers } · 관심종목 { href: "/interest", icon: Star }
 ];
 
-// 금고 문 다이얼 — 사각 문판 + 원형 다이얼 + 스포크 4개. 단일 스트로크(currentColor)라 다크 모드 자동 대응.
+// 금고 문 다이얼 — 사각 문판 + 원형 다이얼 + 스포크 4개. 단일 스트로크(currentColor)로 호스트 전경색 사용.
 function Logo() {
   return (
     <div className="flex items-center gap-2.5 px-2">
@@ -38,8 +37,8 @@ function Logo() {
         <circle cx="16" cy="16" r="1.7" fill="currentColor" stroke="none" />
       </svg>
       <div className="leading-tight">
-        <div className="text-sm font-semibold">피스쿠스 <span className="text-[11px] font-normal text-muted-foreground">FISCUS</span></div>
-        <div className="text-[11px] text-muted-foreground">매크로 리서치 · 종목 트래킹</div>
+        <div className="text-sm font-semibold">피스쿠스 <span className="text-[length:var(--font-size-11px)] font-normal text-muted-foreground">FISCUS</span></div>
+        <div className="text-[length:var(--font-size-11px)] text-muted-foreground">매크로 리서치 · 종목 트래킹</div>
       </div>
     </div>
   );
@@ -47,7 +46,6 @@ function Logo() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { theme, toggle } = useTheme();
   const { present, toggle: toggleMode } = useEditMode();
 
   // 발표 모드: 네비 숨김 + 본문 확대(zoom) + 나가는 플로팅 버튼(네비가 없으니 여기서 나감).
@@ -58,7 +56,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           onClick={toggleMode}
-          className="fixed right-4 top-4 z-50 flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-md backdrop-blur transition-colors hover:border-primary/60 hover:text-foreground"
+          className="fixed right-4 top-4 z-50 flex items-center gap-1.5 rounded-full border border-border glass px-3 py-1.5 text-[length:var(--font-size-12px)] font-medium text-muted-foreground shadow-md transition-colors hover:border-primary/60 hover:text-foreground"
           data-testid="button-exit-present"
           title="발표 모드 종료 → 편집 모드"
         >
@@ -70,22 +68,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-background text-foreground">
-      {/* 사이드바 — md 이상은 기존 그대로. 그 아래(폰)는 상단 가로 내비로 접어 본문 폭을 확보한다(390px 에서 본문이 135px 만 남던 문제). */}
-      <aside className="w-full md:w-60 shrink-0 border-b md:border-b-0 md:border-r border-sidebar-border bg-sidebar flex flex-col">
+    <div className="flex flex-row h-screen bg-background text-foreground">
+      {/* 데스크톱 고정 내비게이션 */}
+      <aside className="w-60 shrink-0 border-b-0 border-r border-sidebar-border bg-sidebar flex flex-col">
         <div className="h-16 flex items-center border-b border-sidebar-border">
           <Logo />
         </div>
-        <nav className="flex md:block overflow-x-auto md:overflow-auto md:flex-1 px-2 py-1.5 md:p-3 gap-1 md:space-y-0.5">
+        <nav className="block overflow-auto flex-1 p-3 gap-1 space-y-0.5">
           {NAV_GROUPS.map((g) => (
-            <div key={g.group} className="flex md:block shrink-0 gap-1 md:pt-3 md:first:pt-0">
-              <div className="hidden md:block select-none px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
+            <div key={g.group} className="block shrink-0 gap-1 pt-3 first:pt-0">
+              <div className="block select-none px-3 pb-1 text-[length:var(--font-size-10_5px)] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
               {g.items.map((n) => {
                 const active = location === n.href;
                 const Icon = n.icon;
                 return (
                   <Link key={n.href} href={n.href} data-testid={`link-${n.href.replace("/", "") || "discover"}`}>
-                    <div className={`flex items-center gap-3 rounded-md cursor-pointer hover-elevate whitespace-nowrap ${n.sub ? "px-3 py-1 md:pl-10 text-xs" : "px-3 py-2 text-sm"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : n.sub ? "text-sidebar-foreground/65" : "text-sidebar-foreground/80"}`}>
+                    <div className={`flex items-center gap-3 rounded-md cursor-pointer prism-edge hover-elevate whitespace-nowrap ${n.sub ? "px-3 py-1 pl-10 text-xs" : "px-3 py-2 text-sm"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : n.sub ? "text-sidebar-foreground/65" : "text-sidebar-foreground/80"}`}>
                       {n.sub ? <span aria-hidden="true" className="h-1 w-1 rounded-full bg-current opacity-60" /> : <Icon className="h-4 w-4" />}
                       {n.label}
                     </div>
@@ -95,7 +93,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="hidden md:block p-3 border-t border-sidebar-border space-y-2">
+        <div className="block p-3 border-t border-sidebar-border space-y-2">
           <Button
             variant="outline"
             onClick={toggleMode}
@@ -104,10 +102,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             title="발표 모드 — 네비를 숨기고 본문을 크게 (읽기 전용)"
           >
             <Presentation className="h-4 w-4 mr-2" /> 발표 모드
-          </Button>
-          <Button variant="outline" onClick={toggle} className="w-full" data-testid="button-theme">
-            {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-            {theme === "dark" ? "라이트" : "다크"}
           </Button>
         </div>
       </aside>

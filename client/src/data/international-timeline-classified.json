@@ -1,0 +1,2733 @@
+[
+  {
+    "event": {
+      "id": "insight-20261118-0",
+      "type": "policy",
+      "year": 1969,
+      "month": null,
+      "date": "1969 연간",
+      "title": "연준(마틴) 긴축, 금리 9%",
+      "body": "1969 연간\n연준(마틴) 긴축, 금리 9%\n은행들이 Reg Q 금리 상한에 막히자 런던에서 150억 달러 차입(유로달러 우회). 달러 강세.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-0"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-1",
+      "type": "policy",
+      "year": 1969,
+      "month": 10,
+      "date": "1969.10",
+      "title": "Reg M 도입: 유로달러 차입에 지준 10%",
+      "body": "1969.10\nReg M 도입: 유로달러 차입에 지준 10%\n유로달러가 미국으로 들어오는 길을 막는 조치.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-1"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-2",
+      "type": "event",
+      "year": 1969,
+      "month": 9,
+      "date": "1969.9",
+      "title": "총선 쟁점이 \"마르크 절상\"",
+      "body": "1969.9\n총선 쟁점이 \"마르크 절상\"\n저평가 마르크의 절상 찬반이 선거 쟁점 → 브란트 집권으로 이어짐.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-2",
+      "type": "policy",
+      "year": 1969,
+      "month": 10,
+      "date": "1969.10.24",
+      "title": "마르크 9.3% 절상",
+      "body": "1969.10.24\n마르크 9.3% 절상\n달러 보유고는 오히려 감소 — 미국 긴축으로 달러가 미국으로 회귀 중이었기 때문.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-2"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-4",
+      "type": "event",
+      "year": 1969,
+      "month": 4,
+      "date": "1969.4",
+      "title": "드골 사임",
+      "body": "1969.4\n드골 사임",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-3",
+      "type": "policy",
+      "year": 1969,
+      "month": 8,
+      "date": "1969.8",
+      "title": "프랑 11% 절하",
+      "body": "1969.8\n프랑 11% 절하\n1968년 파업 이후 임금 상승·자본 유출 대응. 금본위 복귀론은 유지. 독일은 절상·프랑스는 절하 — 유럽 내 환율 격차가 벌어짐.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-3"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-4",
+      "type": "policy",
+      "year": 1969,
+      "month": null,
+      "date": "1969 연간",
+      "title": "1967 절하 후유증으로 긴축",
+      "body": "1969 연간\n1967 절하 후유증으로 긴축\n국내는 긴축인데 런던 금융가는 유로달러 호황의 중심지.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-4"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-5",
+      "type": "stat",
+      "year": 1969,
+      "month": null,
+      "date": "1969 연간",
+      "title": "360엔 고정, 흑자 급증 시작",
+      "body": "1969 연간\n360엔 고정, 흑자 급증 시작\n경상흑자는 아직 작은 상태.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-5"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-8",
+      "type": "stat",
+      "year": 1969,
+      "month": null,
+      "date": "1969 연간",
+      "title": "시장 370억 달러, 금리 13% 급등",
+      "body": "1969 연간\n시장 370억 달러, 금리 13% 급등\n미국 긴축으로 유로달러가 런던→뉴욕으로 흡입됨. 1월 바젤에서 중앙은행 예치 문제 첫 제기.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-1",
+      "type": "policy",
+      "year": 1970,
+      "month": 2,
+      "date": "1970.2",
+      "title": "번즈 취임, 금리 인하 개시",
+      "body": "1970.2\n번즈 취임, 금리 인하 개시\n9% → 연말 4%대. 은행들은 런던 빚 상환 시작.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-1"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-10",
+      "type": "policy",
+      "year": 1970,
+      "month": null,
+      "date": "1970 연간",
+      "title": "물가 4%, 분데스방크 긴축(재할인 7%대)",
+      "body": "1970 연간\n물가 4%, 분데스방크 긴축(재할인 7%대)\n미독 금리차 3%p → 독일 기업이 유로달러 차입 → 보유고 급증. \"미국 인플레를 수입하고 있다\".",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-11",
+      "type": "event",
+      "year": 1970,
+      "month": 6,
+      "date": "1970.6",
+      "title": "히스 보수당 집권, EC 가입 협상 재개",
+      "body": "1970.6\n히스 보수당 집권, EC 가입 협상 재개\n런던의 국제금융 기능을 유지하면서 유럽 시장에 접근하려는 포석.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-11"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-12",
+      "type": "stat",
+      "year": 1970,
+      "month": null,
+      "date": "1970 연간",
+      "title": "360엔 유지, 흑자 20억 달러 돌파",
+      "body": "1970 연간\n360엔 유지, 흑자 20억 달러 돌파",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-12"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-9",
+      "type": "policy",
+      "year": 1970,
+      "month": 10,
+      "date": "1970.10",
+      "title": "베르너 보고서 (1980년까지 EMU 목표)",
+      "body": "1970.10\n베르너 보고서 (1980년까지 EMU 목표)\n독일·네덜란드 \"경제정책 수렴 먼저\" vs 프랑스·벨기에 \"환율부터 묶자\" — 통화동맹 설계를 둘러싼 분열. 와중에 독일로 유로달러가 쏟아짐.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-9",
+      "insight-20261118-10"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-13",
+      "type": "policy",
+      "year": 1971,
+      "month": 1,
+      "date": "1971.1",
+      "title": "Reg M 20%로 인상 + 해외지점용 특별증권",
+      "body": "1971.1\nReg M 20%로 인상 + 해외지점용 특별증권\n달러 회수 시도 — 실패.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-13"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-02",
+      "type": "event",
+      "year": 1971,
+      "month": 1,
+      "date": "1971.1~4",
+      "title": "페그 방어로 60억 달러 매입",
+      "body": "1971.1~4\n페그 방어로 60억 달러 매입",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1971,
+      "endMonth": 4
+    },
+    "replaces": [
+      "mark-revision-20261118-02"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-16",
+      "type": "event",
+      "year": 1971,
+      "month": 5,
+      "date": "1971.5.5",
+      "title": "외환시장 폐쇄",
+      "body": "1971.5.5\n외환시장 폐쇄",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-17",
+      "type": "event",
+      "year": 1971,
+      "month": 5,
+      "date": "1971.5.8~9",
+      "title": "EC에 공동 변동 제안 → 프랑스 거부",
+      "body": "1971.5.8~9\nEC에 공동 변동 제안 → 프랑스 거부",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1971,
+      "endMonth": 5
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-03",
+      "type": "policy",
+      "year": 1971,
+      "month": 5,
+      "date": "1971.5.10",
+      "title": "마르크 변동환율 전환 (네덜란드 동행)",
+      "body": "1971.5.10\n마르크 변동환율 전환 (네덜란드 동행)\n비거주자 예금 이자 금지 병행 — \"변동시켰는데도 투기가 올까 봐\" 대비.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-03"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-16",
+      "type": "event",
+      "year": 1971,
+      "month": 5,
+      "date": "1971.5",
+      "title": "공동 변동 거부, 고정 유지",
+      "body": "1971.5\n공동 변동 거부, 고정 유지\n달러 절하의 공식 인정을 요구 + 마르크 대비 경쟁력·CAP(공동농업) 보호.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-16"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-17",
+      "type": "policy",
+      "year": 1971,
+      "month": null,
+      "date": "1971 연간",
+      "title": "바버 붐 시작 (재정 확대)",
+      "body": "1971 연간\n바버 붐 시작 (재정 확대)\n런던 금융가는 유로달러 시장 규제에 반대.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-17"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-18",
+      "type": "event",
+      "year": 1971,
+      "month": 5,
+      "date": "1971.5~8",
+      "title": "독일 이탈 후 투기 표적화",
+      "body": "1971.5~8\n독일 이탈 후 투기 표적화\n보유고 40억→80억 달러로 늘려가며 360엔 사수.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1971,
+      "endMonth": 8
+    },
+    "replaces": [
+      "insight-20261118-18"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-19",
+      "type": "policy",
+      "year": 1971,
+      "month": 6,
+      "date": "1971.6.13",
+      "title": "G10 \"보유 달러의 유로시장 추가 예치 중단\" 합의",
+      "body": "1971.6.13\nG10 \"보유 달러의 유로시장 추가 예치 중단\" 합의\n유럽 분열: 독일·네덜란드만 변동.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-19"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-23",
+      "type": "policy",
+      "year": 1971,
+      "month": null,
+      "date": "1971 하반기",
+      "title": "변동 유지 + 자본통제 강화",
+      "body": "1971 하반기\n변동 유지 + 자본통제 강화\n브란트: 유럽 통합 우선.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-21",
+      "type": "policy",
+      "year": 1971,
+      "month": 8,
+      "date": "1971.8",
+      "title": "이중환율 도입",
+      "body": "1971.8\n이중환율 도입\n상업 프랑은 고정, 금융 프랑은 변동.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-21"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-25",
+      "type": "event",
+      "year": 1971,
+      "month": null,
+      "date": "1971 하반기",
+      "title": "파운드 사실상 변동",
+      "body": "1971 하반기\n파운드 사실상 변동\n스털링 잔고 문제가 다시 제기됨.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-22",
+      "type": "policy",
+      "year": 1971,
+      "month": 8,
+      "date": "1971.8",
+      "title": "2주 더 버티다 변동 이행",
+      "body": "1971.8\n2주 더 버티다 변동 이행\n8.16~27 40억 달러 추가 매입 후 8.28 변동 — 12월 스미스소니언에서 16.9% 절상(308엔), 참가국 최대 폭.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-22"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-30",
+      "type": "policy",
+      "year": 1972,
+      "month": null,
+      "date": "1972 연간",
+      "title": "재선 앞두고 번즈 완화 지속",
+      "body": "1972 연간\n재선 앞두고 번즈 완화 지속\n물가 동결이 풀리자 인플레 재점화.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-30"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-04",
+      "type": "policy",
+      "year": 1972,
+      "month": 3,
+      "date": "1972.3",
+      "title": "바르데포트 도입 (해외 차입의 40% 무이자 예치)",
+      "body": "1972.3\n바르데포트 도입 (해외 차입의 40% 무이자 예치)\n1970년에 뚫려 있던 기업 차입 파이프 차단 (50% 인상은 1973.2).",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-04"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-25",
+      "type": "policy",
+      "year": 1972,
+      "month": 6,
+      "date": "1972.6",
+      "title": "비거주자의 독일 채권 매입 금지",
+      "body": "1972.6\n비거주자의 독일 채권 매입 금지\n유로달러 유입 차단 보강.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-25"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-30",
+      "type": "event",
+      "year": 1972,
+      "month": 7,
+      "date": "1972.7",
+      "title": "쉴러 사임, 슈미트 경제·재무장관 겸임",
+      "body": "1972.7\n쉴러 사임, 슈미트 경제·재무장관 겸임\n독일 노선이 \"변동환율 + 자본통제 + 유럽 블록\"으로 확정.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-27",
+      "type": "policy",
+      "year": 1972,
+      "month": null,
+      "date": "1972 연간",
+      "title": "스네이크 적극 추진 (CAP 보호)",
+      "body": "1972 연간\n스네이크 적극 추진 (CAP 보호)\n이중환율은 유지.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-27"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-32",
+      "type": "policy",
+      "year": 1972,
+      "month": 1,
+      "date": "1972.1",
+      "title": "EC 가입조약 서명",
+      "body": "1972.1\nEC 가입조약 서명",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-28",
+      "type": "event",
+      "year": 1972,
+      "month": 6,
+      "date": "1972.6",
+      "title": "스네이크 가입 6주 만에 탈퇴 (6.23)",
+      "body": "1972.6\n스네이크 가입 6주 만에 탈퇴 (6.23)\n5월 가입 → 파운드 공격으로 보유고 26억 달러 소진 → 첫 탈락자.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-28"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-29",
+      "type": "policy",
+      "year": 1972,
+      "month": null,
+      "date": "1972 연간",
+      "title": "다나카 \"열도개조론\"",
+      "body": "1972 연간\n다나카 \"열도개조론\"\n내수 부양으로 추가 절상 회피 시도 → 토지 투기로 번짐.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-29"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-05",
+      "type": "policy",
+      "year": 1972,
+      "month": 4,
+      "date": "1972.4.24",
+      "title": "스네이크 출범",
+      "body": "1972.4.24\n스네이크 출범\n유럽 통화 상호 괴리 최대 2.25%(달러 터널 ±2.25% 안의 절반 폭). 달러 유출 재개.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-05"
+    ]
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-5",
+      "type": "policy",
+      "year": 1973,
+      "month": 2,
+      "date": "1973.2.12",
+      "title": "달러 2차 절하 10% (금 42.22달러)",
+      "body": "1973.2.12\n달러 2차 절하 10% (금 42.22달러)\n번즈, 뒤늦게 긴축 전환.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-5"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-08",
+      "type": "policy",
+      "year": 1973,
+      "month": 2,
+      "date": "1973.2",
+      "title": "비거주자 주식 매입 허가제",
+      "body": "1973.2\n비거주자 주식 매입 허가제\n같은 달 바르데포트 50%로 최종 강화.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-08"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-38",
+      "type": "event",
+      "year": 1973,
+      "month": 3,
+      "date": "1973.3.1",
+      "title": "하루 27억 달러 매입",
+      "body": "1973.3.1\n하루 27억 달러 매입\n고정환율 방어의 마지막 클라이맥스.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-35",
+      "type": "policy",
+      "year": 1973,
+      "month": 3,
+      "date": "1973.3.12",
+      "title": "공동 변동 이행 + 마르크 3% 절상",
+      "body": "1973.3.12\n공동 변동 이행 + 마르크 3% 절상",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-35"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-36",
+      "type": "policy",
+      "year": 1973,
+      "month": 3,
+      "date": "1973.3",
+      "title": "공동 변동 동의",
+      "body": "1973.3\n공동 변동 동의\n조건: 마르크 절상 + EMCF(유럽통화협력기금) 창설.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-36"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-31",
+      "type": "event",
+      "year": 1973,
+      "month": 1,
+      "date": "1973.1",
+      "title": "EC 정식 가입",
+      "body": "1973.1\nEC 정식 가입\n스네이크 밖에서 변동 유지.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-31"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-34",
+      "type": "policy",
+      "year": 1973,
+      "month": 2,
+      "date": "1973.2.14",
+      "title": "엔 변동환율 이행",
+      "body": "1973.2.14\n엔 변동환율 이행\n1973~74 \"광란물가\" 24%로 이어짐.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-34"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-43",
+      "type": "event",
+      "year": 1973,
+      "month": 2,
+      "date": "1973.2",
+      "title": "리라, 스네이크 탈퇴",
+      "body": "1973.2\n리라, 스네이크 탈퇴",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-44",
+      "type": "policy",
+      "year": 1973,
+      "month": 3,
+      "date": "1973.3.12",
+      "title": "\"터널 없는 뱀\" = EC 공동 변동",
+      "body": "1973.3.12\n\"터널 없는 뱀\" = EC 공동 변동",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-7",
+      "type": "policy",
+      "year": 1974,
+      "month": 1,
+      "date": "1974.1",
+      "title": "자본통제 전면 폐지 (이자평형세 등 3종)",
+      "body": "1974.1\n자본통제 전면 폐지 (이자평형세 등 3종)\n물가 11%.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-7"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-46",
+      "type": "event",
+      "year": 1974,
+      "month": 8,
+      "date": "1974.8",
+      "title": "닉슨 사임, 포드 승계",
+      "body": "1974.8\n닉슨 사임, 포드 승계",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-14",
+      "type": "event",
+      "year": 1974,
+      "month": 6,
+      "date": "1974.6.26",
+      "title": "헤르슈타트 파산",
+      "body": "1974.6.26\n헤르슈타트 파산\n물가 7%(전후 최고) 국면에서 터진 국제 외환결제 사고.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-14"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-42",
+      "type": "policy",
+      "year": 1974,
+      "month": 12,
+      "date": "1974.12",
+      "title": "세계 최초 통화량 목표 발표",
+      "body": "1974.12\n세계 최초 통화량 목표 발표\n유일하게 인플레를 잡은 중앙은행이 됨. 바르데포트 완화 병행.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-42"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-43",
+      "type": "event",
+      "year": 1974,
+      "month": 1,
+      "date": "1974.1",
+      "title": "스네이크 탈퇴",
+      "body": "1974.1\n스네이크 탈퇴\n물가 14%. 유로시장에서 차입.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-43"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-44",
+      "type": "event",
+      "year": 1974,
+      "month": 2,
+      "date": "1974.2",
+      "title": "총선, 윌슨 노동당 집권",
+      "body": "1974.2\n총선, 윌슨 노동당 집권\n광부 파업 와중. 물가 16%. 2차 은행 위기 — 영란은행 \"구명보트\" 구제.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-44"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-45",
+      "type": "stat",
+      "year": 1974,
+      "month": null,
+      "date": "1974 연간",
+      "title": "광란물가 24%, 전후 첫 마이너스 성장",
+      "body": "1974 연간\n광란물가 24%, 전후 첫 마이너스 성장\n경상적자. 12월 다나카 사임.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-45"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-52",
+      "type": "stat",
+      "year": 1974,
+      "month": null,
+      "date": "1974 연간",
+      "title": "OPEC 흑자 680억 달러, 런던 예치 시작",
+      "body": "1974 연간\nOPEC 흑자 680억 달러, 런던 예치 시작\n9월 바젤 \"유동성 공급 수단 있다\" 성명. 12월 바젤위원회 설립. 시장 1,770억(순).",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-47",
+      "type": "policy",
+      "year": 1975,
+      "month": 11,
+      "date": "1975.11",
+      "title": "랑부예 G6 정상회의: 변동환율 공인 합의",
+      "body": "1975.11\n랑부예 G6 정상회의: 변동환율 공인 합의\n불황 바닥, 연준 완화.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-47"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-54",
+      "type": "policy",
+      "year": 1975,
+      "month": null,
+      "date": "1975 연간",
+      "title": "성장 −1%, 슈미트 재정 부양",
+      "body": "1975 연간\n성장 −1%, 슈미트 재정 부양\n분데스방크는 긴축 유지. 수출로 흑자 유지 — 산유국들이 기계·설비 수입.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-49",
+      "type": "policy",
+      "year": 1975,
+      "month": 7,
+      "date": "1975.7",
+      "title": "스네이크 복귀",
+      "body": "1975.7\n스네이크 복귀\n랑부예 정상회의 주최.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-49"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-50",
+      "type": "stat",
+      "year": 1975,
+      "month": null,
+      "date": "1975 연간",
+      "title": "물가 24%",
+      "body": "1975 연간\n물가 24%\n6월 EC 잔류 국민투표 → 잔류. 파운드 하락 시작, 유로시장에서 차입.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-50"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-51",
+      "type": "stat",
+      "year": 1975,
+      "month": null,
+      "date": "1975 연간",
+      "title": "회복, 수출 드라이브 시작",
+      "body": "1975 연간\n회복, 수출 드라이브 시작\n엔 300.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-51"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-58",
+      "type": "policy",
+      "year": 1975,
+      "month": 12,
+      "date": "1975.12",
+      "title": "바젤 콩코르다트 채택",
+      "body": "1975.12\n바젤 콩코르다트 채택\n신디케이트론, 중남미로 본격 유입. 시장 2,050억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-59",
+      "type": "event",
+      "year": 1976,
+      "month": 11,
+      "date": "1976.11",
+      "title": "카터 당선, 번즈 유임",
+      "body": "1976.11\n카터 당선, 번즈 유임\n경기 회복 국면.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-55",
+      "type": "policy",
+      "year": 1976,
+      "month": null,
+      "date": "1976 연간",
+      "title": "흑자 지속, 긴축 유지",
+      "body": "1976 연간\n흑자 지속, 긴축 유지\n물가상승률 4%대로 하락.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-55"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-20",
+      "type": "event",
+      "year": 1976,
+      "month": 3,
+      "date": "1976.3",
+      "title": "스네이크 재탈퇴",
+      "body": "1976.3\n스네이크 재탈퇴",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-20"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-62",
+      "type": "policy",
+      "year": 1976,
+      "month": 8,
+      "date": "1976.8",
+      "title": "바르 총리 취임, 긴축 전환",
+      "body": "1976.8\n바르 총리 취임, 긴축 전환",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-63",
+      "type": "event",
+      "year": 1976,
+      "month": 9,
+      "date": "1976.9",
+      "title": "파운드 위기, 힐리 히스로 회항",
+      "body": "1976.9\n파운드 위기, 힐리 히스로 회항\nIMF 총회 가던 재무장관이 공항에서 되돌아온 상징적 장면.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-57",
+      "type": "event",
+      "year": 1976,
+      "month": 12,
+      "date": "1976.12",
+      "title": "IMF 구제금융 39억 달러",
+      "body": "1976.12\nIMF 구제금융 39억 달러",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-57"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-58",
+      "type": "stat",
+      "year": 1976,
+      "month": null,
+      "date": "1976 연간",
+      "title": "수출 급증, 경상 흑자 전환",
+      "body": "1976 연간\n수출 급증, 경상 흑자 전환",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-58"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-53",
+      "type": "policy",
+      "year": 1976,
+      "month": 1,
+      "date": "1976.1",
+      "title": "자메이카 합의",
+      "body": "1976.1\n자메이카 합의\n변동환율 공식화, 금 비통화화. 시장 2,470억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-53"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-59",
+      "type": "event",
+      "year": 1977,
+      "month": 1,
+      "date": "1977.1",
+      "title": "카터 취임, \"기관차\" 부양 요구",
+      "body": "1977.1\n카터 취임, \"기관차\" 부양 요구",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-59"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-68",
+      "type": "event",
+      "year": 1977,
+      "month": 6,
+      "date": "1977.6",
+      "title": "재무장관 \"달러 고평가\" 발언",
+      "body": "1977.6\n재무장관 \"달러 고평가\" 발언\n경상적자 −140억(사상 최대). 하반기 달러 급락 시작.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-60",
+      "type": "event",
+      "year": 1977,
+      "month": null,
+      "date": "1977 연간",
+      "title": "부양 거부, 미독 갈등",
+      "body": "1977 연간\n부양 거부, 미독 갈등\n분데스방크 \"인플레 재수입\" 경계.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-60"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-61",
+      "type": "policy",
+      "year": 1977,
+      "month": null,
+      "date": "1977 연간",
+      "title": "바르 플랜 긴축",
+      "body": "1977 연간\n바르 플랜 긴축\n지스카르, 유럽 통화 구상 시작.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-61"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-62",
+      "type": "policy",
+      "year": 1977,
+      "month": null,
+      "date": "1977 연간",
+      "title": "IMF 프로그램 이행, 파운드 회복",
+      "body": "1977 연간\nIMF 프로그램 이행, 파운드 회복\n북해 산유 본격화 (생산 개시는 1975.6 아가일).",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-62"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-63",
+      "type": "stat",
+      "year": 1977,
+      "month": null,
+      "date": "1977 연간",
+      "title": "흑자 110억, 엔 240",
+      "body": "1977 연간\n흑자 110억, 엔 240\n미국 \"엔 더 올려라\" 압박.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-63"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-73",
+      "type": "stat",
+      "year": 1977,
+      "month": null,
+      "date": "1977 연간",
+      "title": "페트로달러 신디케이트론 정점",
+      "body": "1977 연간\n페트로달러 신디케이트론 정점\n개도국 외채 2,000억 돌파. 시장 3,000억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-74",
+      "type": "event",
+      "year": 1978,
+      "month": 3,
+      "date": "1978.3",
+      "title": "밀러 연준의장 취임",
+      "body": "1978.3\n밀러 연준의장 취임",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-11",
+      "type": "policy",
+      "year": 1978,
+      "month": 7,
+      "date": "1978.7",
+      "title": "본 G7 정상회의",
+      "body": "1978.7\n본 G7 정상회의\n달러 폭락으로 기축 지위가 흔들리자 공조 딜 성사.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-11"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-23",
+      "type": "policy",
+      "year": 1978,
+      "month": 11,
+      "date": "1978.11.1",
+      "title": "달러 방어 패키지",
+      "body": "1978.11.1\n달러 방어 패키지\n재할인율 인상 + 300억 달러 기금 + 카터본드(마르크·스위스프랑 표시). 12월 Reg M 0%.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-23",
+      "insight-20261118-68"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-65",
+      "type": "policy",
+      "year": 1978,
+      "month": 7,
+      "date": "1978.7",
+      "title": "본 정상회의 GDP 1% 부양 약속",
+      "body": "1978.7\n본 정상회의 GDP 1% 부양 약속",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-65"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-22",
+      "type": "policy",
+      "year": 1978,
+      "month": 4,
+      "date": "1978.4~12",
+      "title": "EMS 설계 완료",
+      "body": "1978.4~12\nEMS 설계 완료\n코펜하겐(4월)→브레멘(7월)→브뤼셀(12월). 에밍거 서한(개입 중단권) 확보.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1978,
+      "endMonth": 12
+    },
+    "replaces": [
+      "mark-revision-20261118-22"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-70",
+      "type": "event",
+      "year": 1978,
+      "month": 3,
+      "date": "1978.3",
+      "title": "총선 지스카르 진영 승리",
+      "body": "1978.3\n총선 지스카르 진영 승리\n슈미트와 EMS 공동 설계.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-70"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-71",
+      "type": "policy",
+      "year": 1978,
+      "month": 12,
+      "date": "1978.12",
+      "title": "캘러헌, EMS 불참 결정",
+      "body": "1978.12\n캘러헌, EMS 불참 결정\n\"불만의 겨울\" 개막.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-71"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-66",
+      "type": "stat",
+      "year": 1978,
+      "month": 10,
+      "date": "1978.10",
+      "title": "엔 175 사상 최고",
+      "body": "1978.10\n엔 175 사상 최고\n본 정상회의 7% 성장 약속. 흑자 160억. 12월 오히라 내각.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-66"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-82",
+      "type": "stat",
+      "year": 1978,
+      "month": null,
+      "date": "1978 연간",
+      "title": "달러 25% 급락, OPEC 달러 이탈 논의",
+      "body": "1978 연간\n달러 25% 급락, OPEC 달러 이탈 논의\nIMF 대체계정(중앙은행 달러를 SDR로 바꿔주는 방안) 논의. 시장 3,750억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-14",
+      "type": "event",
+      "year": 1979,
+      "month": 8,
+      "date": "1979.8.6",
+      "title": "볼커 연준의장 취임",
+      "body": "1979.8.6\n볼커 연준의장 취임",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-14"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-29",
+      "type": "policy",
+      "year": 1979,
+      "month": 10,
+      "date": "1979.10.6",
+      "title": "볼커 긴축 패키지",
+      "body": "1979.10.6\n볼커 긴축 패키지\n통화량 관리 전환 + 관리부채 한계지준 8%.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-29"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-78",
+      "type": "event",
+      "year": 1979,
+      "month": 11,
+      "date": "1979.11",
+      "title": "테헤란 미 대사관 인질 사건(11.4) → 이란 자산 동결(11.14)",
+      "body": "1979.11\n테헤란 미 대사관 인질 사건(11.4) → 이란 자산 동결(11.14)\n금 500달러.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-78"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-25",
+      "type": "policy",
+      "year": 1979,
+      "month": null,
+      "date": "1979 연간",
+      "title": "재할인율 3→6% 연쇄 인상",
+      "body": "1979 연간\n재할인율 3→6% 연쇄 인상\n오일쇼크로 경상적자 전환.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-25"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-74",
+      "type": "policy",
+      "year": 1979,
+      "month": null,
+      "date": "1979 연간",
+      "title": "EMS 가입, 물가 11%",
+      "body": "1979 연간\nEMS 가입, 물가 11%\n바르 긴축 지속.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-74"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-88",
+      "type": "event",
+      "year": 1979,
+      "month": 5,
+      "date": "1979.5",
+      "title": "대처 집권",
+      "body": "1979.5\n대처 집권",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-26",
+      "type": "policy",
+      "year": 1979,
+      "month": 10,
+      "date": "1979.10",
+      "title": "외환통제 전면 폐지",
+      "body": "1979.10\n외환통제 전면 폐지\nEMS 환율기구(ERM)는 불참. 물가 13%.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-26"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-27",
+      "type": "stat",
+      "year": 1979,
+      "month": null,
+      "date": "1979 연간",
+      "title": "2차 쇼크 선방",
+      "body": "1979 연간\n2차 쇼크 선방\n엔 240으로 약세, 수출 호조.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-27"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-91",
+      "type": "stat",
+      "year": 1979,
+      "month": null,
+      "date": "1979 연간",
+      "title": "볼커 금리, LIBOR로 전달 시작",
+      "body": "1979 연간\n볼커 금리, LIBOR로 전달 시작\n개도국 외채 4,000억. G10 유로달러 공동 지준 논의 개시(→1980 무산). 시장 순 5,000억·총 1조 돌파.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-15",
+      "type": "policy",
+      "year": 1980,
+      "month": 3,
+      "date": "1980.3",
+      "title": "연방기금금리 20%",
+      "body": "1980.3\n연방기금금리 20%\n3~7월 신용통제 → 급락 후 반등(연말 다시 20%).",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-15"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-79",
+      "type": "policy",
+      "year": 1980,
+      "month": 3,
+      "date": "1980.3",
+      "title": "통화관리법 제정",
+      "body": "1980.3\n통화관리법 제정\nReg Q 단계 폐지 확정 + 유로달러 차입 지준 3%.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-79"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-94",
+      "type": "event",
+      "year": 1980,
+      "month": 11,
+      "date": "1980.11",
+      "title": "레이건 당선",
+      "body": "1980.11\n레이건 당선\n물가 13.5%.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-81",
+      "type": "stat",
+      "year": 1980,
+      "month": null,
+      "date": "1980 연간",
+      "title": "경상수지 1965년 이래 첫 적자 (−150억)",
+      "body": "1980 연간\n경상수지 1965년 이래 첫 적자 (−150억)\n마르크 약세. 사우디 차관으로 적자 보전. 10월 슈미트 재선.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-81"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-82",
+      "type": "policy",
+      "year": 1980,
+      "month": null,
+      "date": "1980 연간",
+      "title": "바르 긴축, 물가 13.6%",
+      "body": "1980 연간\n바르 긴축, 물가 13.6%\n1981년 대선 앞두고 좌파 부상.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-82"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-83",
+      "type": "policy",
+      "year": 1980,
+      "month": 3,
+      "date": "1980.3",
+      "title": "중기재정전략(MTFS) 발표",
+      "body": "1980.3\n중기재정전략(MTFS) 발표\n통화주의 공식화. 금리 17%, 파운드 2.40달러(석유통화). 물가 22% 정점 — 고금리+고환율로 제조업 붕괴 시작.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-83"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-98",
+      "type": "event",
+      "year": 1980,
+      "month": 6,
+      "date": "1980.6",
+      "title": "오히라 급사, 스즈키 내각",
+      "body": "1980.6\n오히라 급사, 스즈키 내각",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-33",
+      "type": "policy",
+      "year": 1980,
+      "month": 12,
+      "date": "1980.12",
+      "title": "신외환법 시행 (자본거래 원칙 자유)",
+      "body": "1980.12\n신외환법 시행 (자본거래 원칙 자유)\n오일쇼크 경상적자 국면 — 외자 유입이 필요해진 시점의 자발적 개방. 대미 자동차 수출 180만 대.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-33"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-100",
+      "type": "stat",
+      "year": 1980,
+      "month": 1,
+      "date": "1980.1",
+      "title": "금 850달러 정점",
+      "body": "1980.1\n금 850달러 정점\n2~3월 은 폭락(헌트 형제). 4월 G10 유로달러 공동 지준 무산. OPEC 흑자 2차 정점 1,100억 → LIBOR 20%. 시장 5,750억(순).",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-101",
+      "type": "event",
+      "year": 1981,
+      "month": 1,
+      "date": "1981.1",
+      "title": "레이건 취임",
+      "body": "1981.1\n레이건 취임\n4월 재무부 \"개입 안 한다\"(스프링켈) — 환율 방임 선언.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-18",
+      "type": "policy",
+      "year": 1981,
+      "month": 8,
+      "date": "1981.8",
+      "title": "감세법",
+      "body": "1981.8\n감세법\n재정적자 급증, 금리 19%. 7월 불황 진입.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-18"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-87",
+      "type": "policy",
+      "year": 1981,
+      "month": 12,
+      "date": "1981.12",
+      "title": "IBF(역외금융시장) 출범 + CME 유로달러 선물 상장",
+      "body": "1981.12\nIBF(역외금융시장) 출범 + CME 유로달러 선물 상장\n뉴욕이 역외 달러 업무를 국내로 역수입.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-87"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-88",
+      "type": "policy",
+      "year": 1981,
+      "month": 2,
+      "date": "1981.2",
+      "title": "특별 롬바르트 12%",
+      "body": "1981.2\n특별 롬바르트 12%\n불황 속 긴축 — 마르크 방어.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-88"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-37",
+      "type": "policy",
+      "year": 1981,
+      "month": 10,
+      "date": "1981.10",
+      "title": "EMS 재조정 (마르크 +5.5%)",
+      "body": "1981.10\nEMS 재조정 (마르크 +5.5%)",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-37"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-36",
+      "type": "policy",
+      "year": 1981,
+      "month": 5,
+      "date": "1981.5",
+      "title": "미테랑 당선, 사회실험 개시",
+      "body": "1981.5\n미테랑 당선, 사회실험 개시\n국유화·주35시간·최저임금 인상·재정 부양 → 자본 유출. 10월 프랑 3% 절하.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-36"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-91",
+      "type": "policy",
+      "year": 1981,
+      "month": 3,
+      "date": "1981.3",
+      "title": "불황 속 긴축 예산",
+      "body": "1981.3\n불황 속 긴축 예산\n경제학자 364명 반대 서한. 여름 도시 폭동. 파운드 하락 시작.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-91"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-92",
+      "type": "policy",
+      "year": 1981,
+      "month": 5,
+      "date": "1981.5",
+      "title": "대미 자동차 수출자율규제 (168만 대)",
+      "body": "1981.5\n대미 자동차 수출자율규제 (168만 대)\n흑자 복귀, 엔 220. 은행 해외 진출 본격화.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-92"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-109",
+      "type": "event",
+      "year": 1981,
+      "month": 1,
+      "date": "1981.1",
+      "title": "이란 인질 석방, 유로달러 동결 해제 (알제 합의)",
+      "body": "1981.1\n이란 인질 석방, 유로달러 동결 해제 (알제 합의)\n3월 폴란드 채무 재조정 — 첫 경고였지만 무시됨. \"산유국 멕시코는 안 망한다\"는 논리로 멕시코가 1년에 200억 차입. 시장 6,600억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-93",
+      "type": "policy",
+      "year": 1982,
+      "month": 7,
+      "date": "1982.7~10",
+      "title": "볼커 완화 전환",
+      "body": "1982.7~10\n볼커 완화 전환\n통화량 목표 사실상 포기. 실업 10.8%. 8.12 주식 바닥 → 강세장 개시. 10월 간-세인트저메인법(S&L 규제완화).",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1982,
+      "endMonth": 10
+    },
+    "replaces": [
+      "insight-20261118-93"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-94",
+      "type": "event",
+      "year": 1982,
+      "month": 10,
+      "date": "1982.10.1",
+      "title": "슈미트 실각, 콜 집권",
+      "body": "1982.10.1\n슈미트 실각, 콜 집권\n6월 EMS 재조정(마르크 +4.25%). 흑자 복귀, 금리 인하 시작.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-94"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-95",
+      "type": "policy",
+      "year": 1982,
+      "month": 6,
+      "date": "1982.6",
+      "title": "2차 절하 + 임금·물가 동결 (들로르)",
+      "body": "1982.6\n2차 절하 + 임금·물가 동결 (들로르)\n사회주의 실험 \"중단\". 외환통제 강화.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-95"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-96",
+      "type": "event",
+      "year": 1982,
+      "month": 4,
+      "date": "1982.4~6",
+      "title": "포클랜드 전쟁",
+      "body": "1982.4~6\n포클랜드 전쟁\n물가 8.6%로 하락, 실업 300만.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1982,
+      "endMonth": 6
+    },
+    "replaces": [
+      "insight-20261118-96"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-40",
+      "type": "event",
+      "year": 1982,
+      "month": 11,
+      "date": "1982.11",
+      "title": "나카소네 내각",
+      "body": "1982.11\n나카소네 내각\n엔 250~270 약세, 흑자 확대. 일본 은행들, 중남미 대출 큰손.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-40"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-115",
+      "type": "stat",
+      "year": 1983,
+      "month": null,
+      "date": "1983 연간",
+      "title": "성장 4.5%, 재정적자 2,080억",
+      "body": "1983 연간\n성장 4.5%, 재정적자 2,080억\n6월 볼커 재임명. 달러 상승 지속.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-99",
+      "type": "policy",
+      "year": 1983,
+      "month": 11,
+      "date": "1983.11",
+      "title": "국제대출감독법",
+      "body": "1983.11\n국제대출감독법\n의회가 은행 자본규제 요구 — 바젤Ⅰ의 씨앗.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-99"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-101",
+      "type": "event",
+      "year": 1983,
+      "month": 3,
+      "date": "1983.3",
+      "title": "콜 총선 승리 + EMS 재조정 (마르크 +5.5%)",
+      "body": "1983.3\n콜 총선 승리 + EMS 재조정 (마르크 +5.5%)\n수출 회복. 11월 퍼싱Ⅱ 배치.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-101"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-41",
+      "type": "policy",
+      "year": 1983,
+      "month": 3,
+      "date": "1983.3",
+      "title": "\"긴축으로의 전환\"",
+      "body": "1983.3\n\"긴축으로의 전환\"\n미테랑, 유럽 잔류 선택. 3차 절하 + 들로르 긴축 + 외환 반출 제한.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-41"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-102",
+      "type": "event",
+      "year": 1983,
+      "month": 6,
+      "date": "1983.6",
+      "title": "대처 압승, 로슨 재무장관",
+      "body": "1983.6\n대처 압승, 로슨 재무장관\n7월 증권거래소 개혁 합의 (→1986 빅뱅).",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-102"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-42",
+      "type": "policy",
+      "year": 1983,
+      "month": 11,
+      "date": "1983.11",
+      "title": "레이건 방일, 엔-달러 위원회 설치",
+      "body": "1983.11\n레이건 방일, 엔-달러 위원회 설치\n흑자 210억. 엔 230~240 \"저평가\" 공방.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-42"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-121",
+      "type": "policy",
+      "year": 1983,
+      "month": 6,
+      "date": "1983.6",
+      "title": "콩코르다트 개정 (연결감독)",
+      "body": "1983.6\n콩코르다트 개정 (연결감독)\n브라질·아르헨티나·베네수엘라 재조정. 신디케이트론↓ 유로본드↑(증권화 시작) — 일본 은행 부상. 시장 7,600억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-104",
+      "type": "event",
+      "year": 1984,
+      "month": 5,
+      "date": "1984.5",
+      "title": "컨티넨탈 일리노이 구제",
+      "body": "1984.5\n컨티넨탈 일리노이 구제\n유로달러 뱅크런(외국 예금 60억 이탈) — \"대마불사(TBTF)\" 용어 탄생. 성장 7%, 무역적자 1,120억.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-104"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-105",
+      "type": "policy",
+      "year": 1984,
+      "month": 7,
+      "date": "1984.7",
+      "title": "외국인 이자 원천세 폐지",
+      "body": "1984.7\n외국인 이자 원천세 폐지\n국채의 해외 판매 본격화 → 일본 생보사가 미국채 최대 매수자로. 11월 레이건 재선. 달러 3.0마르크.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-105"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-124",
+      "type": "event",
+      "year": 1984,
+      "month": 5,
+      "date": "1984.5~6",
+      "title": "금속노조 파업 (주35시간 요구)",
+      "body": "1984.5~6\n금속노조 파업 (주35시간 요구)\n강달러 덕 수출 호황. 흑자 90억.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true,
+      "endYear": 1984,
+      "endMonth": 6
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-45",
+      "type": "policy",
+      "year": 1984,
+      "month": 8,
+      "date": "1984.8",
+      "title": "쿠폰세 폐지 (채권시장 개방)",
+      "body": "1984.8\n쿠폰세 폐지 (채권시장 개방)\n일본 자본을 노린 조치.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-45"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-107",
+      "type": "event",
+      "year": 1984,
+      "month": 7,
+      "date": "1984.7",
+      "title": "파비우스 총리",
+      "body": "1984.7\n파비우스 총리\n물가 7.4%. 들로르, EC 집행위원장 내정.",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-107"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-108",
+      "type": "event",
+      "year": 1984,
+      "month": 3,
+      "date": "1984.3",
+      "title": "광부 파업 개시 (1년)",
+      "body": "1984.3\n광부 파업 개시 (1년)\n파운드 1.20달러로 급락. 물가 5%.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-108"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-109",
+      "type": "policy",
+      "year": 1984,
+      "month": 5,
+      "date": "1984.5.29",
+      "title": "엔-달러 협정 체결",
+      "body": "1984.5.29\n엔-달러 협정 체결\n유로엔 자유화 + 외국 은행 신탁업 허용. 대미 흑자 370억. 생보사 미국채 매입 개시 — 자본 유출 500억.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-109"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-129",
+      "type": "stat",
+      "year": 1984,
+      "month": null,
+      "date": "1984 연간",
+      "title": "유로노트·FRN 붐",
+      "body": "1984 연간\n유로노트·FRN 붐\n멕시코 다년 재조정. 바젤 자본규제 작업 개시. 시장 8,300억.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-130",
+      "type": "event",
+      "year": 1985,
+      "month": 1,
+      "date": "1985.1",
+      "title": "베이커 재무장관 취임 (리건과 자리 교환)",
+      "body": "1985.1\n베이커 재무장관 취임 (리건과 자리 교환)\n의회엔 보호무역 법안 쇄도.",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-110",
+      "type": "stat",
+      "year": 1985,
+      "month": 2,
+      "date": "1985.2.25",
+      "title": "달러 정점 (3.47마르크 · 263엔)",
+      "body": "1985.2.25\n달러 정점 (3.47마르크 · 263엔)",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-110"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-132",
+      "type": "stat",
+      "year": 1985,
+      "month": null,
+      "date": "1985 연간",
+      "title": "순채무국 전환",
+      "body": "1985 연간\n순채무국 전환\n12월 그램-루드먼법(재정적자 상한).",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-48",
+      "type": "policy",
+      "year": 1985,
+      "month": 5,
+      "date": "1985.5",
+      "title": "유로마르크 자유화 (외국계 주간사 허용)",
+      "body": "1985.5\n유로마르크 자유화 (외국계 주간사 허용)\n플라자 서명. 마르크 3.47→2.45. 흑자 170억.",
+      "region": "europe",
+      "country": "서독",
+      "lane": "de",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-48"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-134",
+      "type": "event",
+      "year": 1985,
+      "month": 1,
+      "date": "1985.1",
+      "title": "들로르, EC 집행위원장 취임",
+      "body": "1985.1\n들로르, EC 집행위원장 취임\n플라자 서명. 7월 EMS 재조정(리라 −6%).",
+      "region": "europe",
+      "country": "프랑스",
+      "lane": "fr",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "insight-20261118-113",
+      "type": "stat",
+      "year": 1985,
+      "month": 1,
+      "date": "1985.1",
+      "title": "파운드 1.05달러 (달러 등가 근접), 금리 14%",
+      "body": "1985.1\n파운드 1.05달러 (달러 등가 근접), 금리 14%\n3월 광부 파업 종료. 플라자 참여. 11월 대처, ERM 가입 거부.",
+      "region": "europe",
+      "country": "영국",
+      "lane": "uk",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-113"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-114",
+      "type": "policy",
+      "year": 1985,
+      "month": 9,
+      "date": "1985.9",
+      "title": "플라자에서 다케시타, 엔 절상 동의",
+      "body": "1985.9\n플라자에서 다케시타, 엔 절상 동의\n엔 240→200. 10월 일시 긴축. 대미 흑자 460억 — 미국채 최대 매수국.",
+      "region": "japan",
+      "country": "일본",
+      "lane": "jp",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-114"
+    ]
+  },
+  {
+    "event": {
+      "id": "insight-20261118-112",
+      "type": "policy",
+      "year": 1985,
+      "month": 12,
+      "date": "1985.12",
+      "title": "단일유럽의정서 합의",
+      "body": "1985.12\n단일유럽의정서 합의\n룩셈부르크 정상회의 합의(서명은 1986.2) — 역내시장 1992 프로그램의 출발.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "insight-20261118-112"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-event-138",
+      "type": "stat",
+      "year": 1985,
+      "month": null,
+      "date": "1985 연간",
+      "title": "유로본드, 신디케이트론 추월",
+      "body": "1985 연간\n유로본드, 신디케이트론 추월\n일본 은행이 유로시장 1위로. 시장 순 1조 · 총 2.8조.",
+      "region": "europe",
+      "country": "유로달러·EC",
+      "lane": "eu",
+      "scope": "regional",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-3",
+      "type": "event",
+      "year": 1971,
+      "month": 8,
+      "date": "1971.8.15",
+      "title": "닉슨 쇼크",
+      "body": "1971.8.15\n닉슨 쇼크\n금태환 정지 + 수입관세 10% + 물가·임금 동결",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-3"
+    ]
+  },
+  {
+    "event": {
+      "id": "us-source-20261118-4",
+      "type": "event",
+      "year": 1971,
+      "month": 12,
+      "date": "1971.12.18",
+      "title": "스미스소니언 협정",
+      "body": "1971.12.18\n스미스소니언 협정\n달러 7.9% 절하(금 38달러) · 마르크 +13.6% · 엔 +16.9%(최대 폭) · 밴드 ±2.25% · 관세 철회",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "us-source-20261118-4"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-09",
+      "type": "event",
+      "year": 1973,
+      "month": 3,
+      "date": "1973.3.19",
+      "title": "전면 변동환율",
+      "body": "1973.3.19\n전면 변동환율\n브레턴우즈 공식 종료 (유로달러 시장 연말 1,300억 달러)",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-09"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-12",
+      "type": "event",
+      "year": 1973,
+      "month": 10,
+      "date": "1973.10",
+      "title": "1차 오일쇼크",
+      "body": "1973.10\n1차 오일쇼크",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-12"
+    ]
+  },
+  {
+    "event": {
+      "id": "classified-20261119-band-4",
+      "type": "event",
+      "year": 1979,
+      "month": 1,
+      "date": "1979.1",
+      "title": "이란 혁명 → 2차 오일쇼크",
+      "body": "1979.1\n이란 혁명 → 2차 오일쇼크",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": []
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-24",
+      "type": "event",
+      "year": 1979,
+      "month": 3,
+      "date": "1979.3.13",
+      "title": "EMS 출범",
+      "body": "1979.3.13\nEMS 출범",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-24"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-39",
+      "type": "event",
+      "year": 1982,
+      "month": 8,
+      "date": "1982.8.12~20",
+      "title": "멕시코 모라토리엄",
+      "body": "1982.8.12~20\n멕시코 모라토리엄\nBIS 브릿지론 + IMF \"강제 신규 대출\". LIBOR 16→10%, 유로달러 시장 성장 급감",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true,
+      "endYear": 1982,
+      "endMonth": 8
+    },
+    "replaces": [
+      "mark-revision-20261118-39"
+    ]
+  },
+  {
+    "event": {
+      "id": "mark-revision-20261118-49",
+      "type": "event",
+      "year": 1985,
+      "month": 9,
+      "date": "1985.9.22",
+      "title": "플라자 합의",
+      "body": "1985.9.22\n플라자 합의\nG5 공조 시대 개막",
+      "region": "us",
+      "country": "미국",
+      "lane": "us",
+      "scope": "global",
+      "descriptionOnly": true
+    },
+    "replaces": [
+      "mark-revision-20261118-49"
+    ]
+  }
+]

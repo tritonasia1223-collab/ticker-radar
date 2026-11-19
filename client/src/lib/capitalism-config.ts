@@ -13,36 +13,36 @@ export interface PanelDef {
 }
 
 export const CATEGORIES: Record<string, { label: string; color: string }> = {
-  macro: { label: "거시경제", color: "#5dd6a0" },
-  market: { label: "주식시장", color: "#38bdf8" },
-  rates: { label: "금리", color: "#ef8a8a" },
-  money: { label: "통화·대외", color: "#f0b366" },
-  fed: { label: "연준 유동성", color: "#c08cf0" },
+  macro: { label: "거시경제", color: "var(--tone-green-600)" },
+  market: { label: "주식시장", color: "var(--tone-blue-600)" },
+  rates: { label: "금리", color: "var(--tone-red-600)" },
+  money: { label: "통화·대외", color: "var(--tone-orange-600)" },
+  fed: { label: "연준 유동성", color: "var(--tone-violet-600)" },
 };
 
 export const PANELS: PanelDef[] = [
-  { id: "real_gdp", label: "실질 GDP 수준", unit: "십억 2017달러", series: "real_gdp", cat: "macro", color: "#5dd6a0", on: true, start: "1929", kind: "line" },
-  { id: "inflation", label: "인플레이션 (CPI YoY)", unit: "%", series: "inflation", cat: "macro", color: "#e0c267", on: true, start: "1948", zeroLine: true, kind: "line" },
-  { id: "usd_purchasing_power", label: "달러 구매력(미국 내, CPI 역수)", unit: "idx", series: "usd_purchasing_power", cat: "macro", color: "#0d9488", on: false, start: "1913", kind: "line" },
-  { id: "sp500", label: "미국 주가지수 (S&P500 추종)", unit: "idx", series: "sp500", cat: "market", color: "#0ea5e9", on: false, start: "1957", kind: "line" },
-  { id: "nasdaq", label: "나스닥 종합", unit: "p", series: "nasdaq", cat: "market", color: "#38bdf8", on: false, start: "1971", kind: "line" },
-  { id: "mktcap", label: "미국 시총 (기업 주식)", unit: "$B", series: "mktcap", cat: "market", color: "#2563eb", on: true, start: "1945", kind: "area" },
-  { id: "unrate", label: "실업률", unit: "%", series: "unrate", cat: "macro", color: "#8fb98f", on: false, start: "1948", kind: "line" },
-  { id: "debt_gdp", label: "GDP 대비 정부부채", unit: "%", series: "debt_gdp", cat: "macro", color: "#7fae7f", on: true, start: "1939", kind: "area" },
-  { id: "tb3ms", label: "단기금리 (3M T-Bill)", unit: "%", series: "tb3ms", cat: "rates", color: "#ef8a8a", on: false, start: "1934", kind: "line" },
-  { id: "real_tb3ms", label: "실질금리 (명목금리 − 물가)", unit: "%", series: "real_tb3ms", cat: "rates", color: "#b45309", on: false, start: "1914", zeroLine: true, kind: "line" },
-  { id: "gs10", label: "장기금리 (10Y 국채)", unit: "%", series: "gs10", cat: "rates", color: "#d96a6a", on: false, start: "1953", kind: "line" },
-  { id: "fedfunds", label: "연준 정책금리", unit: "%", series: "fedfunds", cat: "rates", color: "#f0a0a0", on: true, start: "1954", kind: "line" },
-  { id: "dxy", label: "달러지수(DXY, 명목)", unit: "idx", series: "dxy", cat: "money", color: "#f0b366", on: true, start: "1973", kind: "line" },
-  { id: "reer", label: "실질실효환율(REER, 장기 접합)", unit: "idx", series: "reer", cat: "money", color: "#6366f1", on: false, start: "1973", kind: "line" },
-  { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "#cc7a33", on: false, start: "1946", kind: "line" },
-  { id: "gold", label: "금값 (oz당)", unit: "$/oz", series: "gold", cat: "money", color: "#d4af37", on: false, start: "1944", kind: "line" },
-  { id: "net_exports_gdp", label: "순수출/GDP", unit: "%", series: "net_exports_gdp", cat: "money", color: "#e0a050", on: false, start: "1929", zeroLine: true, kind: "area" },
-  { id: "m2", label: "M2 통화량", unit: "$B", series: "m2", cat: "money", color: "#d9954a", on: false, start: "1959", kind: "line" },
-  { id: "monbase", label: "본원통화", unit: "$B", series: "monbase", cat: "fed", color: "#c08cf0", on: false, start: "1959", kind: "line" },
-  { id: "walcl", label: "연준 총자산", unit: "$B", series: "walcl", cat: "fed", color: "#b07ce0", on: false, start: "2002", kind: "area" },
-  { id: "wresbal", label: "지급준비금", unit: "$B", series: "wresbal", cat: "fed", color: "#a878d8", on: false, start: "2002", kind: "line" },
-  { id: "rrp", label: "역레포 (ON RRP)", unit: "$B", series: "rrp", cat: "fed", color: "#9868d0", on: false, start: "2003", kind: "area" },
+  { id: "real_gdp", label: "실질 GDP 수준", unit: "십억 2017달러", series: "real_gdp", cat: "macro", color: "var(--tone-green-600)", on: true, start: "1929", kind: "line" },
+  { id: "inflation", label: "인플레이션 (CPI YoY)", unit: "%", series: "inflation", cat: "macro", color: "var(--tone-amber-600)", on: true, start: "1948", zeroLine: true, kind: "line" },
+  { id: "usd_purchasing_power", label: "달러 구매력(미국 내, CPI 역수)", unit: "idx", series: "usd_purchasing_power", cat: "macro", color: "var(--tone-teal-600)", on: false, start: "1913", kind: "line" },
+  { id: "sp500", label: "미국 주가지수 (S&P500 추종)", unit: "idx", series: "sp500", cat: "market", color: "var(--tone-blue-500)", on: false, start: "1957", kind: "line" },
+  { id: "nasdaq", label: "나스닥 종합", unit: "p", series: "nasdaq", cat: "market", color: "var(--tone-blue-600)", on: false, start: "1971", kind: "line" },
+  { id: "mktcap", label: "미국 시총 (기업 주식)", unit: "$B", series: "mktcap", cat: "market", color: "var(--tone-blue-500)", on: true, start: "1945", kind: "area" },
+  { id: "unrate", label: "실업률", unit: "%", series: "unrate", cat: "macro", color: "var(--tone-green-600)", on: false, start: "1948", kind: "line" },
+  { id: "debt_gdp", label: "GDP 대비 정부부채", unit: "%", series: "debt_gdp", cat: "macro", color: "var(--tone-green-600)", on: true, start: "1939", kind: "area" },
+  { id: "tb3ms", label: "단기금리 (3M T-Bill)", unit: "%", series: "tb3ms", cat: "rates", color: "var(--tone-red-600)", on: false, start: "1934", kind: "line" },
+  { id: "real_tb3ms", label: "실질금리 (명목금리 − 물가)", unit: "%", series: "real_tb3ms", cat: "rates", color: "var(--tone-orange-600)", on: false, start: "1914", zeroLine: true, kind: "line" },
+  { id: "gs10", label: "장기금리 (10Y 국채)", unit: "%", series: "gs10", cat: "rates", color: "var(--tone-red-600)", on: false, start: "1953", kind: "line" },
+  { id: "fedfunds", label: "연준 정책금리", unit: "%", series: "fedfunds", cat: "rates", color: "var(--tone-red-600)", on: true, start: "1954", kind: "line" },
+  { id: "dxy", label: "달러지수(DXY, 명목)", unit: "idx", series: "dxy", cat: "money", color: "var(--tone-orange-600)", on: true, start: "1973", kind: "line" },
+  { id: "reer", label: "실질실효환율(REER, 장기 접합)", unit: "idx", series: "reer", cat: "money", color: "var(--tone-blue-600)", on: false, start: "1973", kind: "line" },
+  { id: "oil", label: "유가 (WTI)", unit: "$/bbl", series: "oil", cat: "money", color: "var(--tone-orange-500)", on: false, start: "1946", kind: "line" },
+  { id: "gold", label: "금값 (oz당)", unit: "$/oz", series: "gold", cat: "money", color: "var(--tone-amber-500)", on: false, start: "1944", kind: "line" },
+  { id: "net_exports_gdp", label: "순수출/GDP", unit: "%", series: "net_exports_gdp", cat: "money", color: "var(--tone-orange-600)", on: false, start: "1929", zeroLine: true, kind: "area" },
+  { id: "m2", label: "M2 통화량", unit: "$B", series: "m2", cat: "money", color: "var(--tone-orange-600)", on: false, start: "1959", kind: "line" },
+  { id: "monbase", label: "본원통화", unit: "$B", series: "monbase", cat: "fed", color: "var(--tone-violet-600)", on: false, start: "1959", kind: "line" },
+  { id: "walcl", label: "연준 총자산", unit: "$B", series: "walcl", cat: "fed", color: "var(--tone-violet-600)", on: false, start: "2002", kind: "area" },
+  { id: "wresbal", label: "지급준비금", unit: "$B", series: "wresbal", cat: "fed", color: "var(--tone-violet-600)", on: false, start: "2002", kind: "line" },
+  { id: "rrp", label: "역레포 (ON RRP)", unit: "$B", series: "rrp", cat: "fed", color: "var(--tone-violet-600)", on: false, start: "2003", kind: "area" },
 ];
 
 // 달러→원화 고정 환율(근사). 시총·무역수지 등 $ 단위 패널의 '단위 클릭 → 원화 전환'에 사용.
@@ -60,16 +60,16 @@ export function krwConversion(unit: string): { factor: number; unit: string } | 
 }
 
 export const CAT_COLORS: Record<string, string> = {
-  "정치": "#6ea8fe",
-  "경제": "#5dd6a0",
-  "사회": "#f0b366",
+  "정치": "var(--tone-blue-300)",
+  "경제": "var(--tone-green-400)",
+  "사회": "var(--tone-orange-300)",
 };
 
 export const KIND_STYLE: Record<string, { tag: string; c: string }> = {
-  cause: { tag: "원인", c: "#6ea8fe" },
-  event: { tag: "사건", c: "#f0b366" },
-  effect: { tag: "영향", c: "#5dd6a0" },
-  result: { tag: "결과", c: "#c08cf0" },
+  cause: { tag: "원인", c: "var(--tone-blue-300)" },
+  event: { tag: "사건", c: "var(--tone-orange-300)" },
+  effect: { tag: "영향", c: "var(--tone-green-400)" },
+  result: { tag: "결과", c: "var(--tone-violet-300)" },
 };
 
 // 'YYYY-MM-DD' → 소수 연도(1971.62 등). 슬라이더/플레이헤드 위치 계산용.
