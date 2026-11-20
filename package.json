@@ -37,6 +37,7 @@
     "probe:bdc": "tsx script/probe-bdc-nonaccrual.ts",
     "cap:collab:init": "tsx script/db-push-cap-collaboration.ts",
     "cap:collab:test-db": "tsx script/test-cap-collaboration-db.ts",
+    "storage:test-db": "tsx script/test-standard-storage-pool.ts",
     "cap:backup": "tsx script/cap-backup.ts",
     "cap:watch": "tsx script/cap-backup-watch.ts",
     "cap:history": "tsx script/cap-history.ts",

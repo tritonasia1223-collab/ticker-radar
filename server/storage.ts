@@ -11,6 +11,7 @@ import type {
 } from "../shared/schema.js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { runtimeDatabaseUrl } from "./database-connection.js";
 import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 
 // Lazy initialization: do NOT connect at module load time.
@@ -25,12 +26,9 @@ function getDb() {
     throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
   }
   // `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
-  // Keep the per-client pool small + release idle connections fast: the Supabase session
-  // pooler caps the whole project at ~15 clients, shared by Vercel functions + any local
-  // dev server/scripts. Old and new Vercel instances overlap during deployment;
-  // even 3 connections per instance can exhaust the 15-client session pool.
-  // Serialize this small private app's queries per instance and release idle slots.
-  const client = postgres(connectionString, { prepare: false, max: 1, idle_timeout: 5 });
+  // Vercel uses transaction pooling; local/admin connections may still use session mode.
+  // Keep each worker's pool small and release idle slots, including deployment overlap.
+  const client = postgres(runtimeDatabaseUrl(connectionString, process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"), { prepare: false, max: 1, idle_timeout: 5 });
   _db = drizzle(client);
   return _db;
 }
