@@ -141,15 +141,24 @@ const syncInput = z.object({ session: z.string().uuid(), editor: z.string().trim
 export async function syncState(input: z.infer<typeof syncInput>, database = db) {
   const { session, editor, resource, scopes } = input, now = Date.now();
   const flows = scopes.includes("capitalism") || scopes.includes("comparison"), meta = scopes.includes("capitalism"), comparison = scopes.includes("comparison"), international = scopes.includes("international");
-  const rows = await database.select({ state: sql`jsonb_build_object(
-      'flows', coalesce((select jsonb_agg(jsonb_build_object('key',slug,'version',updated_at)) from cap_flows where ${flows}), '[]'::jsonb),
-      'metaVersion', coalesce((select updated_at from cap_settings where key='insight_overview_v2' and ${meta}),0),
-      'peers', coalesce((select jsonb_agg(jsonb_build_object('session',session,'editor',editor,'resource',resource,'seenAt',seen_at)) from cap_editors where seen_at > ${now - 45000}), '[]'::jsonb),
-      'notes', coalesce((select jsonb_agg(jsonb_build_object('key','note:' || substr(key,${NOTE_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${NOTE_PREFIX})), '[]'::jsonb),
-      'plots', coalesce((select jsonb_agg(jsonb_build_object('key','plot:' || substr(key,${PLOT_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${PLOT_PREFIX})), '[]'::jsonb),
-      'international', coalesce((select jsonb_agg(jsonb_build_object('key','intl:' || substr(key,${INTERNATIONAL_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${international} and starts_with(key,${INTERNATIONAL_PREFIX})), '[]'::jsonb)
-    )` }).from(sql`(values (1)) as sync_request`);
-  const state = rows[0].state as { peers: { session: string; seenAt: number }[] };
+  const empty = { editor: sql<string | null>`null::text`, resource: sql<string | null>`null::text` };
+  const flowRows = database.select({ kind: sql<string>`'flow'`, key: capFlows.slug, version: capFlows.updatedAt, ...empty }).from(capFlows).where(sql`${flows}`);
+  const settingRows = database.select({ kind: sql<string>`'setting'`, key: capSettings.key, version: capSettings.updatedAt, ...empty }).from(capSettings).where(sql`
+    (${meta} and ${capSettings.key}='insight_overview_v2') or
+    (${comparison} and (starts_with(${capSettings.key},${NOTE_PREFIX}) or starts_with(${capSettings.key},${PLOT_PREFIX}))) or
+    (${international} and starts_with(${capSettings.key},${INTERNATIONAL_PREFIX}))`);
+  const peerRows = database.select({ kind: sql<string>`'peer'`, key: capEditors.session, version: capEditors.seenAt, editor: capEditors.editor, resource: capEditors.resource }).from(capEditors).where(gt(capEditors.seenAt,now-45000));
+  const rows = await flowRows.unionAll(settingRows).unionAll(peerRows);
+  const state = { flows: [] as {key:string;version:number}[], metaVersion:0, peers: [] as {session:string;editor:string;resource:string|null;seenAt:number}[], notes: [] as {key:string;version:number}[], plots: [] as {key:string;version:number}[], international: [] as {key:string;version:number}[] };
+  for(const row of rows) {
+    const version=Number(row.version);
+    if(row.kind === "flow") state.flows.push({key:row.key,version});
+    else if(row.kind === "peer") state.peers.push({session:row.key,editor:row.editor!,resource:row.resource,seenAt:version});
+    else if(row.key === "insight_overview_v2") state.metaVersion=version;
+    else if(row.key.startsWith(NOTE_PREFIX)) state.notes.push({key:`note:${row.key.slice(NOTE_PREFIX.length)}`,version});
+    else if(row.key.startsWith(PLOT_PREFIX)) state.plots.push({key:`plot:${row.key.slice(PLOT_PREFIX.length)}`,version});
+    else if(row.key.startsWith(INTERNATIONAL_PREFIX)) state.international.push({key:`intl:${row.key.slice(INTERNATIONAL_PREFIX.length)}`,version});
+  }
   const own = state.peers.find(peer => peer.session === session);
   if (!own || now - Number(own.seenAt) >= 15000) await database.insert(capEditors).values({session,editor,resource,seenAt:now})
     .onConflictDoUpdate({target:capEditors.session,set:{editor,resource,seenAt:now},setWhere:sql`${capEditors.seenAt} <= ${now - 15000}`});
