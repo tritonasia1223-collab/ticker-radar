@@ -55,6 +55,28 @@ const requestGate = new DatabaseRequestGate(
 );
 export const acquireDatabaseRequest = () => requestGate.acquire();
 
+/** Non-sensitive, bounded transport health; does not read or modify research data. */
+export async function storageTransportHealth() {
+  const sample = async (work: () => PromiseLike<unknown>) => {
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([Promise.resolve(work()), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("TIMEOUT")), 2500);
+      })]);
+      return { ok: true, ms: Date.now() - started };
+    } catch (error: any) {
+      return { ok: false, ms: Date.now() - started, code: String(error.code || "TIMEOUT") };
+    } finally { clearTimeout(timer); }
+  };
+  const fresh = postgres(runtimeDatabaseUrl(process.env.DATABASE_URL!, true), { prepare: false, max: 1, connect_timeout: 2 });
+  const direct = await sample(() => fresh.unsafe("select 1"));
+  const parameterized = direct.ok ? await sample(() => fresh.unsafe("select $1::integer", [1])) : null;
+  const pooled = await sample(() => { getDb(); return _client!.unsafe("select 1"); });
+  void fresh.end({ timeout: 0 });
+  return { pool: databasePoolMode(), revision: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8), direct, parameterized, pooled };
+}
+
 // Proxy so existing `db.select()...` call sites work unchanged while staying lazy.
 export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof drizzle>, {
   get(_t, prop) {
