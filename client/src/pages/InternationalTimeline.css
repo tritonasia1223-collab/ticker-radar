@@ -205,13 +205,16 @@
 .it-five-countries .it-description { order: 0; }
 .it-five-countries .it-tag { font-size: 10px; font-weight: 500; padding: 0 5px; }
 .it-five-countries .it-mobile-region { display: none; }
-.international-document { --it-shared-bg: #eef3f4; --it-shared-rule: #c6d7dc; --it-shared-ink: #486875; }
-.dark .international-document { --it-shared-bg: #202c32; --it-shared-rule: #405a65; --it-shared-ink: #a1c2ce; }
+.international-document {
+  --it-shared-bg: color-mix(in srgb, var(--it-bg) 93%, var(--it-ink));
+  --it-shared-rule: color-mix(in srgb, var(--it-bg) 84%, var(--it-ink));
+  --it-shared-ink: var(--it-soft);
+}
 /* Flat, opaque surfaces shared by annual and European context blocks. */
 .it-five-countries :is(.it-europe-shared, .it-annual-card) {
   position: relative; min-width: 0; padding: 14px 16px; margin: 3px 0;
   border: 0; border-radius: 6px; box-shadow: none;
-  background: color-mix(in srgb, var(--it-shared-bg) 65%, var(--it-bg));
+  background: var(--it-shared-bg);
 }
 .it-shared-label {
   position: absolute; top: 16px; left: 35px; z-index: 1;
