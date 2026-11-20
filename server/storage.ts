@@ -12,12 +12,14 @@ import type {
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { runtimeDatabaseUrl } from "./database-connection.js";
+import { DatabaseRequestGate } from "./database-lifecycle.js";
 import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 
 // Lazy initialization: do NOT connect at module load time.
 // On Vercel, importing this module must not throw or open a connection before
 // the handler runs (env vars and network are only guaranteed inside the request).
 let _db: ReturnType<typeof drizzle> | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 let serverlessEntry = false;
 export function configureServerlessDatabase() { serverlessEntry = true; }
 export function databasePoolMode() {
@@ -36,10 +38,22 @@ function getDb() {
   // `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
   // Vercel uses transaction pooling; local/admin connections may still use session mode.
   // Keep each worker's pool small and release idle slots, including deployment overlap.
-  const client = postgres(runtimeDatabaseUrl(connectionString, serverlessEntry || process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"), { prepare: false, max: 1, idle_timeout: 5 });
+  const client = postgres(runtimeDatabaseUrl(connectionString, serverlessEntry || process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"), { prepare: false, max: 1, idle_timeout: 5, connect_timeout: 5 });
+  _client = client;
   _db = drizzle(client);
   return _db;
 }
+
+const requestGate = new DatabaseRequestGate(
+  async () => { getDb(); await _client!.unsafe("select 1"); },
+  async () => {
+    const old = _client;
+    _client = null;
+    _db = null;
+    if (old) await old.end({ timeout: 0 });
+  },
+);
+export const acquireDatabaseRequest = () => requestGate.acquire();
 
 // Proxy so existing `db.select()...` call sites work unchanged while staying lazy.
 export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof drizzle>, {

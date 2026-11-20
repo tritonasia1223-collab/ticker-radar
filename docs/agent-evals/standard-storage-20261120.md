@@ -10,7 +10,7 @@
 
 ## 검증 결과
 
-- TypeScript, 전체 86개 테스트 파일 / 660개 테스트, 프로덕션 빌드 통과. 기존 Browserslist 노후·대형 World 청크 경고 유지.
+- TypeScript, 전체 87개 테스트 파일 / 663개 테스트, 프로덕션 빌드 통과. 기존 Browserslist 노후·대형 World 청크 경고 유지.
 - 운영 사전 백업: `script/cap-backup.2026-11-20T07-24-46.json` (Git 제외). flows 158 / nodes 2426 / edges 878 / links 0 / settings 45. DB 구조 변경·기존 연구 자료의 대체 없음.
 
 - 실제 Postgres의 새 임시 스키마에서 기존 협업 통합 검증과 국제 연표 검증 통과. 운영 연구 자료 쓰기 없음, 테스트 스키마는 종료 후 정리.
