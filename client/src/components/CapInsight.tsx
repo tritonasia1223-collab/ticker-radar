@@ -378,7 +378,7 @@ export function InsightsCollection({
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="insights-collection">
-      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-center justify-between gap-4 border-b border-border py-4">
+      <div className={`mx-auto flex w-full ${showDetail ? "max-w-[1680px]" : "max-w-6xl"} shrink-0 items-center justify-between gap-4 border-b border-border py-4`}>
         {showDetail ? (
           <>
             <button ref={backRef} type="button" onClick={back} className="flex shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-testid="insights-back">
@@ -402,7 +402,7 @@ export function InsightsCollection({
         )}
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" data-testid="insights-scroll">
-        <div className="mx-auto w-full min-w-0 max-w-6xl pb-8 pt-3">
+        <div className={`mx-auto w-full min-w-0 ${showDetail ? "max-w-[1680px]" : "max-w-6xl"} pb-8 pt-3`}>
           {showDetail ? (
             <div data-testid="insight-detail">
               {current.card ? <MetaCard key={current.key} card={current.card} onChange={updateCard} onDelete={() => remove(current.card!.id)} onJump={onJump} editable={editable} />
