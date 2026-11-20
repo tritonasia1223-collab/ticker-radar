@@ -137,13 +137,11 @@ export class CollaborationConflict extends Error {
   constructor(public current: Resource, public conflicts: ReturnType<typeof merge>["conflicts"]) { super("동일한 항목이 다른 곳에서 수정되었습니다."); }
 }
 const syncInput = z.object({ session: z.string().uuid(), editor: z.string().trim().min(1).max(50), resource: z.string().max(220).nullable(), scopes: z.array(z.enum(["capitalism", "comparison", "international"])).min(1).max(3) });
-/** One DB round-trip; no document bodies. The heartbeat is throttled in the DB across instances. */
+/** One read for versions; at most one extra heartbeat write per 15 seconds. */
 export async function syncState(input: z.infer<typeof syncInput>, database = db) {
   const { session, editor, resource, scopes } = input, now = Date.now();
   const flows = scopes.includes("capitalism") || scopes.includes("comparison"), meta = scopes.includes("capitalism"), comparison = scopes.includes("comparison"), international = scopes.includes("international");
-  const heartbeat = database.$with("heartbeat").as(database.insert(capEditors).values({session,editor,resource,seenAt:now})
-    .onConflictDoUpdate({target:capEditors.session,set:{editor,resource,seenAt:now},setWhere:sql`${capEditors.seenAt} <= ${now - 15000}`}).returning({session:capEditors.session}));
-  const rows = await database.with(heartbeat).select({ state: sql`jsonb_build_object(
+  const rows = await database.select({ state: sql`jsonb_build_object(
       'flows', coalesce((select jsonb_agg(jsonb_build_object('key',slug,'version',updated_at)) from cap_flows where ${flows}), '[]'::jsonb),
       'metaVersion', coalesce((select updated_at from cap_settings where key='insight_overview_v2' and ${meta}),0),
       'peers', coalesce((select jsonb_agg(jsonb_build_object('session',session,'editor',editor,'resource',resource,'seenAt',seen_at)) from cap_editors where seen_at > ${now - 45000}), '[]'::jsonb),
@@ -151,7 +149,11 @@ export async function syncState(input: z.infer<typeof syncInput>, database = db)
       'plots', coalesce((select jsonb_agg(jsonb_build_object('key','plot:' || substr(key,${PLOT_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${PLOT_PREFIX})), '[]'::jsonb),
       'international', coalesce((select jsonb_agg(jsonb_build_object('key','intl:' || substr(key,${INTERNATIONAL_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${international} and starts_with(key,${INTERNATIONAL_PREFIX})), '[]'::jsonb)
     )` }).from(sql`(values (1)) as sync_request`);
-  return rows[0].state;
+  const state = rows[0].state as { peers: { session: string; seenAt: number }[] };
+  const own = state.peers.find(peer => peer.session === session);
+  if (!own || now - Number(own.seenAt) >= 15000) await database.insert(capEditors).values({session,editor,resource,seenAt:now})
+    .onConflictDoUpdate({target:capEditors.session,set:{editor,resource,seenAt:now},setWhere:sql`${capEditors.seenAt} <= ${now - 15000}`});
+  return state;
 }
 
 export async function internationalResources(database = db) {

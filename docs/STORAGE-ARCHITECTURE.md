@@ -22,7 +22,7 @@
 
 Vercel에서는 Supabase 공유 풀러의 **트랜잭션 모드(6543)**를 사용한다. 같은 host·DB·사용자·자격증명을 유지하고, 확인된 Supabase 공유 풀러의 세션 포트 5432만 런타임에서 바꾼다. 일반 DB 주소와 로컬/관리 스크립트의 세션 연결은 자동 변경하지 않는다. `prepare:false`, 인스턴스당 `max:1`, `idle_timeout:5`를 유지한다. 저장 잠금은 반드시 트랜잭션 범위 잠금(`pg_advisory_xact_lock`)을 사용하며 세션 상태에 의존하지 않는다. [Supabase 공식 연결 안내](https://supabase.com/docs/guides/database/connecting-to-postgres). 실제 모드 검증은 `npm run storage:test-db`로 별도 임시 스키마에서 수행한다.
 
-동기화는 페이지별 구독 범위의 버전 목록만 받는다. 본문은 변경된 리소스만 받는다. 초기 화면은 이미 받은 자료로 표시하며 후속 동기화를 기다리지 않는다. DB 버전 목록은 한 SQL 왕복으로 조회한다. 전역 DB 연결 한도 문제를 연결 수 증가로 해결하지 않는다.
+동기화는 페이지별 구독 범위의 버전 목록만 받는다. 본문은 변경된 리소스만 받는다. 초기 화면은 이미 받은 자료로 표시하며 후속 동기화를 기다리지 않는다. DB 버전 목록은 한 SQL 왕복으로 조회한다. 접속 기록은 같은 HTTP 요청 안에서 필요할 때만 별도 쓰기로 갱신한다(최대 15초에 한 번). 전역 DB 연결 한도 문제를 연결 수 증가로 해결하지 않는다.
 
 ## 확장 절차
 
@@ -34,7 +34,7 @@ Vercel에서는 Supabase 공유 풀러의 **트랜잭션 모드(6543)**를 사�
 
 - `client/src/lib/sync-lifecycle.ts`: 조회 소비자·환경·세대·중복 실행 제어. React 페이지는 `useCollaborationSync(scope, ready)`로 등록한다.
 - `client/src/lib/cap-collab-engine.ts`: 필드 비교, IndexedDB 저널, 리소스별 직렬화, 전체 동시 전송 최대 2개, 응답 유실 재시도, 충돌·이력 되돌림. 쓰기와 조회 수명은 독립이다.
-- `server/cap-collaboration.ts`: 단일 SQL 동기화, 트랜잭션 저장·요청 ID 이력. 기존 `cap_settings`, `cap_edit_operations`, `cap_editors`를 재사용해 운영 DDL이 필요 없다.
+- `server/cap-collaboration.ts`: 버전 단일 조회·접속 갱신 제한, 트랜잭션 저장·요청 ID 이력. 기존 `cap_settings`, `cap_edit_operations`, `cap_editors`를 재사용해 운영 DDL이 필요 없다.
 - `shared/international-storage.ts`: 사건 필드 스키마. 날짜/기간은 timing, 국가/범위는 position으로 각각 원자적으로 비교한다. 삭제/복원은 사건 전체를 비교해 수정과 경합하면 충돌한다.
 - `client/src/lib/use-international-storage.ts`: 읽기·기존 브라우저 이관·사건별 변경 전달. 서버 초기화 전 기본 자료로 먼저 읽기 화면을 표시하고, 서버 확인 후 편집을 연다.
 
