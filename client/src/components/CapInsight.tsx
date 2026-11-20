@@ -12,7 +12,7 @@ import { collaboration, collabApi, focusResource } from "@/lib/cap-collab-client
 import { acceptRemote, changeDraft, discardDraft, isNewerVersion, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById, type DraftState } from "@/lib/capitalism-insight-draft";
 
 function MetaInsightBadge() {
-  return <span className="inline-flex shrink-0 items-center rounded bg-blue-900 px-1.5 py-0.5 text-[11px] font-semibold leading-4 text-white" data-testid="meta-insight-badge">메타</span>;
+  return <span className="mt-0.5 inline-flex shrink-0 items-center rounded-sm bg-sky-100 px-1 text-[10px] font-medium leading-4 text-blue-900" data-testid="meta-insight-badge">메타</span>;
 }
 
 // 초안 저장기 — 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
