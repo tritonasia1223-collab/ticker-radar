@@ -20,11 +20,13 @@
 
 조회와 접속 신호를 단일 요청으로 보낸다. 접속 기록은 최대 15초에 한 번 갱신하고, 화면에는 45초 내 신호만 표시한다. 접속은 안내이며 잠금·저장 권한이 아니다. 구버전 state/presence 경로는 호환을 위해 유지한다.
 
-Vercel에서는 Supabase 공유 풀러의 **트랜잭션 모드(6543)**를 사용한다. 같은 host·DB·사용자·자격증명을 유지하고, 확인된 Supabase 공유 풀러의 세션 포트 5432만 런타임에서 바꾼다. 일반 DB 주소와 로컬/관리 스크립트의 세션 연결은 자동 변경하지 않는다. `prepare:false`, 인스턴스당 `max:1`, `idle_timeout:5`를 유지한다. 저장 잠금은 반드시 트랜잭션 범위 잠금(`pg_advisory_xact_lock`)을 사용하며 세션 상태에 의존하지 않는다. [Supabase 공식 연결 안내](https://supabase.com/docs/guides/database/connecting-to-postgres). 실제 모드 검증은 `npm run storage:test-db`로 별도 임시 스키마에서 수행한다.
+Vercel에서는 Supabase 공유 풀러의 **트랜잭션 모드(6543)**를 사용한다. 같은 host·DB·사용자·자격증명을 유지하고, 확인된 Supabase 공유 풀러의 세션 포트 5432만 런타임에서 바꾼다. 일반 DB 주소와 로컬/관리 스크립트의 세션 연결은 자동 변경하지 않는다. `prepare:false`, 요청 내 `max:1`, `idle_timeout:5`, `connect_timeout:5`를 유지한다. 저장 잠금은 반드시 트랜잭션 범위 잠금(`pg_advisory_xact_lock`)을 사용하며 세션 상태에 의존하지 않는다. [Supabase 공식 연결 안내](https://supabase.com/docs/guides/database/connecting-to-postgres). 실제 모드 검증은 `npm run storage:test-db`로 별도 임시 스키마에서 수행한다.
 
 동기화는 페이지별 구독 범위의 버전 목록만 받는다. 본문은 변경된 리소스만 받는다. 초기 화면은 이미 받은 자료로 표시하며 후속 동기화를 기다리지 않는다. DB 버전 목록은 한 SQL 왕복으로 조회한다. 접속 기록은 같은 HTTP 요청 안에서 필요할 때만 별도 쓰기로 갱신한다(최대 15초에 한 번). 전역 DB 연결 한도 문제를 연결 수 증가로 해결하지 않는다.
 
-서버리스 휴지 후 끊긴 TCP 연결은 실제 저장 전에 짧은 `SELECT 1`로 확인한다. 확인이 실패하면 진행 중인 업무 요청이 없을 때만 클라이언트를 교체하고 한 번 다시 확인한다. 업무 쿼리·저장 자체를 이 단계에서 자동 재실행하지 않는다. 중복 저장 방지는 기존 요청 ID 규약이 담당한다. 브라우저가 연결을 끊어도 DB 트랜잭션이 종료되기 전에 사용 중인 연결을 교체하지 않는다. 두 번 확인에 실패하면 503으로 빠르게 반환하고 기기 저널을 유지한다. [Supabase 서버리스 연결 복구 지침](https://supabase.com/kb/troubleshooting/troubleshooting-connect_timeout-or-hanging-queries-in-vercel-serverless-functions-775f92).
+서버리스 요청 간 TCP 소켓은 재사용하지 않는다. 운영 검증에서 새 연결은 정상인데 재사용 연결만 멈추는 상황을 확인했기 때문이다. `withDatabaseRequest`의 AsyncLocalStorage로 각 요청의 연결을 분리하고, 요청 안에서는 동일 연결을 재사용하며 Express의 비동기 작업 완료 후 확실히 닫는다. 로컬/관리 스크립트는 기존 지연 생성 연결을 유지한다. API 진입점이 Express를 호출만 하고 반환하면 안 되며 응답 완료와 연결 종료까지 await한다.
+
+실제 업무 전에 짧은 `SELECT 1`로 연결을 확인한다(업무 버전 조회와 별도 왕복). 실패 시 아직 업무가 시작되지 않은 해당 연결만 교체하고 한 번 다시 확인한다. 업무 쿼리·저장 자체를 이 단계에서 재실행하지 않는다. 중복 저장 방지는 기존 요청 ID 규약이 담당한다. 브라우저 연결 종료를 DB 작업 종료로 취급하지 않으며, 트랜잭션이 실행 중일 때 연결을 교체하지 않는다. 두 번 확인에 실패하면 503으로 반환하고 기기 저널을 유지한다. [Supabase 서버리스 연결 복구 지침](https://supabase.com/kb/troubleshooting/troubleshooting-connect_timeout-or-hanging-queries-in-vercel-serverless-functions-775f92). `/api/storage/health`는 연구 내용·자격증명을 노출하지 않는 연결 진단이다.
 
 ## 확장 절차
 
