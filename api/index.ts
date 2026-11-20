@@ -26,14 +26,18 @@ export default async function handler(req: Request, res: Response) {
     release = await acquireDatabaseRequest();
     // A disconnected browser can close the response while its transaction still
     // runs. Release on the application's end(), never on socket close.
-    const end = res.end;
-    res.end = function (...args: any[]) {
-      try { return end.apply(this, args as any); }
-      finally { release?.(); }
-    } as typeof res.end;
-    res.once("finish", release);
     if (!app) app = buildApp();
-    return (app as unknown as (req: Request, res: Response) => void)(req, res);
+    // Keep the serverless invocation alive until Express has completed its
+    // async route, rather than returning when Express merely dispatches it.
+    await new Promise<void>((resolve) => {
+      const end = res.end;
+      res.end = function (...args: any[]) {
+        try { return end.apply(this, args as any); }
+        finally { release?.(); resolve(); }
+      } as typeof res.end;
+      res.once("finish", () => { release?.(); resolve(); });
+      (app as unknown as (req: Request, res: Response) => void)(req, res);
+    });
   } catch (err: any) {
     release?.();
     res.status(503).json({ error: "서버 연결을 확인하지 못했습니다. 기기 초안을 유지하고 다시 시도하세요." });
