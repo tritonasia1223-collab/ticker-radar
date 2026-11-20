@@ -332,5 +332,20 @@
 .it-five-countries .it-annual-slice > .it-cell,
 .it-five-countries .it-annual-slice > .it-gutter { grid-row: var(--it-annual-detail-row, 1); }
 .it-five-countries :is(.it-europe-shared, .it-annual-card) { margin: 3px 0; padding: 14px 16px; }
-.it-five-countries .it-europe-shared > .it-shared-label { position: static; display: block; text-align: center; margin-bottom: 4px; }
+.it-five-countries .it-europe-shared { --it-inline-context: "유럽 공동"; }
+.it-five-countries .it-europe-shared.it-annual-shared { --it-inline-context: "연간 · 유럽 공동"; }
+/* Keep the context label outside saved editor content, but in the title's centered line. */
+.it-five-countries .it-europe-shared > .it-shared-label {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.it-europe-shared .it-read-description > span:first-child::before,
+.it-europe-shared [data-richeditor][data-title-root="true"]::before,
+.it-europe-shared [data-richeditor]:not([data-title-root="true"]) > :is(div, p):first-child::before,
+.it-europe-shared [data-richeditor]:empty + span::before {
+  content: var(--it-inline-context) / "";
+  display: inline-block; margin-right: 10px; vertical-align: baseline;
+  font-size: 10px; font-weight: 700; line-height: 18px; letter-spacing: .02em;
+  color: var(--it-shared-ink); text-indent: 0; white-space: nowrap;
+}
 .it-five-countries .it-annual-slice > .it-annual-card { margin: 3px 0; padding: 14px 16px; }
