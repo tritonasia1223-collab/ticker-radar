@@ -82,12 +82,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {NAV_GROUPS.map((g) => (
             <div key={g.group} className="flex md:block shrink-0 gap-1 md:pt-3 md:first:pt-0">
               <div className="hidden md:block select-none px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
-              {g.items.map((n) => {
-                const active = location === n.href || (!n.sub && n.href === "/capitalism" && (location === "/capitalism/insights" || location === "/international-timeline"));
+              {g.items.map((n, index) => {
+                const nextMainIndex = g.items.findIndex((item, itemIndex) => itemIndex > index && !item.sub);
+                const children = n.sub ? [] : g.items.slice(index + 1, nextMainIndex < 0 ? undefined : nextMainIndex);
+                const active = location === n.href || children.some((child) => location === child.href);
                 const Icon = n.icon;
                 return (
                   <Link key={`${n.href}-${n.sub ? "sub" : "main"}`} href={n.href} aria-current={location === n.href && (n.sub || n.href !== "/capitalism") ? "page" : undefined} data-testid={`link-${n.href.replace("/", "") || "discover"}${n.sub && n.href === "/capitalism" ? "-timeline" : ""}`}>
-                    <div className={`flex items-center gap-3 rounded-md cursor-pointer hover-elevate whitespace-nowrap ${n.sub ? "px-3 py-1 md:pl-10 text-xs" : "px-3 py-2 text-sm"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : n.sub ? "text-sidebar-foreground/65" : "text-sidebar-foreground/80"}`}>
+                    <div className={`flex items-center gap-3 rounded-md cursor-pointer whitespace-nowrap ${n.sub ? "px-3 py-1 md:pl-10 text-xs hover:text-sidebar-accent-foreground" : "px-3 py-2 text-sm hover-elevate"} ${active ? `${n.sub ? "" : "bg-sidebar-accent "}text-sidebar-accent-foreground font-semibold` : n.sub ? "text-sidebar-foreground/65" : "text-sidebar-foreground/80"}`}>
                       {n.sub ? <span aria-hidden="true" className="h-1 w-1 rounded-full bg-current opacity-60" /> : <Icon className="h-4 w-4" />}
                       {n.label}
                     </div>
