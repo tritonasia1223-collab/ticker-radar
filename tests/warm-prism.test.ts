@@ -34,14 +34,15 @@ describe('warm-prism integration policy', () => {
     expect(readFileSync('client/index.html', 'utf8')).toContain('width=device-width');
   });
 
-  it('portable prism stays masked; the site retains its pre-theme timeline presentation', () => {
+  it('portable prism stays masked; the timeline uses flat surfaces without glass', () => {
     const prismPaints: string[] = [];
     theme.walkDecls(decl => { if (/^background/.test(decl.prop) && decl.value.includes('var(--prism)')) prismPaints.push(decl.parent?.toString() ?? ''); });
     expect(prismPaints).toHaveLength(1);
     expect(prismPaints[0]).toContain('.prism-edge::before');
     expect(prismPaints[0]).toContain('mask-composite: exclude');
     const timeline = readFileSync(path.join(root, 'pages/InternationalTimeline.tsx'), 'utf8');
-    expect(timeline).toMatch(/it-europe-shared glass/);
+    expect(timeline).not.toMatch(/it-europe-shared glass/);
+    expect(timeline).not.toContain('glass-spring/glass.css');
     expect(timeline).toContain('glass-spring/spring.js');
   });
 });

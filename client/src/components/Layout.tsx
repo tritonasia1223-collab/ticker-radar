@@ -10,8 +10,10 @@ import GlobalTooltip from "@/components/GlobalTooltip";
 const NAV_GROUPS: { group: string; items: { href: string; label: string; icon: typeof Radar; sub?: boolean }[] }[] = [
   { group: "매크로", items: [
     { href: "/capitalism", label: "자본주의 경제사", icon: History },
-    { href: "/international-timeline", label: "국제 연표", icon: Globe },
-    { href: "/graph-compare", label: "그래프 비교(베타)", icon: Layers },
+    { href: "/capitalism", label: "타임라인", icon: History, sub: true },
+    { href: "/capitalism/insights", label: "인사이트", icon: History, sub: true },
+    { href: "/international-timeline", label: "국제 연표", icon: History, sub: true },
+    { href: "/graph-compare", label: "그래프 비교", icon: Layers },
     { href: "/fed", label: "미국 유동성", icon: Building2 },
     { href: "/liquidity", label: "A안", icon: Building2, sub: true },
     { href: "/liquidity-read", label: "B안", icon: Building2, sub: true },
@@ -81,10 +83,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div key={g.group} className="flex md:block shrink-0 gap-1 md:pt-3 md:first:pt-0">
               <div className="hidden md:block select-none px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">{g.group}</div>
               {g.items.map((n) => {
-                const active = location === n.href;
+                const active = location === n.href || (!n.sub && n.href === "/capitalism" && (location === "/capitalism/insights" || location === "/international-timeline"));
                 const Icon = n.icon;
                 return (
-                  <Link key={n.href} href={n.href} data-testid={`link-${n.href.replace("/", "") || "discover"}`}>
+                  <Link key={`${n.href}-${n.sub ? "sub" : "main"}`} href={n.href} aria-current={location === n.href && (n.sub || n.href !== "/capitalism") ? "page" : undefined} data-testid={`link-${n.href.replace("/", "") || "discover"}${n.sub && n.href === "/capitalism" ? "-timeline" : ""}`}>
                     <div className={`flex items-center gap-3 rounded-md cursor-pointer hover-elevate whitespace-nowrap ${n.sub ? "px-3 py-1 md:pl-10 text-xs" : "px-3 py-2 text-sm"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : n.sub ? "text-sidebar-foreground/65" : "text-sidebar-foreground/80"}`}>
                       {n.sub ? <span aria-hidden="true" className="h-1 w-1 rounded-full bg-current opacity-60" /> : <Icon className="h-4 w-4" />}
                       {n.label}

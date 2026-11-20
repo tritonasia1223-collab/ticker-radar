@@ -1,7 +1,8 @@
 // 사건 인사이트 패널 — 오른쪽(그래프 자리)에 떠서 과거↔현재 연결 인사이트를 편집/표시.
 // 본문은 '블록 스택'(텍스트·표·이미지·그래프를 순서대로 섞어 배치) — BlockStack 컴포넌트가 담당.
-import { useState, useRef, useEffect, type MutableRefObject, type RefObject } from "react";
-import { X, Star, Plus, Pencil, Check, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, useLayoutEffect, type MutableRefObject, type RefObject } from "react";
+import { X, Star, Plus, Pencil, Check, Trash2, ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { metaInsightTitle } from "@/lib/capitalism-insight-index";
 import { toFracYear } from "@/lib/capitalism-config";
 import {
   BlockStack, insightToBlocks, blocksToInsight, blocksHaveContent, metaCardToBlocks, blocksToMetaFields,
@@ -67,11 +68,12 @@ function useDraftSaver<T>(key: string, draftRef: MutableRefObject<DraftState<T>>
 const hasVisibleBlock = (blocks: CapBlock[]) => blocks.some((b) => (b.type === "text" ? !!b.text.trim() : true));
 
 export function InsightPanel({
-  flow, onCommit, onClose, variant = "panel", editable = true,
+  flow, onCommit, onClose, onJump, variant = "panel", editable = true,
 }: {
   flow: FlowDTO;
   onCommit: (slug: string, insight: CapInsight) => void;
   onClose: () => void;
+  onJump?: (slug: string) => void;
   // "panel" = 우측 단일 패널(✕그래프 닫기 버튼 노출).
   // "inline" = 사건 카드 옆 메모형(닫기는 전역 종료라 카드별 버튼 숨김).
   variant?: "panel" | "inline";
@@ -187,11 +189,11 @@ export function InsightPanel({
           </div>
           <BlockStack
             blocks={blocks} editing allow={{ text: true, table: true, image: true, chart: true, html: true, divider: true }}
-            eventFrac={eventFrac} onChange={handleChange}
+            eventFrac={eventFrac} onChange={handleChange} onJump={onJump}
           />
         </>
       ) : hasVisibleBlock(blocks) ? (
-        <BlockStack blocks={blocks} editing={false} allow={{}} eventFrac={eventFrac} onChange={() => {}} />
+        <BlockStack blocks={blocks} editing={false} allow={{}} eventFrac={eventFrac} onChange={() => {}} onJump={onJump} />
       ) : (
         <div className="py-2 text-[12px] italic text-muted-foreground/60">
           {editable ? "아직 인사이트가 비어 있습니다. ‘편집’을 눌러 작성하세요." : "아직 인사이트가 없습니다."}
@@ -298,95 +300,147 @@ function MetaCard({ card, onChange, onDelete, onJump, editable = true }: {
   );
 }
 
-// 메타 인사이트 카드 묶음 — 모아보기 최상단. 카드 추가/삭제/편집.
-function MetaCards({ cards, onSave, onJump, editable = true }: {
-  cards: CapMetaCard[];
-  onSave: (next: CapMetaCard[]) => void;
-  onJump?: (slug: string) => void;
-  editable?: boolean;
-}) {
-  // 여러 카드의 이탈 저장이 같은 틱에 몰려도 앞 카드의 변경이 뒤 카드 저장에 덮이지 않게, 마지막으로 보낸 목록을 기준으로 누적한다.
-  const latest = useRef(cards);
-  useEffect(() => { latest.current = cards; }, [cards]);
-  const apply = (next: CapMetaCard[]) => { latest.current = next; onSave(next); };
-  const updateCard = (next: CapMetaCard) => apply(upsertCardById(latest.current, next));
-  const removeCard = (id: string) => apply(removeCardById(latest.current, id));
-  const addCard = () => apply([...latest.current, newMetaCard()]);
-  if (!editable && cards.length === 0) return null; // 보기 모드 + 내용 없음 → 섹션 숨김
-  return (
-    <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-bold text-primary">전체 관통 — 메타 인사이트</h2>
-      {cards.map((c) => (
-        <MetaCard key={c.id} card={c} onChange={updateCard} onDelete={() => removeCard(c.id)} onJump={onJump} editable={editable} />
-      ))}
-      {editable ? (
-        <button type="button" onClick={addCard}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 py-2.5 text-[12px] font-medium text-primary/80 transition-colors hover:border-primary/70 hover:bg-primary/[0.04] hover:text-primary"
-          data-testid="meta-add-card">
-          <Plus className="h-4 w-4" /> 메타 인사이트 카드 추가
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-// 인사이트 있는 사건인가(텍스트/그래프/표/블록 중 하나라도).
-const hasInsightContent = (i?: CapInsight | null) =>
-  !!i && (i.text.trim() !== "" || i.charts.length > 0 || (i.tables?.length ?? 0) > 0 || (i.blocks?.length ?? 0) > 0);
-
-// 인사이트 모아보기 — 인사이트가 있는 사건을 시간순으로 한 편의 글처럼 읽는 뷰 + 메타 테제.
+// 본문은 선택된 한 카드만 마운트한다. 목록에는 표·차트·iframe·편집기를 만들지 않는다.
 export function InsightsCollection({
-  flows, metaCards, onSaveMetaCards, onOpenInsight, onJump, editable = true,
+  flows, metaCards, onSaveMetaCards, onCommitInsight, onOpenInsight, onJump, editable = true, loading = false, failed = false,
 }: {
   flows: FlowDTO[];
   metaCards: CapMetaCard[];
   onSaveMetaCards: (next: CapMetaCard[]) => void;
+  onCommitInsight: (slug: string, insight: CapInsight) => void;
   onOpenInsight: (slug: string) => void;
   onJump?: (slug: string) => void;
   editable?: boolean;
+  loading?: boolean;
+  failed?: boolean;
 }) {
-  const items = flows
-    .filter((f) => hasInsightContent(f.insight))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const [selected, setSelected] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const listTop = useRef(0);
+  const lastSelected = useRef<string | null>(null);
+  const readingPositions = useRef(new Map<string, number>());
+  const latest = useRef(metaCards);
+  useEffect(() => { latest.current = metaCards; }, [metaCards]);
+  const apply = (next: CapMetaCard[]) => { latest.current = next; onSaveMetaCards(next); };
+  const updateCard = (next: CapMetaCard) => apply(upsertCardById(latest.current, next));
+  const items = useMemo(() => [
+    ...metaCards.map(card => ({ key: `meta:${card.id}`, title: metaInsightTitle(card), date: "", card, flow: undefined as FlowDTO | undefined })),
+    ...flows.filter(f => !!f.insight && (!!f.insight.text.trim() || f.insight.charts.length > 0 || !!f.insight.tables?.length || !!f.insight.blocks?.length))
+      .slice().sort((a, b) => a.date.localeCompare(b.date))
+      .map(flow => ({ key: `flow:${flow.slug}`, title: flow.title, date: flow.endDate ? `${flow.date} ~ ${flow.endDate}` : flow.date, card: undefined as CapMetaCard | undefined, flow })),
+  ], [metaCards, flows]);
+  const filtered = useMemo(() => {
+    const words = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+    return items.filter(item => words.every(word => `${item.title} ${item.date}`.toLocaleLowerCase().includes(word)));
+  }, [items, query]);
+  const current = items.find(item => item.key === selected);
+  // 검색 중 열었다면 검색 결과 순서대로 이동한다. 편집 후 검색에서 빠진 글은 전체 순서를 쓴다.
+  const readingList = filtered.some(item => item.key === selected) ? filtered : items;
+  const currentIndex = readingList.findIndex(item => item.key === selected);
+  const previous = readingList[currentIndex - 1];
+  const next = readingList[currentIndex + 1];
+  const showDetail = !!current;
+  const open = (key: string) => {
+    listTop.current = scrollRef.current?.scrollTop ?? 0;
+    lastSelected.current = key;
+    setSelected(key);
+  };
+  const back = () => {
+    if (selected) readingPositions.current.set(selected, scrollRef.current?.scrollTop ?? 0);
+    setSelected(null);
+  };
+  const turnPage = (key: string) => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    if (selected) readingPositions.current.set(selected, scrollRef.current?.scrollTop ?? 0);
+    readingPositions.current.delete(key);
+    lastSelected.current = key;
+    setSelected(key);
+  };
+  // DOM 교체 직후 복원해 긴 목록으로 돌아올 때 최상단이 번쩍이지 않게 한다.
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = showDetail ? readingPositions.current.get(selected!) ?? 0 : listTop.current;
+    if (showDetail) backRef.current?.focus({ preventScroll: true });
+    else if (lastSelected.current) rowRefs.current.get(lastSelected.current)?.focus({ preventScroll: true });
+  }, [selected, showDetail]);
+  const add = () => {
+    const card = newMetaCard();
+    apply([...latest.current, card]);
+    open(`meta:${card.id}`);
+  };
+  const remove = (id: string) => { apply(removeCardById(latest.current, id)); back(); };
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-8 py-2" data-testid="insights-collection">
-      <MetaCards cards={metaCards} onSave={onSaveMetaCards} onJump={onJump} editable={editable} />
-
-      {items.length === 0 ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">
-          아직 사건 인사이트가 없습니다. 타임라인에서 사건 카드의 <Star className="inline h-3.5 w-3.5 text-red-500" fill="currentColor" /> 별을 눌러 적어보세요.
-        </div>
-      ) : items.map((f) => (
-        <article key={f.slug} className="border-b border-border/40 pb-6 last:border-0">
-          <header className="mb-2 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-[11px] tabular-nums text-muted-foreground">
-                {f.endDate ? `${f.date} ~ ${f.endDate}` : f.date}
-              </div>
-              <h3 className="flex items-center gap-1.5 text-base font-bold">
-                <Star className="h-4 w-4 shrink-0 text-red-500" fill="currentColor" />
-                {f.title}
-              </h3>
+    <div className="flex h-full min-h-0 flex-col" data-testid="insights-collection">
+      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-center justify-between gap-4 border-b border-border py-4">
+        {showDetail ? (
+          <>
+            <button ref={backRef} type="button" onClick={back} className="flex shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-testid="insights-back">
+              <ArrowLeft className="h-4 w-4" /> 목록으로
+            </button>
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{current.title}</span>
+            {current.flow && <button type="button" onClick={() => onOpenInsight(current.flow!.slug)} className="shrink-0 text-xs text-muted-foreground hover:text-foreground">타임라인에서 보기</button>}
+          </>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-3"><h2 className="text-lg font-semibold">인사이트</h2><span className="text-xs tabular-nums text-muted-foreground">{loading ? "불러오는 중…" : `${items.length}편`}</span></div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
+                <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                <input value={query} onChange={e => { setQuery(e.target.value); listTop.current = 0; if (scrollRef.current) scrollRef.current.scrollTop = 0; }} placeholder="제목·시점 검색" aria-label="인사이트 제목·시점 검색" className="w-56 bg-transparent text-sm outline-none" />
+                {query && <button type="button" onClick={() => setQuery("")} aria-label="검색 지우기"><X className="h-3.5 w-3.5" /></button>}
+              </label>
+              {editable && <button type="button" onClick={add} className="flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs hover:bg-accent" data-testid="meta-add-card"><Plus className="h-3.5 w-3.5" /> 새 인사이트</button>}
             </div>
-            {editable ? (
-              <button
-                type="button"
-                onClick={() => onOpenInsight(f.slug)}
-                className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                title="타임라인에서 편집"
-                data-testid={`insight-edit-${f.slug}`}
-              >
-                <Pencil className="h-3 w-3" /> 편집
-              </button>
-            ) : null}
-          </header>
-          <BlockStack
-            blocks={insightToBlocks(f.insight)} editing={false} allow={{}}
-            eventFrac={toFracYear(f.date)} onChange={() => {}} onJump={onJump}
-          />
-        </article>
-      ))}
+          </>
+        )}
+      </div>
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" data-testid="insights-scroll">
+        <div className="mx-auto w-full min-w-0 max-w-6xl pb-8 pt-3">
+          {showDetail ? (
+            <div data-testid="insight-detail">
+              {current.card ? <MetaCard key={current.key} card={current.card} onChange={updateCard} onDelete={() => remove(current.card!.id)} onJump={onJump} editable={editable} />
+                : <InsightPanel key={current.key} flow={current.flow!} onCommit={onCommitInsight} onClose={back} onJump={onJump} variant="inline" editable={editable} />}
+              <nav aria-label="인사이트 글 이동" className="mt-8 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-4 border-t border-border pt-5">
+                <button type="button" disabled={!previous} onClick={() => previous && turnPage(previous.key)} data-testid="insight-previous"
+                  className="flex min-w-0 items-center gap-3 rounded-md border border-border px-4 py-3 text-left hover:bg-accent disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent">
+                  <ArrowLeft className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0"><span className="block text-xs text-muted-foreground">이전 글</span><span className="mt-1 block truncate text-sm">{previous?.title ?? "첫 번째 글입니다"}</span></span>
+                </button>
+                <span className="self-center text-xs tabular-nums text-muted-foreground">{currentIndex + 1} / {readingList.length}</span>
+                <button type="button" disabled={!next} onClick={() => next && turnPage(next.key)} data-testid="insight-next"
+                  className="flex min-w-0 items-center justify-end gap-3 rounded-md border border-border px-4 py-3 text-right hover:bg-accent disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent">
+                  <span className="min-w-0"><span className="block text-xs text-muted-foreground">다음 글</span><span className="mt-1 block truncate text-sm">{next?.title ?? "마지막 글입니다"}</span></span>
+                  <ArrowRight className="h-4 w-4 shrink-0" />
+                </button>
+              </nav>
+            </div>
+          ) : (
+            <>
+              {query && <p className="mb-3 text-xs text-muted-foreground" role="status">검색 결과 {filtered.length}편</p>}
+              <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-5 border-b border-border px-4 py-2 text-[11px] text-muted-foreground" aria-hidden="true"><span>제목</span><span>시점</span></div>
+              <ul aria-label="인사이트 목록" className="divide-y divide-border/60">
+                {filtered.map(item => (
+                  <li key={item.key}>
+                    <button type="button" ref={el => { if (el) rowRefs.current.set(item.key, el); else rowRefs.current.delete(item.key); }} onClick={() => open(item.key)} data-testid="insight-list-row"
+                      className="grid w-full grid-cols-[minmax(0,1fr)_180px] items-center gap-5 px-4 py-4 text-left hover:bg-accent/50 focus-visible:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                      <span className="flex min-w-0 items-start gap-1.5 text-sm font-medium leading-relaxed">
+                        {item.flow && <Star className="mt-1 h-3.5 w-3.5 shrink-0 text-red-500" fill="currentColor" aria-label="사건 인사이트" role="img" />}
+                        <span>{item.title}</span>
+                      </span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{item.date || "—"}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {loading && <p className="py-10 text-center text-sm text-muted-foreground" role="status">인사이트 목록을 불러오고 있습니다…</p>}
+              {!loading && !filtered.length && <p className="py-12 text-center text-sm text-muted-foreground" role="status">{failed ? "목록을 불러오지 못했습니다. 위의 다시 불러오기를 눌러주세요." : query ? "일치하는 제목이나 시점이 없습니다." : "아직 인사이트가 없습니다."}</p>}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -65,6 +65,7 @@ function AppRouter() {
         <Route path="/insider" component={Insider} />
         <Route path="/interest" component={Interest} />
         <Route path="/capitalism" component={Capitalism} />
+        <Route path="/capitalism/insights" component={Capitalism} />
         <Route path="/international-timeline" component={InternationalTimeline} />
         <Route path="/graph-compare" component={GraphCompare} />
         <Route path="/graph-compare-experiment"><Redirect to="/graph-compare" replace /></Route>

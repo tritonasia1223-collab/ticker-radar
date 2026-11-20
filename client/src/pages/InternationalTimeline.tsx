@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { TimelineHoverGuide } from "@/components/TimelineHoverGuide";
 import { TimelineDisclosure } from "@/components/TimelineDisclosure";
+import { CapitalismTabs } from "@/components/CapitalismTabs";
 import { captureGrid, springGrid, springScroll } from "@/lib/glass-spring/spring.js";
-import "@/lib/glass-spring/glass.css";
 import { Plus, Download, FileText, ArrowUp, MoreHorizontal, Trash2, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,7 +20,7 @@ import { mergeInsightTimeline } from "@/lib/international-timeline-insights";
 import { mergeClassifiedTimeline, CLASSIFIED_BACKUP, CLASSIFIED_REVISION } from "@/lib/international-timeline-classified";
 import { mergeSupplementTimeline, SUPPLEMENT_BACKUP, SUPPLEMENT_REVISION } from "@/lib/international-timeline-supplement";
 import classifiedSourceText from "@/data/international-timeline-classified-source.txt?raw";
-import { searchTimeline, timelineTypes } from "@/lib/international-timeline-search";
+import { searchTimeline } from "@/lib/international-timeline-search";
 import insightSourceText from "@/data/international-timeline-insights.txt?raw";
 import { rangeLabel, documentTimeline, descriptionView, bandText } from "@/lib/international-timeline";
 import { plainText } from "@/lib/capitalism-richtext";
@@ -60,7 +61,7 @@ function EventMenu({ event, labels, remove, changeDate, patch }: { event: Timeli
   const choices = event.region === "europe" ? ["독일", "영국", "프랑스"] : [REGIONS.find(r => r.id === event.region)!.name];
   return <Popover open={open} onOpenChange={next => { if (next) { setDateText(event.date || `${event.year}${event.month ? `.${event.month}` : ""}`); setDateError(""); } setOpen(next); }}>
     <PopoverTrigger asChild><button className="it-event-menu" aria-label={`${event.id} 사건 메뉴`} title="날짜 · 라벨 · 삭제"><MoreHorizontal size={16} /></button></PopoverTrigger>
-    <PopoverContent ref={menuRef} data-theme={theme} align="end" className="it-glass-portal glass w-64 p-3" onOpenAutoFocus={e => { if (event.scope === "global") { e.preventDefault(); requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>("[data-richeditor]")?.focus()); } }}>
+    <PopoverContent ref={menuRef} data-theme={theme} align="end" className="it-editor-portal w-64 p-3" onOpenAutoFocus={e => { if (event.scope === "global") { e.preventDefault(); requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>("[data-richeditor]")?.focus()); } }}>
       {event.scope === "global" && <div className="it-band-title-edit mb-3"><p className="mb-1 text-xs text-muted-foreground">제목</p><CapRichEditor spellCheck={false} align="left" rows={1} ariaLabel="대사건 제목" value={band.title} placeholder="제목 입력" onChange={title => patch(band.prefix + title + (band.details ? `\n${band.details}` : ""))} /></div>}
       <form className="mb-3 border-b pb-3" onSubmit={e => { e.preventDefault(); const parsed = parseTimelineDate(dateText); if (!parsed) { setDateError("유효한 날짜나 기간을 입력해 주세요."); return; } changeDate(parsed); setOpen(false); }}>
         <label htmlFor={`date-${event.id}`} className="mb-1 block text-xs text-muted-foreground">날짜</label>
@@ -135,6 +136,9 @@ export default function InternationalTimeline() {
   const [lastDeletedId, setLastDeletedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLElement>(null);
+  const [toolbarHeight, setToolbarHeight] = useState(84);
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [headerHeight, setHeaderHeight] = useState(64);
   const [saveError, setSaveError] = useState("");
   const [regions, setRegions] = useState<TimelineLane[]>(["us", "de", "fr", "uk", "jp"]);
@@ -170,16 +174,65 @@ export default function InternationalTimeline() {
   const canEdit = editable && !initial.error;
   useEffect(() => { const old = document.title; document.title = "국제 연표 — 피스쿠스"; return () => { document.title = old; }; }, []);
   useEffect(() => {
-    if (!headRef.current) return;
-    const observer = new ResizeObserver(([entry]) => setHeaderHeight((entry.target as HTMLElement).offsetHeight));
+    if (!headRef.current || !toolbarRef.current) return;
+    const measure = () => {
+      const toolbar = toolbarRef.current?.offsetHeight ?? 0;
+      setToolbarHeight(toolbar);
+      setHeaderHeight(toolbar + (headRef.current?.offsetHeight ?? 0));
+    };
+    const observer = new ResizeObserver(measure);
     observer.observe(headRef.current);
+    observer.observe(toolbarRef.current);
+    measure();
     return () => observer.disconnect();
   }, []);
   const visibleRegions = COUNTRY_LANES.filter(r => regions.includes(r.id));
   const visibleLaneIds = visibleRegions.map(r => r.id);
-  const types = useMemo(() => timelineTypes(events), [events]);
   const filtered = useMemo(() => searchTimeline(events, search, regions, editingId), [events, regions, search, editingId]);
   const years = useMemo(() => documentTimeline(filtered), [filtered]);
+  const firstYear = years[0]?.year ?? 1969;
+  const lastYear = years.at(-1)?.year ?? firstYear;
+  const sliderYear = Math.max(firstYear, Math.min(lastYear, currentYear ?? firstYear));
+  const sliderPercent = lastYear > firstYear ? (sliderYear - firstYear) / (lastYear - firstYear) * 100 : 0;
+  // Dates have equal slider spacing; document positions follow actual section heights.
+  // Measure sections again after edits, disclosures, font loading or resizing.
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-year-section]"));
+    let anchors: { year: number; top: number }[] = [];
+    let frame = 0;
+    const sync = () => {
+      frame = 0;
+      if (!anchors.length) return;
+      const edge = root.scrollTop + headerHeight + 2;
+      const active = anchors.findLast(anchor => anchor.top <= edge) ?? anchors[0];
+      setCurrentYear(active.year);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };
+    const measure = () => {
+      const origin = root.getBoundingClientRect().top - root.scrollTop;
+      anchors = sections.map(section => ({ year: Number(section.dataset.yearSection), top: section.getBoundingClientRect().top - origin }));
+      schedule();
+    };
+    const resize = new ResizeObserver(measure);
+    sections.forEach(section => resize.observe(section));
+    resize.observe(root);
+    root.addEventListener("scroll", schedule, { passive: true });
+    measure();
+    return () => { cancelAnimationFrame(frame); resize.disconnect(); root.removeEventListener("scroll", schedule); };
+  }, [years, headerHeight]);
+  function seekYear(value: number) {
+    const root = scrollRef.current;
+    if (!root || !years.length) return;
+    const nearest = years.reduce((best, candidate) => Math.abs(candidate.year - value) < Math.abs(best.year - value) ? candidate : best);
+    const entry = root.querySelector<HTMLElement>(`[data-year-section="${nearest.year}"]`);
+    if (!entry) return;
+    scrollMotion.current?.cancel();
+    // Direct scrubbing avoids accumulated animations while dragging rapidly.
+    root.scrollTo({ top: entry.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop - headerHeight, behavior: "instant" });
+    setCurrentYear(nearest.year);
+  }
   const periodSlices = useMemo(() => years.flatMap(year => year.items), [years]);
   const periodUI = useTimelinePeriod(filtered, periodSlices, visibleLaneIds);
   function persist(next: TimelineDraft) {
@@ -249,50 +302,65 @@ export default function InternationalTimeline() {
     const entry = scrollRef.current?.querySelector<HTMLElement>(`[data-year-section="${year}"]`);
     if (entry) scrollToEntry(entry);
   }
-  return <div ref={scrollRef} data-theme={theme} onFocusCapture={e => { const id = (e.target as HTMLElement).closest<HTMLElement>("[data-event-id]")?.dataset.eventId; if (id) setEditingId(id); }} className="international-document it-five-countries" data-testid="international-timeline" style={{ "--it-columns": `repeat(${visibleRegions.length}, minmax(0, 1fr))`, "--it-board-width": `${68 + visibleRegions.length * 180}px`, "--it-head-height": `${headerHeight}px` } as CSSProperties}>
+  return <div ref={scrollRef} data-theme={theme} onFocusCapture={e => { const id = (e.target as HTMLElement).closest<HTMLElement>("[data-event-id]")?.dataset.eventId; if (id) setEditingId(id); }} className="international-document it-five-countries" data-testid="international-timeline" style={{ "--it-columns": `repeat(${visibleRegions.length}, minmax(0, 1fr))`, "--it-board-width": `${68 + visibleRegions.length * 180}px`, "--it-head-height": `${headerHeight}px`, "--it-toolbar-height": `${toolbarHeight}px` } as CSSProperties}>
     <div className="it-wrap">
-      <header className="it-page-header">
+      <CapitalismTabs active="international" />
+      <header ref={toolbarRef} className="it-page-header">
         <div className="it-toolbar">
-          <h1>국제 연표 — {visibleRegions.map(r => r.name).join(" · ")} {years.length ? `${years[0].year}–${years.at(-1)!.year}` : ""}</h1>
-          <div className="it-controls">
-            <input className="it-search" type="search" aria-label="연표 검색" placeholder="사건 검색…" list="timeline-type-options" title="검색어와 type:policy, type:stat, type:event를 함께 입력할 수 있습니다." value={search} onChange={e => { setEditingId(null); setSearch(e.target.value); }} />
-            <datalist id="timeline-type-options">{types.map(type => <option key={type} value={`type:${type}`} />)}</datalist>
-            <div className="it-lane-toggles" aria-label="비교 국가 선택">{COUNTRY_LANES.slice(0, 5).map(r => <button style={ink(r.color)} aria-pressed={regions.includes(r.id)} disabled={regions.length === 1 && regions.includes(r.id)} key={r.id} onClick={() => toggleRegion(r.id)}>{r.name}</button>)}</div>
-            <button className="it-btn" onClick={() => { if (openBands.size && events.some(e => e.id === periodUI.interaction.tapped && e.scope === "global")) periodUI.interaction.setTapped(null); setOpenBands(openBands.size ? new Set() : new Set(events.filter(e => e.scope === "global").map(e => e.id))); }}>{openBands.size ? "대사건 접기" : "대사건 펼치기"}</button>
-            <span className="it-count">{filtered.length}개 사건</span>
+          <h1>국제 연표</h1>
+          <div className="it-time-slider" style={{ "--it-slider-progress": `${sliderPercent}%` } as CSSProperties}>
+            <div className="it-slider-caption"><output htmlFor="international-year-slider">{sliderYear}</output></div>
+            <input id="international-year-slider" type="range" min={firstYear} max={lastYear} step={1} value={sliderYear}
+              disabled={years.length < 2} aria-label="국제 연표 연도 이동" aria-valuetext={`${sliderYear}년`} data-testid="international-year-slider"
+              onChange={e => seekYear(Number(e.target.value))}
+              onKeyDown={e => {
+                const direction = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
+                if (!direction) return;
+                e.preventDefault();
+                const index = years.findIndex(year => year.year === sliderYear);
+                seekYear(years[Math.max(0, Math.min(years.length - 1, index + direction))]?.year ?? sliderYear);
+              }} />
+            <div className="it-slider-ticks" aria-hidden="true"><span>{firstYear}</span>
+              {Array.from({ length: Math.max(0, Math.floor(lastYear / 5) - Math.ceil(firstYear / 5) + 1) }, (_, i) => (Math.ceil(firstYear / 5) + i) * 5)
+                .filter(year => year > firstYear + 1 && year < lastYear - 1)
+                .map(year => <span key={year} style={{ left: `${(year - firstYear) / (lastYear - firstYear) * 100}%` }}>{year}</span>)}
+              {lastYear !== firstYear && <span>{lastYear}</span>}</div>
           </div>
         </div>
-        <p className="it-reading-hint">같은 월의 정책을 나란히 비교 · 독일은 통일 이전 서독 · 좁은 화면에서는 좌우로 이동</p>
         {(initial.error || saveError) && <p role="alert" className="text-xs text-destructive">{initial.error || saveError} {saveError && <button onClick={() => persist(latestDraft.current)}>다시 저장</button>}</p>}
       </header>
       <TimelinePeriodContext.Provider value={periodUI.interaction}>
       <div ref={periodUI.boardRef} {...periodUI.handlers} className="it-board" data-testid="timeline-board">
-        <div ref={headRef} className="it-lane-head glass"><div className="it-gutter">연월</div>{visibleRegions.map(r => <div key={r.id} style={ink(r.color)} data-region-heading={r.id}><h2>{r.name}</h2></div>)}</div>
+        <div ref={headRef} className="it-lane-head"><div className="it-gutter">연월</div>{visibleRegions.map(r => <div key={r.id} style={ink(r.color)} data-region-heading={r.id}><h2>{r.name}</h2></div>)}</div>
         {years.map(year => <section key={year.year} data-year-section={year.year} className="it-year-section">
           <div className="it-column-rules" aria-hidden="true">{visibleRegions.slice(1).map((region, index) => <span key={region.id} style={{ gridColumn: index + 3 }} />)}</div>
           <h3 data-year-heading={year.year} className="it-year-heading"><span>{year.year}</span><small>{year.count}건</small><button className="it-year-top" aria-label="연표 맨 위로" onClick={() => scrollToPosition(0)}><ArrowUp size={12} /></button></h3>
           {year.items.map(item => item.kind === "band" ? <div key={item.key} className="it-band" data-global-marker={item.events[0].id} data-period-row={item.key} data-period-event={periodEnd(item.events[0]) ? item.events[0].id : undefined}>
-            <div className={`it-gutter it-band-gutter ${periodEnd(item.events[0]) ? "it-period-band-date" : ""}`} style={periodUI.gutterStyle(item.key)} title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}>{periodEnd(item.events[0]) ? periodDateLabel(item.events[0]) : item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}{!periodEnd(item.events[0]) && /^\d{4}\.\d{1,2}\.\d{1,2}$/.test(item.events[0].date) && <small className="it-band-day">{Number(item.events[0].date.split(".")[2])}일</small>}</div>
+            <div className={`it-gutter it-band-gutter ${periodEnd(item.events[0]) ? "it-period-band-date" : ""}`} style={periodUI.gutterStyle(item.key)} title={item.events[0].date || rangeLabel(item.events[0]) || String(year.year)}><span data-month-label={item.month ? "" : undefined}>{periodEnd(item.events[0]) ? periodDateLabel(item.events[0]) : item.month ? `${String(item.month).padStart(2, "0")}월` : item.events[0].date || rangeLabel(item.events[0]) || "연간"}{!periodEnd(item.events[0]) && /^\d{4}\.\d{1,2}\.\d{1,2}$/.test(item.events[0].date) && <small className="it-band-day">{Number(item.events[0].date.split(".")[2])}일</small>}</span></div>
             <div className="it-band-content">{item.events.map(event => <div key={event.id}>
               <div className="it-band-heading"><button className="it-band-toggle" aria-expanded={openBands.has(event.id)} aria-controls={`band-${event.id}`} onClick={() => { if (periodUI.interaction.mobile && periodEnd(event)) periodUI.interaction.setTapped(openBands.has(event.id) ? null : event.id); setOpenBands(current => { const next = new Set(current); next.has(event.id) ? next.delete(event.id) : next.add(event.id); return next; }); }}>
                 <span className="it-band-title">{plainText(bandText(event).title) || "새 대사건"}</span>
               </button>{canEdit && <EventMenu event={event} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} patch={body => patch(event.id, body)} />}</div>
               <TimelineDisclosure open={openBands.has(event.id)} id={`band-${event.id}`}><TimelineEntry event={event} global editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></TimelineDisclosure>
             </div>)}</div>
-          </div> : <div key={item.key} className="it-slice" data-date-key={item.key} data-period-row={item.key}>
-            <div className="it-gutter" style={periodUI.gutterStyle(item.key)} title={item.month ? `${year.year}.${item.month}` : item.period ?? "월이 특정되지 않은 자료"}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.period ?? "연간"}{canEdit && <button className="it-shared-add" aria-label={`${year.year}.${item.month ?? "연간"} 유럽 공동 사건 추가`} title="이 시점에 유럽 공동 사건 추가" onClick={() => add(year.year, item.month, "eu")}><Plus size={11} />공동</button>}</div>
-            {visibleRegions.map(region => <div key={region.id} data-region={region.id} className="it-cell">
+          </div> : <div key={item.key} className={`it-slice ${item.month === null && !item.period ? "it-annual-slice" : ""}`} data-date-key={item.key} data-period-row={item.key} style={{ "--it-annual-detail-row": item.events.filter(e => eventLanes(e).length > 1 && eventLaneSpan(e, visibleLaneIds)).length + 1 } as CSSProperties}>
+            <div className="it-gutter" style={periodUI.gutterStyle(item.key)} title={item.month ? `${year.year}.${item.month}` : item.period ?? "월이 특정되지 않은 자료"}><span data-month-label={item.month ? "" : undefined}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.period ?? ""}</span>{canEdit && <button className="it-shared-add" aria-label={`${year.year}.${item.month ?? "연간"} 유럽 공동 사건 추가`} title="이 시점에 유럽 공동 사건 추가" onClick={() => add(year.year, item.month, "eu")}><Plus size={11} />공동</button>}</div>
+            {visibleRegions.map((region, regionIndex) => <div key={region.id} data-region={region.id}
+              className={`it-cell ${item.month === null && !item.period && item.events.some(e => eventLanes(e).length === 1 && eventLanes(e).includes(region.id)) ? "it-annual-card" : ""}`}
+              style={item.month === null && !item.period ? { gridColumn: regionIndex + 2, gridRow: region.region === "europe" ? "var(--it-annual-detail-row)" : 1 } : undefined}>
+              {item.month === null && !item.period && item.events.some(e => eventLanes(e).length === 1 && eventLanes(e).includes(region.id)) && <span className="it-shared-label it-annual-label">연간</span>}
               {item.events.filter(e => eventLanes(e).length === 1 && eventLanes(e).includes(region.id)).map(event => <TimelineEntry key={event.id} event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} />)}
               {canEdit && <button className="it-cell-add" aria-label={`${year.year}.${item.month ?? "연간"} ${region.name} 사건 추가`} onClick={() => add(year.year, item.month, region.id)}><Plus size={12} /></button>}
             </div>)}
-            {item.events.filter(e => eventLanes(e).length > 1).map(event => {
+            {item.events.filter(e => eventLanes(e).length > 1 && eventLaneSpan(e, visibleLaneIds)).map((event, sharedIndex) => {
               const span = eventLaneSpan(event, visibleLaneIds);
-              return span && <div key={event.id} className="it-europe-shared glass" data-shared-event={event.id} style={{ gridColumn: `${span.start} / span ${span.span}` }}><span className="it-shared-label">유럽 공동</span><TimelineEntry event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></div>;
+              return span && <div key={event.id} className={`it-europe-shared ${item.month === null && !item.period ? "it-annual-shared" : ""}`} data-shared-event={event.id} style={{ gridColumn: `${span.start} / span ${span.span}`, gridRow: item.month === null && !item.period ? sharedIndex + 1 : undefined }}><span className="it-shared-label">{item.month === null && !item.period ? "연간 · 유럽 공동" : "유럽 공동"}</span><TimelineEntry event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></div>;
             })}
           </div>)}
         </section>)}
-        {!years.length && <p className="it-empty">조건에 맞는 사건이 없습니다. 검색어나 국가 필터를 바꿔 주세요.</p>}
+        {!years.length && <p className="it-empty">아직 등록된 사건이 없습니다.</p>}
         {periodUI.overlay}
+        <TimelineHoverGuide boardRef={periodUI.boardRef} />
       </div>
       </TimelinePeriodContext.Provider>
       <footer className="it-note">
@@ -307,11 +375,11 @@ export default function InternationalTimeline() {
         </div>
       </footer>
     </div>
-    {canEdit && lastDeletedId && draft.deleted.some(d => d.event.id === lastDeletedId) && <div className="it-undo glass" role="status"><span>사건을 삭제했습니다.</span><button onClick={() => restore(lastDeletedId)}>되돌리기</button><button aria-label="삭제 알림 닫기" onClick={() => setLastDeletedId(null)}>×</button></div>}
-    <Dialog open={showDeleted} onOpenChange={setShowDeleted}><DialogContent data-theme={theme} className="it-glass-portal glass-strong max-h-[80vh] overflow-auto sm:max-w-xl"><DialogHeader><DialogTitle>삭제한 사건</DialogTitle><DialogDescription>삭제한 본문과 라벨을 복원할 수 있습니다. 이 브라우저에 보관됩니다.</DialogDescription></DialogHeader>
+    {canEdit && lastDeletedId && draft.deleted.some(d => d.event.id === lastDeletedId) && <div className="it-undo" role="status"><span>사건을 삭제했습니다.</span><button onClick={() => restore(lastDeletedId)}>되돌리기</button><button aria-label="삭제 알림 닫기" onClick={() => setLastDeletedId(null)}>×</button></div>}
+    <Dialog open={showDeleted} onOpenChange={setShowDeleted}><DialogContent data-theme={theme} className="it-editor-portal max-h-[80vh] overflow-auto sm:max-w-xl"><DialogHeader><DialogTitle>삭제한 사건</DialogTitle><DialogDescription>삭제한 본문과 라벨을 복원할 수 있습니다. 이 브라우저에 보관됩니다.</DialogDescription></DialogHeader>
       {!draft.deleted.length && <p className="text-sm text-muted-foreground">삭제한 사건이 없습니다.</p>}
       {draft.deleted.map(({ event }) => <div key={event.id} className="flex items-start gap-3 border-b py-3"><div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{event.date || event.year} · {event.scope === "global" ? "대사건" : REGIONS.find(r => r.id === event.region)?.name}</p><p className="break-words text-sm">{plainText(descriptionView(event).text).split("\n")[0] || "제목 없는 사건"}</p></div><button disabled={!canEdit} onClick={() => restore(event.id)} className="rounded border px-3 py-1 text-xs">복원</button></div>)}
     </DialogContent></Dialog>
-    <Dialog open={showSource} onOpenChange={setShowSource}><DialogContent data-theme={theme} className="it-glass-portal glass-strong max-h-[85vh] overflow-auto sm:max-w-3xl"><DialogHeader><DialogTitle>참고 자료 · 1969–1992</DialogTitle><DialogDescription>유형을 분류한 최신 제공본을 우선 반영했습니다. 이후 화면에서 수정한 내용은 로컬에 저장됩니다.</DialogDescription></DialogHeader><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{classifiedSourceText + "\n\n" + insightSourceText + "\n\n" + sourceText + "\n\n" + usSourceText}</pre></DialogContent></Dialog>
+    <Dialog open={showSource} onOpenChange={setShowSource}><DialogContent data-theme={theme} className="it-editor-portal max-h-[85vh] overflow-auto sm:max-w-3xl"><DialogHeader><DialogTitle>참고 자료 · 1969–1992</DialogTitle><DialogDescription>유형을 분류한 최신 제공본을 우선 반영했습니다. 이후 화면에서 수정한 내용은 로컬에 저장됩니다.</DialogDescription></DialogHeader><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{classifiedSourceText + "\n\n" + insightSourceText + "\n\n" + sourceText + "\n\n" + usSourceText}</pre></DialogContent></Dialog>
   </div>;
 }

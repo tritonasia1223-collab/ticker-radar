@@ -121,7 +121,7 @@ export function documentTimeline(events: TimelineEvent[]) {
     const month = eventMonth(event);
     const period = month === null ? event.date.match(/상반기|하반기/)?.[0] : undefined;
     const key = `${event.year}-${month ?? period ?? "annual"}`;
-    if (!slices.has(key)) slices.set(key, { key, year: event.year, month, period, kind: "slice", events: [], order: event.year * 100 + (month ?? (period === "상반기" ? 6.5 : period === "하반기" ? 12.5 : 13)) });
+    if (!slices.has(key)) slices.set(key, { key, year: event.year, month, period, kind: "slice", events: [], order: event.year * 100 + (month ?? (period === "상반기" ? 6.5 : period === "하반기" ? 12.5 : 0)) });
     slices.get(key)!.events.push(event);
   }
   items.push(...slices.values());

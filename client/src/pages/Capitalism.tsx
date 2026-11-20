@@ -13,6 +13,8 @@ import { frameMeasurement } from "@/lib/capitalism-layout";
 import { CapLinkOverlay } from "@/components/CapLinkOverlay";
 import { CapChartPanel } from "@/components/CapChartPanel";
 import { InsightPanel, InsightsCollection } from "@/components/CapInsight";
+import { CapitalismTabs } from "@/components/CapitalismTabs";
+import { useLocation } from "wouter";
 import { useEditMode } from "@/components/EditModeProvider";
 import { PANELS, CATEGORIES, toFracYear, fracYearToLabel } from "@/lib/capitalism-config";
 import { leadersForYear } from "@/lib/capitalism-leaders"; // 1789~ 대통령 · 1914~ 연준 의장 전체 표(시계열이 1833년까지 늘어나 필요)
@@ -61,6 +63,7 @@ export default function Capitalism() {
   const { data: metaV2 } = metaQuery;
   const { data: overviewData } = overviewQuery;
   const [undoBusy, setUndoBusy] = useState(false);
+  const localPreview = import.meta.env.VITE_LOCAL_DATA_PREVIEW === "true";
   const editable = !undoBusy && ![...collaboration.drafts.values()].some((d) => d.conflicts?.length) && editMode && flowQuery.isSuccess && linksQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess;
   const readFailed = [flowQuery, linksQuery, metaQuery, overviewQuery, seriesQuery].some((q) => q.isError);
   const retryReads = () => {
@@ -89,7 +92,9 @@ export default function Capitalism() {
   // 인사이트 모드 — 별 클릭 시 그 사건 slug. 설정되면 오른쪽 패널이 그래프 대신 인사이트를 보여준다.
   const [activeInsightSlug, setActiveInsightSlug] = useState<string | null>(null);
   // 상단 탭 — 타임라인 vs 인사이트 모아보기(시간순 읽기).
-  const [viewMode, setViewMode] = useState<"timeline" | "insights">("timeline");
+  const [location, navigate] = useLocation();
+  const viewMode = location === "/capitalism/insights" ? "insights" : "timeline";
+  const setViewMode = (mode: "timeline" | "insights") => navigate(mode === "insights" ? "/capitalism/insights" : "/capitalism");
   // 어느 노드가 인라인 편집 중인지 — 전역으로 1개만.
   const [editingId, setEditingId] = useState<string | null>(null);
   // '모아보기'에서 편집 클릭 → 타임라인으로 전환 후 '그 카드'로 스크롤할 대상 slug(보드 마운트 뒤 처리).
@@ -566,40 +571,26 @@ export default function Capitalism() {
 
   return (
     <div ref={pageRef} className="p-4 max-w-[1900px] mx-auto h-full flex flex-col overflow-hidden">
-      {/* ── 상단 탭: 타임라인 / 인사이트 모아보기 ── */}
-      <div className="mb-3 inline-flex shrink-0 self-start items-center rounded-md border border-border bg-card/40 p-0.5" role="group" aria-label="보기 모드">
-        {([
-          { v: "timeline" as const, label: "타임라인" },
-          { v: "insights" as const, label: "인사이트 모아보기" },
-        ]).map((t) => (
-          <button
-            key={t.v}
-            type="button"
-            onClick={() => setViewMode(t.v)}
-            className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-              viewMode === t.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-            data-testid={`viewmode-${t.v}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <CapitalismTabs active={viewMode} />
 
       <CapCollaboration />
+      {localPreview && <p className="mt-1 text-xs text-muted-foreground">로컬 사본 · 편집 내용은 이 컴퓨터에만 저장됩니다</p>}
       <div className="flex flex-wrap items-center gap-3 text-xs" role="status" data-testid="cap-save-status">
         {hasUnsavedChanges() && <span>화살표 저장 중…</span>}
         {hasFailedSaves() && <button className="underline" onClick={() => void retryFailedSaves()}>저장 다시 시도</button>}
         {readFailed && <span role="alert">데이터를 불러오지 못했습니다. <button className="underline" disabled={hasUnsavedChanges()} onClick={retryReads}>다시 불러오기</button></span>}
       </div>
       {viewMode === "insights" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto cap-noscrollbar">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <InsightsCollection
             flows={flows ?? []}
             metaCards={metaCards}
             onSaveMetaCards={saveMetaCards}
+            onCommitInsight={onCommitInsight}
+            loading={flowQuery.isLoading || metaQuery.isLoading || overviewQuery.isLoading}
+            failed={flowQuery.isError || metaQuery.isError || overviewQuery.isError}
             onOpenInsight={(slug) => { setActiveInsightSlug(slug); setPendingJump(slug); setViewMode("timeline"); }}
-            onJump={jumpToSlug}
+            onJump={(slug) => { setPendingJump(slug); setViewMode("timeline"); }}
             editable={editable}
           />
         </div>

@@ -1079,6 +1079,7 @@ export const CapRichEditor = forwardRef<CapRichEditorHandle, CapRichEditorProps>
             <button
               key={m.key}
               type="button"
+              data-rich-swatch={m.key}
               title={m.label}
               aria-label={m.label}
               className="h-5 w-5 rounded-sm border border-border/60 hover:scale-110 transition-transform"

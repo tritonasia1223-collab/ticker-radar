@@ -60,7 +60,7 @@ export function CapRichText({
         );
       }
       if (s.mark && MARK_BY_KEY[s.mark]) {
-        return <span key={`${keyBase}-${i}`} style={MARK_BY_KEY[s.mark].style}>{s.text}</span>;
+        return <span key={`${keyBase}-${i}`} data-mark={s.mark} style={MARK_BY_KEY[s.mark].style}>{s.text}</span>;
       }
       return <span key={`${keyBase}-${i}`}>{s.text}</span>;
     });

@@ -55,3 +55,10 @@ describe("period metadata and rendered extent", () => {
     expect(periodEnd(point)).toBeNull();
   });
 });
+
+
+it("starts an undated period at its leading annual block and ends at the actual month", () => {
+  const period = event("annual-period", 1984, null, { endY: 1984, endM: 6 });
+  expect(periodExtent(period, rows([period, event("march", 1984, 3), event("june", 1984, 6), event("july", 1984, 7)])))
+    .toMatchObject({ first: "1984-annual", last: "1984-6", keys: ["1984-annual", "1984-3", "1984-6"], missingEnd: false });
+});

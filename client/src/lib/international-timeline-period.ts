@@ -25,7 +25,7 @@ export function periodExtent(event: TimelineEvent, slices: PeriodSlice[]) {
   const startIndex = slices.findIndex(row => row.events.some(e => e.id === event.id));
   if (startIndex < 0) return null;
   const endTime = end.year * 12 + (end.month ?? 12);
-  const time = (row: PeriodSlice) => row.year * 12 + (row.month ?? (row.period === "상반기" ? 6 : 12));
+  const time = (row: PeriodSlice) => row.year * 12 + (row.month ?? (row.period === "상반기" ? 6 : row.period === "하반기" ? 12 : 1));
   const included = slices.slice(startIndex).filter(row => time(row) <= endTime
     // A year/half-year summary is not a known monthly endpoint.
     && (row.month !== null || row.key === slices[startIndex].key || row.year < end.year || end.month === null));

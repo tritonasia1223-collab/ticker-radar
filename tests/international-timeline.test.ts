@@ -223,9 +223,9 @@ describe("document timeline adapter", () => {
       { ...base, id: "global", month: 6, scope: "global" },
       { ...base, id: "annual", month: null, scope: "regional" },
     ])[0].items;
-    expect(items.map(i => i.kind)).toEqual(["band", "slice", "slice"]);
-    expect(items[1].events.map(e => e.id)).toEqual(["us", "eu"]);
-    expect(items[2].month).toBeNull();
+    expect(items.map(i => i.kind)).toEqual(["slice", "band", "slice"]);
+    expect(items[2].events.map(e => e.id)).toEqual(["us", "eu"]);
+    expect(items[0].month).toBeNull();
   });
   it("moves only the exact date prefix into the view, preserving rich text on round trip", () => {
     for (const event of mergeTimelineRevision()) {
@@ -454,4 +454,17 @@ it("separates a band heading and details without losing marks spanning the newli
   expect(bandText(event)).toEqual({ prefix: "1973.3\n", title: "[[c-r|브레턴우즈 종료]]", details: "[[c-r|직접 강조한 설명]]\n추가 설명" });
   expect(bandText({ ...event, body: "제목만" })).toEqual({ prefix: "", title: "제목만", details: "" });
   expect(bandText({ ...event, body: "" })).toEqual({ prefix: "", title: "", details: "" });
+});
+
+
+it("leads each year with annual context while preserving monthly and half-year order and source data", () => {
+  const base = { ...INITIAL_EVENTS[0], year: 1984, scope: "regional" as const };
+  const annual = { ...base, id: "annual", date: "1984", month: null, body: "연간 원문" };
+  const june = { ...base, id: "june", date: "1984.6", month: 6 };
+  const half = { ...base, id: "half", date: "1984 상반기", month: null };
+  const january = { ...base, id: "january", date: "1984.1", month: 1 };
+  const input = [june, annual, half, january];
+  const before = JSON.stringify(input);
+  expect(documentTimeline(input)[0].items.map(row => row.events[0].id)).toEqual(["annual", "january", "june", "half"]);
+  expect(JSON.stringify(input)).toBe(before);
 });

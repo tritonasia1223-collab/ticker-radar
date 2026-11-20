@@ -207,31 +207,11 @@
 .it-five-countries .it-mobile-region { display: none; }
 .international-document { --it-shared-bg: #eef3f4; --it-shared-rule: #c6d7dc; --it-shared-ink: #486875; }
 .dark .international-document { --it-shared-bg: #202c32; --it-shared-rule: #405a65; --it-shared-ink: #a1c2ce; }
-/* User-requested exception: shared events float across the European columns. */
-.it-five-countries .it-europe-shared {
-  --glass-host-bg: var(--it-shared-bg);
-  --glass-host-fg: var(--it-shared-ink);
-  --glass-host-border: var(--it-shared-rule);
-  --glass-bg-alpha: .18;
-  --glass-blur: 8px;
-  --glass-saturate: 1.5;
-  position: relative; min-width: 0; padding: 15px 35px; margin: 4px -21px;
-  border: 0;
-  border-radius: 14px;
-  box-shadow: 0 10px 24px -7px color-mix(in srgb, var(--it-shared-ink) 28%, transparent),
-    0 2px 7px -2px color-mix(in srgb, var(--it-shared-ink) 18%, transparent);
-}
-.it-europe-shared::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(115deg,
-    color-mix(in srgb, var(--it-bg) 30%, transparent),
-    color-mix(in srgb, var(--it-eu) 3%, transparent) 42%,
-    color-mix(in srgb, var(--it-bg) 10%, transparent));
-}
-.dark .it-five-countries .it-europe-shared {
-  --glass-bg-alpha: .26;
-  box-shadow: 0 12px 28px -6px color-mix(in srgb, var(--it-bg) 95%, transparent),
-    0 3px 9px color-mix(in srgb, var(--it-bg) 70%, transparent);
+/* Flat, opaque surfaces shared by annual and European context blocks. */
+.it-five-countries :is(.it-europe-shared, .it-annual-card) {
+  position: relative; min-width: 0; padding: 14px 16px; margin: 3px 0;
+  border: 0; border-radius: 6px; box-shadow: none;
+  background: color-mix(in srgb, var(--it-shared-bg) 65%, var(--it-bg));
 }
 .it-shared-label {
   position: absolute; top: 16px; left: 35px; z-index: 1;
@@ -271,36 +251,79 @@
   .it-period-indicator, .it-gutter { transition: none; }
 }
 
-/* Host palette binding: the portable module never imports timeline colors. */
-.international-document {
-  --glass-host-bg: var(--it-bg);
-  --glass-host-fg: var(--it-ink);
-  --glass-host-border: var(--it-rule);
-}
-.it-glass-portal {
-  --glass-host-bg: hsl(var(--background));
-  --glass-host-fg: hsl(var(--foreground));
-  --glass-host-border: hsl(var(--border));
-}
-/* Page preference; portable defaults remain neutral for other projects. */
-.international-document, .it-glass-portal {
-  --glass-bg-alpha: .5;
-  --glass-strong-alpha: .78;
-}
-.international-document[data-theme="dark"], .it-glass-portal[data-theme="dark"] {
-  --glass-bg-alpha: .58;
-  --glass-strong-alpha: .84;
-}
-/* Strong surfaces keep their own alpha even when the host binds on the same node. */
-.it-glass-portal.glass-strong { --glass-bg-alpha: var(--glass-strong-alpha); }
-/* Layout stays with the host; all surface/fallback behavior stays in glass.css. */
-.it-five-countries .it-lane-head.glass {
-  border-top: 0; border-inline: 0;
-  border-bottom: 1px solid var(--it-rule);
-}
+/* Opaque headers and editing surfaces; no blur or glass overlays. */
+.it-five-countries .it-lane-head { background: var(--it-bg); border-top: 0; border-inline: 0; border-bottom: 1px solid var(--it-rule); }
+.it-editor-portal { background: hsl(var(--background)); box-shadow: none; }
+.it-undo { background: var(--it-bg); box-shadow: none; }
 .it-disclosure { display: flow-root; }
 .it-disclosure[hidden] { display: none; }
 @media (forced-colors: active) {
-  .it-europe-shared::before { display: none; }
-  .it-five-countries .it-europe-shared { box-shadow: none; outline: 1px solid CanvasText; }
+  .it-five-countries :is(.it-europe-shared, .it-annual-card) { box-shadow: none; outline: 1px solid CanvasText; }
 }
+
+/* Compact sticky header and date navigation. */
+.it-five-countries .it-page-header { position: sticky; top: 0; z-index: 40; padding: 14px 0 12px; background: var(--it-bg); }
+.it-five-countries .it-toolbar { flex-wrap: nowrap; gap: 48px; }
+.it-five-countries .it-toolbar h1 { flex-shrink: 0; }
+.it-time-slider { flex: 1; min-width: 160px; max-width: 800px; margin-left: auto; padding-inline: 7px; font-variant-numeric: tabular-nums; }
+.it-slider-caption { position: relative; height: 23px; }
+.it-slider-caption output { position: absolute; left: clamp(18px, var(--it-slider-progress), calc(100% - 18px)); transform: translateX(-50%); font-size: 13px; font-weight: 600; color: var(--it-ink); line-height: 1.4; }
+.it-time-slider input { appearance: none; display: block; width: 100%; height: 3px; margin: 6px 0 10px; padding: 0; border: 0; border-radius: 3px; cursor: pointer; background: linear-gradient(to right, var(--it-soft) var(--it-slider-progress), var(--it-rule) var(--it-slider-progress)); }
+.it-time-slider input::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--it-bg); background: var(--it-ink); box-shadow: 0 0 0 1px var(--it-rule); }
+.it-time-slider input::-moz-range-thumb { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--it-bg); background: var(--it-ink); box-shadow: 0 0 0 1px var(--it-rule); }
+.it-time-slider input:disabled { cursor: default; opacity: .45; }
+.it-slider-ticks { position: relative; display: flex; justify-content: space-between; height: 14px; font-size: 10px; line-height: 1.4; color: var(--it-soft); }
+.it-slider-ticks span:not(:first-child):not(:last-child) { position: absolute; transform: translateX(-50%); }
+.it-five-countries .it-lane-head { top: var(--it-toolbar-height); }
+.it-five-countries .it-year-section:last-of-type { min-height: calc(100dvh - 220px); }
+.it-five-countries .it-page-header::before { content: ""; position: absolute; inset: 0; width: max(100%, var(--it-board-width)); background: var(--it-bg); z-index: -1; pointer-events: none; }
+/* Annual context blocks. */
+.it-five-countries .it-annual-slice { padding-block: 18px 16px; }
+
+.it-annual-slice > .it-cell .it-event-menu { background: transparent; }
+.it-annual-slice > .it-cell .it-event-menu:hover,
+.it-annual-slice > .it-cell .it-event-menu:focus-visible { background: var(--it-shared-rule); }
+/* Scoped mark overrides keep shared stored styles intact. */
+:is(.international-document, .it-editor-portal) {
+  --it-mark-red: color-mix(in srgb, var(--it-shock, #b3382e) 70%, var(--it-soft, #6a7380));
+  --it-mark-blue: color-mix(in srgb, var(--it-us, #3a6ea5) 80%, var(--it-soft, #6a7380));
+  --it-mark-green: color-mix(in srgb, var(--it-de, #3f7d4e) 80%, var(--it-soft, #6a7380));
+  --it-mark-orange: color-mix(in srgb, var(--it-jp, #b5722a) 80%, var(--it-soft, #6a7380));
+  --it-mark-violet: color-mix(in srgb, var(--it-fr, #6b5ca5) 75%, var(--it-soft, #6a7380));
+}
+:is(.international-document, .it-editor-portal) :is([data-mark="c-r"], [data-rich-swatch="c-r"]) { color: var(--it-mark-red) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="c-b"], [data-rich-swatch="c-b"]) { color: var(--it-mark-blue) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="c-g"], [data-rich-swatch="c-g"]) { color: var(--it-mark-green) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="c-o"], [data-rich-swatch="c-o"]) { color: var(--it-mark-orange) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="c-v"], [data-rich-swatch="c-v"]) { color: var(--it-mark-violet) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="c-bold"], [data-rich-swatch="c-bold"]) { color: var(--it-ink, #1f2328) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="hl-y"], [data-rich-swatch="hl-y"]) { background: color-mix(in srgb, var(--it-oil, #8a6d1f) 14%, transparent) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="hl-g"], [data-rich-swatch="hl-g"]) { background: color-mix(in srgb, var(--it-mark-green) 14%, transparent) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="hl-b"], [data-rich-swatch="hl-b"]) { background: color-mix(in srgb, var(--it-mark-blue) 14%, transparent) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="hl-p"], [data-rich-swatch="hl-p"]) { background: color-mix(in srgb, var(--it-uk, #9c3d54) 14%, transparent) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="hl-v"], [data-rich-swatch="hl-v"]) { background: color-mix(in srgb, var(--it-mark-violet) 14%, transparent) !important; }
+:is(.international-document, .it-editor-portal) :is([data-mark="hl-gray"], [data-rich-swatch="hl-gray"]) { background: color-mix(in srgb, var(--it-soft, #6a7380) 14%, transparent) !important; }
+
+.it-five-countries .it-annual-label { top: 15px; left: 16px; }
+.it-five-countries .it-annual-card > .it-event:first-of-type { --it-label-width: 34px !important; }
+.it-five-countries .it-annual-shared .it-event { --it-label-width: 92px !important; }
+/* Hover guides stay out of layout and never intercept text selection/editing. */
+.it-event .it-description { position: relative; border-radius: 5px; transition: background-color 150ms ease, box-shadow 150ms ease; }
+.it-event[data-hover-active="true"] .it-description {
+  background: color-mix(in srgb, var(--it-event) 6%, transparent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--it-event) 6%, transparent);
+}
+.it-gutter [data-month-label] { display: inline-block; transition: color 150ms ease; }
+.it-gutter [data-hover-month="true"] { color: var(--it-ink); }
+.it-hover-guide { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; overflow: visible; opacity: 0; transition: opacity 150ms ease; }
+.it-hover-guide[data-visible="true"] { opacity: 1; }
+.it-hover-guide path { fill: none; stroke-width: 1; stroke-dasharray: 2 4; stroke-linecap: round; stroke-linejoin: round; opacity: .3; }
+@media (prefers-reduced-motion: reduce) {
+  .it-event .it-description, .it-gutter [data-month-label], .it-hover-guide { transition: none; }
+}
+/* US and Japan stay beside shared Europe; individual European cards follow it. */
+.it-five-countries .it-annual-slice > .it-cell,
+.it-five-countries .it-annual-slice > .it-gutter { grid-row: var(--it-annual-detail-row, 1); }
+.it-five-countries :is(.it-europe-shared, .it-annual-card) { margin: 3px 0; padding: 14px 16px; }
+.it-five-countries .it-europe-shared > .it-shared-label { top: 15px; left: 16px; }
+.it-five-countries .it-annual-slice > .it-annual-card { margin: 3px 0; padding: 14px 16px; }
