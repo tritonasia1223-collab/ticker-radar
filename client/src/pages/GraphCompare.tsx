@@ -18,6 +18,7 @@ import { COMPARE_SERIES, makeSpread, activeSeriesIds, viewingSeriesIds, activeSp
 import { independentComparisonView, buildComparisonAxes } from "@/lib/comparison-axes";
 import { SpreadControls } from "@/components/SpreadControls";
 import { collaboration, collabApi, seedCollaboration, focusResource } from "@/lib/cap-collab-client";
+import { useCollaborationSync } from "@/lib/use-collaboration-sync";
 import { parseRich } from "@/lib/capitalism-richtext";
 import type { FlowDTO } from "@/lib/capitalism-types";
 import type { Resource } from "../../../shared/cap-collaboration";
@@ -83,6 +84,7 @@ export default function GraphCompare() {
     seedCollaboration([], []); setReady(true);
   }, [noteQuery.isSuccess, noteQuery.data]);
   useEffect(() => { if (flowQuery.isSuccess) seedCollaboration(flows, []); }, [flowQuery.isSuccess, flows]);
+  useCollaborationSync("comparison", ready && flowQuery.isSuccess);
   useEffect(() => { try { localStorage.setItem("comparison-view-v3", JSON.stringify(prefs)); } catch { /* Optional preferences. */ } }, [prefs]);
   useEffect(() => { if (!editable) setTool("move"); }, [editable]);
   const notes = useMemo<SavedInsight[]>(() => {

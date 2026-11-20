@@ -1,30 +1,31 @@
 import { useState, useSyncExternalStore } from "react";
-import { collaboration as engine, peers, collabApi, activeResource, previousSession } from "@/lib/cap-collab-client";
+import { collaboration as engine, peers, collabApi, activeResource, previousSession, syncError } from "@/lib/cap-collab-client";
 import { pathLabel, type Change } from "../../../shared/cap-collaboration";
 const show = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value, null, 2);
-export function CapCollaboration() {
+export function CapCollaboration({ resourcePrefix = "", loading = false }: { resourcePrefix?: string; loading?: boolean } = {}) {
   useSyncExternalStore(engine.subscribe, engine.snapshot);
   const [message, setMessage] = useState("");
   const [choices, setChoices] = useState<Record<string, "remote" | "local">>({});
   const [restore, setRestore] = useState(false), [historyOpen, setHistoryOpen] = useState(false);
   const [selected, setSelected] = useState(""), [history, setHistory] = useState<any[]>([]), [detail, setDetail] = useState<any>(null);
   const [historyKeys, setHistoryKeys] = useState<string[]>([]);
-  const drafts = [...engine.drafts.values()], conflicts = drafts.filter((d) => d.conflicts?.length), failed = drafts.some((d) => d.error);
+  const drafts = [...engine.drafts.values()].filter(d => d.base.key.startsWith(resourcePrefix)), conflicts = drafts.filter((d) => d.conflicts?.length), failed = drafts.some((d) => d.error);
   const run = async (work: () => void | Promise<void>) => { try { setMessage(""); await work(); } catch (e) { setMessage(String((e as Error).message)); } };
   const label = (key: string) => String(engine.get(key)?.title || engine.confirmed.get(key)?.doc?.title || key.slice(5));
   const loadHistory = async (key: string) => { setSelected(key); setDetail(null); setHistory(await collabApi(`history?resource=${encodeURIComponent(key)}`)); };
   return <div className="shrink-0 mb-2 space-y-2 text-xs" data-testid="cap-collaboration">
     <div className="flex flex-wrap items-center gap-3" role="status">
-      <b>{conflicts.length ? `충돌 ${conflicts.length}건 — 내용 선택 필요` : failed ? "저장 실패 — 초안 유지" : drafts.length ? "저장 중…" : "저장 완료"}</b>
+      <b>{conflicts.length ? `충돌 ${conflicts.length}건 — 내용 선택 필요` : !navigator.onLine ? drafts.length ? "오프라인 — 기기 초안 보관 중" : "오프라인 — 마지막 저장본" : failed ? "저장 실패 — 초안 유지" : drafts.length ? "저장 중…" : loading ? "서버 연표 확인 중…" : "저장 완료"}</b>
       {failed && <button className="underline" onClick={() => void run(() => engine.flushAll())}>저장 다시 시도</button>}
       {peers.length > 0 && <span className="text-muted-foreground">다른 창 {peers.length}개 접속 중</span>}
       <button className="underline" onClick={() => void run(async () => {
         setHistoryOpen(!historyOpen);
-        if (!historyOpen) { const keys = (await collabApi("history-resources")).map((r: any) => r.key); setHistoryKeys(keys); const key = activeResource || [...engine.confirmed.keys(), ...keys][0]; if (key) await loadHistory(key); }
+        if (!historyOpen) { const keys = (await collabApi("history-resources")).map((r: any) => r.key).filter((key: string) => key.startsWith(resourcePrefix)); setHistoryKeys(keys); const key = (activeResource?.startsWith(resourcePrefix) ? activeResource : null) || [...engine.confirmed.keys(), ...keys].find(k => k.startsWith(resourcePrefix)); if (key) await loadHistory(key); }
       })}>변경 이력</button>
     </div>
     {(engine.storageError || message) && <p role="alert" className="text-amber-600">{[engine.storageError, message].filter(Boolean).join(" / ")}</p>}
-    {engine.recoverable.filter((d) => d.session === previousSession || !peers.some((p) => p.session === d.session)).map((d) => <div key={d.id} className="rounded border border-amber-500 p-2" role="alert">
+    {syncError && <p role="status" className="text-amber-600">동기화 연결 확인 중 · {syncError}</p>}
+    {engine.recoverable.filter(d => d.base.key.startsWith(resourcePrefix)).filter((d) => d.session === previousSession || !peers.some((p) => p.session === d.session)).map((d) => <div key={d.id} className="rounded border border-amber-500 p-2" role="alert">
       남아 있는 기기 초안: {label(d.base.key)} · {d.editor} · {new Date(d.savedAt).toLocaleString()}
       <button className="ml-3 underline" onClick={() => void run(() => engine.recover(d.id))}>서버와 비교해 복구</button>
       <button className="ml-3 underline" onClick={() => { if (window.confirm("이 기기에 남은 초안을 삭제할까요? 서버 내용은 유지됩니다.")) void run(() => engine.discardRecovery(d.id)); }}>초안 삭제</button>

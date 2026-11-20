@@ -7,9 +7,10 @@ import { assemble } from "./capitalism.js";
 import { PLOT_PREFIX, NOTE_PREFIX, comparisonInsightSchema, placementSchema, isPlotKey, isNoteKey } from "../shared/cap-comparison.js";
 import { diff, equal, flowDocument, merge, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration.js";
 import { DIAGRAM_HEADER, LABEL_HEADER, insightForClient, guardLegacyInsightEdit, guardUnlabelledInsightEdit, InsightUpgradeRequired } from "../shared/comparison-compat.js";
+import { INTERNATIONAL_PREFIX, INTERNATIONAL_SEED, isInternationalKey, internationalDocumentSchema } from "../shared/international-storage.js";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-const resourceKey = z.string().refine(key => /^(flow|meta):[^\s]{1,200}$/.test(key) || isPlotKey(key) || isNoteKey(key));
+const resourceKey = z.string().refine(key => /^(flow|meta):[^\s]{1,200}$/.test(key) || isPlotKey(key) || isNoteKey(key) || isInternationalKey(key));
 const requestSchema = z.object({ id: z.string().uuid(), resource: resourceKey, editor: z.string().trim().min(1).max(50), session: z.string().uuid(), schemaVersion: z.literal(2).optional(), ifVersion: z.number().int().nonnegative().optional(),
   changes: z.array(z.object({ path: z.array(z.string().min(1).max(200)).max(3), before: z.any().refine((v) => v !== undefined), after: z.any().refine((v) => v !== undefined) })).min(1).max(5000) });
 const table = z.object({ title: z.string().optional(), widths: z.array(z.number().finite().nonnegative()), cells: z.array(z.array(z.string())) }).nullable();
@@ -30,7 +31,7 @@ const metaSchema = z.object({ id: z.string(), title: z.string(), text: z.string(
 export function validateEdit(body: unknown): EditRequest {
   const op = requestSchema.parse(body) as EditRequest;
   const paths = new Set<string>();
-  const allowed = isNoteKey(op.resource) ? ["title", "date", "endDate", "text", "caption", "sortOrder", "context", "tables", "balance", "scenes"] : isPlotKey(op.resource) ? ["flowSlug", "nodeKey", "title", "date", "endDate", "sortOrder"] : op.resource.startsWith("flow:") ? ["title", "date", "endDate", "category", "layout", "sortOrder", "insight", "nodes", "order"] : ["title", "text", "tables", "images", "blocks"];
+  const allowed = isInternationalKey(op.resource) ? ["title", "body", "type", "labels", "timing", "position", "extra", "deletedAt"] : isNoteKey(op.resource) ? ["title", "date", "endDate", "text", "caption", "sortOrder", "context", "tables", "balance", "scenes"] : isPlotKey(op.resource) ? ["flowSlug", "nodeKey", "title", "date", "endDate", "sortOrder"] : op.resource.startsWith("flow:") ? ["title", "date", "endDate", "category", "layout", "sortOrder", "insight", "nodes", "order"] : ["title", "text", "tables", "images", "blocks"];
   for (const change of op.changes) {
     const path = change.path, key = JSON.stringify(path);
     if (path.some((p) => ["__proto__", "constructor", "prototype"].includes(p)) || paths.has(key)) throw new Error("잘못된 변경 경로");
@@ -54,6 +55,10 @@ async function metaCards(tx: Tx) {
 }
 async function readResource(tx: Tx, key: string): Promise<Resource> {
   const id = key.slice(5);
+  if (isInternationalKey(key)) {
+    const row = (await tx.select().from(capSettings).where(eq(capSettings.key, INTERNATIONAL_PREFIX + id)))[0];
+    return { key, version: Number(row?.updatedAt ?? 0), doc: row?.value ? JSON.parse(row.value) : null };
+  }
   if (isPlotKey(key) || isNoteKey(key)) {
     const row = (await tx.select().from(capSettings).where(eq(capSettings.key, (isNoteKey(key) ? NOTE_PREFIX : PLOT_PREFIX) + id)))[0];
     return { key, version: Number(row?.updatedAt ?? 0), doc: row?.value ? JSON.parse(row.value) : null };
@@ -86,7 +91,10 @@ function edgeList(doc: NonNullable<Document>): { from: string; to: string }[] {
 }
 async function writeResource(tx: Tx, current: Resource, doc: Document): Promise<Resource> {
   const key = current.key, id = key.slice(5), version = Math.max(Date.now(), current.version + 1);
-  if (isPlotKey(key) || isNoteKey(key)) {
+  if (isInternationalKey(key)) {
+    const value = JSON.stringify(internationalDocumentSchema.parse(doc));
+    await tx.insert(capSettings).values({ key: INTERNATIONAL_PREFIX + id, value, updatedAt: version }).onConflictDoUpdate({ target: capSettings.key, set: { value, updatedAt: version } });
+  } else if (isPlotKey(key) || isNoteKey(key)) {
     const value = JSON.stringify(doc ? (isNoteKey(key) ? comparisonInsightSchema : placementSchema).parse(doc) : null);
     // Keep tombstones/version so other windows can observe deletion without a new table.
     await tx.insert(capSettings).values({ key: (isNoteKey(key) ? NOTE_PREFIX : PLOT_PREFIX) + id, value, updatedAt: version }).onConflictDoUpdate({ target: capSettings.key, set: { value, updatedAt: version } });
@@ -128,6 +136,44 @@ async function writeResource(tx: Tx, current: Resource, doc: Document): Promise<
 export class CollaborationConflict extends Error {
   constructor(public current: Resource, public conflicts: ReturnType<typeof merge>["conflicts"]) { super("동일한 항목이 다른 곳에서 수정되었습니다."); }
 }
+const syncInput = z.object({ session: z.string().uuid(), editor: z.string().trim().min(1).max(50), resource: z.string().max(220).nullable(), scopes: z.array(z.enum(["capitalism", "comparison", "international"])).min(1).max(3) });
+/** One DB round-trip; no document bodies. The heartbeat is throttled in the DB across instances. */
+export async function syncState(input: z.infer<typeof syncInput>, database = db) {
+  const { session, editor, resource, scopes } = input, now = Date.now();
+  const flows = scopes.includes("capitalism") || scopes.includes("comparison"), meta = scopes.includes("capitalism"), comparison = scopes.includes("comparison"), international = scopes.includes("international");
+  const rows = await database.execute(sql`
+    with heartbeat as (
+      insert into cap_editors(session,editor,resource,seen_at) values (${session},${editor},${resource},${now})
+      on conflict(session) do update set editor=excluded.editor,resource=excluded.resource,seen_at=excluded.seen_at
+      where cap_editors.seen_at <= ${now - 15000} returning session
+    )
+    select jsonb_build_object(
+      'flows', coalesce((select jsonb_agg(jsonb_build_object('key',slug,'version',updated_at)) from cap_flows where ${flows}), '[]'::jsonb),
+      'metaVersion', coalesce((select updated_at from cap_settings where key='insight_overview_v2' and ${meta}),0),
+      'peers', coalesce((select jsonb_agg(jsonb_build_object('session',session,'editor',editor,'resource',resource,'seenAt',seen_at)) from cap_editors where seen_at > ${now - 45000}), '[]'::jsonb),
+      'notes', coalesce((select jsonb_agg(jsonb_build_object('key','note:' || substr(key,${NOTE_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${NOTE_PREFIX})), '[]'::jsonb),
+      'plots', coalesce((select jsonb_agg(jsonb_build_object('key','plot:' || substr(key,${PLOT_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${PLOT_PREFIX})), '[]'::jsonb),
+      'international', coalesce((select jsonb_agg(jsonb_build_object('key','intl:' || substr(key,${INTERNATIONAL_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${international} and starts_with(key,${INTERNATIONAL_PREFIX})), '[]'::jsonb)
+    ) as state`);
+  return rows[0].state;
+}
+
+export async function internationalResources(database = db) {
+  const rows = await database.select().from(capSettings).where(sql`${capSettings.key} = ${INTERNATIONAL_SEED} or starts_with(${capSettings.key},${INTERNATIONAL_PREFIX})`);
+  return { initialized: rows.some(r => r.key === INTERNATIONAL_SEED), resources: rows.filter(r => r.key !== INTERNATIONAL_SEED).map(r => ({ key: `intl:${r.key.slice(INTERNATIONAL_PREFIX.length)}`, version: Number(r.updatedAt), doc: r.value ? JSON.parse(r.value) : null })) };
+}
+const seedInput = z.array(z.object({ key: z.string().refine(isInternationalKey), doc: internationalDocumentSchema })).min(1).max(2000);
+export async function initializeInternational(input: unknown, database = db) {
+  const resources = seedInput.parse(input);
+  if (new Set(resources.map(r => r.key)).size !== resources.length) throw new Error("중복 사건 키");
+  return database.transaction(async tx => {
+    await lock(tx, "international:init");
+    if ((await tx.select().from(capSettings).where(eq(capSettings.key, INTERNATIONAL_SEED))).length) return;
+    const now = Date.now();
+    await tx.insert(capSettings).values(resources.map(r => ({ key: INTERNATIONAL_PREFIX + r.key.slice(5), value: JSON.stringify(r.doc), updatedAt: now }))).onConflictDoNothing();
+    await tx.insert(capSettings).values({ key: INTERNATIONAL_SEED, value: "1", updatedAt: now });
+  });
+}
 export async function applyCollaborativeEdit(op: EditRequest, database = db, legacyNotes = false, unlabelledNotes = false): Promise<Resource & { operation: string }> {
   return database.transaction(async (tx) => {
     await lock(tx, "operation:" + op.id);
@@ -139,6 +185,9 @@ export async function applyCollaborativeEdit(op: EditRequest, database = db, leg
       return { ...current, operation: op.id }; // Lost response retry: never apply twice; return current authoritative state.
     }
     if (op.ifVersion !== undefined && op.ifVersion !== current.version) throw new CollaborationConflict(current, [{ path: [], before: null, after: null, remote: current.doc }]);
+    if (isInternationalKey(op.resource)) {
+      if (op.changes.some(c => c.path[0] === "deletedAt")) throw new Error("삭제 상태는 사건 전체를 비교해 변경하세요.");
+    }
     if (legacyNotes) guardLegacyInsightEdit(current.doc, op);
     if (unlabelledNotes) guardUnlabelledInsightEdit(current.doc, op);
     const merged = merge(current.doc, op.changes);
@@ -148,26 +197,38 @@ export async function applyCollaborativeEdit(op: EditRequest, database = db, leg
     return { ...result, operation: op.id };
   });
 }
-export function registerCollaborationRoutes(app: Express) {
+export function registerCollaborationRoutes(app: Express, database = db) {
+  app.post("/api/capitalism/collab/sync", async (req, res) => {
+    try { res.set("Cache-Control", "no-store").json(await syncState(syncInput.parse(req.body), database)); }
+    catch (e) { res.status(e instanceof z.ZodError ? 400 : 503).json({ error: "동기화 상태를 확인하지 못했습니다." }); }
+  });
+  app.get("/api/capitalism/collab/international", async (_req, res) => {
+    try { res.set("Cache-Control", "no-store").json(await internationalResources(database)); }
+    catch { res.status(503).json({ error: "국제 연표를 읽지 못했습니다. 기기 원본을 보존했습니다." }); }
+  });
+  app.post("/api/capitalism/collab/international/init", async (req, res) => {
+    try { await initializeInternational(req.body, database); res.json({ ok: true }); }
+    catch (e) { res.status(e instanceof z.ZodError ? 400 : 503).json({ error: "국제 연표 초기화를 완료하지 못했습니다." }); }
+  });
   app.get("/api/capitalism/collab/insights", async (req, res) => {
     try {
-      const rows = await db.select().from(capSettings).where(sql`starts_with(${capSettings.key}, ${NOTE_PREFIX})`);
+      const rows = await database.select().from(capSettings).where(sql`starts_with(${capSettings.key}, ${NOTE_PREFIX})`);
       res.set("Cache-Control", "no-store").json(rows.map(r => insightForClient({ key: `note:${r.key.slice(NOTE_PREFIX.length)}`, version: Number(r.updatedAt), doc: r.value ? JSON.parse(r.value) : null }, req.get(DIAGRAM_HEADER) === "1", req.get(LABEL_HEADER) === "1")));
     } catch { res.status(503).json({ error: "인사이트를 읽지 못했습니다." }); }
   });
   app.get("/api/capitalism/collab/comparison", async (_req, res) => {
     try {
-      const rows = await db.select().from(capSettings).where(sql`starts_with(${capSettings.key}, ${PLOT_PREFIX})`);
+      const rows = await database.select().from(capSettings).where(sql`starts_with(${capSettings.key}, ${PLOT_PREFIX})`);
       res.set("Cache-Control", "no-store").json(rows.map(r => ({ key: `plot:${r.key.slice(PLOT_PREFIX.length)}`, version: Number(r.updatedAt), doc: r.value ? JSON.parse(r.value) : null })));
     } catch { res.status(503).json({ error: "비교 보드를 읽지 못했습니다." }); }
   });
   app.get("/api/capitalism/collab/resource", async (req, res) => {
-    try { const key = resourceKey.parse(req.query.key); res.set("Cache-Control", "no-store").json(insightForClient(await getResource(key), req.get(DIAGRAM_HEADER) === "1", req.get(LABEL_HEADER) === "1")); }
+    try { const key = resourceKey.parse(req.query.key); res.set("Cache-Control", "no-store").json(insightForClient(await getResource(key, database), req.get(DIAGRAM_HEADER) === "1", req.get(LABEL_HEADER) === "1")); }
     catch (e) { res.status(e instanceof z.ZodError ? 400 : 503).json({ error: "문서를 읽지 못했습니다." }); }
   });
   app.post("/api/capitalism/collab/edit", async (req, res) => {
     const diagrams = req.get(DIAGRAM_HEADER) === "1", labels = req.get(LABEL_HEADER) === "1";
-    try { res.json(insightForClient(await applyCollaborativeEdit(validateEdit(req.body), db, !diagrams, !labels), diagrams, labels)); }
+    try { res.json(insightForClient(await applyCollaborativeEdit(validateEdit(req.body), database, !diagrams, !labels), diagrams, labels)); }
     catch (e) {
       if (e instanceof InsightUpgradeRequired) { res.status(428).json({ error: e.message }); return; }
       if (e instanceof CollaborationConflict) { res.status(409).json({ error: e.message, current: insightForClient(e.current, diagrams, labels), conflicts: e.conflicts }); return; }
@@ -178,11 +239,11 @@ export function registerCollaborationRoutes(app: Express) {
   app.get("/api/capitalism/collab/state", async (_req, res) => {
     try {
       const [flows, metas, peers, plots, notes] = await Promise.all([
-        db.select({ key: capFlows.slug, version: capFlows.updatedAt }).from(capFlows),
-        db.select({ version: capSettings.updatedAt }).from(capSettings).where(eq(capSettings.key, "insight_overview_v2")),
-        db.select().from(capEditors).where(gt(capEditors.seenAt, Date.now() - 45000)),
-        db.select({ key: capSettings.key, version: capSettings.updatedAt }).from(capSettings).where(sql`starts_with(${capSettings.key}, ${PLOT_PREFIX})`),
-        db.select({ key: capSettings.key, version: capSettings.updatedAt }).from(capSettings).where(sql`starts_with(${capSettings.key}, ${NOTE_PREFIX})`),
+        database.select({ key: capFlows.slug, version: capFlows.updatedAt }).from(capFlows),
+        database.select({ version: capSettings.updatedAt }).from(capSettings).where(eq(capSettings.key, "insight_overview_v2")),
+        database.select().from(capEditors).where(gt(capEditors.seenAt, Date.now() - 45000)),
+        database.select({ key: capSettings.key, version: capSettings.updatedAt }).from(capSettings).where(sql`starts_with(${capSettings.key}, ${PLOT_PREFIX})`),
+        database.select({ key: capSettings.key, version: capSettings.updatedAt }).from(capSettings).where(sql`starts_with(${capSettings.key}, ${NOTE_PREFIX})`),
       ]);
       res.set("Cache-Control", "no-store").json({ flows, metaVersion: Number(metas[0]?.version ?? 0), peers, plots: plots.map(p => ({ key: `plot:${p.key.slice(PLOT_PREFIX.length)}`, version: Number(p.version) })), notes: notes.map(n => ({ key: `note:${n.key.slice(NOTE_PREFIX.length)}`, version: Number(n.version) })) });
     } catch { res.status(503).json({ error: "동기화 상태를 확인하지 못했습니다." }); }
@@ -191,22 +252,22 @@ export function registerCollaborationRoutes(app: Express) {
     try {
       const input = z.object({ session: z.string().uuid(), editor: z.string().trim().min(1).max(50), resource: z.string().max(220).nullable() }).parse(req.body);
       const row = { ...input, seenAt: Date.now() };
-      await db.insert(capEditors).values(row).onConflictDoUpdate({ target: capEditors.session, set: row });
+      await database.insert(capEditors).values(row).onConflictDoUpdate({ target: capEditors.session, set: row });
       res.json({ ok: true });
     } catch { res.status(503).json({ error: "편집 상태 전달 실패" }); }
   });
   app.get("/api/capitalism/collab/history", async (req, res) => {
     try {
       const resource = z.string().parse(req.query.resource);
-      res.json(await db.select({ id: capEditOperations.id, editor: capEditOperations.editor, takenAt: capEditOperations.takenAt }).from(capEditOperations).where(eq(capEditOperations.resource, resource)).orderBy(desc(capEditOperations.takenAt)).limit(30));
+      res.json(await database.select({ id: capEditOperations.id, editor: capEditOperations.editor, takenAt: capEditOperations.takenAt }).from(capEditOperations).where(eq(capEditOperations.resource, resource)).orderBy(desc(capEditOperations.takenAt)).limit(30));
     } catch { res.status(503).json({ error: "이력을 읽지 못했습니다." }); }
   });
   app.get("/api/capitalism/collab/history-resources", async (_req, res) => {
-    try { res.json(await db.selectDistinct({ key: capEditOperations.resource }).from(capEditOperations)); }
+    try { res.json(await database.selectDistinct({ key: capEditOperations.resource }).from(capEditOperations)); }
     catch { res.status(503).json({ error: "이력 카드 목록을 읽지 못했습니다." }); }
   });
   app.get("/api/capitalism/collab/history/:id", async (req, res) => {
-    const row = (await db.select().from(capEditOperations).where(eq(capEditOperations.id, req.params.id)))[0];
+    const row = (await database.select().from(capEditOperations).where(eq(capEditOperations.id, req.params.id)))[0];
     if (!row) { res.status(404).end(); return; }
     res.json({ ...row, changes: JSON.parse(row.changes) });
   });

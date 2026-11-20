@@ -23,6 +23,7 @@ import type { NodeContentPatch } from "@/lib/capitalism-types";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { collaboration, seedCollaboration, saveFlowDraft, saveMetaDrafts } from "@/lib/cap-collab-client";
+import { useCollaborationSync } from "@/lib/use-collaboration-sync";
 import { CapCollaboration } from "@/components/CapCollaboration";
 import type { FlowDTO, FlowNodeDTO, LinkDTO, CapInsight, CapMetaCard } from "@/lib/capitalism-types";
 import { useCapSeries } from "@/lib/capitalism-series";
@@ -82,6 +83,7 @@ export default function Capitalism() {
     if (flowQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess) seedCollaboration(flows ?? [], metaCards);
   }, [flows, metaCards, flowQuery.isSuccess, metaQuery.isSuccess, overviewQuery.isSuccess]);
   const saveMetaCards = saveMetaDrafts;
+  useCollaborationSync("capitalism", flowQuery.isSuccess && metaQuery.isSuccess && overviewQuery.isSuccess);
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(PANELS.map((p) => [p.id, p.on]))

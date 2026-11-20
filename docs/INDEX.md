@@ -5,8 +5,10 @@
 | 현재 안내 | 내용 |
 |---|---|
 | [프로젝트 README](../README.md) | 기능 상태, 실행·검증·운영 원칙 |
+| [표준 저장 아키텍처](STORAGE-ARCHITECTURE.md) | DB 확정본·기기 초안·충돌 방지·페이지별 동기화; 신규 편집 기능의 기본 규약 |
 | [Warm-prism 디자인 시스템](../client/src/lib/warm-prism/SKILL.md) | 보관 중인 독립 모듈; 현재 사이트에는 미적용 (11/19 롤백) |
 | [CAPITALISM](CAPITALISM.md) | 경제사 데이터·편집·차트 구조 |
+| [국제 연표](INTERNATIONAL-TIMELINE.md) | 사건별 DB 저장·브라우저 원본 이관·충돌·복구 |
 | [그래프 비교(베타)](GRAPH-COMPARE.md) | 지표 겹침·기간 탐색·원본 노드의 시간축 배치 |
 | [데이터 갱신 목록](DATA-UPDATES.md) | 자동 일정·수동 갱신·최근 실행·자료 기준일 |
 | [월간 갱신 운영](MONTHLY-DATA-REFRESH.md) | 매월 3일 09:00, 수집·근거 조사·검증·배포 절차 |

@@ -20,8 +20,27 @@ export class CollaborationEngine {
   private listeners = new Set<() => void>();
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private storage = Promise.resolve();
+  private sending = 0;
+  private sendWaiters: (() => void)[] = [];
+  private async send(op: EditRequest) {
+    if (this.sending >= 2) await new Promise<void>(resolve => this.sendWaiters.push(resolve));
+    else this.sending++;
+    try { return await this.transport.send(op); }
+    finally { const next = this.sendWaiters.shift(); if (next) next(); else this.sending--; }
+  }
   private undo: { resource: string; changes: Change[] }[] = [];
   private localEditors = new Map<string, { count: number; done: Promise<void>; finish: () => void }>();
+  private remoteReadHolds = new Map<string, number>();
+  /** Keep a focused automatic editor stable without delaying its save acknowledgements. */
+  holdRemoteReads(key: string) {
+    this.remoteReadHolds.set(key, (this.remoteReadHolds.get(key) ?? 0) + 1);
+    let held = true;
+    return () => { if (!held) return; held = false; const count = this.remoteReadHolds.get(key)! - 1; if (count) this.remoteReadHolds.set(key,count); else this.remoteReadHolds.delete(key); };
+  }
+  canReceive(key: string) {
+    const draft = this.drafts.get(key);
+    return !this.remoteReadHolds.has(key) && !this.localEditors.has(key) && !this.busy.has(key) && !draft?.request && !draft?.conflicts?.length;
+  }
   // Keep the comparison base stable while a field is buffered in its component.
   // Other windows may keep saving; their changes are compared after our blur commit.
   beginLocalEdit(key: string) {
@@ -53,7 +72,7 @@ export class CollaborationEngine {
       .catch(() => { this.storageError = "기기 초안을 보관하지 못했습니다. 저장 완료 전 창을 닫지 마세요."; this.notify(); });
   }
   async durable() { await this.storage; }
-  async loadDrafts() { try { this.recoverable = await this.store.all(); this.notify(); } catch { this.storageError = "기기 초안을 읽지 못했습니다."; this.notify(); } }
+  async loadDrafts() { try { const stored = await this.store.all(), active = new Set([...this.drafts.values()].map(d => d.id)); this.recoverable = stored.filter(d => !active.has(d.id)); this.notify(); } catch { this.storageError = "기기 초안을 읽지 못했습니다."; this.notify(); } }
   seed(resource: Resource) { if (!this.confirmed.has(resource.key)) this.confirmed.set(resource.key, copy(resource)); }
   get(key: string) { return copy(this.drafts.has(key) ? this.drafts.get(key)!.desired : this.confirmed.get(key)?.doc ?? null); }
   private display(key: string) {
@@ -91,7 +110,7 @@ export class CollaborationEngine {
     // Commit request ID and content locally before attempting the network write.
     await this.durable();
     try {
-      const saved = await this.transport.send(copy(draft.request));
+      const saved = await this.send(copy(draft.request));
       await this.waitForLocalEdit(key);
       const later = diff(draft.sent!, draft.desired);
       this.confirmed.set(key, copy(saved));
@@ -126,7 +145,7 @@ export class CollaborationEngine {
   async flushAll() { await Promise.all([...this.drafts.keys()].map((key) => this.flush(key))); }
   async receive(resource: Resource) {
     const key = resource.key, draft = this.drafts.get(key);
-    if (this.localEditors.has(key) || this.busy.has(key) || draft?.request || draft?.conflicts?.length) return;
+    if (!this.canReceive(key)) return;
     this.confirmed.set(key, copy(resource));
     if (draft) {
       const rebased = merge(resource.doc, diff(draft.base.doc, draft.desired));
@@ -141,7 +160,9 @@ export class CollaborationEngine {
     const draft = this.drafts.get(key); if (!draft?.remote) return;
     const changes = diff(draft.base.doc, draft.desired), remote = draft.remote;
     let desired = copy(remote.doc);
-    if (!desired && restoreDeleted) desired = copy(draft.desired);
+    const whole = draft.conflicts?.find(c => c.path.length === 0);
+    if (whole) desired = choices["[]"] === "local" ? copy(whole.after) as Document : copy(remote.doc);
+    else if (!desired && restoreDeleted) desired = copy(draft.desired);
     else {
       for (const c of changes) {
         const conflict = draft.conflicts?.some((x) => equal(x.path, c.path));
@@ -191,7 +212,13 @@ export class CollaborationEngine {
   }
   async applyChanges(key: string, changes: Change[]) {
     if (this.drafts.has(key)) throw new Error("이 카드의 저장 또는 충돌 처리를 먼저 마쳐주세요.");
-    const remote = await this.transport.read(key), merged = merge(remote.doc, changes);
+    this.stageComparedChanges(await this.transport.read(key), changes);
+  }
+  /** Stage an explicit delta against a loaded snapshot. The server still compares before-values under lock. */
+  stageComparedChanges(remote: Resource, changes: Change[]) {
+    const key = remote.key;
+    if (this.drafts.has(key)) throw new Error("이 카드의 저장 또는 충돌 처리를 먼저 마쳐주세요.");
+    const merged = merge(remote.doc, changes);
     this.confirmed.set(key, copy(remote));
     if (!merged.conflicts.length) { this.edit(key, merged.doc); return; }
     // History reversals have their own expected before values. Preserve them for an explicit choice.

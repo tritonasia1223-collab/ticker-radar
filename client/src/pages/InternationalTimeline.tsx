@@ -1,4 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { CapCollaboration } from "@/components/CapCollaboration";
+import { useInternationalStorage } from "@/lib/use-international-storage";
+import { collaboration } from "@/lib/cap-collab-client";
 import { TimelineHoverGuide } from "@/components/TimelineHoverGuide";
 import { TimelineDisclosure } from "@/components/TimelineDisclosure";
 import { CapitalismTabs } from "@/components/CapitalismTabs";
@@ -30,7 +33,7 @@ import sourceText from "@/data/international-timeline-mark-revision.txt?raw";
 import "./InternationalTimeline.css";
 
 const STORAGE = "fiscus-international-timeline-v1";
-const BACKUP = "fiscus-international-timeline-before-five-countries-20261118";
+function defaultDraft() { return mergeDateAuditTimeline(mergeSupplementTimeline(mergeClassifiedTimeline(mergeInsightTimeline(readTimelineDraft(null))))); }
 function countryColor(country: string, region: Region = "europe") {
   if (/서독|독일/.test(country)) return "de";
   if (country === "영국") return "uk";
@@ -96,6 +99,8 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
   const mobileCollapsed = !!period && mobile && !expanded;
   const togglePeriod = () => setTapped(current => current === event.id ? null : event.id);
   const descriptionRef = useRef<HTMLDivElement>(null);
+  const readHold = useRef<(() => void) | null>(null);
+  useEffect(() => () => { readHold.current?.(); }, []);
   useEffect(() => {
     const editor = descriptionRef.current?.querySelector<HTMLElement>("[data-richeditor]");
     if (!editor) return;
@@ -114,6 +119,8 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
     return () => observer.disconnect();
   }, []);
   return <article data-event-id={event.id} data-period-event={period ? event.id : undefined} className={`it-event ${global ? "it-global-event" : ""} ${editable && !global ? "it-event-editable" : ""}`} style={{ ...ink(countryColor(event.country, event.region)), "--it-label-width": `${labelWidth ? labelWidth + 8 : 0}px` } as CSSProperties}
+    onFocusCapture={() => { if (!readHold.current) readHold.current = collaboration.holdRemoteReads(`intl:${event.id}`); }}
+    onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { readHold.current?.(); readHold.current = null; } }}
     onClick={e => { if (period && mobile && !(e.target as HTMLElement).closest("button, input, [contenteditable]")) togglePeriod(); }}>
     {editable && !global && <EventMenu event={event} labels={labels} remove={remove} changeDate={changeDate} patch={patch} />}
     {period && <button type="button" className="it-period-date" aria-label={`${periodDateLabel(event)} 기간 범위${mobile ? expanded ? " 접기" : " 펼치기" : ""}`} aria-expanded={mobile ? expanded : undefined} aria-controls={mobile ? `period-body-${event.id}` : undefined}
@@ -123,7 +130,7 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
       {!global && tags.map(tag => <span key={tag} data-country-label className="it-tag" style={ink(countryColor(tag, event.region))}>{tag}</span>)}
     </div>
     <div ref={descriptionRef} id={period ? `period-body-${event.id}` : undefined} className="it-description">
-      {mobileCollapsed ? <CapRichText text={band.title} className="it-read-description" /> : editable ? <CapRichEditor inline spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={editorText} onChange={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} onBlur={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} placeholder={global ? "설명 입력" : "제목 입력"} />
+      {mobileCollapsed ? <CapRichText text={band.title} className="it-read-description" /> : editable ? <CapRichEditor inline commitOnUnmount changeDelayMs={200} spellCheck={false} align="left" rows={1} ariaLabel={`${event.id} 설명`} value={editorText} onChange={body => patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body)} onBlur={body => { patch(global ? band.prefix + band.title + (body ? `\n${body}` : "") : view.prefix + body); void collaboration.flushAll(); }} placeholder={global ? "설명 입력" : "제목 입력"} />
         : <CapRichText text={editorText} className="it-read-description" />}
     </div>
   </article>;
@@ -131,9 +138,11 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
 
 export default function InternationalTimeline() {
   const [initial] = useState(readDraft);
-  const [draft, setDraft] = useState(initial.draft);
+  const [baseline] = useState(defaultDraft);
+  const storage = useInternationalStorage(initial.draft, baseline, !!initial.error);
+  const draft = storage.draft;
   const events = draft.events;
-  const latestDraft = useRef(draft);
+  const latestDraft = useRef(draft); latestDraft.current = draft;
   const [showDeleted, setShowDeleted] = useState(false);
   const [lastDeletedId, setLastDeletedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -142,7 +151,7 @@ export default function InternationalTimeline() {
   const [toolbarHeight, setToolbarHeight] = useState(84);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [headerHeight, setHeaderHeight] = useState(64);
-  const [saveError, setSaveError] = useState("");
+
   const [regions, setRegions] = useState<TimelineLane[]>(["us", "de", "fr", "uk", "jp"]);
   const gridBefore = useRef<ReturnType<typeof captureGrid> | null>(null);
   const gridMotion = useRef<ReturnType<typeof springGrid> | null>(null);
@@ -173,7 +182,7 @@ export default function InternationalTimeline() {
   const [openBands, setOpenBands] = useState<Set<string>>(() => new Set());
   const { editable } = useEditMode();
   const { theme } = useTheme();
-  const canEdit = editable && !initial.error;
+  const canEdit = editable && !initial.error && storage.ready && !storage.conflicts;
   useEffect(() => { const old = document.title; document.title = "국제 연표 — 피스쿠스"; return () => { document.title = old; }; }, []);
   useEffect(() => {
     if (!headRef.current || !toolbarRef.current) return;
@@ -237,18 +246,9 @@ export default function InternationalTimeline() {
   }
   const periodSlices = useMemo(() => years.flatMap(year => year.items), [years]);
   const periodUI = useTimelinePeriod(filtered, periodSlices, visibleLaneIds);
-  function persist(next: TimelineDraft) {
-    try {
-      const old = localStorage.getItem(STORAGE);
-      if (old && !localStorage.getItem(BACKUP)) localStorage.setItem(BACKUP, old);
-      localStorage.setItem(STORAGE, JSON.stringify(next));
-      setSaveError("");
-    } catch { setSaveError("로컬 저장에 실패했습니다. 입력 내용은 현재 화면에 남아 있습니다. 다시 저장하거나 내보내 주세요."); }
-  }
   function updateDraft(next: TimelineDraft) {
     latestDraft.current = next;
-    setDraft(next);
-    persist(next);
+    storage.save(next);
   }
   function update(next: TimelineEvent[]) { updateDraft({ ...latestDraft.current, events: next }); }
   function setLabels(id: string, labels: string[]) {
@@ -294,12 +294,12 @@ export default function InternationalTimeline() {
     });
   }
   function exportDraft() {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(latestDraft.current, null, 2)], { type: "application/json" }));
-    const link = document.createElement("a"); link.href = url; link.download = "국제연표-로컬초안.json"; link.click();
+    const url = URL.createObjectURL(new Blob([(initial.error ? localStorage.getItem(STORAGE) ?? JSON.stringify(latestDraft.current, null, 2) : JSON.stringify(latestDraft.current, null, 2))], { type: "application/json" }));
+    const link = document.createElement("a"); link.href = url; link.download = "국제연표-백업.json"; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  useEffect(() => { if (!initial.error) persist(latestDraft.current); }, [initial]);
+
   function jumpToYear(year: number) {
     const entry = scrollRef.current?.querySelector<HTMLElement>(`[data-year-section="${year}"]`);
     if (entry) scrollToEntry(entry);
@@ -329,7 +329,9 @@ export default function InternationalTimeline() {
               {lastYear !== firstYear && <span>{lastYear}</span>}</div>
           </div>
         </div>
-        {(initial.error || saveError) && <p role="alert" className="text-xs text-destructive">{initial.error || saveError} {saveError && <button onClick={() => persist(latestDraft.current)}>다시 저장</button>}</p>}
+        {!storage.ready && !storage.error && <p role="status" className="text-xs text-muted-foreground">서버 연표 확인 중…</p>}
+        {(initial.error || storage.error) && <p role="alert" className="text-xs text-destructive">{initial.error || storage.error} <button onClick={storage.retry}>다시 연결</button></p>}
+        <CapCollaboration resourcePrefix="intl:" loading={!storage.ready} />
       </header>
       <TimelinePeriodContext.Provider value={periodUI.interaction}>
       <div ref={periodUI.boardRef} {...periodUI.handlers} className="it-board" data-testid="timeline-board">
@@ -368,7 +370,7 @@ export default function InternationalTimeline() {
       </div>
       </TimelinePeriodContext.Provider>
       <footer className="it-note">
-        <span>설명을 클릭해 바로 편집 · 글을 선택해 색과 하이라이트 적용 · 브라우저에 자동 저장</span>
+        <span>설명을 클릭해 바로 편집 · 글을 선택해 색과 하이라이트 적용 · DB에 자동 저장 · 기기 초안 보관</span>
         <div className="it-actions">
           <input className="it-year-jump" type="number" aria-label="연도로 이동" placeholder="연도 이동" min={1800} max={2100} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={e => jumpToYear(Number(e.target.value))} />
           {COUNTRY_LANES.slice(5).map(r => <button className="it-btn" key={r.id} aria-pressed={regions.includes(r.id)} disabled={regions.length === 1 && regions.includes(r.id)} onClick={() => toggleRegion(r.id)}>{r.name}</button>)}
@@ -380,7 +382,7 @@ export default function InternationalTimeline() {
       </footer>
     </div>
     {canEdit && lastDeletedId && draft.deleted.some(d => d.event.id === lastDeletedId) && <div className="it-undo" role="status"><span>사건을 삭제했습니다.</span><button onClick={() => restore(lastDeletedId)}>되돌리기</button><button aria-label="삭제 알림 닫기" onClick={() => setLastDeletedId(null)}>×</button></div>}
-    <Dialog open={showDeleted} onOpenChange={setShowDeleted}><DialogContent data-theme={theme} className="it-editor-portal max-h-[80vh] overflow-auto sm:max-w-xl"><DialogHeader><DialogTitle>삭제한 사건</DialogTitle><DialogDescription>삭제한 본문과 라벨을 복원할 수 있습니다. 이 브라우저에 보관됩니다.</DialogDescription></DialogHeader>
+    <Dialog open={showDeleted} onOpenChange={setShowDeleted}><DialogContent data-theme={theme} className="it-editor-portal max-h-[80vh] overflow-auto sm:max-w-xl"><DialogHeader><DialogTitle>삭제한 사건</DialogTitle><DialogDescription>삭제한 본문과 라벨을 복원할 수 있습니다. DB에 보관되며 다른 기기에서도 확인할 수 있습니다.</DialogDescription></DialogHeader>
       {!draft.deleted.length && <p className="text-sm text-muted-foreground">삭제한 사건이 없습니다.</p>}
       {draft.deleted.map(({ event }) => <div key={event.id} className="flex items-start gap-3 border-b py-3"><div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{event.date || event.year} · {event.scope === "global" ? "대사건" : REGIONS.find(r => r.id === event.region)?.name}</p><p className="break-words text-sm">{plainText(descriptionView(event).text).split("\n")[0] || "제목 없는 사건"}</p></div><button disabled={!canEdit} onClick={() => restore(event.id)} className="rounded border px-3 py-1 text-xs">복원</button></div>)}
     </DialogContent></Dialog>

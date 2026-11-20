@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
-import { applyCollaborativeEdit, getResource, CollaborationConflict } from "../server/cap-collaboration.js";
+import { applyCollaborativeEdit, getResource, CollaborationConflict, initializeInternational, internationalResources, syncState } from "../server/cap-collaboration.js";
 import { diff, flowDocument, copy, type Document, type EditRequest } from "../shared/cap-collaboration.js";
 import { insightForClient, InsightUpgradeRequired } from "../shared/comparison-compat.js";
 import { sceneMarker } from "../shared/comparison-scenes.js";
@@ -31,6 +31,7 @@ try {
       `CREATE TABLE cap_links (id SERIAL PRIMARY KEY, from_slug TEXT NOT NULL, from_key TEXT NOT NULL, to_slug TEXT NOT NULL, to_key TEXT NOT NULL, created_at BIGINT NOT NULL)`,
       `CREATE TABLE cap_settings (key TEXT PRIMARY KEY, value TEXT, updated_at BIGINT NOT NULL)`,
       `CREATE TABLE cap_edit_operations (id TEXT PRIMARY KEY, resource TEXT NOT NULL, editor TEXT NOT NULL, session TEXT NOT NULL, taken_at BIGINT NOT NULL, changes TEXT NOT NULL, request TEXT NOT NULL)`,
+      `CREATE TABLE cap_editors (session TEXT PRIMARY KEY, editor TEXT NOT NULL, resource TEXT, seen_at BIGINT NOT NULL)`,
     ];
     for (const ddl of definitions) await tx.execute(sql.raw(ddl));
   });
@@ -155,7 +156,36 @@ try {
   await applyCollaborativeEdit(op(key, deleted.doc, null), isolated);
   await assert.rejects(() => applyCollaborativeEdit(op(key, deleted.doc, { ...deleted.doc, title: "late edit" }), isolated), CollaborationConflict);
   assert.equal((await getResource(key, isolated)).doc, null);
-  console.log("PASS: concurrent field merge, same-field conflict, duplicate/lost-response retry, rollback, shared-meta isolation, comparison placement merge/validation/tombstones/source preservation, deletion/edit conflict.");
+  const intl = { title: "Synthetic international event", body: "Synthetic body", type: "policy", labels: [], timing: { year: 1974, month: 9, date: "1974.9", endY: null, endM: null, endYear: null, endMonth: null }, position: { region: "europe", country: "유럽", lane: "eu", scope: "regional" }, extra: {}, deletedAt: null };
+  await Promise.all([
+    initializeInternational([{key:"intl:synthetic",doc:intl}],isolated),
+    initializeInternational([{key:"intl:synthetic",doc:intl}],isolated),
+  ]);
+  const intlRead = () => isolated.transaction(tx => internationalResources(tx as any));
+  assert.equal((await intlRead()).resources.length,1);
+  let i = await getResource("intl:synthetic",isolated);
+  await Promise.all([
+    applyCollaborativeEdit(op(i.key,i.doc,{...i.doc,body:"Editor A"}),isolated),
+    applyCollaborativeEdit(op(i.key,i.doc,{...i.doc,labels:["독일"]}),isolated),
+  ]);
+  i = await getResource(i.key,isolated); assert.equal(i.doc!.body,"Editor A"); assert.deepEqual(i.doc!.labels,["독일"]);
+  const beforeDelete = copy(i.doc), intlTombstone = {...i.doc,deletedAt:"2026-11-20T00:00:00Z"};
+  await applyCollaborativeEdit(op(i.key,i.doc,intlTombstone),isolated);
+  await assert.rejects(() => applyCollaborativeEdit(op(i.key,beforeDelete,{...beforeDelete,body:"Late edit"}),isolated),CollaborationConflict);
+  await initializeInternational([{key:i.key,doc:intl}],isolated);
+  assert.equal((await getResource(i.key,isolated)).doc!.deletedAt,intlTombstone.deletedAt);
+  await assert.rejects(() => applyCollaborativeEdit(op(i.key,intlTombstone,{...intlTombstone,timing:{...intl.timing,month:13}}),isolated));
+  assert.deepEqual((await getResource(i.key,isolated)).doc,intlTombstone);
+  await applyCollaborativeEdit(op(i.key,intlTombstone,beforeDelete),isolated);
+  assert.equal((await getResource(i.key,isolated)).doc!.deletedAt,null);
+  const syncSession = crypto.randomUUID(), sync = () => isolated.transaction(tx => syncState({session:syncSession,editor:"Synthetic",resource:i.key,scopes:["international"]},tx as any));
+  const state = await sync() as any;
+  assert.deepEqual(state.flows,[]); assert.deepEqual(state.notes,[]); assert.equal(state.international.length,1);
+  const heartbeat = await isolated.transaction(tx => tx.execute(sql`select seen_at from cap_editors where session=${syncSession}`));
+  await sync();
+  const heartbeatAgain = await isolated.transaction(tx => tx.execute(sql`select seen_at from cap_editors where session=${syncSession}`));
+  assert.equal(heartbeat[0].seen_at,heartbeatAgain[0].seen_at);
+  console.log("PASS: existing collaboration transactions plus international initialization races, field merge, deletion/edit conflict, seed non-resurrection, validation rollback, restore, scoped one-query sync and heartbeat throttling.");
 } finally {
   // Only this invocation's verified, freshly-created synthetic schema is removed.
   if (created) await client.unsafe(`DROP SCHEMA "${schema}" CASCADE`);

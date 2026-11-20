@@ -15,6 +15,8 @@
 - 전체 절차와 모델 벤치마크 보존 규칙은 `docs/agent-evals/README.md`를 따른다.
 
 ## 스택
+
+신규 편집 기능과 저장·동기화 수정은 [표준 저장 아키텍처](docs/STORAGE-ARCHITECTURE.md)를 적용한다. 페이지 생명주기에 맞는 조회, DB 비교 저장, 기기 초안·충돌·복구·이력을 함께 구현한다.
 React 18 + Vite + TS, wouter(#hash 라우트), @tanstack/react-query, shadcn/ui(@radix-ui),
 TailwindCSS(darkMode class), Recharts. Express 5, Drizzle ORM → Postgres(Supabase 세션 풀러).
 postgres.js: bigint는 **문자열**로 반환됨(`::float8` 캐스트 필요), 클라이언트 `{prepare:false, max:3, idle_timeout:20}`.

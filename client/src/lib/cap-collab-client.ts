@@ -4,6 +4,7 @@ import { diff, documentFlow, flowDocument, metaDocument, type Resource, type Pee
 import type { FlowDTO, CapMetaCard } from "./capitalism-types";
 import { rebuildEdges } from "./capitalism-flowops";
 import { DIAGRAM_HEADER, LABEL_HEADER } from "../../../shared/comparison-compat";
+import { SyncLifecycle } from "./sync-lifecycle";
 
 export async function collabApi(path: string, body?: unknown) {
   const response = await fetch(`/api/capitalism/collab/${path}`, { method: body === undefined ? "GET" : "POST", cache: "no-store", headers: { [DIAGRAM_HEADER]: "1", [LABEL_HEADER]: "1", ...(body === undefined ? {} : { "Content-Type": "application/json" }) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000) });
@@ -15,7 +16,9 @@ export async function collabApi(path: string, body?: unknown) {
 }
 const flowsKey = ["/api/capitalism/flows"], metaKey = ["/api/capitalism/settings/insight_overview_v2"];
 function publish(resource: Resource) {
-  if (resource.key.startsWith("flow:")) {
+  if (resource.key.startsWith("intl:")) {
+    queryClient.setQueryData<Resource[]>(["international-timeline-resources"], (prev = []) => [...prev.filter(r => r.key !== resource.key), resource]);
+  } else if (resource.key.startsWith("flow:")) {
     queryClient.setQueryData<FlowDTO[]>(flowsKey, (prev = []) => {
       const old = prev.find((f) => f.slug === resource.key.slice(5)), next = documentFlow(resource.key, resource.doc, resource.version, old?.id);
       if (next) next.edges = rebuildEdges(next.nodes, next.layout);
@@ -47,25 +50,28 @@ export const collaboration = new CollaborationEngine(session, editor, {
 export let peers: Peer[] = [];
 export let syncError = "";
 export let activeResource: string | null = null;
-let started = false, polling = false, metaVersion = -1;
-export function focusResource(key: string | null) { if (activeResource === key) return; activeResource = key; collaboration.notify(); void presence(); }
-async function presence() {
-  try { await collabApi("presence", { session, editor: collaboration.editor, resource: document.visibilityState === "hidden" ? null : activeResource }); } catch { /* poll reports connection health */ }
+let started = false, metaVersion = -1;
+export function focusResource(key: string | null) { if (activeResource === key) return; activeResource = key; collaboration.notify(); }
+const lifecycle = new SyncLifecycle((scopes, current) => poll(scopes, current));
+export function acquireCollaboration(scope: string) {
+  lifecycle.setEnvironment(document.visibilityState !== "hidden", navigator.onLine);
+  return lifecycle.acquire(scope);
 }
 export function seedCollaboration(flows: FlowDTO[], cards: CapMetaCard[]) {
   flows.forEach((f) => collaboration.seed({ key: `flow:${f.slug}`, version: f.updatedAt, doc: flowDocument(f) }));
   cards.forEach((c) => collaboration.seed({ key: `meta:${c.id}`, version: 0, doc: metaDocument(c) }));
   if (started) return; started = true;
-  void collaboration.loadDrafts(); void poll(); void presence();
-  setInterval(() => void poll(), 5000); setInterval(() => void presence(), 15000);
-  window.addEventListener("online", () => { void collaboration.flushAll(); void poll(); });
+  void collaboration.loadDrafts();
+  const environment = () => { lifecycle.setEnvironment(document.visibilityState !== "hidden", navigator.onLine); collaboration.notify(); };
+  window.addEventListener("online", () => { void collaboration.flushAll(); environment(); });
+  window.addEventListener("offline", environment);
   window.addEventListener("beforeunload", (e) => { if (collaboration.drafts.size) { e.preventDefault(); e.returnValue = ""; } });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void collaboration.flushAll(); else void poll(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void collaboration.flushAll(); environment(); });
 }
-export async function poll() {
-  if (polling) return; polling = true;
+export async function poll(scopes: string[] = ["capitalism"], current = () => true) {
   try {
-    const state = await collabApi("state");
+    const state = await collabApi("sync", { session, editor: collaboration.editor, resource: activeResource, scopes });
+    if (!current()) return;
     peers = state.peers.filter((p: Peer) => p.session !== session); syncError = "";
     const versions = new Map<string, number>(state.flows.map((f: any) => [`flow:${f.key}`, Number(f.version)]));
     const changed = new Set<string>();
@@ -73,16 +79,21 @@ export async function poll() {
     for (const plot of state.plots ?? []) if (collaboration.confirmed.has(plot.key) && collaboration.confirmed.get(plot.key)?.version !== Number(plot.version)) changed.add(plot.key);
     if (queryClient.getQueryData(["comparison-board"])) for (const plot of state.plots ?? []) if (!collaboration.confirmed.has(plot.key)) changed.add(plot.key);
     for (const [key, version] of versions) if (collaboration.confirmed.get(key)?.version !== version) changed.add(key);
-    for (const key of collaboration.confirmed.keys()) if (key.startsWith("flow:") && !versions.has(key)) changed.add(key);
+    if (scopes.some(s => s === "capitalism" || s === "comparison")) for (const [key, resource] of collaboration.confirmed) if (key.startsWith("flow:") && resource.doc !== null && !versions.has(key)) changed.add(key);
+    for (const event of state.international ?? []) if (collaboration.confirmed.get(event.key)?.version !== Number(event.version)) changed.add(event.key);
     // Fetch in small batches to avoid exhausting the serverless pool on a large initial sync.
     const keys = [...changed];
     for (let i = 0; i < keys.length; i += 4) await Promise.all(keys.slice(i, i + 4).map(async (key) => {
-      if (!collaboration.busy.has(key)) await collaboration.receive(await collabApi(`resource?key=${encodeURIComponent(key)}`));
+      if (current() && collaboration.canReceive(key)) {
+        const resource = await collabApi(`resource?key=${encodeURIComponent(key)}`);
+        if (current()) await collaboration.receive(resource);
+      }
     }));
-    if (metaVersion !== Number(state.metaVersion)) {
+    if (current() && scopes.includes("capitalism") && metaVersion !== Number(state.metaVersion)) {
       const response = await fetch("/api/capitalism/settings/insight_overview_v2", { cache: "no-store", signal: AbortSignal.timeout(20000) });
       if (!response.ok) throw new Error("메타 인사이트를 읽지 못했습니다.");
       const setting = await response.json(), cards: CapMetaCard[] = setting.value ? JSON.parse(setting.value).cards : [];
+      if (!current()) return;
       // Legacy data stays visible until a v2 setting exists.
       if (setting.value) {
         const all = new Set([...cards.map((c) => `meta:${c.id}`), ...[...collaboration.confirmed.keys()].filter((k) => k.startsWith("meta:"))]);
@@ -90,8 +101,8 @@ export async function poll() {
       }
       metaVersion = Number(state.metaVersion);
     }
-  } catch (e) { syncError = e instanceof Error ? e.message : "동기화 연결 실패"; }
-  finally { polling = false; collaboration.notify(); }
+  } catch (e) { if (current()) syncError = e instanceof Error ? e.message : "동기화 연결 실패"; }
+  finally { collaboration.notify(); }
 }
 export function saveFlowDraft(slug: string, remember = false) {
   focusResource(`flow:${slug}`);

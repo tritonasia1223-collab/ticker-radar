@@ -37,6 +37,8 @@ export function put(doc: Document, path: string[], value: Json): Document {
 export function diff(before: Document, after: Document): Change[] {
   if (equal(before, after)) return [];
   if (!before || !after) return [{ path: [], before, after }];
+  // Soft deletion/restoration compares the entire record, so it cannot race a field edit.
+  if ((Object.hasOwn(before, "deletedAt") || Object.hasOwn(after, "deletedAt")) && !equal(before.deletedAt, after.deletedAt)) return [{ path: [], before, after }];
   const changes: Change[] = [];
   for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
     const a = before[key] ?? null, b = after[key] ?? null;
@@ -73,6 +75,14 @@ export function mergeOrder(base: string[], local: string[], remote: string[]): s
   return result;
 }
 export function merge(current: Document, changes: Change[]): { doc: Document; conflicts: Conflict[] } {
+  if (current?.deletedAt && changes.some(c => c.path.length)) {
+    // A delayed field edit must not be accepted inside a soft-deleted record.
+    let before = { ...copy(current), deletedAt: null } as Document;
+    for (const change of changes) before = put(before, change.path, change.before);
+    let after = copy(before);
+    for (const change of changes) after = put(after, change.path, change.after);
+    return { doc: copy(current), conflicts: [{ path: [], before, after, remote: copy(current) }] };
+  }
   let doc = copy(current);
   const conflicts: Conflict[] = [];
   for (const change of changes) {
@@ -105,4 +115,4 @@ export function documentFlow(key: string, doc: Document, version: number, id = 0
 export function metaDocument(card: any): Document {
   return card ? copy({ id: card.id, title: card.title ?? "", text: card.text ?? "", tables: card.tables ?? [], images: card.images ?? [], blocks: card.blocks ?? null }) : null;
 }
-export const pathLabel = (path: string[]) => path.length ? path.map((s) => ({ nodes: "칸", text: "본문", ref: "메모", refBlue: "파란 첨삭 메모", table: "표", title: "제목", insight: "인사이트", blocks: "본문 블록", order: "칸 순서", date: "날짜", endDate: "종료일", layout: "배치" }[s] ?? s)).join(" · ") : "카드 전체(생성/삭제)";
+export const pathLabel = (path: string[]) => path.length ? path.map((s) => ({ nodes: "칸", body: "본문", timing: "날짜·기간", position: "국가·범위", type: "유형", labels: "라벨", extra: "원본 정보", text: "본문", ref: "메모", refBlue: "파란 첨삭 메모", table: "표", title: "제목", insight: "인사이트", blocks: "본문 블록", order: "칸 순서", date: "날짜", endDate: "종료일", layout: "배치" }[s] ?? s)).join(" · ") : "카드 전체(생성/삭제)";

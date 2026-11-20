@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "standard-storage-20261120",
+  "title": "공통 저장 규약·경제사 동기화 절감·국제 연표 DB 저장",
+  "baseRef": "8bd2b8a",
+  "requirement": "공통 아키텍처를 기록한 뒤 경제사, 국제 연표 순서로 저장을 개선한다. 입력 속도와 다른 PC 간 안전한 저장을 보존한다.",
+  "acceptanceCriteria": ["활성 페이지의 5초 동기화 유지, 비활성 조회 중단", "최신 클라이언트의 별도 presence 호출 제거", "서버의 비교 저장·멱등성·이력 유지", "국제 연표는 사건별 DB 저장 및 로컬 원본 비파괴 이관", "동일 필드/독립 필드/삭제 경합과 응답 유실 검증"],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build", "실제 Postgres 임시 스키마 통합 검증", "로컬 UI 검증"],
+  "requiresEvaluationDatabase": true
+}
