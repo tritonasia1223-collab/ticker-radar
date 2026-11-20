@@ -141,20 +141,16 @@ const syncInput = z.object({ session: z.string().uuid(), editor: z.string().trim
 export async function syncState(input: z.infer<typeof syncInput>, database = db) {
   const { session, editor, resource, scopes } = input, now = Date.now();
   const flows = scopes.includes("capitalism") || scopes.includes("comparison"), meta = scopes.includes("capitalism"), comparison = scopes.includes("comparison"), international = scopes.includes("international");
-  const rows = await database.execute(sql`
-    with heartbeat as (
-      insert into cap_editors(session,editor,resource,seen_at) values (${session},${editor},${resource},${now})
-      on conflict(session) do update set editor=excluded.editor,resource=excluded.resource,seen_at=excluded.seen_at
-      where cap_editors.seen_at <= ${now - 15000} returning session
-    )
-    select jsonb_build_object(
+  const heartbeat = database.$with("heartbeat").as(database.insert(capEditors).values({session,editor,resource,seenAt:now})
+    .onConflictDoUpdate({target:capEditors.session,set:{editor,resource,seenAt:now},setWhere:sql`${capEditors.seenAt} <= ${now - 15000}`}).returning({session:capEditors.session}));
+  const rows = await database.with(heartbeat).select({ state: sql`jsonb_build_object(
       'flows', coalesce((select jsonb_agg(jsonb_build_object('key',slug,'version',updated_at)) from cap_flows where ${flows}), '[]'::jsonb),
       'metaVersion', coalesce((select updated_at from cap_settings where key='insight_overview_v2' and ${meta}),0),
       'peers', coalesce((select jsonb_agg(jsonb_build_object('session',session,'editor',editor,'resource',resource,'seenAt',seen_at)) from cap_editors where seen_at > ${now - 45000}), '[]'::jsonb),
       'notes', coalesce((select jsonb_agg(jsonb_build_object('key','note:' || substr(key,${NOTE_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${NOTE_PREFIX})), '[]'::jsonb),
       'plots', coalesce((select jsonb_agg(jsonb_build_object('key','plot:' || substr(key,${PLOT_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${comparison} and starts_with(key,${PLOT_PREFIX})), '[]'::jsonb),
       'international', coalesce((select jsonb_agg(jsonb_build_object('key','intl:' || substr(key,${INTERNATIONAL_PREFIX.length + 1}),'version',updated_at)) from cap_settings where ${international} and starts_with(key,${INTERNATIONAL_PREFIX})), '[]'::jsonb)
-    ) as state`);
+    )` }).from(sql`(values (1)) as sync_request`);
   return rows[0].state;
 }
 
