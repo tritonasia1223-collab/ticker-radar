@@ -25,3 +25,17 @@ export function eventLaneSpan(event: TimelineEvent, visible: TimelineLane[]) {
   const indexes = visible.flatMap((id, i) => eventLanes(event).includes(id) ? [i] : []);
   return indexes.length ? { start: indexes[0] + 2, span: indexes.at(-1)! - indexes[0] + 1 } : null;
 }
+
+/** Combine independent shared entries at one slice without merging their editable data. */
+export function sharedEventGroups(events: TimelineEvent[], visible: TimelineLane[]) {
+  const groups = new Map<string, { key: string; start: number; span: number; events: TimelineEvent[] }>();
+  for (const event of events) {
+    const lanes = eventLanes(event);
+    const span = eventLaneSpan(event, visible);
+    if (lanes.length < 2 || !span) continue;
+    const key = lanes.join(":");
+    if (!groups.has(key)) groups.set(key, { key, ...span, events: [] });
+    groups.get(key)!.events.push(event);
+  }
+  return [...groups.values()];
+}

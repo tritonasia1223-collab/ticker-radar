@@ -339,13 +339,14 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.it-europe-shared .it-read-description > span:first-child::before,
-.it-europe-shared [data-richeditor][data-title-root="true"]::before,
-.it-europe-shared [data-richeditor]:not([data-title-root="true"]) > :is(div, p):first-child::before,
-.it-europe-shared [data-richeditor]:empty + span::before {
+.it-europe-shared > .it-event:first-of-type .it-read-description > span:first-child::before,
+.it-europe-shared > .it-event:first-of-type [data-richeditor][data-title-root="true"]::before,
+.it-europe-shared > .it-event:first-of-type [data-richeditor]:not([data-title-root="true"]) > :is(div, p):first-child::before,
+.it-europe-shared > .it-event:first-of-type [data-richeditor]:empty + span::before {
   content: var(--it-inline-context) / "";
   display: inline-block; margin-right: 10px; vertical-align: baseline;
   font-size: 10px; font-weight: 700; line-height: 18px; letter-spacing: .02em;
   color: var(--it-shared-ink); text-indent: 0; white-space: nowrap;
 }
+.it-europe-shared > .it-event + .it-event { margin-top: 14px; }
 .it-five-countries .it-annual-slice > .it-annual-card { margin: 3px 0; padding: 14px 16px; }

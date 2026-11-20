@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "timeline-date-audit-20261120",
+  "title": "묶인 연간 사건 분리와 명확한 시점 이관",
+  "baseRef": "8ead667",
+  "requirement": "독립 사건을 설명으로 표시하지 않고 분리하며, 월·일이 확인되는 사례를 해당 시점으로 옮겨 배포한다.",
+  "acceptanceCriteria": [
+    "연간 통계와 개별 정책·정치 사건이 각각 제목을 갖는다.",
+    "같은 시점·레인의 공동 사건은 하나의 블록 안에서 개별 편집된다.",
+    "이미 있는 사건을 중복 생성하지 않는다.",
+    "이관 전 브라우저 원본을 백업하며, 직접 편집한 텍스트·날짜·레인과 삭제 이력을 보존한다.",
+    "이관은 재로드 후 반복 적용되지 않는다."
+  ],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build"],
+  "requiresEvaluationDatabase": false,
+  "notes": "localStorage 데이터 이관. 운영 브라우저와 로컬의 DOM으로 결과 확인. 테스트에서 수정/삭제/빈 컬렉션/반복 실행 검증."
+}

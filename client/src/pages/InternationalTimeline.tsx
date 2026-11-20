@@ -15,10 +15,11 @@ import { periodEnd, periodDateLabel } from "@/lib/international-timeline-period"
 import { useEditMode } from "@/components/EditModeProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import { REGIONS, type Region, type TimelineEvent, type TimelineLane } from "@/data/international-timeline";
-import { COUNTRY_LANES, eventLanes, eventLaneSpan } from "@/lib/international-timeline-lanes";
+import { COUNTRY_LANES, eventLanes, sharedEventGroups } from "@/lib/international-timeline-lanes";
 import { mergeInsightTimeline } from "@/lib/international-timeline-insights";
 import { mergeClassifiedTimeline, CLASSIFIED_BACKUP, CLASSIFIED_REVISION } from "@/lib/international-timeline-classified";
 import { mergeSupplementTimeline, SUPPLEMENT_BACKUP, SUPPLEMENT_REVISION } from "@/lib/international-timeline-supplement";
+import { mergeDateAuditTimeline, DATE_AUDIT_BACKUP, DATE_AUDIT_REVISION } from "@/lib/international-timeline-date-audit";
 import classifiedSourceText from "@/data/international-timeline-classified-source.txt?raw";
 import { searchTimeline } from "@/lib/international-timeline-search";
 import insightSourceText from "@/data/international-timeline-insights.txt?raw";
@@ -45,7 +46,8 @@ function readDraft(): { draft: TimelineDraft; error: string } {
     // If the backup cannot be written, the catch locks saving and keeps the original intact.
     if (raw && !draft.imports?.includes(CLASSIFIED_REVISION) && !localStorage.getItem(CLASSIFIED_BACKUP)) localStorage.setItem(CLASSIFIED_BACKUP, raw);
     if (raw && !draft.imports?.includes(SUPPLEMENT_REVISION) && !localStorage.getItem(SUPPLEMENT_BACKUP)) localStorage.setItem(SUPPLEMENT_BACKUP, raw);
-    return { draft: mergeSupplementTimeline(mergeClassifiedTimeline(mergeInsightTimeline(draft))), error: "" };
+    if (raw && !draft.imports?.includes(DATE_AUDIT_REVISION) && !localStorage.getItem(DATE_AUDIT_BACKUP)) localStorage.setItem(DATE_AUDIT_BACKUP, raw);
+    return { draft: mergeDateAuditTimeline(mergeSupplementTimeline(mergeClassifiedTimeline(mergeInsightTimeline(draft)))), error: "" };
   }
   catch { return { draft: readTimelineDraft(null), error: "기존 로컬 초안을 읽지 못했습니다. 원본을 보존하기 위해 저장을 잠갔습니다." }; }
 }
@@ -343,7 +345,7 @@ export default function InternationalTimeline() {
               </button>{canEdit && <EventMenu event={event} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} patch={body => patch(event.id, body)} />}</div>
               <TimelineDisclosure open={openBands.has(event.id)} id={`band-${event.id}`}><TimelineEntry event={event} global editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></TimelineDisclosure>
             </div>)}</div>
-          </div> : <div key={item.key} className={`it-slice ${item.month === null && !item.period ? "it-annual-slice" : ""}`} data-date-key={item.key} data-period-row={item.key} style={{ "--it-annual-detail-row": item.events.filter(e => eventLanes(e).length > 1 && eventLaneSpan(e, visibleLaneIds)).length + 1 } as CSSProperties}>
+          </div> : <div key={item.key} className={`it-slice ${item.month === null && !item.period ? "it-annual-slice" : ""}`} data-date-key={item.key} data-period-row={item.key} style={{ "--it-annual-detail-row": sharedEventGroups(item.events, visibleLaneIds).length + 1 } as CSSProperties}>
             <div className="it-gutter" style={periodUI.gutterStyle(item.key)} title={item.month ? `${year.year}.${item.month}` : item.period ?? "월이 특정되지 않은 자료"}><span data-month-label={item.month ? "" : undefined}>{item.month ? `${String(item.month).padStart(2, "0")}월` : item.period ?? ""}</span>{canEdit && <button className="it-shared-add" aria-label={`${year.year}.${item.month ?? "연간"} 유럽 공동 사건 추가`} title="이 시점에 유럽 공동 사건 추가" onClick={() => add(year.year, item.month, "eu")}><Plus size={11} />공동</button>}</div>
             {visibleRegions.map((region, regionIndex) => <div key={region.id} data-region={region.id}
               className={`it-cell ${item.month === null && !item.period && item.events.some(e => eventLanes(e).length === 1 && eventLanes(e).includes(region.id)) ? "it-annual-card" : ""}`}
@@ -352,10 +354,12 @@ export default function InternationalTimeline() {
               {item.events.filter(e => eventLanes(e).length === 1 && eventLanes(e).includes(region.id)).map(event => <TimelineEntry key={event.id} event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} />)}
               {canEdit && <button className="it-cell-add" aria-label={`${year.year}.${item.month ?? "연간"} ${region.name} 사건 추가`} onClick={() => add(year.year, item.month, region.id)}><Plus size={12} /></button>}
             </div>)}
-            {item.events.filter(e => eventLanes(e).length > 1 && eventLaneSpan(e, visibleLaneIds)).map((event, sharedIndex) => {
-              const span = eventLaneSpan(event, visibleLaneIds);
-              return span && <div key={event.id} className={`it-europe-shared ${item.month === null && !item.period ? "it-annual-shared" : ""}`} data-shared-event={event.id} style={{ gridColumn: `${span.start} / span ${span.span}`, gridRow: item.month === null && !item.period ? sharedIndex + 1 : undefined }}><span className="it-shared-label">{item.month === null && !item.period ? "연간 · 유럽 공동" : "유럽 공동"}</span><TimelineEntry event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} /></div>;
-            })}
+            {sharedEventGroups(item.events, visibleLaneIds).map((group, sharedIndex) =>
+              <div key={group.key} className={`it-europe-shared ${item.month === null && !item.period ? "it-annual-shared" : ""}`} data-shared-event={group.events[0].id} style={{ gridColumn: `${group.start} / span ${group.span}`, gridRow: item.month === null && !item.period ? sharedIndex + 1 : undefined }}>
+                <span className="it-shared-label">{item.month === null && !item.period ? "연간 · 유럽 공동" : "유럽 공동"}</span>
+                {group.events.map(event => <TimelineEntry key={event.id} event={event} editable={canEdit} patch={body => patch(event.id, body)} labels={next => setLabels(event.id, next)} remove={() => remove(event.id)} changeDate={date => changeDate(event.id, date)} />)}
+              </div>
+            )}
           </div>)}
         </section>)}
         {!years.length && <p className="it-empty">아직 등록된 사건이 없습니다.</p>}
