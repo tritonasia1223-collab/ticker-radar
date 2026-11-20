@@ -11,6 +11,10 @@ import type { FlowDTO, CapInsight, CapMetaCard, CapBlock } from "@/lib/capitalis
 import { collaboration, collabApi, focusResource } from "@/lib/cap-collab-client";
 import { acceptRemote, changeDraft, discardDraft, isNewerVersion, isSaveShortcut, markDraftDirty, removeCardById, seedDraft, shouldSaveOnLeave, takeDraftForSave, upsertCardById, type DraftState } from "@/lib/capitalism-insight-draft";
 
+function MetaInsightBadge() {
+  return <span className="inline-flex shrink-0 items-center rounded bg-blue-900 px-1.5 py-0.5 text-[11px] font-semibold leading-4 text-white" data-testid="meta-insight-badge">메타</span>;
+}
+
 // 초안 저장기 — 편집 중에는 페이지·서버로 아무것도 보내지 않는다(키 입력마다 캐시 갱신·협업 저장이 타이핑을 버벅이게 했다).
 //   · change/markDirty: 로컬 초안만 바꾸고, dirty 가 되는 순간 협업 엔진의 '로컬 편집 잠금'(beginLocalEdit)을 잡아 저장할 때까지
 //     이 자원의 비교 기준을 고정한다 — 그래야 저장 시 내가 바꾼 필드만 diff 로 나가고 다른 창의 변경은 병합·충돌로 처리된다.
@@ -380,7 +384,7 @@ export function InsightsCollection({
             <button ref={backRef} type="button" onClick={back} className="flex shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-testid="insights-back">
               <ArrowLeft className="h-4 w-4" /> 목록으로
             </button>
-            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{current.title}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-muted-foreground">{current.card && <MetaInsightBadge />}<span className="truncate">{current.title}</span></span>
             {current.flow && <button type="button" onClick={() => onOpenInsight(current.flow!.slug)} className="shrink-0 text-xs text-muted-foreground hover:text-foreground">타임라인에서 보기</button>}
           </>
         ) : (
@@ -428,6 +432,7 @@ export function InsightsCollection({
                       className="grid w-full grid-cols-[minmax(0,1fr)_180px] items-center gap-5 px-4 py-4 text-left hover:bg-accent/50 focus-visible:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
                       <span className="flex min-w-0 items-start gap-1.5 text-sm font-medium leading-relaxed">
                         {item.flow && <Star className="mt-1 h-3.5 w-3.5 shrink-0 text-red-500" fill="currentColor" aria-label="사건 인사이트" role="img" />}
+                        {item.card && <MetaInsightBadge />}
                         <span>{item.title}</span>
                       </span>
                       <span className="text-xs tabular-nums text-muted-foreground">{item.date || "—"}</span>
