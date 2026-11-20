@@ -77,7 +77,7 @@ describe("읽기 페이지 — (a) 2026-09-09 실제값이 목업 문장을 재�
     expect(r.verdictTitle).toBe("일회성일 가능성이 큼");
     expect(r.verdictBody).toBe("재무부가 TGA를 풀어 생긴 유동성은 TGA를 다시 채울 때 도로 흡수됩니다. 이번 증가는 거의 전부 재무부 쪽입니다.");
     expect(rowDescription(from.contributions[0], from.fedDetail)).toBe("TGA에 넣은 돈보다, 꺼내 쓴 돈이 많았음");
-    expect(rowDescription(from.contributions[1], from.fedDetail)).toBe("MMF 등이 연준에 넣어둔 돈을 인출해서 씀");
+    expect(rowDescription(from.contributions[1], from.fedDetail)).toBe("연준 역레포 전체 잔액 감소(해외 공식기관 거래 포함)");
     // 연준 세부는 |Δ| 큰 순서로 생성 — 목업 문구(−173 이 대부분, 국채 +140)는 자체 불일치라 규칙값이 기준
     expect(rowDescription(from.contributions[2], from.fedDetail)).toContain("자산 재조정 결과 시중 유동성 흡수\n(MBS −173억, 기타 자산 −160억");
   });

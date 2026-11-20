@@ -1,0 +1,23 @@
+{
+  "asOf": "2026-11-18",
+  "revision": 1,
+  "verifiedAt": "2026-11-20T02:23:25.918Z",
+  "editorialSha256": "8212a76e0a78cce119964191dfc1db57c54603c521ca805a9388bcefceba2741",
+  "paragraphs": 38,
+  "typescript": true,
+  "vitest": {
+    "files": 78,
+    "tests": 624
+  },
+  "workflowTests": 12,
+  "build": true,
+  "browser": {
+    "paragraphsMissing": 0,
+    "carryNoteFontSize": 12,
+    "carryNoteColor": "rgb(179, 64, 46)",
+    "horizontalOverflow": false,
+    "previousWeekGraphTop": 119.5,
+    "currentWeekGraphTop": 119.515625
+  },
+  "deployment": "pending"
+}

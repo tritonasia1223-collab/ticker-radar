@@ -80,7 +80,7 @@ const verb = (v: number) => (v >= 0 ? "시중에 풀었습니다" : "흡수했�
 export function rowDescription(c: Contribution, fedDetail: WhereFrom["fedDetail"]): string {
   if (isZero(c.own)) return c.key === "tga" ? "TGA 잔고 변화 없음" : c.key === "rrp" ? "역레포 잔고 변화 없음" : "자산 변화 없음"; // 0 은 방출·흡수 판정 없음(Codex 2차 F3)
   if (c.key === "tga") return c.own < 0 ? "TGA에 넣은 돈보다, 꺼내 쓴 돈이 많았음" : "TGA에서 꺼내 쓴 돈보다, 넣은 돈이 많았음";
-  if (c.key === "rrp") return c.own < 0 ? "MMF 등이 연준에 넣어둔 돈을 인출해서 씀" : "MMF 등이 연준 역레포에 돈을 추가로 맡김";
+  if (c.key === "rrp") return c.own < 0 ? "연준 역레포 전체 잔액 감소(해외 공식기관 거래 포함)" : "연준 역레포 전체 잔액 증가(해외 공식기관 거래 포함)";
   const head = c.own >= 0 ? "자산 재조정 결과 시중에 유동성 풀림" : "자산 재조정 결과 시중 유동성 흡수";
   const detail = fedDetail.filter(d => !isZero(d.value)).map(d => `${d.key === "mbs" ? "MBS" : d.label} ${fmt.signedEok(d.value)}`).join(", ");
   return `${head}${detail ? `\n(${detail})` : ""}`;

@@ -14,7 +14,7 @@ it('새 주차의 각 진입점에서 해당 그래프 해설을 연결한다', 
 });
 it('과거 주차와 없는 주차를 섞지 않고 생략한 블록을 비워둔다', () => {
   expect(overviewEditorial('2026-10-14')[0].text).toContain('150억');
-  expect(weeklyEditorial('overview','2026-11-18')).toEqual([]);
+  expect(weeklyEditorial('overview','2026-11-25')).toEqual([]);
   expect(chartEditorial('sloos_ci_standards','2026-10-21',4)).toEqual([]);
   expect(amountEditorial('2026-10-21',4)[0].text).toContain('M2');
   expect(weeklyEditorial('source','2026-10-21',13)).toEqual([]);
@@ -48,4 +48,18 @@ it('11월 4일 새 설문·월간·분기 공시와 시차 주석을 연결하�
   expect(weeklyEditorialNote('bdc_price_to_nav','2026-11-04')).toContain('11월 5일 공시');
   expect(weeklyEditorialNote('auctions','2026-11-04')).toContain('공식 결과는 발표');
   expect(weeklyEditorialNote('ownership','2026-11-04')).toContain('새 분기 관측이 없어');
+});
+
+it('11월18일 새 해설과 자료 없음·유지 안내를 해당 주차에 연결한다', () => {
+  expect(overviewEditorial('2026-11-18')[0].text).toContain('국채 이자 약 874억');
+  expect(weeklyEditorial('source','2026-11-18')[0].text).toContain('10월 중순');
+  expect(fundingReadingByChart('2026-11-18',4,0,true).spread[0].text).toContain('+3bp');
+  expect(chartEditorial('bond-dashboard','2026-11-18',4)[0].text).toContain('HY는 17bp');
+  expect(chartEditorial('cp-dashboard','2026-11-18',4)[0].text).toContain('5영업일');
+  expect(weeklyEditorialNote('h8_ci_loans','2026-11-18')).toContain('11월 4일');
+  expect(weeklyEditorialNote('sloos_ci_demand','2026-11-18')).toContain('새 관측이 없어');
+  expect(weeklyEditorialNote('auctions','2026-11-18')).toContain('표시할 수 없습니다');
+  expect(chartEditorial('corporate_bond_issuance','2026-11-18',4)).toEqual([]);
+  expect(chartEditorial('bdc_price_to_nav','2026-11-11',4)[0].text).toContain('일부 회복');
+  expect(treasuryEditorialByChart('2026-11-18',4,{end:'2026-11-18',weeks:4} as any,{counted:0} as any,{counted:2} as any,[]).auctions[0].text).toContain('유효 입찰 자료');
 });

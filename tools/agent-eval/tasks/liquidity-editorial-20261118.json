@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "liquidity-editorial-20261118",
+  "title": "11월 3주차 유동성 해설 작성 및 배포",
+  "baseRef": "28359f9",
+  "requirement": "2026-11-20 예약 지시에 따라 실제 수집 완료 후 11월 18일 기준 새 주차 해설을 전주 및 13주 이상 장기 흐름·외부 조사로 작성하고 검증 후 바로 배포한다.",
+  "acceptanceCriteria": ["준비 상태 확인 후 입력과 원본을 보존한다.", "모든 계열의 새 관측·동일 관측·수정·결측 및 롤링 효과를 비교 기록에 남긴다.", "핵심 변화는 외부 원자료로 조사하고 확인된 사실과 가설을 구분한다.", "해당 주차 해설 및 빨간 유지 안내가 정확한 위치에 표시되고 이전 문안에 섞이지 않는다.", "검사·빌드·브라우저 확인 후 해당 범위만 배포하고 Production 및 운영 자산을 확인한다."],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build", "node --test tools/liquidity-editorial/workflow.test.mjs tools/liquidity-editorial/recover-collection.test.mjs", "로컬 주차 이동·문단·안내 확인 및 운영 자산 검증"],
+  "requiresEvaluationDatabase": false,
+  "notes": "원본·사용자 수정본과 다른 작업의 변경을 보존한다. 배포는 문안의 인간 승인이나 피드백으로 처리하지 않는다."
+}

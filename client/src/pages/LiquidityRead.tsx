@@ -430,7 +430,7 @@ export default function LiquidityRead() {
         <Section id="s4" num="04" title="누가 샀나" question="재무부가 찍은 국채를 누가 받아갔나" paragraphs={treasuryReading.issuance} note={weeklyEditorialNote('issuance', selDate)}>
           <TreasuryPeriodComparison asOf={selDate} weeks={cmp} current={debt.data?.flow ?? null} />
         </Section>
-        <Row id="s4-auctions" continuation lead={who && S4 && sank && !auctions.isLoading ? (<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <Row id="s4-auctions" continuation lead={who && S4 && !!sank?.links.length && !auctions.isLoading ? (<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <Cap>{fmt.dateKo(who.start)} ~ {fmt.dateKo(who.end)} 입찰분 · {who.counted}건{who.excludeBills ? " · 단기채 제외" : ""}</Cap>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <Pill active={auctionMode === "all"} onClick={() => setAuctionMode("all")}>전체</Pill>
@@ -438,8 +438,8 @@ export default function LiquidityRead() {
                   <Cap>최근 {cmp}주</Cap>
                 </div>
               </div>) : undefined} aside={<ReadingOpinion id="s4-auctions" title="국채 입찰" paragraphs={treasuryReading.auctions} note={weeklyEditorialNote('auctions', selDate)} />}>
-          {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank ? (
-            <Cap>준비 중 — 입찰 자료를 불러오지 못했습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
+          {auctions.isLoading ? <Cap>불러오는 중…</Cap> : !who || !S4 || !sank?.links.length ? (
+            <Cap>준비 중 — 합산할 수 있는 입찰 자료가 없습니다{auctions.data?.errors.auctions ? ` (${auctions.data.errors.auctions})` : ""}. <button className="underline" onClick={() => void auctions.refetch()}>다시 불러오기</button></Cap>
           ) : (<>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 

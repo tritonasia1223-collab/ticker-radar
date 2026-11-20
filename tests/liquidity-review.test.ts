@@ -15,12 +15,22 @@ describe("문장형 유동성·국채 리뷰", () => {
   it("회수·자금 사용·자산 증가의 합계를 설명하고 특정 자금 이동은 단정하지 않는다", () => {
     const now = { ...base, date: "2026-09-23", total: base.total + 16800, tga: base.tga - 12100, rrp: base.rrp - 35400, reserves: base.reserves + 53100, currency: base.currency + 11200 };
     const review = liquidityReview(whereFrom(base, now, 0.5), whereTo(base, now, [], [], null));
-    expect(review.source).toContain("354억 달러를 순회수");
+    expect(review.source).toContain("역레포 전체 잔액이 354억 달러 줄어");
+    expect(review.source).not.toContain("MMF");
     expect(review.source).toContain("121억 달러를 시중에");
-    expect(review.source).toContain("순액으로 168억 달러가 시중에 풀렸습니다");
+    expect(review.source).toContain("순액으로 168억 달러 늘어 순유동성을 늘리는 방향");
     expect(review.destination).toContain("+531억 달러");
     expect(review.destination).toContain("112억 달러");
     expect(review.destination).not.toContain("들어갔");
+  });
+  it("증권 보유와 총자산이 반대로 움직이면 기타 자산의 변화도 설명한다", () => {
+    const now = { ...base, total: base.total - 17415, treast: base.treast! + 525, mbs: base.mbs! - 57, rrp: base.rrp - 19210 };
+    const review = liquidityReview(whereFrom(base, now, 0.5), null);
+    const assets = review.sourceItems.find(item => item.key === 'fed')!.text;
+    expect(assets).toContain('기타 자산 감소');
+    expect(assets).toContain('국채 보유 증가');
+    expect(assets).toContain('174억 달러 줄어');
+    expect(review.sourceItems.find(item => item.key === 'rrp')!.text).toContain('전체 잔액');
   });
   it("유동성 감소·지준 증가가 겹치면 대부분·나머지라고 잘못 배분하지 않는다", () => {
     const now = { ...base, date: "2026-09-23", total: base.total + 12100, tga: base.tga + 45500, rrp: base.rrp - 15800, reserves: base.reserves + 15500, currency: base.currency - 33100 };

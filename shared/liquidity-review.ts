@@ -5,10 +5,11 @@ import { fmt } from "./liquidity-sentences.js";
 const amount = (value: number) => `${fmt.amount(value)} 달러`;
 const sourceName = (c: Contribution) => c.key === "rrp" ? `역레포 ${c.own < 0 ? "감소" : "증가"}` : c.key === "tga" ? `TGA 자금 ${c.own < 0 ? "사용" : "축적"}` : `연준 자산 ${c.own < 0 ? "감소" : "증가"}`;
 function sourceSentence(c: Contribution, from: WhereFrom) {
-  if (c.key === "rrp") return c.effect > 0 ? `MMF 등이 연준 역레포에 맡겨둔 돈 ${amount(c.effect)}를 순회수했습니다.` : `MMF 등이 연준 역레포에 ${amount(c.effect)}를 추가로 맡겼습니다.`;
+  // H.4.1 전체 역레포에는 해외 공식기관 계정도 포함된다. MMF 거래로 귀속하지 않는다.
+  if (c.key === "rrp") return `연준 역레포 전체 잔액이 ${amount(c.effect)} ${c.effect > 0 ? "줄어 순유동성 증가" : "늘어 순유동성 감소"} 요인으로 반영됐습니다.`;
   if (c.key === "tga") return c.effect > 0 ? `재무부는 TGA에 보관하던 자금을 사용해 순액으로 ${amount(c.effect)}를 시중에 풀었습니다.` : `재무부는 TGA에 ${amount(c.effect)}를 더 쌓아 시중 유동성을 흡수했습니다.`;
-  const detail = from.fedDetail.filter(d => ["treast", "mbs"].includes(d.key) && !fmt.isZeroEok(d.value)).map(d => `${d.key === "treast" ? "국채 보유" : "MBS"} ${d.value > 0 ? "증가" : "감소"}`).join(", ");
-  return `연준 자산 재조정 과정에서 순액으로 ${amount(c.effect)}가 ${c.effect > 0 ? "시중에 풀렸습니다" : "시중에서 회수됐습니다"}.${detail ? ` (${detail})` : ""}`;
+  const detail = from.fedDetail.filter(d => !fmt.isZeroEok(d.value)).map(d => `${d.key === "treast" ? "국채 보유" : d.key === "mbs" ? "MBS" : d.label} ${d.value > 0 ? "증가" : "감소"}`).join(", ");
+  return `연준 자산이 순액으로 ${amount(c.effect)} ${c.effect > 0 ? "늘어 순유동성을 늘리는" : "줄어 순유동성을 줄이는"} 방향으로 작용했습니다.${detail ? ` (${detail})` : ""}`;
 }
 
 export function liquidityReview(from: WhereFrom | null, to: WhereTo | null) {
