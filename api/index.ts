@@ -4,7 +4,7 @@
 import express, { type Request, type Response } from "express";
 // Static import so Vercel's bundler traces server/* into the function.
 import { registerRoutes } from "../server/routes.js";
-import { configureServerlessDatabase, databasePoolMode, acquireDatabaseRequest, storageTransportHealth } from "../server/storage.js";
+import { configureServerlessDatabase, databasePoolMode, withDatabaseRequest, storageTransportHealth } from "../server/storage.js";
 configureServerlessDatabase();
 
 let app: express.Express | null = null;
@@ -19,7 +19,6 @@ function buildApp(): express.Express {
 }
 
 export default async function handler(req: Request, res: Response) {
-  let release: (() => void) | undefined;
   try {
     if (req.method === "GET" && req.url?.split("?")[0] === "/api/storage/health") {
       res.setHeader("Cache-Control", "no-store");
@@ -28,23 +27,21 @@ export default async function handler(req: Request, res: Response) {
     }
     // Non-secret transport diagnostic; makes the actual production pool selection verifiable.
     res.setHeader("X-Fiscus-Storage-Pool", databasePoolMode());
-    release = await acquireDatabaseRequest();
     // A disconnected browser can close the response while its transaction still
     // runs. Release on the application's end(), never on socket close.
     if (!app) app = buildApp();
     // Keep the serverless invocation alive until Express has completed its
     // async route, rather than returning when Express merely dispatches it.
-    await new Promise<void>((resolve) => {
+    await withDatabaseRequest(() => new Promise<void>((resolve) => {
       const end = res.end;
       res.end = function (...args: any[]) {
         try { return end.apply(this, args as any); }
-        finally { release?.(); resolve(); }
+        finally { resolve(); }
       } as typeof res.end;
-      res.once("finish", () => { release?.(); resolve(); });
+      res.once("finish", resolve);
       (app as unknown as (req: Request, res: Response) => void)(req, res);
-    });
+    }));
   } catch (err: any) {
-    release?.();
     res.status(503).json({ error: "서버 연결을 확인하지 못했습니다. 기기 초안을 유지하고 다시 시도하세요." });
   }
 }

@@ -9,7 +9,7 @@ const fixture = vi.hoisted(() => ({
 vi.mock("../server/storage.js", () => ({
   configureServerlessDatabase: () => {},
   databasePoolMode: () => "transaction",
-  acquireDatabaseRequest: async () => fixture.release,
+  withDatabaseRequest: async (work: () => Promise<void>) => { try { await work(); } finally { fixture.release(); } },
 }));
 vi.mock("../server/routes.js", () => ({
   registerRoutes: (app: any) => app.get("/test", async (_req: any, res: any) => {

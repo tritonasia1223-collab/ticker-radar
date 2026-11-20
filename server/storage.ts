@@ -13,6 +13,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { runtimeDatabaseUrl } from "./database-connection.js";
 import { DatabaseRequestGate } from "./database-lifecycle.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 
 // Lazy initialization: do NOT connect at module load time.
@@ -20,6 +21,8 @@ import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 // the handler runs (env vars and network are only guaranteed inside the request).
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
+type DatabaseContext = { client: ReturnType<typeof postgres> | null; database: ReturnType<typeof drizzle> | null };
+const requestDatabase = new AsyncLocalStorage<DatabaseContext>();
 let serverlessEntry = false;
 export function configureServerlessDatabase() { serverlessEntry = true; }
 export function databasePoolMode() {
@@ -30,7 +33,9 @@ export function databasePoolMode() {
 }
 
 function getDb() {
-  if (_db) return _db;
+  const context = requestDatabase.getStore();
+  if (context?.database) return context.database;
+  if (!context && _db) return _db;
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set. Point it at your Supabase Postgres connection string.");
@@ -39,21 +44,28 @@ function getDb() {
   // Vercel uses transaction pooling; local/admin connections may still use session mode.
   // Keep each worker's pool small and release idle slots, including deployment overlap.
   const client = postgres(runtimeDatabaseUrl(connectionString, serverlessEntry || process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"), { prepare: false, max: 1, idle_timeout: 5, connect_timeout: 5 });
-  _client = client;
-  _db = drizzle(client);
-  return _db;
+  const database = drizzle(client);
+  if (context) { context.client = client; context.database = database; }
+  else { _client = client; _db = database; }
+  return database;
 }
 
-const requestGate = new DatabaseRequestGate(
-  async () => { getDb(); await _client!.unsafe("select 1"); },
-  async () => {
-    const old = _client;
-    _client = null;
-    _db = null;
+/** A serverless invocation never inherits a socket frozen by another invocation. */
+export async function withDatabaseRequest<T>(work: () => Promise<T>): Promise<T> {
+  const context: DatabaseContext = { client: null, database: null };
+  const close = async () => {
+    const old = context.client;
+    context.client = null;
+    context.database = null;
     if (old) await old.end({ timeout: 0 });
-  },
-);
-export const acquireDatabaseRequest = () => requestGate.acquire();
+  };
+  return requestDatabase.run(context, async () => {
+    const gate = new DatabaseRequestGate(async () => { getDb(); await context.client!.unsafe("select 1"); }, close);
+    const release = await gate.acquire();
+    try { return await work(); }
+    finally { release(); await close(); }
+  });
+}
 
 /** Non-sensitive, bounded transport health; does not read or modify research data. */
 export async function storageTransportHealth() {
@@ -72,9 +84,8 @@ export async function storageTransportHealth() {
   const fresh = postgres(runtimeDatabaseUrl(process.env.DATABASE_URL!, true), { prepare: false, max: 1, connect_timeout: 2 });
   const direct = await sample(() => fresh.unsafe("select 1"));
   const parameterized = direct.ok ? await sample(() => fresh.unsafe("select $1::integer", [1])) : null;
-  const pooled = await sample(() => { getDb(); return _client!.unsafe("select 1"); });
   void fresh.end({ timeout: 0 });
-  return { pool: databasePoolMode(), revision: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8), direct, parameterized, pooled };
+  return { pool: databasePoolMode(), lifetime: "request", revision: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8), direct, parameterized };
 }
 
 // Proxy so existing `db.select()...` call sites work unchanged while staying lazy.
