@@ -221,7 +221,12 @@
   color: var(--it-shared-ink); font-size: 10px; font-weight: 700;
   line-height: 18px; letter-spacing: .02em; pointer-events: none;
 }
-.it-five-countries .it-europe-shared .it-event { --it-label-width: 62px !important; }
+.it-five-countries .it-europe-shared .it-event { --it-label-width: 0px !important; }
+.it-europe-shared .it-description [contenteditable],
+.it-europe-shared .it-read-description { text-align: center !important; }
+.it-europe-shared .it-event-meta { justify-content: center; }
+.it-europe-shared .it-period-date { align-self: center; }
+.it-europe-shared .it-description [data-richeditor] + span { width: 100%; text-align: center; }
 .it-europe-shared .it-event-menu { background: transparent; }
 .it-europe-shared .it-event-menu:hover,
 .it-europe-shared .it-event-menu:focus-visible { background: var(--it-shared-rule); }
@@ -309,7 +314,6 @@
 
 .it-five-countries .it-annual-label { top: 15px; left: 16px; }
 .it-five-countries .it-annual-card > .it-event:first-of-type { --it-label-width: 34px !important; }
-.it-five-countries .it-annual-shared .it-event { --it-label-width: 92px !important; }
 /* Hover guides stay out of layout and never intercept text selection/editing. */
 .it-event .it-description { position: relative; border-radius: 5px; transition: background-color 150ms ease, box-shadow 150ms ease; }
 .it-event[data-hover-active="true"] .it-description {
@@ -328,5 +332,5 @@
 .it-five-countries .it-annual-slice > .it-cell,
 .it-five-countries .it-annual-slice > .it-gutter { grid-row: var(--it-annual-detail-row, 1); }
 .it-five-countries :is(.it-europe-shared, .it-annual-card) { margin: 3px 0; padding: 14px 16px; }
-.it-five-countries .it-europe-shared > .it-shared-label { top: 15px; left: 16px; }
+.it-five-countries .it-europe-shared > .it-shared-label { position: static; display: block; text-align: center; margin-bottom: 4px; }
 .it-five-countries .it-annual-slice > .it-annual-card { margin: 3px 0; padding: 14px 16px; }

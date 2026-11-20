@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
+import { timelineHoverPath } from "@/lib/timeline-hover-path";
 
 /** One lightweight overlay for the board; never changes event layout or saved data. */
 export function TimelineHoverGuide({ boardRef }: { boardRef: RefObject<HTMLDivElement> }) {
@@ -23,10 +24,14 @@ export function TimelineHoverGuide({ boardRef }: { boardRef: RefObject<HTMLDivEl
       const y1 = date.top - origin.top + date.height / 2;
       const x2 = target.left - origin.left - 8;
       const y2 = target.top - origin.top + Math.min(11, target.height / 2);
-      // Route through the row's top padding, away from other countries' text.
+      // Empty lanes do not obstruct the direct connection; only occupied blocks do.
+      const obstacles = Array.from(row.querySelectorAll<HTMLElement>(".it-event, .it-europe-shared, .it-annual-card"))
+        .filter(element => element !== active && !element.contains(active))
+        .map(element => element.getBoundingClientRect())
+        .filter(rect => rect.width > 0 && rect.height > 0)
+        .map(rect => ({ left: rect.left - origin.left, right: rect.right - origin.left, top: rect.top - origin.top, bottom: rect.bottom - origin.top }));
       const railY = bounds.top - origin.top + 4;
-      const elbow = Math.min(x1 + 7, x2);
-      setGuide({ path: `M ${x1} ${y1} H ${elbow} V ${railY} H ${x2} V ${y2} h 6`, color: getComputedStyle(active).getPropertyValue("--it-event").trim() || "var(--it-soft)" });
+      setGuide({ path: timelineHoverPath({ x: x1, y: y1 }, { x: x2 + 6, y: y2 }, obstacles, railY), color: getComputedStyle(active).getPropertyValue("--it-event").trim() || "var(--it-soft)" });
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     const resize = new ResizeObserver(schedule);
