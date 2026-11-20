@@ -313,7 +313,9 @@
 :is(.international-document, .it-editor-portal) :is([data-mark="hl-gray"], [data-rich-swatch="hl-gray"]) { background: color-mix(in srgb, var(--it-soft, #6a7380) 14%, transparent) !important; }
 
 .it-five-countries .it-annual-label { top: 15px; left: 16px; }
-.it-five-countries .it-annual-card > .it-event:first-of-type { --it-label-width: 34px !important; }
+.it-five-countries .it-annual-card > .it-event:first-of-type:not([data-period-event]) { --it-label-width: 34px !important; }
+/* Year-only periods share the annual row, but their date replaces the annual badge. */
+.it-five-countries .it-annual-card:has(> .it-event:first-of-type[data-period-event]) > .it-annual-label { display: none; }
 /* Hover guides stay out of layout and never intercept text selection/editing. */
 .it-event .it-description { position: relative; border-radius: 5px; transition: background-color 150ms ease, box-shadow 150ms ease; }
 .it-event[data-hover-active="true"] .it-description {
