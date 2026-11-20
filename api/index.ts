@@ -4,6 +4,8 @@
 import express, { type Request, type Response } from "express";
 // Static import so Vercel's bundler traces server/* into the function.
 import { registerRoutes } from "../server/routes.js";
+import { configureServerlessDatabase, databasePoolMode } from "../server/storage.js";
+configureServerlessDatabase();
 
 let app: express.Express | null = null;
 function buildApp(): express.Express {
@@ -18,6 +20,8 @@ function buildApp(): express.Express {
 
 export default function handler(req: Request, res: Response) {
   try {
+    // Non-secret transport diagnostic; makes the actual production pool selection verifiable.
+    res.setHeader("X-Fiscus-Storage-Pool", databasePoolMode());
     if (!app) app = buildApp();
     return (app as unknown as (req: Request, res: Response) => void)(req, res);
   } catch (err: any) {

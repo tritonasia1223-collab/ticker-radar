@@ -18,6 +18,14 @@ import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 // On Vercel, importing this module must not throw or open a connection before
 // the handler runs (env vars and network are only guaranteed inside the request).
 let _db: ReturnType<typeof drizzle> | null = null;
+let serverlessEntry = false;
+export function configureServerlessDatabase() { serverlessEntry = true; }
+export function databasePoolMode() {
+  const input = process.env.DATABASE_URL;
+  if (!input) return "unconfigured";
+  const url = new URL(runtimeDatabaseUrl(input, serverlessEntry || process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"));
+  return url.hostname.endsWith(".pooler.supabase.com") ? url.port === "6543" ? "transaction" : "session" : "direct";
+}
 
 function getDb() {
   if (_db) return _db;
@@ -28,7 +36,7 @@ function getDb() {
   // `prepare: false` is required when going through Supabase's transaction pooler (pgbouncer).
   // Vercel uses transaction pooling; local/admin connections may still use session mode.
   // Keep each worker's pool small and release idle slots, including deployment overlap.
-  const client = postgres(runtimeDatabaseUrl(connectionString, process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"), { prepare: false, max: 1, idle_timeout: 5 });
+  const client = postgres(runtimeDatabaseUrl(connectionString, serverlessEntry || process.env.VERCEL === "1" || process.env.DEPLOY_TARGET === "vercel"), { prepare: false, max: 1, idle_timeout: 5 });
   _db = drizzle(client);
   return _db;
 }
