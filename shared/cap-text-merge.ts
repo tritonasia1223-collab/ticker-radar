@@ -138,7 +138,16 @@ export function mergeText(base: string, local: string, remote: string, location:
     const passage = { before: { text: beforeText, ranges: range }, local: apply(tokens, s.start, s.end, localEdits, clashes), remote: apply(tokens, s.start, s.end, remoteEdits, clashes) };
     const c: ValueConflict = { id: `${JSON.stringify(location)}@${s.start}:${s.end}`, location, before: beforeText, local: passage.local.text, remote: passage.remote.text, passage };
     const resolution = chosen(c, choices); conflicts.push(...resolution.conflicts);
-    replacements.push({ start: s.start, end: s.end, text: resolution.value as string, side: "local" });
+    let replacement = resolution.value as string;
+    if (typeof choices[c.id] === "object") {
+      // The editor asks for a sentence, not its surrounding separator/indentation.
+      // Retain that context when a manually written sentence omits it.
+      const leading = beforeText.match(/^\s*/u)?.[0] ?? "";
+      const trailing = beforeText.slice(leading.length).match(/\s*$/u)?.[0] ?? "";
+      if (leading && !/^\s/u.test(replacement)) replacement = leading + replacement;
+      if (trailing && !/\s$/u.test(replacement)) replacement += trailing;
+    }
+    replacements.push({ start: s.start, end: s.end, text: replacement, side: "local" });
   }
   const output = apply(tokens, 0, tokens.length, [...all.filter(e => !spans.some(s => covered(e, s))), ...replacements], new Set()).text;
   if (![base, local, remote, output].every(validMarkup)) {

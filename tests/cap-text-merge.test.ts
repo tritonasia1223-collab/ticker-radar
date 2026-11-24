@@ -25,6 +25,16 @@ describe("three-way passage merge", () => {
     const result = mergeText("수요는 소폭 늘었습니다. 금리는 20억입니다.", "수요는 크게 늘었습니다. 금리는 25억입니다.", "수요는 제한적으로 늘었습니다. 금리는 30억입니다.", ["text"]);
     expect(result.conflicts).toHaveLength(2);
   });
+  it("keeps sentence separators when a manually written choice omits surrounding whitespace", () => {
+    for (const separator of [" ", "\n\n  "]) {
+      const base = `앞 문장입니다.${separator}잔액은 20억 달러입니다. 다음 문장입니다.`;
+      const local = base.replace("20억", "25억"), remote = base.replace("20억", "30억");
+      const part = mergeText(base, local, remote, ["text"]).conflicts[0];
+      const result = mergeText(base, local, remote, ["text"], { [part.id]: { text: "잔액은 28억 달러입니다." } });
+      expect(result.conflicts).toEqual([]);
+      expect(result.value).toBe(base.replace("20억", "28억"));
+    }
+  });
   it("deduplicates identical edits, preserves Unicode, and does not guess competing insertions", () => {
     expect(mergeText("가나다😀", "가나다😺", "가나다😺").value).toBe("가나다😺");
     expect(mergeText("ab", "aXb", "aYb").conflicts).toHaveLength(1);
