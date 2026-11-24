@@ -33,7 +33,8 @@ describe("standard storage safety",()=>{
     const h=setup(),key="intl:a",base=doc();h.records.set(key,{key,version:2,doc:{...base,deletedAt:"2026-11-20"}});
     h.engine.seed({key,version:1,doc:base});h.engine.edit(key,{...base,body:"mine"});await h.engine.flushAll();
     expect(h.engine.drafts.get(key)!.conflicts?.[0].path).toEqual([]);
-    h.engine.resolve(key,{"[]":choice});await h.engine.flushAll();
+    if(choice==="local")expect(()=>h.engine.resolve(key,{"[]":choice})).toThrow(/복원/);
+    h.engine.resolve(key,{"[]":choice},choice==="local");await h.engine.flushAll();
     expect(h.records.get(key)!.doc!.deletedAt).toBe(choice==="remote"?"2026-11-20":null);
     expect(h.records.get(key)!.doc!.body).toBe(choice==="remote"?"old":"mine");
   });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { copy, diff, equal, flowDocument, documentFlow, merge, mergeOrder, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration";
+import { copy, diff, equal, flowDocument, documentFlow, merge, mergeOrder, conflictDetails, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration";
 import { CollaborationEngine, RemoteConflict, SaveRejected, type Draft, type DraftStore, type Transport } from "../client/src/lib/cap-collab-engine";
 import { validateEdit } from "../server/cap-collaboration";
 const doc = () => flowDocument({ title: "원본", date: "1971-01-01", category: "경제", layout: "stack", sortOrder: 0, nodes: ["a", "b"].map((id) => ({ id, kind: "effect", text: id })) });
@@ -79,6 +79,52 @@ function harness(initial: Document = doc()) {
   return { engine, store, transport, ledger, stored, published, remote: (changes: any[]) => { current = { ...current, doc: merge(current.doc, changes).doc, version: current.version + 1 }; }, current: () => copy(current) };
 }
 afterEach(() => vi.useRealTimers());
+describe("passage choices through the durable engine", () => {
+  it("saves independent edits inside the same text field without a conflict prompt", async () => {
+    const h = harness({ text: "기업 운영의 자율성이 확대됐습니다." });
+    h.engine.edit("flow:f", { text: "기업 경영의 자율성이 확대됐습니다." });
+    h.remote([change(["text"], "기업 운영의 자율성이 확대됐습니다.", "기업 운영의 자율성이 제한적으로 확대됐습니다.")]);
+    await h.engine.flushAll();
+    expect(h.current().doc!.text).toBe("기업 경영의 자율성이 제한적으로 확대됐습니다.");
+    expect(h.engine.drafts.size).toBe(0);
+  });
+  it("resolves passages independently while preserving both sides' safe changes and later saves", async () => {
+    const base = "기업 운영은 소폭 확대됐습니다. 잔액은 20억입니다. 원문입니다.";
+    const h = harness({ text: base });
+    h.engine.edit("flow:f", { text: base.replace("운영", "경영").replace("소폭", "크게").replace("20억", "25억") });
+    h.remote([change(["text"], base, base.replace("소폭", "제한적으로").replace("20억", "30억").replace("원문", "상대수정"))]);
+    await h.engine.flushAll();
+    const parts = h.engine.drafts.get("flow:f")!.conflicts!.flatMap(conflictDetails);
+    expect(parts).toHaveLength(2);
+    expect(() => h.engine.resolve("flow:f", { [parts[0].id]: "local" })).toThrow(/남아/);
+    h.engine.resolve("flow:f", { [parts[0].id]: "local", [parts[1].id]: { text: " 잔액은 약 28억입니다." } });
+    const before = h.current().doc!.text as string;
+    h.remote([change(["text"], before, before + " 추가 공시입니다.")]);
+    await h.engine.flushAll();
+    expect(h.current().doc!.text).toBe("기업 경영은 크게 확대됐습니다. 잔액은 약 28억입니다. 상대수정입니다. 추가 공시입니다.");
+    expect(h.engine.drafts.size).toBe(0);
+  });
+  it("recovers the same unresolved passages after reload without changing either source", async () => {
+    const h = harness({ text: "수요는 소폭 늘었습니다." });
+    h.engine.edit("flow:f", { text: "수요는 크게 늘었습니다." });
+    h.remote([change(["text"], "수요는 소폭 늘었습니다.", "수요는 제한적으로 늘었습니다.")]);
+    await h.engine.flushAll(); await h.engine.durable();
+    const next = new CollaborationEngine(crypto.randomUUID(), "B", h.transport, h.store, () => {}, 100000);
+    await next.loadDrafts(); await next.recover(next.recoverable[0].id);
+    const parts = next.drafts.get("flow:f")!.conflicts!.flatMap(conflictDetails);
+    expect(parts[0].local).toBe("수요는 크게 늘었습니다.");
+    next.resolve("flow:f", { [parts[0].id]: "remote" }); await next.flushAll();
+    expect(h.current().doc!.text).toBe("수요는 제한적으로 늘었습니다.");
+  });
+  it("recompares a locally edited conflict before accepting a choice", async () => {
+    const h = harness({ text: "수요는 소폭 늘었습니다." });
+    h.engine.edit("flow:f", { text: "수요는 크게 늘었습니다." });
+    h.remote([change(["text"], "수요는 소폭 늘었습니다.", "수요는 제한적으로 늘었습니다.")]);
+    await h.engine.flushAll();
+    h.engine.edit("flow:f", { text: "수요는 급격히 늘었습니다." });
+    expect(h.engine.drafts.get("flow:f")!.conflicts!.flatMap(conflictDetails)[0].local).toBe("수요는 급격히 늘었습니다.");
+  });
+});
 describe("durable collaboration queue", () => {
   it("journals, saves, and reloads a blue-only edit after an unrelated remote edit", async () => {
     const h = harness(), flow = documentFlow("flow:f", h.engine.get("flow:f"), 1);

@@ -74,6 +74,34 @@ try {
   await Promise.all([applyCollaborativeEdit(op("meta:m1", null, meta("m1", "one")), isolated), applyCollaborativeEdit(op("meta:m2", null, meta("m2", "two")), isolated)]);
   await Promise.all([applyCollaborativeEdit(op("meta:m1", meta("m1", "one"), meta("m1", "ONE")), isolated), applyCollaborativeEdit(op("meta:m2", meta("m2", "two"), meta("m2", "TWO")), isolated)]);
   assert.equal((await getResource("meta:m1", isolated)).doc!.title, "ONE"); assert.equal((await getResource("meta:m2", isolated)).doc!.title, "TWO");
+  // Text-span composition is performed inside the same locked production transaction path.
+  console.log("Testing independent prose, table cells/columns and overlapping passage rollback");
+  const proseKey = "meta:prose", proseBase = { ...meta("prose", "Synthetic prose"), text: "기업 운영의 자율성이 확대됐습니다." };
+  await applyCollaborativeEdit(op(proseKey, null, proseBase), isolated);
+  await Promise.all([
+    applyCollaborativeEdit(op(proseKey, proseBase, { ...proseBase, text: "기업 경영의 자율성이 확대됐습니다." }), isolated),
+    applyCollaborativeEdit(op(proseKey, proseBase, { ...proseBase, text: "기업 운영의 자율성이 제한적으로 확대됐습니다." }), isolated),
+  ]);
+  assert.equal((await getResource(proseKey, isolated)).doc!.text, "기업 경영의 자율성이 제한적으로 확대됐습니다.");
+  const tableKey = "meta:table", table = { title: "Synthetic situations", widths: [1, 3, 3], cells: [["연도", "미국", "일본"], ["1969", "수요가 소폭 늘었습니다.", "기존 일본"]] };
+  const tableBase = { ...meta("table", "Synthetic table"), tables: [table], blocks: [{ type: "table", table }] };
+  await applyCollaborativeEdit(op(tableKey, null, tableBase), isolated);
+  const column = copy(tableBase), cell = copy(tableBase);
+  column.blocks[0].table.widths.push(3); column.blocks[0].table.cells[0].push("소련"); column.blocks[0].table.cells[1].push("소련 내용"); column.tables = [column.blocks[0].table];
+  cell.blocks[0].table.cells[1][2] = "편집자의 일본 수정"; cell.tables = [cell.blocks[0].table];
+  await Promise.all([applyCollaborativeEdit(op(tableKey, tableBase, column), isolated), applyCollaborativeEdit(op(tableKey, tableBase, cell), isolated)]);
+  const joined = await getResource(tableKey, isolated);
+  assert.deepEqual((joined.doc!.blocks as any[])[0].table.cells[1], ["1969", "수요가 소폭 늘었습니다.", "편집자의 일본 수정", "소련 내용"]);
+  assert.deepEqual(joined.doc!.tables, [(joined.doc!.blocks as any[])[0].table]);
+  const mine = copy(joined.doc)!, theirs = copy(joined.doc)!;
+  (mine.blocks as any[])[0].table.cells[1][1] = "수요가 크게 늘었습니다."; mine.tables = [(mine.blocks as any[])[0].table];
+  (theirs.blocks as any[])[0].table.cells[1][1] = "수요가 제한적으로 늘었습니다."; theirs.tables = [(theirs.blocks as any[])[0].table];
+  await applyCollaborativeEdit(op(tableKey, joined.doc, theirs), isolated);
+  const overlapping = op(tableKey, joined.doc, mine); overlapping.changes.push({ path: ["title"], before: joined.doc!.title, after: "Must roll back" });
+  const beforeConflict = await getResource(tableKey, isolated);
+  await assert.rejects(() => applyCollaborativeEdit(overlapping, isolated), CollaborationConflict);
+  assert.deepEqual(await getResource(tableKey, isolated), beforeConflict);
+  assert.equal((await isolated.transaction(tx => tx.execute(sql`select id from cap_edit_operations where id=${overlapping.id}`))).length, 0);
   // Comparison placements have independent records, preserve source cards, and retain tombstones.
   const plot = { flowSlug: "synthetic", nodeKey: "a", title: "Policy", date: null, endDate: null, sortOrder: 1 };
   await Promise.all([applyCollaborativeEdit(op("plot:one", null, plot), isolated), applyCollaborativeEdit(op("plot:two", null, { ...plot, nodeKey: "b" }), isolated)]);

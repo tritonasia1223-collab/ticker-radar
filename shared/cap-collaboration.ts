@@ -1,9 +1,10 @@
-// Browser and server share the same comparison rules. Arrays (rich blocks/tables) are atomic fields;
-// node membership and order are explicit, stable-key operations rather than whole-card replacement.
+// Browser and server share comparison rules. Transport paths remain stable field operations;
+// prose and rich fields are compared inside the field without replacing unrelated edits.
+import { blockMirrors, mergeValue, syncBlockMirrors, type Resolution, type ValueConflict } from "./cap-text-merge";
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Document = { [key: string]: Json } | null;
 export interface Change { path: string[]; before: Json; after: Json }
-export interface Conflict extends Change { remote: Json }
+export interface Conflict extends Change { remote: Json; details?: ValueConflict[] }
 export interface Resource { key: string; version: number; doc: Document }
 export interface EditRequest { id: string; resource: string; editor: string; session: string; changes: Change[]; schemaVersion?: 2; ifVersion?: number }
 export interface EditResult extends Resource { operation: string }
@@ -54,7 +55,15 @@ export function diff(before: Document, after: Document): Change[] {
       }
     } else changes.push({ path: [key], before: a, after: b });
   }
-  return changes;
+  return withoutMirrors(changes);
+}
+// Blocks are authoritative. Do not ask twice about the same text through legacy search mirrors.
+// Also accepts immutable requests sent by an already-open older client.
+function withoutMirrors(changes: Change[]): Change[] {
+  const blocks = changes.find(c => c.path.length === 1 && c.path[0] === "blocks");
+  if (!blocks) return changes;
+  const before = blockMirrors({ blocks: blocks.before }), after = blockMirrors({ blocks: blocks.after });
+  return changes.filter(c => !(c.path.length === 1 && before && after && c.path[0] in before && equal(c.before, before[c.path[0]]) && equal(c.after, after[c.path[0]])));
 }
 
 // Independent insert/delete membership can merge. Concurrent reordering of existing nodes conflicts.
@@ -74,7 +83,12 @@ export function mergeOrder(base: string[], local: string[], remote: string[]): s
   }
   return result;
 }
-export function merge(current: Document, changes: Change[]): { doc: Document; conflicts: Conflict[] } {
+export const mergeableField = (path: string[]) => ["title", "text", "body", "caption", "ref", "refBlue", "inLabel", "table", "tables", "blocks", "insight"].includes(path.at(-1) ?? "") && path.length > 0;
+export function conflictDetails(c: Conflict): ValueConflict[] {
+  return c.details ?? [{ id: JSON.stringify(c.path), location: c.path, before: c.before, local: c.after, remote: c.remote }];
+}
+export function merge(current: Document, changes: Change[], choices: Record<string, Resolution> = {}): { doc: Document; conflicts: Conflict[] } {
+  changes = withoutMirrors(changes);
   if (current?.deletedAt && changes.some(c => c.path.length)) {
     // A delayed field edit must not be accepted inside a soft-deleted record.
     let before = { ...copy(current), deletedAt: null } as Document;
@@ -95,9 +109,16 @@ export function merge(current: Document, changes: Change[]): { doc: Document; co
       const order = mergeOrder(change.before as string[], next as string[], remote as string[]);
       if (order) { doc = put(doc, change.path, order); continue; }
     }
+    if (!parentMissing && !equal(remote, change.before) && !equal(change.before, change.after) && mergeableField(change.path)) {
+      const result = mergeValue(change.before, change.after, remote, change.path, choices);
+      if (result.conflicts.length) conflicts.push({ ...copy(change), remote: copy(remote), details: result.conflicts });
+      doc = put(doc, change.path, result.value);
+      continue;
+    }
     if (parentMissing || !equal(remote, change.before)) { conflicts.push({ ...copy(change), remote: copy(remote) }); continue; }
     doc = put(doc, change.path, next);
   }
+  if (changes.some(c => c.path.length === 1 && c.path[0] === "blocks")) doc = syncBlockMirrors(doc, current) as Document;
   return { doc, conflicts };
 }
 

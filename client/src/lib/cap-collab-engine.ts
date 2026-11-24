@@ -1,4 +1,5 @@
-import { copy, diff, equal, merge, put, read, type Change, type Conflict, type Document, type EditRequest, type EditResult, type Resource } from "../../../shared/cap-collaboration";
+import { copy, diff, equal, merge, put, read, conflictDetails, type Change, type Conflict, type Document, type EditRequest, type EditResult, type Resource } from "../../../shared/cap-collaboration";
+import { mergeValue, syncBlockMirrors, type Resolution } from "../../../shared/cap-text-merge";
 
 export interface Draft {
   id: string; session: string; editor: string; base: Resource; desired: Document; savedAt: number;
@@ -87,7 +88,10 @@ export class CollaborationEngine {
     if (!draft) {
       draft = { id: crypto.randomUUID(), session: this.session, editor: this.editor, base: copy(this.confirmed.get(key) ?? { key, version: 0, doc: null }), desired: copy(desired), savedAt: Date.now() };
       this.drafts.set(key, draft);
-    } else { draft.desired = copy(desired); draft.savedAt = Date.now(); }
+    } else {
+      draft.desired = copy(desired); draft.savedAt = Date.now();
+      if (draft.remote && draft.conflicts?.length) draft.conflicts = merge(draft.remote.doc, diff(draft.base.doc, draft.desired)).conflicts;
+    }
     // Changing a failed draft never changes an uncertain in-flight request. Retry that request first.
     this.journal(draft); this.display(key); this.schedule(key);
   }
@@ -155,17 +159,32 @@ export class CollaborationEngine {
     }
     this.display(key);
   }
-  // Explicit per-field choices. Missing parents can only be restored by explicitly restoring the whole card.
-  resolve(key: string, choices: Record<string, "remote" | "local">, restoreDeleted = false) {
+  // Recompute against the latest local intent, then apply only each chosen passage. Independent
+  // changes on both sides survive every choice. Network writes still compare the remote before-value.
+  resolve(key: string, choices: Record<string, Resolution>, restoreDeleted = false) {
     const draft = this.drafts.get(key); if (!draft?.remote) return;
     const changes = diff(draft.base.doc, draft.desired), remote = draft.remote;
+    const currentConflicts = merge(remote.doc, changes).conflicts;
+    for (const c of currentConflicts) for (const part of conflictDetails(c)) {
+      const choice = choices[part.id] ?? choices[JSON.stringify(c.path)];
+      if (!choice) throw new Error("선택이 필요한 문장이 남아 있습니다. 변경된 부분을 확인해 주세요.");
+      if (choice !== "remote" && !restoreDeleted && part.before !== null && part.local !== null && (part.remote === null || (!c.path.length && remote.doc?.deletedAt)))
+        throw new Error("삭제된 항목의 내 내용을 쓰려면 ‘삭제된 카드·칸의 내 내용 복원’을 선택하세요.");
+    }
     let desired = copy(remote.doc);
-    const whole = draft.conflicts?.find(c => c.path.length === 0);
+    const whole = currentConflicts.find(c => c.path.length === 0);
     if (whole) desired = choices["[]"] === "local" ? copy(whole.after) as Document : copy(remote.doc);
     else if (!desired && restoreDeleted) desired = copy(draft.desired);
     else {
       for (const c of changes) {
-        const conflict = draft.conflicts?.some((x) => equal(x.path, c.path));
+        const actual = currentConflicts.find(x => equal(x.path, c.path)), conflict = !!actual;
+        if (actual?.details) {
+          const selections = { ...choices };
+          for (const part of actual.details) selections[part.id] ??= choices[JSON.stringify(c.path)];
+          const resolved = mergeValue(c.before, c.after, read(remote.doc, c.path), c.path, selections);
+          if (resolved.conflicts.length) throw new Error("변경된 문장을 다시 확인해 주세요.");
+          desired = put(desired, c.path, resolved.value); continue;
+        }
         if (conflict && choices[JSON.stringify(c.path)] !== "local") continue;
         if (c.path.length > 2 && read(desired, c.path.slice(0, -1)) === null) {
           if (!restoreDeleted) throw new Error("삭제된 칸의 내 내용을 쓰려면 ‘삭제된 항목 복원’을 선택하세요.");
@@ -187,6 +206,7 @@ export class CollaborationEngine {
       }
       desired.order = order;
     }
+    if (changes.some(c => c.path.length === 1 && c.path[0] === "blocks")) desired = syncBlockMirrors(desired, remote.doc) as Document;
     draft.base = copy(remote); draft.desired = desired; delete draft.remote; delete draft.conflicts; delete draft.error;
     this.confirmed.set(key, copy(remote)); this.journal(draft); this.display(key); this.schedule(key);
   }
