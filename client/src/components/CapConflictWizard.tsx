@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MARK_BY_KEY } from "@/lib/capitalism-richtext";
 import { CapRichEditor, type CapRichEditorHandle } from "./CapRichEditor";
 import { type Json } from "../../../shared/cap-collaboration";
 import { type Passage, type Resolution, type ValueConflict } from "../../../shared/cap-text-merge";
+import { passageSignature, restoreConflictProgress, type ConflictProgress } from "@/lib/cap-conflict-progress";
 
 export interface ConflictItem extends ValueConflict { label: string }
 
@@ -53,36 +54,37 @@ function describe(value: Json): string {
   }
   return String(value);
 }
-export function CapConflictWizard({ items, title, restoreRequired = false, onResolve }: {
+export function CapConflictWizard({ items, title, restoreRequired = false, onResolve, initialProgress, onProgress }: {
   items: ConflictItem[]; title: string; restoreRequired?: boolean;
+  initialProgress?: ConflictProgress; onProgress?: (progress: ConflictProgress) => void;
   onResolve: (choices: Record<string, Resolution>, restore: boolean) => void | Promise<void>;
 }) {
-  const [index, setIndex] = useState(0), [choices, setChoices] = useState<Record<string, Resolution>>({});
-  const [manual, setManual] = useState<Record<string, string>>({}), [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const initial = useRef(restoreConflictProgress(items, initialProgress)).current;
+  const positionOf = (cursor: string | null) => cursor === null ? items.length : Math.max(0, items.findIndex(item => item.id === cursor));
+  const [index, setIndex] = useState(() => positionOf(initial.cursor)), [choices, setChoices] = useState<Record<string, Resolution>>(initial.choices);
+  const [manual, setManual] = useState<Record<string, string>>(initial.manual), [expanded, setExpanded] = useState<Record<string, boolean>>(initial.expanded);
   const [restore, setRestore] = useState(false), [error, setError] = useState(""), [saving, setSaving] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null), editor = useRef<CapRichEditorHandle>(null);
-  const fingerprint = (item: ConflictItem) => JSON.stringify([item.before, item.local, item.remote]);
-  const signature = JSON.stringify(items.map(item => [item.id, fingerprint(item)]));
+  const signature = JSON.stringify(items.map(item => [item.id, passageSignature(item)]));
   const tracked = useRef({ signature, items });
+  const inputsChanged = tracked.current.signature !== signature;
   // Updating an unrelated title/field must not remount the wizard. Reconsider
   // only passages whose actual three-way inputs changed, retaining other work.
   useLayoutEffect(() => {
     if (tracked.current.signature === signature) return;
     const previous = tracked.current.items;
-    const previousId = previous[index]?.id;
-    const unchanged = new Set(items.filter(item => previous.some(old => old.id === item.id && fingerprint(old) === fingerprint(item))).map(item => item.id));
-    const existing = new Set(items.map(item => item.id));
-    const retained = Object.fromEntries(Object.entries(choices).filter(([id]) => unchanged.has(id)));
-    setChoices(retained);
-    setManual(old => Object.fromEntries(Object.entries(old).filter(([id]) => existing.has(id))));
-    setExpanded(old => Object.fromEntries(Object.entries(old).filter(([id]) => existing.has(id))));
-    const samePosition = items.findIndex(item => item.id === previousId);
-    const unresolved = items.findIndex(item => !retained[item.id]);
-    setIndex(samePosition >= 0 ? samePosition : unresolved >= 0 ? unresolved : items.length);
+    const next = restoreConflictProgress(items, { signatures: Object.fromEntries(previous.map(item => [item.id, passageSignature(item)])), choices, manual, expanded, cursor: previous[index]?.id ?? null });
+    setChoices(next.choices); setManual(next.manual); setExpanded(next.expanded);
+    setIndex(positionOf(next.cursor)); setRestore(false);
     tracked.current = { signature, items };
   }, [signature]);
   const position = Math.min(index, items.length);
   const item = items[position], complete = position === items.length;
+  const progress = JSON.stringify({ signatures: Object.fromEntries(items.map(item => [item.id, passageSignature(item)])), choices, manual, expanded, cursor: item?.id ?? null } satisfies ConflictProgress);
+  useEffect(() => {
+    // Do not bind selections from the previous render to changed source text.
+    if (!inputsChanged) onProgress?.(JSON.parse(progress) as ConflictProgress);
+  }, [progress, inputsChanged]);
   const move = (to: number) => { setIndex(to); setError(""); requestAnimationFrame(() => heading.current?.focus({ preventScroll: true })); };
   const choose = (choice: Resolution) => { setChoices(old => ({ ...old, [item.id]: choice })); move(position + 1); };
   const selected = item && choices[item.id];

@@ -8,6 +8,7 @@ import { diff, type Resource } from "../../shared/cap-collaboration";
 
 const initial: Resource = await collabApi("resource?key=meta:conflict-preview");
 engine.seed(initial);
+await engine.loadDrafts();
 function Preview() {
   useSyncExternalStore(engine.subscribe, engine.snapshot);
   const [base, setBase] = useState(initial), [mine, setMine] = useState(String(initial.doc!.text)), [other, setOther] = useState(String(initial.doc!.text));

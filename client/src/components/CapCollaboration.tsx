@@ -37,7 +37,8 @@ export function CapCollaboration({ resourcePrefix = "", loading = false }: { res
       const d = conflicts[0];
       const items = d.conflicts!.flatMap(c => conflictDetails(c).map(part => ({ ...part, label: conflictContext(c, part) })));
       const restoring = d.conflicts!.some(c => conflictDetails(c).some(part => part.before !== null && part.local !== null && part.remote === null) || (!c.path.length && !!d.remote?.doc?.deletedAt) || (c.path.length > 2 && read(d.remote!.doc, c.path.slice(0, -1)) === null));
-      return <CapConflictWizard key={d.id} title={label(d.base.key)} items={items} restoreRequired={restoring} onResolve={(choices, restore) => engine.resolve(d.base.key, choices, restore)} />;
+      return <CapConflictWizard key={d.id} title={label(d.base.key)} items={items} restoreRequired={restoring} initialProgress={d.conflictProgress}
+        onProgress={progress => engine.saveConflictProgress(d.base.key, progress)} onResolve={(choices, restore) => engine.resolve(d.base.key, choices, restore)} />;
     })()}
     {historyOpen && <div className="max-h-[45vh] overflow-auto rounded border bg-background p-3" data-testid="collab-history">
       <div className="flex gap-2"><select aria-label="이력 카드" value={selected} className="max-w-[70%] bg-background border" onChange={(e) => void run(() => loadHistory(e.target.value))}>

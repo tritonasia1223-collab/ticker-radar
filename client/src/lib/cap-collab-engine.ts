@@ -1,9 +1,11 @@
 import { copy, diff, equal, merge, put, read, conflictDetails, type Change, type Conflict, type Document, type EditRequest, type EditResult, type Resource } from "../../../shared/cap-collaboration";
 import { mergeValue, syncBlockMirrors, type Resolution } from "../../../shared/cap-text-merge";
+import type { ConflictProgress } from "./cap-conflict-progress";
 
 export interface Draft {
   id: string; session: string; editor: string; base: Resource; desired: Document; savedAt: number;
   request?: EditRequest; sent?: Document; remote?: Resource; conflicts?: Conflict[]; error?: string;
+  conflictProgress?: ConflictProgress;
 }
 export interface DraftStore { all(): Promise<Draft[]>; put(draft: Draft): Promise<void>; remove(id: string): Promise<void> }
 export interface Transport { read(key: string): Promise<Resource>; send(op: EditRequest): Promise<EditResult> }
@@ -73,6 +75,12 @@ export class CollaborationEngine {
       .catch(() => { this.storageError = "기기 초안을 보관하지 못했습니다. 저장 완료 전 창을 닫지 마세요."; this.notify(); });
   }
   async durable() { await this.storage; }
+  saveConflictProgress(key: string, progress: ConflictProgress) {
+    const draft = this.drafts.get(key);
+    if (!draft?.conflicts?.length || equal(draft.conflictProgress, progress)) return;
+    draft.conflictProgress = copy(progress); draft.savedAt = Date.now();
+    this.journal(draft); this.notify();
+  }
   async loadDrafts() { try { const stored = await this.store.all(), active = new Set([...this.drafts.values()].map(d => d.id)); this.recoverable = stored.filter(d => !active.has(d.id)); this.notify(); } catch { this.storageError = "기기 초안을 읽지 못했습니다."; this.notify(); } }
   seed(resource: Resource) { if (!this.confirmed.has(resource.key)) this.confirmed.set(resource.key, copy(resource)); }
   get(key: string) { return copy(this.drafts.has(key) ? this.drafts.get(key)!.desired : this.confirmed.get(key)?.doc ?? null); }
@@ -154,7 +162,7 @@ export class CollaborationEngine {
     if (draft) {
       const rebased = merge(resource.doc, diff(draft.base.doc, draft.desired));
       if (rebased.conflicts.length) { draft.remote = resource; draft.conflicts = rebased.conflicts; }
-      else { draft.base = copy(resource); draft.desired = rebased.doc; }
+      else { draft.base = copy(resource); draft.desired = rebased.doc; delete draft.conflictProgress; }
       this.journal(draft);
     }
     this.display(key);
@@ -207,7 +215,7 @@ export class CollaborationEngine {
       desired.order = order;
     }
     if (changes.some(c => c.path.length === 1 && c.path[0] === "blocks")) desired = syncBlockMirrors(desired, remote.doc) as Document;
-    draft.base = copy(remote); draft.desired = desired; delete draft.remote; delete draft.conflicts; delete draft.error;
+    draft.base = copy(remote); draft.desired = desired; delete draft.remote; delete draft.conflicts; delete draft.error; delete draft.conflictProgress;
     this.confirmed.set(key, copy(remote)); this.journal(draft); this.display(key); this.schedule(key);
   }
   async recover(id: string) {
@@ -220,7 +228,13 @@ export class CollaborationEngine {
     this.recoverable = this.recoverable.filter((d) => d.id !== id);
     this.display(key);
     if (draft.request) await this.flush(key);
-    else { await this.receive(await this.transport.read(key)); this.schedule(key); }
+    else {
+      const latest = await this.transport.read(key);
+      // A recovered conflict must be compared with today's server, even though
+      // an actively displayed conflict normally pauses background receives.
+      delete draft.remote; delete draft.conflicts;
+      await this.receive(latest); this.schedule(key);
+    }
   }
   async discardRecovery(id: string) { await this.store.remove(id); this.recoverable = this.recoverable.filter((d) => d.id !== id); this.notify(); }
   get canUndo() { return this.undo.length > 0; }

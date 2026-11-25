@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { copy, diff, equal, flowDocument, documentFlow, merge, mergeOrder, conflictDetails, type Document, type EditRequest, type Resource } from "../shared/cap-collaboration";
 import { CollaborationEngine, RemoteConflict, SaveRejected, type Draft, type DraftStore, type Transport } from "../client/src/lib/cap-collab-engine";
 import { validateEdit } from "../server/cap-collaboration";
+import { passageSignature, restoreConflictProgress } from "../client/src/lib/cap-conflict-progress";
 const doc = () => flowDocument({ title: "원본", date: "1971-01-01", category: "경제", layout: "stack", sortOrder: 0, nodes: ["a", "b"].map((id) => ({ id, kind: "effect", text: id })) });
 const change = (path: string[], before: any, after: any) => ({ path, before, after });
 describe("collaboration merge", () => {
@@ -80,6 +81,33 @@ function harness(initial: Document = doc()) {
 }
 afterEach(() => vi.useRealTimers());
 describe("passage choices through the durable engine", () => {
+  it("journals manual resolutions and resumes after reload, rechecking changed server inputs", async () => {
+    for (const changed of [false, true]) {
+      const base = "수요는 소폭 늘었습니다. 잔액은 20억입니다.";
+      const h = harness({ text: base });
+      h.engine.edit("flow:f", { text: base.replace("소폭", "크게").replace("20억", "25억") });
+      h.remote([change(["text"], base, base.replace("소폭", "제한적으로").replace("20억", "30억"))]);
+      await h.engine.flushAll();
+      const parts = h.engine.drafts.get("flow:f")!.conflicts!.flatMap(conflictDetails);
+      const written = "수요는 신규 주문 덕분에 회복했습니다.";
+      h.engine.saveConflictProgress("flow:f", { signatures: Object.fromEntries(parts.map(p => [p.id, passageSignature(p)])), choices: { [parts[0].id]: { text: written } }, manual: { [parts[0].id]: written }, expanded: { [parts[0].id]: true }, cursor: parts[1].id });
+      await h.engine.durable();
+      expect([...h.stored.values()][0].conflictProgress!.manual[parts[0].id]).toBe(written);
+      if (changed) h.remote([change(["text"], h.current().doc!.text, String(h.current().doc!.text).replace("제한적으로", "미미하게"))]);
+      const reloaded = new CollaborationEngine(crypto.randomUUID(), "B", h.transport, h.store, () => {}, 100000);
+      await reloaded.loadDrafts(); await reloaded.recover(reloaded.recoverable[0].id);
+      const draft = reloaded.drafts.get("flow:f")!, currentParts = draft.conflicts!.flatMap(conflictDetails);
+      const recovered = restoreConflictProgress(currentParts, draft.conflictProgress);
+      expect(recovered.manual[parts[0].id]).toBe(written);
+      expect(recovered.choices[parts[0].id]).toEqual(changed ? undefined : { text: written });
+      expect(draft.remote!.version).toBe(h.current().version);
+      expect(recovered.cursor).toBe(changed ? parts[0].id : parts[1].id);
+      reloaded.resolve("flow:f", { [parts[0].id]: { text: written }, [parts[1].id]: "remote" });
+      expect(reloaded.drafts.get("flow:f")!.conflictProgress).toBeUndefined();
+      await reloaded.flushAll();
+      expect(h.current().doc!.text).toBe(written + " 잔액은 30억입니다.");
+    }
+  });
   it("saves independent edits inside the same text field without a conflict prompt", async () => {
     const h = harness({ text: "기업 운영의 자율성이 확대됐습니다." });
     h.engine.edit("flow:f", { text: "기업 경영의 자율성이 확대됐습니다." });

@@ -4,6 +4,17 @@ import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
 
 describe("three-way passage merge", () => {
+  it("assigns a conflicting end insertion to exactly one sentence choice", () => {
+    const base = "잔액은 20억입니다.", local = "잔액은 25억입니다. 수요도 증가했습니다!", remote = "잔액은 30억입니다. 수요는 감소했습니다!";
+    const parts = mergeText(base, local, remote, ["text"]).conflicts;
+    expect(parts).toHaveLength(2);
+    for (const choice of ["local", "remote"] as const) {
+      const selected = Object.fromEntries(parts.map(part => [part.id, choice]));
+      expect(mergeText(base, local, remote, ["text"], selected)).toEqual({ value: choice === "local" ? local : remote, conflicts: [] });
+    }
+    const selected = { [parts[0].id]: "local" as const, [parts[1].id]: { text: "수요는 유지됐습니다!" } };
+    expect(mergeText(base, local, remote, ["text"], selected).value).toBe("잔액은 25억입니다. 수요는 유지됐습니다!");
+  });
   it("resolves concurrent text in an empty field exactly once", () => {
     const base = "", local = "내 새 문장", remote = "다른 새 문장";
     const result = mergeText(base, local, remote, ["text"]);

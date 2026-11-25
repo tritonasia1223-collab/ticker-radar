@@ -127,7 +127,10 @@ export function mergeText(base: string, local: string, remote: string, location:
     else i++;
   }
   const conflicts: ValueConflict[] = [], replacements: Edit[] = [];
-  const covered = (e: Edit, s: { start: number; end: number }) => e.start >= s.start && e.end <= s.end && (e.start < s.end || s.end === tokens.length);
+  // A zero-width insertion at the end belongs to its own empty span, when
+  // present, instead of being applied again in the preceding sentence.
+  const covered = (e: Edit, s: { start: number; end: number }) => e.start >= s.start && e.end <= s.end &&
+    (e.start < s.end || s.start === s.end || (s.end === tokens.length && !spans.some(other => other !== s && other.start === e.start)));
   for (const s of spans) {
     const inside = all.filter(e => covered(e, s));
     const safe = inside.filter(e => !clashes.has(e));
@@ -142,7 +145,9 @@ export function mergeText(base: string, local: string, remote: string, location:
     if (typeof choices[c.id] === "object") {
       // The editor asks for a sentence, not its surrounding separator/indentation.
       // Retain that context when a manually written sentence omits it.
-      const leading = beforeText.match(/^\s*/u)?.[0] ?? "";
+      const localLeading = passage.local.text.match(/^\s*/u)?.[0] ?? "";
+      const remoteLeading = passage.remote.text.match(/^\s*/u)?.[0] ?? "";
+      const leading = (beforeText.match(/^\s*/u)?.[0] ?? "") || (!beforeText && localLeading === remoteLeading ? localLeading : "");
       const trailing = beforeText.slice(leading.length).match(/\s*$/u)?.[0] ?? "";
       if (leading && !/^\s/u.test(replacement)) replacement = leading + replacement;
       if (trailing && !/\s$/u.test(replacement)) replacement += trailing;
