@@ -63,6 +63,10 @@ function edits(base: string[], next: string[], side: Edit["side"]): Edit[] {
   let prefix = 0, end = base.length, stop = next.length;
   while (prefix < end && prefix < stop && base[prefix] === next[prefix]) prefix++;
   while (end > prefix && stop > prefix && base[end - 1] === next[stop - 1]) { end--; stop--; }
+  // A shared final full stop is not an anchor for an appended sentence: it may
+  // belong to the new sentence rather than the original one. Let forward LCS
+  // match the original punctuation before treating the suffix as independent.
+  if (end < base.length && base.slice(end).every(t => !/[\p{L}\p{N}]/u.test(visibleToken(t)))) { end = base.length; stop = next.length; }
   const a = base.slice(prefix, end), b = next.slice(prefix, stop);
   if (!a.length && !b.length) return [];
   if (a.length * b.length > 2_000_000) return [{ start: prefix, end, text: b.join(""), side }];
@@ -164,7 +168,8 @@ function mergeTextTokens(base: string, local: string, remote: string, location: 
   // boundary must never be applied again by an adjacent sentence's choice.
   const owners = new Map<Edit, { start: number; end: number }>();
   for (const e of all) {
-    const candidates = spans.filter(s => e.start >= s.start && e.end <= s.end);
+    const candidates = spans.filter(s => e.start >= s.start && e.end <= s.end
+      && !(e.start === e.end && !clashes.has(e) && (e.start === s.start || e.start === s.end)));
     const owner = e.start === e.end
       ? candidates.find(s => s.start === s.end) ?? candidates.find(s => e.start < s.end) ?? candidates[0]
       : candidates[0];
@@ -254,34 +259,64 @@ function isTable(value: Json): value is Record<string, Json> & { cells: string[]
 }
 type Table = Record<string, Json> & { cells: string[][]; widths: number[] };
 function mergeTable(base: Table, local: Table, remote: Table, location: string[], choices: Record<string, Resolution>): ValueMerge {
-  const cols = [align(base.cells[0] ?? [], local.cells[0] ?? []), align(base.cells[0] ?? [], remote.cells[0] ?? [])];
+  const columnValues = (table: Table) => table.widths.map((_, c) => ({ cells: table.cells.map(row => row[c]) }));
+  // Blank/repeated headings alone cannot locate a new column. Unchanged whole
+  // columns can still provide unique anchors without guessing their position.
+  const columns = (side: Table) => align(base.cells[0] ?? [], side.cells[0] ?? []) ?? align(columnValues(base), columnValues(side));
+  const cols = [columns(local), columns(remote)];
   const rows = [align(base.cells.map((r: string[]) => r[0]), local.cells.map((r: string[]) => r[0])), align(base.cells.map((r: string[]) => r[0]), remote.cells.map((r: string[]) => r[0]))];
-  // Shape deletions combined with concurrent edits need an explicit structural choice.
-  if ([...cols, ...rows].some(a => !a || a.indices.includes(null))) return atomic(base, local, remote, location, choices);
+  if ([...cols, ...rows].some(a => !a)) return atomic(base, local, remote, location, choices);
   const ids = (alignment: NonNullable<ReturnType<typeof align>>, side: "l" | "r") => {
     const result: string[] = [];
-    for (let i = 0; i < alignment.added.length; i++) { for (const at of alignment.added[i]) result.push(`${side}${at}`); if (i < alignment.indices.length) result.push(`b${i}`); }
+    for (let i = 0; i < alignment.added.length; i++) { for (const at of alignment.added[i]) result.push(`${side}${at}`); if (i < alignment.indices.length && alignment.indices[i] !== null) result.push(`b${i}`); }
     return result;
   };
   const union = (as: string[], bs: string[]) => { const result = [...bs]; for (let i = 0; i < as.length; i++) if (!result.includes(as[i])) { const next = as.slice(i + 1).find(id => result.includes(id)); result.splice(next ? result.indexOf(next) : result.length, 0, as[i]); } return result; };
-  const cs = union(ids(cols[0]!, "l"), ids(cols[1]!, "r")), rs = union(ids(rows[0]!, "l"), ids(rows[1]!, "r"));
+  let cs = union(ids(cols[0]!, "l"), ids(cols[1]!, "r")), rs = union(ids(rows[0]!, "l"), ids(rows[1]!, "r"));
   // Simultaneously adding the same heading/row would create ambiguous duplicate columns. Ask first.
   if (cs.filter(id => id[0] !== "b").some(id => cs.some(other => other[0] !== id[0] && other[0] !== "b" && (id[0] === "l" ? local : remote).cells[0]?.[+id.slice(1)] === (other[0] === "l" ? local : remote).cells[0]?.[+other.slice(1)]))
     || rs.filter(id => id[0] !== "b").some(id => rs.some(other => other[0] !== id[0] && other[0] !== "b" && (id[0] === "l" ? local : remote).cells[+id.slice(1)]?.[0] === (other[0] === "l" ? local : remote).cells[+other.slice(1)]?.[0]))) return atomic(base, local, remote, location, choices);
   const index = (id: string, alignment: NonNullable<ReturnType<typeof align>>, side: string) => id[0] === "b" ? alignment.indices[+id.slice(1)] : id[0] === side ? +id.slice(1) : null;
   const value: Record<string, Json> = {}, conflicts: ValueConflict[] = [];
+  // A deletion only competes with edits in that row/column. Never let choosing
+  // it replace unrelated surviving rows or cells with a whole-table snapshot.
+  const keepAxis = (id: string, axis: "row" | "column") => {
+    if (id[0] !== "b") return true;
+    const bi = +id.slice(1), alignment = axis === "row" ? rows : cols;
+    const li = alignment[0]!.indices[bi], ri = alignment[1]!.indices[bi];
+    if (li !== null && ri !== null) return true;
+    const snapshot = (table: Table, at: number | null, other: NonNullable<ReturnType<typeof align>>) => {
+      if (at === null) return null;
+      const existing = other.indices.map((mapped, j) => mapped === null ? null : axis === "row" ? table.cells[at][mapped] : table.cells[mapped][at]);
+      const added = other.added.flat().map(mapped => axis === "row" ? table.cells[at][mapped] : table.cells[mapped][at]);
+      return { existing, added: added.filter(Boolean), ...(axis === "column" ? { width: table.widths[at] } : {}) };
+    };
+    const other = axis === "row" ? cols : rows;
+    const reference = (alignment: NonNullable<ReturnType<typeof align>>) => ({ existing: alignment.indices.map((mapped, j) => mapped === null ? null : axis === "row" ? base.cells[bi][j] : base.cells[j][bi]), added: [], ...(axis === "column" ? { width: base.widths[bi] } : {}) });
+    const l = snapshot(local, li, other[0]!), r = snapshot(remote, ri, other[1]!);
+    if ((li === null && eq(reference(other[1]!), r)) || (ri === null && eq(reference(other[0]!), l))) return false;
+    const original = axis === "row" ? base.cells[bi] : base.cells.map(row => row[bi]);
+    const localValue = li === null ? null : axis === "row" ? local.cells[li] : local.cells.map(row => row[li]);
+    const remoteValue = ri === null ? null : axis === "row" ? remote.cells[ri] : remote.cells.map(row => row[ri]);
+    const result = atomic(original, localValue, remoteValue, [...location, axis === "row" ? "rows" : "columns", String(bi)], choices);
+    conflicts.push(...result.conflicts); return result.value !== null;
+  };
+  rs = rs.filter(id => keepAxis(id, "row"));
+  cs = cs.filter(id => keepAxis(id, "column"));
   for (const k of new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)])) if (k !== "widths" && k !== "cells") {
     const result = mergeValue(base[k] ?? null, local[k] ?? null, remote[k] ?? null, [...location, k], choices); value[k] = result.value; conflicts.push(...result.conflicts);
   }
   value.widths = cs.map(c => {
     const l = index(c, cols[0]!, "l"), r = index(c, cols[1]!, "r");
     if (c[0] !== "b") return (c[0] === "l" ? local.widths[l!] : remote.widths[r!]) as number;
-    const result = mergeValue(base.widths[+c.slice(1)], local.widths[l!], remote.widths[r!], [...location, "widths", c.slice(1)], choices); conflicts.push(...result.conflicts); return result.value;
+    const width = base.widths[+c.slice(1)];
+    const result = mergeValue(width, l === null ? width : local.widths[l], r === null ? width : remote.widths[r], [...location, "widths", c.slice(1)], choices); conflicts.push(...result.conflicts); return result.value;
   });
   value.cells = rs.map(row => cs.map(col => {
     const lr = index(row, rows[0]!, "l"), rr = index(row, rows[1]!, "r"), lc = index(col, cols[0]!, "l"), rc = index(col, cols[1]!, "r");
     if (row[0] !== "b" || col[0] !== "b") return (lr !== null && lc !== null ? local.cells[lr][lc] : rr !== null && rc !== null ? remote.cells[rr][rc] : "") as string;
-    const result = mergeValue(base.cells[+row.slice(1)][+col.slice(1)], local.cells[lr!][lc!], remote.cells[rr!][rc!], [...location, "cells", row.slice(1), col.slice(1)], choices);
+    const before = base.cells[+row.slice(1)][+col.slice(1)];
+    const result = mergeValue(before, lr === null || lc === null ? before : local.cells[lr][lc], rr === null || rc === null ? before : remote.cells[rr][rc], [...location, "cells", row.slice(1), col.slice(1)], choices);
     conflicts.push(...result.conflicts); return result.value;
   }));
   return { value, conflicts };

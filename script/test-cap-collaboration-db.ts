@@ -137,6 +137,27 @@ try {
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedMine), isolated);
   assert.deepEqual(((await getResource(repeatedKey, isolated)).doc!.blocks as any[])[0].table.cells, [["항목", "내용"], ["미국", "A"], ["", "수정 B"]]);
   console.log("Testing overlapping rich wrappers preserve unrelated edits");
+  for (const scenario of ["blank-column", "delete-row", "manual-append"]) {
+    const id = `review-four-${scenario}`, resourceKey = `meta:${id}`;
+    const tb = scenario === "blank-column" ? { widths: [1, 1], cells: [["", ""], ["A", "B"]] } : { widths: [1, 3], cells: [["연도", "내용"], ["1969", "원문"], ["1970", "금리 원문"]] };
+    const source = { ...meta(id, "Synthetic boundary regression"), text: "잔액은 20억 달러입니다.", tables: [tb] };
+    const own = copy(source), other = copy(source);
+    if (scenario === "blank-column") { own.tables[0].widths.push(1); own.tables[0].cells.forEach(row => row.push("")); other.tables[0].cells[1][1] = "B edited"; }
+    if (scenario === "delete-row") { own.tables[0].cells.splice(1, 1); other.tables[0].cells[1][1] = "겹친 수정"; other.tables[0].cells[2][1] = "금리 상대 독립 수정"; }
+    if (scenario === "manual-append") { own.text = "잔액은 25억 달러입니다."; other.text = "잔액은 30억 달러입니다. 외부 공시를 반영했습니다."; }
+    await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
+    await applyCollaborativeEdit(op(resourceKey, source, other), isolated);
+    const latest = await getResource(resourceKey, isolated), changes = diff(source, own);
+    const parts = merge(latest.doc, changes).conflicts.flatMap(conflictDetails);
+    assert.equal(parts.length, scenario === "blank-column" ? 0 : 1);
+    const resolutions = Object.fromEntries(parts.map(part => [part.id, scenario === "manual-append" ? { text: "잔액은 28억 달러입니다." } : "local" as const]));
+    const resolved = merge(latest.doc, changes, resolutions);
+    await applyCollaborativeEdit(op(resourceKey, latest.doc, resolved.doc), isolated);
+    const stored = (await getResource(resourceKey, isolated)).doc!;
+    if (scenario === "blank-column") assert.deepEqual((stored.tables as any[])[0].cells[1], ["A", "B edited", ""]);
+    if (scenario === "delete-row") assert.deepEqual((stored.tables as any[])[0].cells, [["연도", "내용"], ["1970", "금리 상대 독립 수정"]]);
+    if (scenario === "manual-append") assert.equal(stored.text, "잔액은 28억 달러입니다. 외부 공시를 반영했습니다.");
+  }
   for (const choice of ["local", "remote"] as const) {
     const id = `rich-prose-${choice}`, richKey = `meta:${id}`;
     const richBase = { ...meta(id, "Synthetic rich prose"), text: "기업 운영입니다. 잔액은 20억입니다." };

@@ -4,6 +4,14 @@ import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
 
 describe("three-way passage merge", () => {
+  it("keeps an independent sentence appended outside a manually resolved sentence", () => {
+    const base = "잔액은 20억 달러입니다.", local = base.replace("20억", "25억"), remote = base.replace("20억", "30억") + " 외부 공시를 반영했습니다.";
+    for (const [a, b] of [[local, remote], [remote, local]]) {
+      const parts = mergeText(base, a, b, ["text"]).conflicts;
+      expect(parts).toHaveLength(1);
+      expect(mergeText(base, a, b, ["text"], { [parts[0].id]: { text: "잔액은 28억 달러입니다." } }).value).toBe("잔액은 28억 달러입니다. 외부 공시를 반영했습니다.");
+    }
+  });
   it("keeps unrelated prose and opaque markers when overlapping wrappers require a style choice", () => {
     for (const suffix of ["", " [[scene:diagram|]][[scene:diagram|]]"]) {
       const base = "기업 운영입니다. 잔액은 20억입니다." + suffix;
@@ -144,6 +152,42 @@ describe("three-way passage merge", () => {
 });
 
 describe("rich field merge", () => {
+  it("aligns new blank-heading columns by their existing contents", () => {
+    const base = { widths: [1, 1], cells: [["", ""], ["A", "B"]] };
+    for (const at of [0, 1, 2]) {
+      const local = structuredClone(base), remote = structuredClone(base);
+      local.widths.splice(at, 0, 1); local.cells.forEach(row => row.splice(at, 0, ""));
+      remote.cells[1][1] = "B edited";
+      for (const [a, b] of [[local, remote], [remote, local]]) {
+        const result = mergeValue(base, a, b, ["table"]);
+        expect(result.conflicts).toEqual([]);
+        const expected = ["A", "B edited"]; expected.splice(at, 0, "");
+        expect((result.value as typeof base).cells[1]).toEqual(expected);
+      }
+    }
+  });
+  it("scopes row or column deletion choices without losing other cells", () => {
+    for (const axis of ["row", "column"] as const) {
+      const base = { widths: [1, 2, 2], cells: [["연도", "미국", "일본"], ["1969", "원문 A", "원문 B"], ["1970", "원문 C", "원문 D"]] };
+      const local = structuredClone(base), remote = structuredClone(base);
+      if (axis === "row") local.cells.splice(1, 1);
+      else { local.widths.splice(1, 1); local.cells.forEach(row => row.splice(1, 1)); }
+      remote.cells[1][1] = "겹친 수정"; remote.cells[2][2] = "독립 수정";
+      for (const [a, b, deleting] of [[local, remote, "local"], [remote, local, "remote"]] as const) {
+        const parts = mergeValue(base, a, b, ["table"]).conflicts;
+        expect(parts).toHaveLength(1);
+        expect(parts[0].location).toEqual(["table", axis === "row" ? "rows" : "columns", "1"]);
+        for (const choice of ["local", "remote"] as const) {
+          const result = mergeValue(base, a, b, ["table"], { [parts[0].id]: choice });
+          expect(result.conflicts).toEqual([]);
+          const cells = (result.value as typeof base).cells;
+          expect(cells.at(-1)!.at(-1)).toBe("독립 수정");
+          expect(axis === "row" ? cells.length : cells[0].length).toBe(choice === deleting ? 2 : 3);
+          if (choice !== deleting) expect(cells[1][1]).toBe("겹친 수정");
+        }
+      }
+    }
+  });
   it("merges independent cells when row labels repeat or are empty", () => {
     for (const label of ["", "동일 항목"]) {
       const base = { widths: [1, 3], cells: [["항목", "내용"], [label, "A"], [label, "B"]] };

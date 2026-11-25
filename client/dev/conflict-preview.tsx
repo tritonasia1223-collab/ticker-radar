@@ -16,6 +16,17 @@ function Preview() {
   const [title, setTitle] = useState(String(initial.doc!.title));
   const run = async (action: () => Promise<unknown>) => { try { setMessage(""); await action(); } catch (e) { setMessage((e as Error).message); } };
   const refresh = async () => { const next: Resource = await collabApi(`resource?key=${base.key}`); setSaved(next); return next; };
+  const tableScenario = async (deletion: boolean) => {
+    const latest = await refresh();
+    const table = deletion ? { title: "연도별 상황표", widths: [1, 3], cells: [["연도", "내용"], ["1969", "원문"], ["1970", "금리 원문"]] } : { title: "빈 머리글", widths: [1, 1], cells: [["", ""], ["A", "B"]] };
+    const source = { ...latest.doc, text: "표 검증", tables: [table], blocks: null };
+    const send = (before: Resource["doc"], after: Resource["doc"]) => collabApi("edit", { id: crypto.randomUUID(), session: crypto.randomUUID(), editor: "합성 표 검증", resource: base.key, schemaVersion: 2, changes: diff(before, after) });
+    await send(latest.doc, source); const start = await refresh(); await engine.receive(start);
+    const own = structuredClone(source), other = structuredClone(source);
+    if (deletion) { own.tables[0].cells.splice(1, 1); other.tables[0].cells[1][1] = "겹친 수정"; other.tables[0].cells[2][1] = "금리 상대 독립 수정"; }
+    else { own.tables[0].widths.push(1); own.tables[0].cells.forEach(row => row.push("")); other.tables[0].cells[1][1] = "B edited"; }
+    await send(source, other); engine.edit(base.key, own); await engine.flushAll(); await refresh();
+  };
   return <main className="space-y-6" style={{ background: "#f8f7f3", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "32px 24px" }}>
     <header><p className="text-xs text-stone-500">자본주의 경제사 · 협업 저장 미리보기 · 운영 연결 없음</p><h1 className="mt-2 text-2xl font-semibold">겹친 표현만 한 곳씩 확인</h1></header>
     <CapCollaboration resourcePrefix="meta:conflict-preview" />
@@ -31,9 +42,11 @@ function Preview() {
       })}>다른 편집자 저장</button>
       <button className="border rounded bg-white px-3 py-2" onClick={() => void run(async () => { engine.edit(base.key, { ...base.doc, text: mine }); await engine.flushAll(); await refresh(); })}>내 수정 저장</button>
       <button className="border rounded bg-white px-3 py-2" onClick={() => void run(async () => { const next = await refresh(); await engine.receive(next); setBase(next); setMine(String(next.doc!.text)); setOther(String(next.doc!.text)); })}>최신본으로 다음 비교 준비</button>
+      <button onClick={() => void run(() => tableScenario(false))}>빈 머리글 표 검증</button>
+      <button onClick={() => void run(() => tableScenario(true))}>행 삭제 충돌 검증</button>
     </div></details>
     {message && <p role="alert">{message}</p>}
-    <section className="rounded-xl border bg-white p-5"><div className="mb-3 flex justify-between"><h2 className="font-semibold">저장된 내용</h2><button className="text-xs underline" onClick={() => void run(refresh)}>저장 결과 다시 읽기</button></div><p className="text-sm leading-7" data-testid="saved-content"><CapRichText text={String(saved.doc?.text ?? "")} /></p></section>
+    <section className="rounded-xl border bg-white p-5"><div className="mb-3 flex justify-between"><h2 className="font-semibold">저장된 내용</h2><button className="text-xs underline" onClick={() => void run(refresh)}>저장 결과 다시 읽기</button></div><p className="text-sm leading-7" data-testid="saved-content"><CapRichText text={String(saved.doc?.text ?? "")} /></p><pre data-testid="saved-tables">{JSON.stringify(saved.doc?.tables, null, 2)}</pre></section>
   </main>;
 }
 createRoot(document.getElementById("root")!).render(<Preview />);

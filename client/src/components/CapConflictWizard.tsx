@@ -109,7 +109,8 @@ export function CapConflictWizard({ items, title, restoreRequired = false, onRes
       <p className="mb-4 text-xs text-muted-foreground">{item.label}</p>
       <div className="space-y-3" role="group" aria-label="저장할 표현 선택">
         {(["before", "local", "remote"] as const).map(which => {
-          const passage = item.passage?.[which] ?? { text: describe(item[which]), ranges: [] };
+          const text = describe(item[which]);
+          const passage = item.passage?.[which] ?? { text, ranges: [[0, text.length]] as [number, number][] };
           const name = which === "before" ? "수정 전 원문" : which === "local" ? "내 수정" : "다른 편집자 수정";
           const content = <><span className="mb-2 block text-xs text-muted-foreground">{name}</span><ConflictPassage passage={passage} /></>;
           return which === "before" ? <div key={which} className="rounded-lg bg-muted/50 p-3 sm:p-4">{content}</div>
