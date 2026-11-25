@@ -103,7 +103,7 @@ export function mergeText(base: string, local: string, remote: string, location:
     while (end < tokens.length && !boundary(end - 1)) end++;
     while (start > 0 && !validMarkup(tokens.slice(start, end).join(""))) start--;
     while (end < tokens.length && !validMarkup(tokens.slice(start, end).join(""))) end++;
-    const previous = spans.find(s => start < s.end && end > s.start);
+    const previous = spans.find(s => (start < s.end && end > s.start) || (start === s.start && end === s.end));
     if (previous) { previous.start = Math.min(start, previous.start); previous.end = Math.max(end, previous.end); }
     else spans.push({ start, end });
   }
@@ -123,7 +123,7 @@ export function mergeText(base: string, local: string, remote: string, location:
   spans.sort((a, b) => a.start - b.start);
   // Transitive overlaps can arise when a single replacement spans several sentences.
   for (let i = 1; i < spans.length;) {
-    if (spans[i].start < spans[i - 1].end) { spans[i - 1].end = Math.max(spans[i - 1].end, spans[i].end); spans.splice(i, 1); }
+    if (spans[i].start < spans[i - 1].end || (spans[i].start === spans[i - 1].start && spans[i].end === spans[i - 1].end)) { spans[i - 1].end = Math.max(spans[i - 1].end, spans[i].end); spans.splice(i, 1); }
     else i++;
   }
   const conflicts: ValueConflict[] = [], replacements: Edit[] = [];
@@ -162,7 +162,9 @@ const compatible = (a: Json, b: Json) => obj(a) && obj(b) ? (a.type ? a.type ===
 // or moving an unchanged item is deliberately left as a structural conflict.
 function align(base: Json[], side: Json[]): { indices: (number | null)[]; added: number[][] } | null {
   if (base.length === side.length) {
-    if (base.some((v, i) => !eq(v, side[i]) && side.some((x, j) => j !== i && eq(v, x)))) return null;
+    // A repeated/empty label cannot establish that a row moved. Only a unique
+    // anchor changing position is evidence of reordering at unchanged dimensions.
+    if (base.some((v, i) => !eq(v, side[i]) && base.filter(x => eq(v, x)).length === 1 && side.filter(x => eq(v, x)).length === 1 && side.some((x, j) => j !== i && eq(v, x)))) return null;
     return { indices: base.map((_, i) => i), added: Array.from({ length: base.length + 1 }, () => []) };
   }
   if (base.length * side.length > 100_000) return null;

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MARK_BY_KEY } from "@/lib/capitalism-richtext";
 import { CapRichEditor, type CapRichEditorHandle } from "./CapRichEditor";
 import { type Json } from "../../../shared/cap-collaboration";
@@ -10,13 +10,13 @@ export interface ConflictItem extends ValueConflict { label: string }
 export function ConflictPassage({ passage }: { passage: Passage }) {
   const result: ReactNode[] = [];
   const token = /\[\[((?:link:[A-Za-z0-9_-]+)|[a-z-]+)\|([^\]]*)\]\]/g;
-  const append = (text: string, offset: number, mark?: string) => {
+  const append = (text: string, offset: number, mark?: string, markerChanged = false) => {
     const cuts = new Set([0, text.length]);
     for (const [a, b] of passage.ranges) { if (a >= offset && a <= offset + text.length) cuts.add(a - offset); if (b >= offset && b <= offset + text.length) cuts.add(b - offset); }
     const points = [...cuts].sort((a, b) => a - b);
     for (let i = 0; i < points.length - 1; i++) {
       const start = offset + points[i], end = offset + points[i + 1];
-      const changed = passage.ranges.some(([a, b]) => a < end && b > start);
+      const changed = markerChanged || passage.ranges.some(([a, b]) => a < end && b > start);
       const content = text.slice(points[i], points[i + 1]);
       const style = mark ? MARK_BY_KEY[mark]?.style : undefined;
       result.push(changed ? <mark key={`${offset}:${i}`} style={{ ...style, backgroundColor: "#fef08a", color: "#292524", borderRadius: 3, padding: "1px 2px" }}>{content}</mark> : <span key={`${offset}:${i}`} style={style}>{content}</span>);
@@ -25,7 +25,14 @@ export function ConflictPassage({ passage }: { passage: Passage }) {
   let at = 0, match: RegExpExecArray | null;
   while ((match = token.exec(passage.text))) {
     append(passage.text.slice(at, match.index), at);
-    append(match[2], match.index + match[0].indexOf("|") + 1, match[1]);
+    const contentStart = match.index + match[0].indexOf("|") + 1;
+    const contentEnd = contentStart + match[2].length;
+    const markerChanged = passage.ranges.some(([a, b]) => a < match!.index + match![0].length && b > match!.index && (a < contentStart || b > contentEnd));
+    append(match[2], contentStart, match[1], markerChanged);
+    if (match[1].startsWith("link:")) {
+      const target = <span className="ml-1 text-xs">(연결 대상: {match[1].slice(5)})</span>;
+      result.push(markerChanged ? <mark key={`link:${match.index}`} className="rounded bg-yellow-200 text-stone-800">{target}</mark> : <span key={`link:${match.index}`}>{target}</span>);
+    }
     at = match.index + match[0].length;
   }
   append(passage.text.slice(at), at);
@@ -54,15 +61,36 @@ export function CapConflictWizard({ items, title, restoreRequired = false, onRes
   const [manual, setManual] = useState<Record<string, string>>({}), [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [restore, setRestore] = useState(false), [error, setError] = useState(""), [saving, setSaving] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null), editor = useRef<CapRichEditorHandle>(null);
-  const item = items[index], complete = index === items.length;
+  const fingerprint = (item: ConflictItem) => JSON.stringify([item.before, item.local, item.remote]);
+  const signature = JSON.stringify(items.map(item => [item.id, fingerprint(item)]));
+  const tracked = useRef({ signature, items });
+  // Updating an unrelated title/field must not remount the wizard. Reconsider
+  // only passages whose actual three-way inputs changed, retaining other work.
+  useLayoutEffect(() => {
+    if (tracked.current.signature === signature) return;
+    const previous = tracked.current.items;
+    const previousId = previous[index]?.id;
+    const unchanged = new Set(items.filter(item => previous.some(old => old.id === item.id && fingerprint(old) === fingerprint(item))).map(item => item.id));
+    const existing = new Set(items.map(item => item.id));
+    const retained = Object.fromEntries(Object.entries(choices).filter(([id]) => unchanged.has(id)));
+    setChoices(retained);
+    setManual(old => Object.fromEntries(Object.entries(old).filter(([id]) => existing.has(id))));
+    setExpanded(old => Object.fromEntries(Object.entries(old).filter(([id]) => existing.has(id))));
+    const samePosition = items.findIndex(item => item.id === previousId);
+    const unresolved = items.findIndex(item => !retained[item.id]);
+    setIndex(samePosition >= 0 ? samePosition : unresolved >= 0 ? unresolved : items.length);
+    tracked.current = { signature, items };
+  }, [signature]);
+  const position = Math.min(index, items.length);
+  const item = items[position], complete = position === items.length;
   const move = (to: number) => { setIndex(to); setError(""); requestAnimationFrame(() => heading.current?.focus({ preventScroll: true })); };
-  const choose = (choice: Resolution) => { setChoices(old => ({ ...old, [item.id]: choice })); move(index + 1); };
+  const choose = (choice: Resolution) => { setChoices(old => ({ ...old, [item.id]: choice })); move(position + 1); };
   const selected = item && choices[item.id];
   return <section className="rounded-xl border border-amber-300 bg-background p-4 sm:p-5 text-sm" data-testid="collab-conflicts" aria-label="겹친 수정 확인">
     <div className="mb-4 flex items-center justify-between gap-3">
-      <button type="button" className="rounded border px-3 py-1 disabled:opacity-30" disabled={index === 0 || saving} onClick={() => move(index - 1)}>이전</button>
-      <span className="text-xs text-muted-foreground" aria-live="polite">{complete ? `${items.length} / ${items.length} · 선택 완료` : `${index + 1} / ${items.length}`}</span>
-      <button type="button" className="rounded border px-3 py-1 disabled:opacity-30" disabled={complete || !selected || saving} onClick={() => move(index + 1)}>다음</button>
+      <button type="button" className="rounded border px-3 py-1 disabled:opacity-30" disabled={position === 0 || saving} onClick={() => move(position - 1)}>이전</button>
+      <span className="text-xs text-muted-foreground" aria-live="polite">{complete ? `${items.length} / ${items.length} · 선택 완료` : `${position + 1} / ${items.length}`}</span>
+      <button type="button" className="rounded border px-3 py-1 disabled:opacity-30" disabled={complete || !selected || saving} onClick={() => move(position + 1)}>다음</button>
     </div>
     <h3 ref={heading} tabIndex={-1} className="mb-1 font-semibold outline-none">{title}</h3>
     {!complete ? <div key={item.id}>

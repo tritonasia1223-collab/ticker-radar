@@ -4,6 +4,16 @@ import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
 
 describe("three-way passage merge", () => {
+  it("resolves concurrent text in an empty field exactly once", () => {
+    const base = "", local = "내 새 문장", remote = "다른 새 문장";
+    const result = mergeText(base, local, remote, ["text"]);
+    expect(result.conflicts).toHaveLength(1);
+    const id = result.conflicts[0].id;
+    for (const choice of ["local", "remote"] as const) {
+      expect(mergeText(base, local, remote, ["text"], { [id]: choice })).toEqual({ value: choice === "local" ? local : remote, conflicts: [] });
+    }
+    expect(mergeText(base, local, remote, ["text"], { [id]: { text: "합친 문장" } })).toEqual({ value: "합친 문장", conflicts: [] });
+  });
   it("merges the user's independent 경영 / 제한적으로 changes in the same sentence", () => {
     expect(mergeText("기업 운영의 자율성이 확대됐습니다.", "기업 경영의 자율성이 확대됐습니다.", "기업 운영의 자율성이 제한적으로 확대됐습니다.")).toEqual({ value: "기업 경영의 자율성이 제한적으로 확대됐습니다.", conflicts: [] });
   });
@@ -79,6 +89,18 @@ describe("three-way passage merge", () => {
 });
 
 describe("rich field merge", () => {
+  it("merges independent cells when row labels repeat or are empty", () => {
+    for (const label of ["", "동일 항목"]) {
+      const base = { widths: [1, 3], cells: [["항목", "내용"], [label, "A"], [label, "B"]] };
+      const local = structuredClone(base), remote = structuredClone(base);
+      local.cells[1][0] = "미국"; remote.cells[2][1] = "수정 B";
+      for (const [a, b] of [[local, remote], [remote, local]]) {
+        const result = mergeValue(base, a, b, ["table"]);
+        expect(result.conflicts).toEqual([]);
+        expect((result.value as typeof base).cells).toEqual([["항목", "내용"], ["미국", "A"], [label, "수정 B"]]);
+      }
+    }
+  });
   const table = { title: "연도별 상황표", widths: [1, 3, 3], cells: [["연도", "미국", "일본"], ["1969", "수요가 소폭 늘었습니다.", "기존 일본"], ["1970", "기존 미국", "기존 일본"]] };
   it("merges different cells and independent text inside a cell", () => {
     const local = structuredClone(table), remote = structuredClone(table);
