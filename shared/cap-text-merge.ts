@@ -120,17 +120,24 @@ export function mergeText(base: string, local: string, remote: string, location:
       while (s.end < tokens.length && !boundary(s.end - 1)) { s.end++; expanded = true; }
     }
   }
-  spans.sort((a, b) => a.start - b.start);
+  spans.sort((a, b) => a.start - b.start || a.end - b.end);
   // Transitive overlaps can arise when a single replacement spans several sentences.
   for (let i = 1; i < spans.length;) {
-    if (spans[i].start < spans[i - 1].end || (spans[i].start === spans[i - 1].start && spans[i].end === spans[i - 1].end)) { spans[i - 1].end = Math.max(spans[i - 1].end, spans[i].end); spans.splice(i, 1); }
+    if (spans[i].start < spans[i - 1].end || (spans[i].start === spans[i - 1].start && spans[i - 1].start === spans[i - 1].end)) { spans[i - 1].end = Math.max(spans[i - 1].end, spans[i].end); spans.splice(i, 1); }
     else i++;
   }
   const conflicts: ValueConflict[] = [], replacements: Edit[] = [];
-  // A zero-width insertion at the end belongs to its own empty span, when
-  // present, instead of being applied again in the preceding sentence.
-  const covered = (e: Edit, s: { start: number; end: number }) => e.start >= s.start && e.end <= s.end &&
-    (e.start < s.end || s.start === s.end || (s.end === tokens.length && !spans.some(other => other !== s && other.start === e.start)));
+  // Every edit has one owner. In particular a zero-width insertion at either
+  // boundary must never be applied again by an adjacent sentence's choice.
+  const owners = new Map<Edit, { start: number; end: number }>();
+  for (const e of all) {
+    const candidates = spans.filter(s => e.start >= s.start && e.end <= s.end);
+    const owner = e.start === e.end
+      ? candidates.find(s => s.start === s.end) ?? candidates.find(s => e.start < s.end) ?? candidates[0]
+      : candidates[0];
+    if (owner) owners.set(e, owner);
+  }
+  const covered = (e: Edit, s: { start: number; end: number }) => owners.get(e) === s;
   for (const s of spans) {
     const inside = all.filter(e => covered(e, s));
     const safe = inside.filter(e => !clashes.has(e));

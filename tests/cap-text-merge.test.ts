@@ -4,6 +4,32 @@ import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
 
 describe("three-way passage merge", () => {
+  it("preserves either complete candidate across conflicting boundary insertions", () => {
+    const base = "잔액은 20억입니다. 금리는 2%입니다. 수요는 보통입니다.";
+    const positions = [0, ...[...base.matchAll(/\./g)].map(m => m.index! + 1), base.indexOf("금리"), base.indexOf("수요")];
+    for (const at of positions) for (const spacing of ["", " ", "\n"]) {
+      const insert = (name: string) => (base.slice(0, at) + spacing + name + " 추가했습니다!" + spacing + base.slice(at));
+      const local = insert("내 문장을").replace("20억", "25억").replace("2%", "3%");
+      const remote = insert("다른 문장을").replace("20억", "30억").replace("2%", "4%");
+      const parts = mergeText(base, local, remote, ["text"]).conflicts;
+      for (const choice of ["local", "remote"] as const) {
+        const selected = Object.fromEntries(parts.map(part => [part.id, choice]));
+        expect(mergeText(base, local, remote, ["text"], selected).value).toBe(choice === "local" ? local : remote);
+      }
+    }
+  });
+  it("never repeats insertion text at the start boundary of another conflict", () => {
+    const base = "앞 문장입니다. 금리는 20억입니다.";
+    for (const spacing of ["", " ", "\n"]) {
+      const local = `앞 문장입니다.${spacing}새 수요입니다! 금리는 25억입니다.`;
+      const remote = `앞 문장입니다.${spacing}다른 수요입니다! 금리는 30억입니다.`;
+      const parts = mergeText(base, local, remote, ["text"]).conflicts;
+      for (const choice of ["local", "remote"] as const) {
+        const selected = Object.fromEntries(parts.map(part => [part.id, choice]));
+        expect(mergeText(base, local, remote, ["text"], selected)).toEqual({ value: choice === "local" ? local : remote, conflicts: [] });
+      }
+    }
+  });
   it("assigns a conflicting end insertion to exactly one sentence choice", () => {
     const base = "잔액은 20억입니다.", local = "잔액은 25억입니다. 수요도 증가했습니다!", remote = "잔액은 30억입니다. 수요는 감소했습니다!";
     const parts = mergeText(base, local, remote, ["text"]).conflicts;

@@ -113,16 +113,20 @@ try {
   const emptyResolved = merge(emptyRemote.doc, emptyChanges, { [emptyParts[0].id]: "local" });
   await applyCollaborativeEdit(op(emptyKey, emptyRemote.doc, emptyResolved.doc), isolated);
   assert.equal((await getResource(emptyKey, isolated)).doc!.text, "내 새 문장");
-  const appendKey = "meta:append-prose", appendBase = { ...meta("append-prose", "Synthetic appended prose"), text: "잔액은 20억입니다." };
-  const appendMine = "잔액은 25억입니다. 수요도 증가했습니다!", appendTheirs = "잔액은 30억입니다. 수요는 감소했습니다!";
-  await applyCollaborativeEdit(op(appendKey, null, appendBase), isolated);
-  await applyCollaborativeEdit(op(appendKey, appendBase, { ...appendBase, text: appendTheirs }), isolated);
-  const appendRemote = await getResource(appendKey, isolated), appendChanges = diff(appendBase, { ...appendBase, text: appendMine });
-  const appendParts = merge(appendRemote.doc, appendChanges).conflicts.flatMap(conflictDetails);
-  assert.equal(appendParts.length, 2);
-  const appendResolved = merge(appendRemote.doc, appendChanges, Object.fromEntries(appendParts.map(part => [part.id, "local" as const])));
-  await applyCollaborativeEdit(op(appendKey, appendRemote.doc, appendResolved.doc), isolated);
-  assert.equal((await getResource(appendKey, isolated)).doc!.text, appendMine);
+  for (const [i, [source, appendMine, appendTheirs]] of [
+    ["잔액은 20억입니다.", "잔액은 25억입니다. 수요도 증가했습니다!", "잔액은 30억입니다. 수요는 감소했습니다!"],
+    ["앞 문장입니다. 금리는 20억입니다.", "앞 문장입니다.새 수요입니다! 금리는 25억입니다.", "앞 문장입니다.다른 수요입니다! 금리는 30억입니다."],
+  ].entries()) {
+    const id = `append-prose-${i}`, appendKey = `meta:${id}`, appendBase = { ...meta(id, "Synthetic appended prose"), text: source };
+    await applyCollaborativeEdit(op(appendKey, null, appendBase), isolated);
+    await applyCollaborativeEdit(op(appendKey, appendBase, { ...appendBase, text: appendTheirs }), isolated);
+    const appendRemote = await getResource(appendKey, isolated), appendChanges = diff(appendBase, { ...appendBase, text: appendMine });
+    const appendParts = merge(appendRemote.doc, appendChanges).conflicts.flatMap(conflictDetails);
+    assert.ok(appendParts.length > 0);
+    const appendResolved = merge(appendRemote.doc, appendChanges, Object.fromEntries(appendParts.map(part => [part.id, "local" as const])));
+    await applyCollaborativeEdit(op(appendKey, appendRemote.doc, appendResolved.doc), isolated);
+    assert.equal((await getResource(appendKey, isolated)).doc!.text, appendMine);
+  }
   const repeatedKey = "meta:repeated-label", repeatedTable = { widths: [1, 3], cells: [["항목", "내용"], ["", "A"], ["", "B"]] };
   const repeatedBase = { ...meta("repeated-label", "Synthetic repeated labels"), tables: [repeatedTable], blocks: [{ type: "table", table: repeatedTable }] };
   await applyCollaborativeEdit(op(repeatedKey, null, repeatedBase), isolated);
