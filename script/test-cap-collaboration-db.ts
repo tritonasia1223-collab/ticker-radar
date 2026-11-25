@@ -137,6 +137,28 @@ try {
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedMine), isolated);
   assert.deepEqual(((await getResource(repeatedKey, isolated)).doc!.blocks as any[])[0].table.cells, [["항목", "내용"], ["미국", "A"], ["", "수정 B"]]);
   console.log("Testing overlapping rich wrappers preserve unrelated edits");
+  for (const scenario of ["independent-old-request", "manual"] as const) {
+    const id = `legacy-blocks-${scenario}`, resourceKey = `meta:${id}`;
+    const source = { ...meta(id, "Synthetic first block conversion"), text: scenario === "manual" ? "잔액은 20억입니다." : "기업 운영의 자율성이 확대됐습니다." };
+    const convert = (text: string) => ({ ...source, text, blocks: [{ type: "text", text }] });
+    const own = convert(scenario === "manual" ? "잔액은 25억입니다." : "기업 경영의 자율성이 확대됐습니다.");
+    const other = convert(scenario === "manual" ? "잔액은 30억입니다." : "기업 운영의 자율성이 제한적으로 확대됐습니다.");
+    await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
+    await applyCollaborativeEdit(op(resourceKey, source, other), isolated);
+    const latest = await getResource(resourceKey, isolated);
+    const request = op(resourceKey, source, own);
+    if (scenario === "independent-old-request") request.changes = [{ path: ["text"], before: source.text, after: own.text }, { path: ["blocks"], before: null, after: own.blocks }];
+    const parts = merge(latest.doc, request.changes).conflicts.flatMap(conflictDetails);
+    assert.equal(parts.length, scenario === "manual" ? 1 : 0);
+    if (scenario === "manual") {
+      assert.equal(parts[0].before, "잔액은 20억입니다.");
+      const result = merge(latest.doc, request.changes, { [parts[0].id]: { text: "잔액은 28억입니다." } });
+      await applyCollaborativeEdit(op(resourceKey, latest.doc, result.doc), isolated);
+    } else await applyCollaborativeEdit(request, isolated);
+    const stored = (await getResource(resourceKey, isolated)).doc!;
+    assert.equal(stored.text, scenario === "manual" ? "잔액은 28억입니다." : "기업 경영의 자율성이 제한적으로 확대됐습니다.");
+    assert.equal((stored.blocks as any[])[0].text, stored.text);
+  }
   for (const scenario of ["independent", "choice", "manual"] as const) {
     const id = `real-scene-${scenario}`, resourceKey = `meta:${id}`, marker = sceneMarker("12345678-1234-1234-1234-123456789abc");
     const source = { ...meta(id, "Synthetic scene prose"), text: `${marker} 기업 운영입니다. 잔액은 20억입니다.` };

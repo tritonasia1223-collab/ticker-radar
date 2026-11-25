@@ -3,6 +3,7 @@ import { mergeText, mergeValue, validMarkup } from "../shared/cap-text-merge";
 import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
 import { sceneMarker } from "../shared/comparison-scenes";
+import { metaCardToBlocks, blocksToMetaFields } from "../client/src/components/CapBlocks";
 
 describe("three-way passage merge", () => {
   it("preserves actual balance scene markers in independent, chosen and manually written prose", () => {
@@ -170,6 +171,33 @@ describe("three-way passage merge", () => {
 });
 
 describe("rich field merge", () => {
+  it("compares first legacy block conversions against the original body and regenerates mirrors", () => {
+    for (const blocks of [null, []]) {
+      const base = { id: "legacy-test", title: "기존 카드", text: "기업 운영의 자율성이 확대됐습니다.", tables: [], images: [], blocks };
+      const convert = (text: string) => ({ ...base, ...blocksToMetaFields(metaCardToBlocks({ ...base, text } as any)) });
+      const local = convert(base.text.replace("운영", "경영")), remote = convert(base.text.replace("자율성이", "자율성이 제한적으로"));
+      const result = merge(remote, diff(base, local));
+      expect(result.conflicts).toEqual([]);
+      expect(result.doc!.text).toBe("기업 경영의 자율성이 제한적으로 확대됐습니다.");
+      expect((result.doc!.blocks as any[])[0].text).toBe(result.doc!.text);
+      expect(base.blocks).toEqual(blocks);
+      // Older immutable requests retain their actual null baseline and mirrors.
+      const oldChanges = Object.keys(local).filter(key => JSON.stringify(base[key as keyof typeof base]) !== JSON.stringify(local[key as keyof typeof local])).map(key => ({ path: [key], before: base[key as keyof typeof base], after: local[key as keyof typeof local] }));
+      expect(merge(remote, oldChanges).doc).toEqual(result.doc);
+      const legacyRemote = { ...base, text: remote.text };
+      expect(merge(legacyRemote, diff(base, local)).doc).toEqual(result.doc);
+    }
+  });
+  it("shows the actual old sentence during a first block conversion conflict", () => {
+    const base = { id: "legacy-test", title: "기존 카드", text: "잔액은 20억입니다.", tables: [], images: [], blocks: null };
+    const convert = (text: string) => ({ ...base, ...blocksToMetaFields(metaCardToBlocks({ ...base, text } as any)) });
+    const own = convert("잔액은 25억입니다."), remote = convert("잔액은 30억입니다.");
+    const changes = diff(base, own), parts = merge(remote, changes).conflicts.flatMap(c => c.details ?? []);
+    expect(parts).toHaveLength(1); expect(parts[0].before).toBe("잔액은 20억입니다.");
+    const resolved = merge(remote, changes, { [parts[0].id]: { text: "잔액은 28억입니다." } });
+    expect(resolved.conflicts).toEqual([]); expect(resolved.doc!.text).toBe("잔액은 28억입니다.");
+    expect((resolved.doc!.blocks as any[])[0].text).toBe(resolved.doc!.text);
+  });
   it("aligns new blank-heading columns by their existing contents", () => {
     const base = { widths: [1, 1], cells: [["", ""], ["A", "B"]] };
     for (const at of [0, 1, 2]) {

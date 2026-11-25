@@ -14,6 +14,17 @@ export interface ValueMerge { value: Json; conflicts: ValueConflict[] }
 const eq = (a: Json, b: Json): boolean => JSON.stringify(a) === JSON.stringify(b);
 const obj = (v: Json): v is Record<string, Json> => !!v && typeof v === "object" && !Array.isArray(v);
 const prose = new Set(["text", "body", "title", "caption", "ref", "refBlue", "inLabel", "alt"]);
+// Match the editor's first legacy→blocks conversion without mutating stored
+// input. Format migration must not look like deleting the entire old body.
+export function withDerivedBlocks(value: Json): Json {
+  if (!obj(value) || (Array.isArray(value.blocks) && value.blocks.length)) return value;
+  const blocks: Json[] = [];
+  if (typeof value.text === "string" && value.text.trim()) blocks.push({ type: "text", text: value.text });
+  for (const [key, type, field] of [["tables", "table", "table"], ["images", "image", "image"], ["charts", "chart", "chart"]]) {
+    if (Array.isArray(value[key])) for (const item of value[key]) blocks.push({ type, [field]: item });
+  }
+  return { ...value, blocks };
+}
 export function blockMirrors(value: Json): Record<string, Json> | null {
   if (!obj(value) || !Array.isArray(value.blocks)) return null;
   const blocks = value.blocks.filter(obj);
@@ -332,12 +343,18 @@ export function mergeValue(base: Json, local: Json, remote: Json, location: stri
   if (isTable(base) && isTable(local) && isTable(remote)) return mergeTable(base, local, remote, location, choices);
   if (Array.isArray(base) && Array.isArray(local) && Array.isArray(remote)) return mergeArray(base, local, remote, location, choices);
   if (obj(base) && obj(local) && obj(remote)) {
+    if ([base, local, remote].some(v => Array.isArray(v.blocks))) {
+      base = withDerivedBlocks(base) as Record<string, Json>;
+      local = withDerivedBlocks(local) as Record<string, Json>;
+      remote = withDerivedBlocks(remote) as Record<string, Json>;
+    }
     // A change of block kind/identity is structural, not prose.
     if ((base.type && (base.type !== local.type || base.type !== remote.type)) || (base.id && (base.id !== local.id || base.id !== remote.id))) return atomic(base, local, remote, location, choices);
     const value: Record<string, Json> = {}, conflicts: ValueConflict[] = [];
     const mirrors = [blockMirrors(base), blockMirrors(local), blockMirrors(remote)];
+    const sources = [base, local, remote] as Record<string, Json>[];
     for (const key of new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)])) {
-      if (mirrors.every((m, i) => m && key in m && eq([base, local, remote][i][key] ?? null, m[key]))) { value[key] = remote[key]; continue; }
+      if (mirrors.every((m, i) => m && key in m && eq(sources[i][key] ?? null, m[key]))) { value[key] = remote[key]; continue; }
       const result = mergeValue(base[key] ?? null, local[key] ?? null, remote[key] ?? null, [...location, key], choices);
       if (result.value !== null || key in local || key in remote) value[key] = result.value;
       conflicts.push(...result.conflicts);

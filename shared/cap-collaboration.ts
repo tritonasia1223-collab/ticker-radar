@@ -1,6 +1,6 @@
 // Browser and server share comparison rules. Transport paths remain stable field operations;
 // prose and rich fields are compared inside the field without replacing unrelated edits.
-import { blockMirrors, mergeValue, syncBlockMirrors, type Resolution, type ValueConflict } from "./cap-text-merge.js";
+import { blockMirrors, mergeValue, syncBlockMirrors, withDerivedBlocks, type Resolution, type ValueConflict } from "./cap-text-merge.js";
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Document = { [key: string]: Json } | null;
 export interface Change { path: string[]; before: Json; after: Json }
@@ -36,6 +36,7 @@ export function put(doc: Document, path: string[], value: Json): Document {
   return doc;
 }
 export function diff(before: Document, after: Document): Change[] {
+  if (before && after && Array.isArray(after.blocks)) before = withDerivedBlocks(before) as Document;
   if (equal(before, after)) return [];
   if (!before || !after) return [{ path: [], before, after }];
   // Soft deletion/restoration compares the entire record, so it cannot race a field edit.
@@ -88,6 +89,16 @@ export function conflictDetails(c: Conflict): ValueConflict[] {
   return c.details ?? [{ id: JSON.stringify(c.path), location: c.path, before: c.before, local: c.after, remote: c.remote }];
 }
 export function merge(current: Document, changes: Change[], choices: Record<string, Resolution> = {}): { doc: Document; conflicts: Conflict[] } {
+  const blockChange = changes.find(c => c.path.length === 1 && c.path[0] === "blocks" && Array.isArray(c.after));
+  if (current && blockChange) {
+    // Already-open clients may still send blocks.before=null plus the old flat
+    // mirrors. Recover that legacy baseline before discarding duplicate fields.
+    const baseline: Record<string, Json> = { ...copy(current), blocks: blockChange.before };
+    for (const change of changes) if (change.path.length === 1 && ["text", "tables", "images", "charts"].includes(change.path[0])) baseline[change.path[0]] = change.before;
+    const derived = withDerivedBlocks(baseline) as Record<string, Json>;
+    changes = changes.map(c => c === blockChange ? { ...c, before: derived.blocks } : c);
+    current = withDerivedBlocks(current) as Document;
+  }
   changes = withoutMirrors(changes);
   if (current?.deletedAt && changes.some(c => c.path.length)) {
     // A delayed field edit must not be accepted inside a soft-deleted record.

@@ -5,6 +5,7 @@ import { collaboration as engine, collabApi } from "../src/lib/cap-collab-client
 import { CapCollaboration } from "../src/components/CapCollaboration";
 import { CapRichText } from "../src/components/CapRichText";
 import { diff, type Resource } from "../../shared/cap-collaboration";
+import { metaCardToBlocks, blocksToMetaFields } from "../src/components/CapBlocks";
 
 const initial: Resource = await collabApi("resource?key=meta:conflict-preview");
 engine.seed(initial);
@@ -27,6 +28,15 @@ function Preview() {
     else { own.tables[0].widths.push(1); own.tables[0].cells.forEach(row => row.push("")); other.tables[0].cells[1][1] = "B edited"; }
     await send(source, other); engine.edit(base.key, own); await engine.flushAll(); await refresh();
   };
+  const firstBlockScenario = async () => {
+    const latest = await refresh();
+    const source = { ...latest.doc, text: "기업 운영의 자율성이 확대됐습니다.", tables: [], images: [], blocks: null };
+    const send = (before: Resource["doc"], after: Resource["doc"]) => collabApi("edit", { id: crypto.randomUUID(), session: crypto.randomUUID(), editor: "합성 변환 검증", resource: base.key, schemaVersion: 2, changes: diff(before, after) });
+    await send(latest.doc, source); const start = await refresh(); await engine.receive(start);
+    const converted = (text: string) => ({ ...source, ...blocksToMetaFields(metaCardToBlocks({ ...source, text } as any)) });
+    await send(source, converted("기업 운영의 자율성이 제한적으로 확대됐습니다."));
+    engine.edit(base.key, converted("기업 경영의 자율성이 확대됐습니다.")); await engine.flushAll(); await refresh();
+  };
   return <main className="space-y-6" style={{ background: "#f8f7f3", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "32px 24px" }}>
     <header><p className="text-xs text-stone-500">자본주의 경제사 · 협업 저장 미리보기 · 운영 연결 없음</p><h1 className="mt-2 text-2xl font-semibold">겹친 표현만 한 곳씩 확인</h1></header>
     <CapCollaboration resourcePrefix="meta:conflict-preview" />
@@ -44,6 +54,7 @@ function Preview() {
       <button className="border rounded bg-white px-3 py-2" onClick={() => void run(async () => { const next = await refresh(); await engine.receive(next); setBase(next); setMine(String(next.doc!.text)); setOther(String(next.doc!.text)); })}>최신본으로 다음 비교 준비</button>
       <button onClick={() => void run(() => tableScenario(false))}>빈 머리글 표 검증</button>
       <button onClick={() => void run(() => tableScenario(true))}>행 삭제 충돌 검증</button>
+      <button onClick={() => void run(firstBlockScenario)}>최초 블록 전환 검증</button>
     </div></details>
     {message && <p role="alert">{message}</p>}
     <section className="rounded-xl border bg-white p-5"><div className="mb-3 flex justify-between"><h2 className="font-semibold">저장된 내용</h2><button className="text-xs underline" onClick={() => void run(refresh)}>저장 결과 다시 읽기</button></div><p className="text-sm leading-7" data-testid="saved-content"><CapRichText text={String(saved.doc?.text ?? "")} /></p><pre data-testid="saved-tables">{JSON.stringify(saved.doc?.tables, null, 2)}</pre></section>
