@@ -137,6 +137,22 @@ try {
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedMine), isolated);
   assert.deepEqual(((await getResource(repeatedKey, isolated)).doc!.blocks as any[])[0].table.cells, [["항목", "내용"], ["미국", "A"], ["", "수정 B"]]);
   console.log("Testing overlapping rich wrappers preserve unrelated edits");
+  for (const scenario of ["independent", "choice", "manual"] as const) {
+    const id = `real-scene-${scenario}`, resourceKey = `meta:${id}`, marker = sceneMarker("12345678-1234-1234-1234-123456789abc");
+    const source = { ...meta(id, "Synthetic scene prose"), text: `${marker} 기업 운영입니다. 잔액은 20억입니다.` };
+    const own = { ...source, text: scenario === "independent" ? source.text.replace("운영", "경영") : source.text.replace("20억", "25억") };
+    const other = { ...source, text: source.text.replace("20억", scenario === "independent" ? "25억" : "30억") };
+    await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
+    await applyCollaborativeEdit(op(resourceKey, source, other), isolated);
+    const latest = await getResource(resourceKey, isolated), changes = diff(source, own);
+    const parts = merge(latest.doc, changes).conflicts.flatMap(conflictDetails);
+    assert.equal(parts.length, scenario === "independent" ? 0 : 1);
+    const resolutions = Object.fromEntries(parts.map(part => [part.id, scenario === "manual" ? { text: String(part.local).replace("25억", "28억") } : "local" as const]));
+    const result = merge(latest.doc, changes, resolutions);
+    await applyCollaborativeEdit(op(resourceKey, latest.doc, result.doc), isolated);
+    const expected = scenario === "independent" ? source.text.replace("운영", "경영").replace("20억", "25억") : source.text.replace("20억", scenario === "manual" ? "28억" : "25억");
+    assert.equal((await getResource(resourceKey, isolated)).doc!.text, expected);
+  }
   for (const scenario of ["blank-column", "delete-row", "manual-append"]) {
     const id = `review-four-${scenario}`, resourceKey = `meta:${id}`;
     const tb = scenario === "blank-column" ? { widths: [1, 1], cells: [["", ""], ["A", "B"]] } : { widths: [1, 3], cells: [["연도", "내용"], ["1969", "원문"], ["1970", "금리 원문"]] };

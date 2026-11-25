@@ -2,8 +2,26 @@ import { describe, expect, it } from "vitest";
 import { mergeText, mergeValue, validMarkup } from "../shared/cap-text-merge";
 import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
+import { sceneMarker } from "../shared/comparison-scenes";
 
 describe("three-way passage merge", () => {
+  it("preserves actual balance scene markers in independent, chosen and manually written prose", () => {
+    const marker = sceneMarker("12345678-1234-1234-1234-123456789abc");
+    for (const position of ["before", "middle", "after", "inline"]) {
+      const base = `${position === "before" ? marker + "\n" : position === "inline" ? marker + " " : ""}기업 운영입니다.${position === "middle" ? "\n" + marker : ""} 잔액은 20억입니다.${position === "after" ? "\n" + marker : ""}`;
+      expect(validMarkup(base)).toBe(true);
+      const independent = mergeText(base, base.replace("운영", "경영"), base.replace("20억", "25억"), ["text"]);
+      expect(independent).toEqual({ value: base.replace("운영", "경영").replace("20억", "25억"), conflicts: [] });
+      const local = base.replace("20억", "25억"), remote = base.replace("20억", "30억");
+      const parts = mergeText(base, local, remote, ["text"]).conflicts;
+      expect(parts).toHaveLength(1);
+      for (const choice of ["local", "remote"] as const) expect(mergeText(base, local, remote, ["text"], { [parts[0].id]: choice }).value).toBe(choice === "local" ? local : remote);
+      const manual = String(parts[0].local).replace("25억", "28억");
+      const resolved = mergeText(base, local, remote, ["text"], { [parts[0].id]: { text: manual } });
+      expect(resolved).toEqual({ value: base.replace("20억", "28억"), conflicts: [] });
+    }
+    expect(validMarkup(`[[hl-y|${marker}]]`)).toBe(false);
+  });
   it("keeps an independent sentence appended outside a manually resolved sentence", () => {
     const base = "잔액은 20억 달러입니다.", local = base.replace("20억", "25억"), remote = base.replace("20억", "30억") + " 외부 공시를 반영했습니다.";
     for (const [a, b] of [[local, remote], [remote, local]]) {

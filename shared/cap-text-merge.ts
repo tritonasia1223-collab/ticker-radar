@@ -26,7 +26,8 @@ export function syncBlockMirrors(value: Json, source: Json): Json {
   return value;
 }
 // Words and numbers are indivisible: 20→25 and 20→30 must not silently become 35.
-const tokenise = (s: string) => s.match(/\[\[[^|\[\]\n]+\||\]\]|[+-]?\p{N}+(?:[.,:/~-]\p{N}+)*[\p{L}\p{M}]*|[\p{L}\p{M}\p{N}]+|[^]/gu) ?? [];
+const tokenise = (s: string) => s.match(/\[\[balance:[0-9a-f-]{36}\]\]|\[\[[^|\[\]\n]+\||\]\]|[+-]?\p{N}+(?:[.,:/~-]\p{N}+)*[\p{L}\p{M}]*|[\p{L}\p{M}\p{N}]+|[^]/gu) ?? [];
+const isSceneToken = (s: string) => /^\[\[balance:[0-9a-f-]{36}\]\]$/.test(s);
 // When independently added wrappers would nest, compare complete styled words
 // rather than independent opening/closing tags. Every token stays balanced.
 const richPattern = () => /\[\[([^|\[\]\n]+)\|([^\]]*)\]\]/g;
@@ -103,7 +104,7 @@ function apply(tokens: string[], from: number, to: number, changes: Edit[], mark
 // Both source and composed markup must have balanced tokens. This also protects links/scene markers.
 export function validMarkup(s: string): boolean {
   let depth = 0;
-  for (const t of tokenise(s)) { if (t.startsWith("[[")) { if (depth) return false; depth++; } else if (t === "]]" && --depth < 0) return false; }
+  for (const t of tokenise(s)) { if (isSceneToken(t)) { if (depth) return false; continue; } if (t.startsWith("[[")) { if (depth) return false; depth++; } else if (t === "]]" && --depth < 0) return false; }
   return depth === 0;
 }
 function chosen(c: ValueConflict, choices: Record<string, Resolution>): ValueMerge {
@@ -128,7 +129,10 @@ function mergeTextTokens(base: string, local: string, remote: string, location: 
   const tokens = split(base), ours = edits(tokens, split(local), "local"), theirs = edits(tokens, split(remote), "remote");
   const all = [...ours, ...theirs.filter(e => !ours.some(a => identical(a, e)))];
   const clashes = new Set<Edit>();
-  for (const a of ours) for (const b of theirs) if (!identical(a, b) && touches(a, b)) { clashes.add(a); clashes.add(b); }
+  // A newly positioned diagram is anchored to adjacent prose. If that prose
+  // was replaced, ask rather than attaching the diagram to an unrelated text.
+  const sceneAnchor = (a: Edit, b: Edit) => a.start === a.end && /\[\[balance:[0-9a-f-]{36}\]\]/.test(a.text) && b.start !== b.end && b.start <= a.start && b.end >= a.start;
+  for (const a of ours) for (const b of theirs) if (!identical(a, b) && (touches(a, b) || sceneAnchor(a, b) || sceneAnchor(b, a))) { clashes.add(a); clashes.add(b); }
   // Resolve each affected sentence/paragraph as a unit, including all independent changes in it.
   // Sentence boundaries inside markup would split tags; expand to the matching markup boundary.
   const spans: { start: number; end: number }[] = [];
