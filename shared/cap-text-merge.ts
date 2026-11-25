@@ -1,4 +1,4 @@
-import type { Json } from "./cap-collaboration";
+import type { Json } from "./cap-collaboration.js";
 
 export type Resolution = "local" | "remote" | { text: string };
 export interface Passage { text: string; ranges: [number, number][] }

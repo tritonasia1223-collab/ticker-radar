@@ -1,6 +1,6 @@
 // Browser and server share comparison rules. Transport paths remain stable field operations;
 // prose and rich fields are compared inside the field without replacing unrelated edits.
-import { blockMirrors, mergeValue, syncBlockMirrors, type Resolution, type ValueConflict } from "./cap-text-merge";
+import { blockMirrors, mergeValue, syncBlockMirrors, type Resolution, type ValueConflict } from "./cap-text-merge.js";
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Document = { [key: string]: Json } | null;
 export interface Change { path: string[]; before: Json; after: Json }
