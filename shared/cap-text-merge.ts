@@ -27,6 +27,34 @@ export function syncBlockMirrors(value: Json, source: Json): Json {
 }
 // Words and numbers are indivisible: 20→25 and 20→30 must not silently become 35.
 const tokenise = (s: string) => s.match(/\[\[[^|\[\]\n]+\||\]\]|[+-]?\p{N}+(?:[.,:/~-]\p{N}+)*[\p{L}\p{M}]*|[\p{L}\p{M}\p{N}]+|[^]/gu) ?? [];
+// When independently added wrappers would nest, compare complete styled words
+// rather than independent opening/closing tags. Every token stays balanced.
+const richPattern = () => /\[\[([^|\[\]\n]+)\|([^\]]*)\]\]/g;
+function richTokens(s: string): string[] {
+  const result: string[] = []; let at = 0;
+  for (const match of s.matchAll(richPattern())) {
+    result.push(...tokenise(s.slice(at, match.index)));
+    const words = tokenise(match[2]);
+    const inline = /^(?:hl-|c-|link:)/.test(match[1]);
+    result.push(...(inline && words.length ? words.map(word => `[[${match[1]}|${word}]]`) : [match[0]]));
+    at = match.index! + match[0].length;
+  }
+  result.push(...tokenise(s.slice(at))); return result;
+}
+const visibleToken = (s: string) => s.replace(richPattern(), "$2");
+function coalesceRich(s: string): string {
+  let result = "", at = 0, key: string | undefined, content = "";
+  const finish = () => { if (key !== undefined) result += `[[${key}|${content}]]`; key = undefined; content = ""; };
+  for (const match of s.matchAll(richPattern())) {
+    if (match.index! > at) { finish(); result += s.slice(at, match.index); }
+    if (!match[2] || !/^(?:hl-|c-|link:)/.test(match[1])) {
+      finish(); result += match[0]; at = match.index! + match[0].length; continue;
+    }
+    if (key !== match[1]) { finish(); key = match[1]; }
+    content += match[2]; at = match.index! + match[0].length;
+  }
+  finish(); return result + s.slice(at);
+}
 interface Edit { start: number; end: number; text: string; side: "local" | "remote" }
 
 // A bounded LCS keeps work proportional to the changed passage, rather than the whole card.
@@ -87,16 +115,21 @@ function atomic(base: Json, local: Json, remote: Json, location: string[], choic
   return chosen({ id: JSON.stringify(location), location, before: base, local, remote }, choices);
 }
 export function mergeText(base: string, local: string, remote: string, location: string[] = [], choices: Record<string, Resolution> = {}): ValueMerge {
+  return mergeTextTokens(base, local, remote, location, choices, false);
+}
+function mergeTextTokens(base: string, local: string, remote: string, location: string[], choices: Record<string, Resolution>, rich: boolean): ValueMerge {
   if (local === remote || base === remote) return { value: local, conflicts: [] };
   if (base === local) return { value: remote, conflicts: [] };
-  const tokens = tokenise(base), ours = edits(tokens, tokenise(local), "local"), theirs = edits(tokens, tokenise(remote), "remote");
+  const split = rich ? richTokens : tokenise;
+  const tokens = split(base), ours = edits(tokens, split(local), "local"), theirs = edits(tokens, split(remote), "remote");
   const all = [...ours, ...theirs.filter(e => !ours.some(a => identical(a, e)))];
   const clashes = new Set<Edit>();
   for (const a of ours) for (const b of theirs) if (!identical(a, b) && touches(a, b)) { clashes.add(a); clashes.add(b); }
   // Resolve each affected sentence/paragraph as a unit, including all independent changes in it.
   // Sentence boundaries inside markup would split tags; expand to the matching markup boundary.
   const spans: { start: number; end: number }[] = [];
-  const boundary = (i: number) => /^[.!?。！？\n]$/u.test(tokens[i] ?? "") && (i + 1 === tokens.length || /\s/u.test(tokens[i + 1]));
+  const plainToken = (i: number) => rich ? visibleToken(tokens[i] ?? "") : tokens[i] ?? "";
+  const boundary = (i: number) => /^[.!?。！？\n]$/u.test(plainToken(i)) && (i + 1 === tokens.length || /\s/u.test(plainToken(i + 1)));
   for (const e of clashes) {
     let start = e.start, end = e.end;
     while (start > 0 && !boundary(start - 1)) start--;
@@ -163,10 +196,11 @@ export function mergeText(base: string, local: string, remote: string, location:
   }
   const output = apply(tokens, 0, tokens.length, [...all.filter(e => !spans.some(s => covered(e, s))), ...replacements], new Set()).text;
   if (![base, local, remote, output].every(validMarkup)) {
+    if (!rich && [base, local, remote].every(validMarkup)) return mergeTextTokens(base, local, remote, location, choices, true);
     const full = (text: string): Passage => ({ text, ranges: [[0, text.length]] });
     return chosen({ id: `${JSON.stringify(location)}@markup`, location, before: base, local, remote, passage: { before: full(base), local: full(local), remote: full(remote) } }, choices);
   }
-  return { value: output, conflicts };
+  return { value: rich ? coalesceRich(output) : output, conflicts };
 }
 
 const compatible = (a: Json, b: Json) => obj(a) && obj(b) ? (a.type ? a.type === b.type : true) : typeof a === typeof b && !Array.isArray(a) && !Array.isArray(b);

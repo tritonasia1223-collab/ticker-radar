@@ -136,6 +136,23 @@ try {
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedOther), isolated);
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedMine), isolated);
   assert.deepEqual(((await getResource(repeatedKey, isolated)).doc!.blocks as any[])[0].table.cells, [["항목", "내용"], ["미국", "A"], ["", "수정 B"]]);
+  console.log("Testing overlapping rich wrappers preserve unrelated edits");
+  for (const choice of ["local", "remote"] as const) {
+    const id = `rich-prose-${choice}`, richKey = `meta:${id}`;
+    const richBase = { ...meta(id, "Synthetic rich prose"), text: "기업 운영입니다. 잔액은 20억입니다." };
+    const richMine = "[[hl-y|기업 운영입니다]]. 잔액은 25억입니다.";
+    const richTheirs = "기업 [[c-r|운영입니다]]. 잔액은 20억입니다. 추가 공시입니다.";
+    await applyCollaborativeEdit(op(richKey, null, richBase), isolated);
+    await applyCollaborativeEdit(op(richKey, richBase, { ...richBase, text: richTheirs }), isolated);
+    const richRemote = await getResource(richKey, isolated), richChanges = diff(richBase, { ...richBase, text: richMine });
+    const richParts = merge(richRemote.doc, richChanges).conflicts.flatMap(conflictDetails);
+    assert.equal(richParts.length, 1);
+    const richResolved = merge(richRemote.doc, richChanges, { [richParts[0].id]: choice });
+    await applyCollaborativeEdit(op(richKey, richRemote.doc, richResolved.doc), isolated);
+    const text = String((await getResource(richKey, isolated)).doc!.text);
+    assert.ok(text.includes("25억") && text.includes("추가 공시입니다."));
+    assert.ok(text.includes(choice === "local" ? "[[hl-y|기업 운영입니다]]" : "[[c-r|운영입니다]]"));
+  }
   // Comparison placements have independent records, preserve source cards, and retain tombstones.
   const plot = { flowSlug: "synthetic", nodeKey: "a", title: "Policy", date: null, endDate: null, sortOrder: 1 };
   await Promise.all([applyCollaborativeEdit(op("plot:one", null, plot), isolated), applyCollaborativeEdit(op("plot:two", null, { ...plot, nodeKey: "b" }), isolated)]);

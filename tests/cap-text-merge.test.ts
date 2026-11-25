@@ -4,6 +4,24 @@ import { merge, diff } from "../shared/cap-collaboration";
 import { conflictContext } from "../client/src/lib/cap-conflict-context";
 
 describe("three-way passage merge", () => {
+  it("keeps unrelated prose and opaque markers when overlapping wrappers require a style choice", () => {
+    for (const suffix of ["", " [[scene:diagram|]][[scene:diagram|]]"]) {
+      const base = "기업 운영입니다. 잔액은 20억입니다." + suffix;
+      const local = "[[hl-y|기업 운영입니다]]. 잔액은 25억입니다." + suffix;
+      const remote = "기업 [[c-r|운영입니다]]. 잔액은 20억입니다." + suffix + " 추가 공시입니다.";
+      const parts = mergeText(base, local, remote, ["text"]).conflicts;
+      expect(parts).toHaveLength(1);
+      for (const choice of ["local", "remote"] as const) {
+        const result = mergeText(base, local, remote, ["text"], { [parts[0].id]: choice });
+        expect(result.conflicts).toEqual([]);
+        expect(result.value).toContain("25억");
+        expect(result.value).toContain("추가 공시입니다.");
+        expect(validMarkup(result.value as string)).toBe(true);
+        expect(result.value).toContain(choice === "local" ? "[[hl-y|기업 운영입니다]]" : "[[c-r|운영입니다]]");
+        if (suffix) expect(result.value).toContain(suffix);
+      }
+    }
+  });
   it("preserves either complete candidate across conflicting boundary insertions", () => {
     const base = "잔액은 20억입니다. 금리는 2%입니다. 수요는 보통입니다.";
     const positions = [0, ...[...base.matchAll(/\./g)].map(m => m.index! + 1), base.indexOf("금리"), base.indexOf("수요")];

@@ -10,6 +10,7 @@ export interface ConflictItem extends ValueConflict { label: string }
 // Convert raw marker offsets to visible spans without exposing marker syntax or changing saved text.
 export function ConflictPassage({ passage }: { passage: Passage }) {
   const result: ReactNode[] = [];
+  const shownFormats = new Set<string>();
   const token = /\[\[((?:link:[A-Za-z0-9_-]+)|[a-z-]+)\|([^\]]*)\]\]/g;
   const append = (text: string, offset: number, mark?: string, markerChanged = false) => {
     const cuts = new Set([0, text.length]);
@@ -20,7 +21,7 @@ export function ConflictPassage({ passage }: { passage: Passage }) {
       const changed = markerChanged || passage.ranges.some(([a, b]) => a < end && b > start);
       const content = text.slice(points[i], points[i + 1]);
       const style = mark ? MARK_BY_KEY[mark]?.style : undefined;
-      result.push(changed ? <mark key={`${offset}:${i}`} style={{ ...style, backgroundColor: "#fef08a", color: "#292524", borderRadius: 3, padding: "1px 2px" }}>{content}</mark> : <span key={`${offset}:${i}`} style={style}>{content}</span>);
+      result.push(changed ? <mark key={`${offset}:${i}`} style={{ ...style, backgroundColor: "#fef08a", color: style?.color ?? "#292524", borderRadius: 3, padding: "1px 2px" }}>{content}</mark> : <span key={`${offset}:${i}`} style={style}>{content}</span>);
     }
   };
   let at = 0, match: RegExpExecArray | null;
@@ -30,6 +31,10 @@ export function ConflictPassage({ passage }: { passage: Passage }) {
     const contentEnd = contentStart + match[2].length;
     const markerChanged = passage.ranges.some(([a, b]) => a < match!.index + match![0].length && b > match!.index && (a < contentStart || b > contentEnd));
     append(match[2], contentStart, match[1], markerChanged);
+    if (markerChanged && MARK_BY_KEY[match[1]] && !shownFormats.has(match[1])) {
+      shownFormats.add(match[1]);
+      result.push(<span key={`format:${match.index}`} className="ml-1 text-xs text-stone-600">({MARK_BY_KEY[match[1]].label})</span>);
+    }
     if (match[1].startsWith("link:")) {
       const target = <span className="ml-1 text-xs">(연결 대상: {match[1].slice(5)})</span>;
       result.push(markerChanged ? <mark key={`link:${match.index}`} className="rounded bg-yellow-200 text-stone-800">{target}</mark> : <span key={`link:${match.index}`}>{target}</span>);
@@ -88,6 +93,7 @@ export function CapConflictWizard({ items, title, restoreRequired = false, onRes
   const move = (to: number) => { setIndex(to); setError(""); requestAnimationFrame(() => heading.current?.focus({ preventScroll: true })); };
   const choose = (choice: Resolution) => { setChoices(old => ({ ...old, [item.id]: choice })); move(position + 1); };
   const selected = item && choices[item.id];
+  const previousWriting = Object.entries(manual).filter(([id, text]) => !items.some(item => item.id === id) && text.trim());
   return <section className="rounded-xl border border-amber-300 bg-background p-4 sm:p-5 text-sm" data-testid="collab-conflicts" aria-label="겹친 수정 확인">
     <div className="mb-4 flex items-center justify-between gap-3">
       <button type="button" className="rounded border px-3 py-1 disabled:opacity-30" disabled={position === 0 || saving} onClick={() => move(position - 1)}>이전</button>
@@ -95,6 +101,10 @@ export function CapConflictWizard({ items, title, restoreRequired = false, onRes
       <button type="button" className="rounded border px-3 py-1 disabled:opacity-30" disabled={complete || !selected || saving} onClick={() => move(position + 1)}>다음</button>
     </div>
     <h3 ref={heading} tabIndex={-1} className="mb-1 font-semibold outline-none">{title}</h3>
+    {!!previousWriting.length && <details className="my-3 rounded border p-3"><summary>이전 직접 작성본</summary>
+      <p className="my-2 text-xs text-muted-foreground">비교 구간이 달라져 자동으로 적용하지 않았습니다.</p>
+      {previousWriting.map(([id, text]) => <p key={id} className="mt-2"><ConflictPassage passage={{ text, ranges: [] }} /></p>)}
+    </details>}
     {!complete ? <div key={item.id}>
       <p className="mb-4 text-xs text-muted-foreground">{item.label}</p>
       <div className="space-y-3" role="group" aria-label="저장할 표현 선택">

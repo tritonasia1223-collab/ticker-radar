@@ -81,6 +81,14 @@ function harness(initial: Document = doc()) {
 }
 afterEach(() => vi.useRealTimers());
 describe("passage choices through the durable engine", () => {
+  it("keeps an older manual draft when a newer comparison changes the passage identifier", () => {
+    const part = { id: '["text"]@0:4', location: ["text"], before: "원문", local: "내 수정", remote: "다른 수정" };
+    const olderId = '["text"]@markup';
+    const restored = restoreConflictProgress([part], { signatures: { [olderId]: "older comparison" }, choices: { [olderId]: { text: "직접 쓴 문장" } }, manual: { [olderId]: "직접 쓴 문장" }, expanded: {}, cursor: olderId });
+    expect(restored.manual[olderId]).toBe("직접 쓴 문장");
+    expect(restored.choices).toEqual({});
+    expect(restored.cursor).toBe(part.id);
+  });
   it("journals manual resolutions and resumes after reload, rechecking changed server inputs", async () => {
     for (const changed of [false, true]) {
       const base = "수요는 소폭 늘었습니다. 잔액은 20억입니다.";

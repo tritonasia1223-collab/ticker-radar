@@ -15,7 +15,9 @@ export const passageSignature = (item: ValueConflict) => JSON.stringify([item.be
 export function restoreConflictProgress(items: ValueConflict[], stored?: ConflictProgress): ConflictProgress {
   const signatures = Object.fromEntries(items.map(item => [item.id, passageSignature(item)]));
   const choices = Object.fromEntries(Object.entries(stored?.choices ?? {}).filter(([id]) => signatures[id] && stored?.signatures[id] === signatures[id]));
-  const manual = Object.fromEntries(Object.entries(stored?.manual ?? {}).filter(([id]) => id in signatures));
+  // Keep older writing even if a newer comparison splits/joins the passage.
+  // Such writing is shown separately and is never automatically selected.
+  const manual = { ...stored?.manual };
   const expanded = Object.fromEntries(Object.entries(stored?.expanded ?? {}).filter(([id]) => id in signatures));
   const invalidated = Object.keys(stored?.choices ?? {}).some(id => !(id in choices));
   const cursor = !invalidated && stored?.cursor && stored.cursor in signatures ? stored.cursor
