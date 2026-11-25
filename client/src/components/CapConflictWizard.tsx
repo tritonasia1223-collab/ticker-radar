@@ -113,7 +113,7 @@ export function CapConflictWizard({ items, title, restoreRequired = false, onRes
           const passage = item.passage?.[which] ?? { text, ranges: [[0, text.length]] as [number, number][] };
           const name = which === "before" ? "수정 전 원문" : which === "local" ? "내 수정" : "다른 편집자 수정";
           const content = <><span className="mb-2 block text-xs text-muted-foreground">{name}</span><ConflictPassage passage={passage} /></>;
-          return which === "before" ? <div key={which} className="rounded-lg bg-muted/50 p-3 sm:p-4">{content}</div>
+          return which === "before" || (which === "local" && item.localRequiresManual) ? <div key={which} className="rounded-lg bg-muted/50 p-3 sm:p-4">{content}{which === "local" && <p className="mt-2 text-xs text-amber-700">문단 경계를 유지해 아래에서 직접 작성해 주세요.</p>}</div>
             : <button type="button" key={which} className={`w-full rounded-lg border p-3 sm:p-4 text-left leading-7 hover:border-amber-500 focus-visible:outline-amber-500 ${selected === which ? "border-amber-500 bg-amber-50/40 dark:bg-amber-950/20" : "border-border"}`} aria-pressed={selected === which} onClick={() => choose(which)}>{content}</button>;
         })}
       </div>

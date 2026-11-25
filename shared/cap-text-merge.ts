@@ -9,6 +9,7 @@ export interface ValueConflict {
   local: Json;
   remote: Json;
   passage?: { before: Passage; local: Passage; remote: Passage };
+  localRequiresManual?: boolean;
 }
 export interface ValueMerge { value: Json; conflicts: ValueConflict[] }
 const eq = (a: Json, b: Json): boolean => JSON.stringify(a) === JSON.stringify(b);
@@ -111,6 +112,60 @@ function apply(tokens: string[], from: number, to: number, changes: Edit[], mark
     at = e.end;
   }
   text += tokens.slice(at, to).join(""); return { text, ranges };
+}
+// Older clients know the joined mirror only. Apply their composed edits inside
+// the existing text blocks when no edit crosses a structural boundary.
+export function projectBlockText(value: Json, text: string): Json | null {
+  if (!obj(value) || !Array.isArray(value.blocks)) return null;
+  const blocks = value.blocks.map(block => obj(block) ? { ...block } : block);
+  const spans: { block: number; start: number; end: number; text: string }[] = [];
+  let offset = 0;
+  blocks.forEach((block, index) => {
+    if (!obj(block) || block.type !== "text" || typeof block.text !== "string") return;
+    if (spans.length) offset++;
+    spans.push({ block: index, start: offset, end: offset + block.text.length, text: block.text }); offset += block.text.length;
+  });
+  if (!spans.length) return null;
+  const source = spans.map(span => span.text).join("\n"), tokens = tokenise(source);
+  const offsets = [0]; for (const token of tokens) offsets.push(offsets.at(-1)! + token.length);
+  const pending = new Map<number, { start: number; end: number; text: string }[]>();
+  for (const edit of edits(tokens, tokenise(text), "local")) {
+    const start = offsets[edit.start], end = offsets[edit.end];
+    const span = spans.find(span => start >= span.start && end <= span.end);
+    if (!span) return null;
+    const list = pending.get(span.block) ?? []; list.push({ start: start - span.start, end: end - span.start, text: edit.text }); pending.set(span.block, list);
+  }
+  for (const span of spans) {
+    let next = span.text;
+    for (const edit of (pending.get(span.block) ?? []).sort((a, b) => b.start - a.start || b.end - a.end)) next = next.slice(0, edit.start) + edit.text + next.slice(edit.end);
+    if (!validMarkup(next)) return null;
+    (blocks[span.block] as Record<string, Json>).text = next;
+  }
+  const result = { ...value, blocks, text };
+  return blockMirrors(result)?.text === text ? result : null;
+}
+export function projectBlockMirror(value: Json, key: string, next: Json, explicit = false): Json | null {
+  if (key === "text") return typeof next === "string" ? projectBlockText(value, next) : null;
+  if (!obj(value) || !Array.isArray(value.blocks) || !Array.isArray(next)) return null;
+  const type = ({ tables: "table", images: "image", charts: "chart" } as Record<string, string>)[key];
+  if (!type) return null;
+  const entries = value.blocks.filter(b => obj(b) && b.type === type) as Record<string, Json>[];
+  const alignment = align(entries.map(b => b[type]), next);
+  if (!alignment && !explicit) return null;
+  const blocks: Json[] = []; let at = 0;
+  for (const block of value.blocks) {
+    if (!obj(block) || block.type !== type) { blocks.push(block); continue; }
+    if (alignment) {
+      for (const added of alignment.added[at]) blocks.push({ type, [type]: next[added] });
+      const mapped = alignment.indices[at]; if (mapped !== null) blocks.push({ ...block, [type]: next[mapped] });
+    } else if (at < next.length) blocks.push({ ...block, [type]: next[at] });
+    at++;
+    if (at === entries.length) {
+      for (const added of alignment ? alignment.added[at] : next.map((_, i) => i).slice(at)) blocks.push({ type, [type]: next[added] });
+    }
+  }
+  if (!entries.length) for (const item of next) blocks.push({ type, [type]: item });
+  return { ...value, blocks, [key]: next };
 }
 // Both source and composed markup must have balanced tokens. This also protects links/scene markers.
 export function validMarkup(s: string): boolean {

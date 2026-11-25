@@ -1,5 +1,5 @@
 import { copy, diff, equal, merge, put, read, conflictDetails, type Change, type Conflict, type Document, type EditRequest, type EditResult, type Resource } from "../../../shared/cap-collaboration";
-import { mergeValue, syncBlockMirrors, type Resolution } from "../../../shared/cap-text-merge";
+import { syncBlockMirrors, type Resolution } from "../../../shared/cap-text-merge";
 import type { ConflictProgress } from "./cap-conflict-progress";
 
 export interface Draft {
@@ -179,28 +179,22 @@ export class CollaborationEngine {
       if (choice !== "remote" && !restoreDeleted && part.before !== null && part.local !== null && (part.remote === null || (!c.path.length && remote.doc?.deletedAt)))
         throw new Error("삭제된 항목의 내 내용을 쓰려면 ‘삭제된 카드·칸의 내 내용 복원’을 선택하세요.");
     }
-    let desired = copy(remote.doc);
+    const selections = { ...choices };
+    for (const c of currentConflicts) for (const part of c.details ?? []) selections[part.id] ??= choices[JSON.stringify(c.path)];
+    const resolved = merge(remote.doc, changes, selections);
+    if (resolved.conflicts.some(c => c.details?.length)) throw new Error("변경된 문장을 다시 확인해 주세요.");
+    let desired = resolved.doc;
     const whole = currentConflicts.find(c => c.path.length === 0);
     if (whole) desired = choices["[]"] === "local" ? copy(whole.after) as Document : copy(remote.doc);
     else if (!desired && restoreDeleted) desired = copy(draft.desired);
     else {
-      for (const c of changes) {
-        const actual = currentConflicts.find(x => equal(x.path, c.path)), conflict = !!actual;
-        if (actual?.details) {
-          const selections = { ...choices };
-          for (const part of actual.details) selections[part.id] ??= choices[JSON.stringify(c.path)];
-          const resolved = mergeValue(c.before, c.after, read(remote.doc, c.path), c.path, selections);
-          if (resolved.conflicts.length) throw new Error("변경된 문장을 다시 확인해 주세요.");
-          desired = put(desired, c.path, resolved.value); continue;
-        }
-        if (conflict && choices[JSON.stringify(c.path)] !== "local") continue;
+      for (const c of resolved.conflicts) {
+        if (choices[JSON.stringify(c.path)] !== "local") continue;
         if (c.path.length > 2 && read(desired, c.path.slice(0, -1)) === null) {
           if (!restoreDeleted) throw new Error("삭제된 칸의 내 내용을 쓰려면 ‘삭제된 항목 복원’을 선택하세요.");
           desired = put(desired, c.path.slice(0, -1), read(draft.desired, c.path.slice(0, -1)));
         }
-        const result = merge(desired, [{ ...c, before: conflict ? read(desired, c.path) : c.before }]);
-        if (result.conflicts.length) throw new Error("변경을 다시 비교해야 합니다.");
-        desired = result.doc;
+        desired = put(desired, c.path, c.after);
       }
     }
     // A rejected node deletion must remain in order; a restored node needs an order entry.

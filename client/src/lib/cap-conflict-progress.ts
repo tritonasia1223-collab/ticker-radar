@@ -14,7 +14,7 @@ export const passageSignature = (item: ValueConflict) => JSON.stringify([item.be
 // but the user must explicitly select it again before it can be saved.
 export function restoreConflictProgress(items: ValueConflict[], stored?: ConflictProgress): ConflictProgress {
   const signatures = Object.fromEntries(items.map(item => [item.id, passageSignature(item)]));
-  const choices = Object.fromEntries(Object.entries(stored?.choices ?? {}).filter(([id]) => signatures[id] && stored?.signatures[id] === signatures[id]));
+  const choices = Object.fromEntries(Object.entries(stored?.choices ?? {}).filter(([id, choice]) => signatures[id] && stored?.signatures[id] === signatures[id] && !(choice === "local" && items.find(item => item.id === id)?.localRequiresManual)));
   // Keep older writing even if a newer comparison splits/joins the passage.
   // Such writing is shown separately and is never automatically selected.
   const manual = { ...stored?.manual };

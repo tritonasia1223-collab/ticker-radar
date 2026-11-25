@@ -8,6 +8,7 @@ import { applyCollaborativeEdit, getResource, CollaborationConflict, initializeI
 import { diff, flowDocument, copy, merge, conflictDetails, type Document, type EditRequest } from "../shared/cap-collaboration.js";
 import { insightForClient, InsightUpgradeRequired } from "../shared/comparison-compat.js";
 import { sceneMarker } from "../shared/comparison-scenes.js";
+import { CollaborationEngine, RemoteConflict } from "../client/src/lib/cap-collab-engine.js";
 const schema = `cap_collab_test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 if (!/^cap_collab_test_\d+_[a-z0-9]+$/.test(schema)) throw new Error("Unsafe test schema");
 const client = postgres(process.env.DATABASE_URL!, { prepare: false, max: 3, idle_timeout: 5, connect_timeout: 20 });
@@ -137,17 +138,54 @@ try {
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedMine), isolated);
   assert.deepEqual(((await getResource(repeatedKey, isolated)).doc!.blocks as any[])[0].table.cells, [["항목", "내용"], ["미국", "A"], ["", "수정 B"]]);
   console.log("Testing overlapping rich wrappers preserve unrelated edits");
-  for (const scenario of ["independent-old-request", "manual"] as const) {
+  {
+    const id = "old-plain-after-blocks", resourceKey = `meta:${id}`, text = "기업 운영은 소폭 늘었습니다.";
+    const source = { ...meta(id, "Synthetic old plaintext"), text };
+    const modernText = text.replace("소폭", "크게");
+    const modern = { ...source, text: modernText, blocks: [{ type: "text", text: modernText }] };
+    await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
+    await applyCollaborativeEdit(op(resourceKey, source, modern), isolated);
+    await applyCollaborativeEdit(op(resourceKey, source, { ...source, text: text.replace("운영", "경영") }), isolated);
+    const stored = (await getResource(resourceKey, isolated)).doc!;
+    assert.equal(stored.text, "기업 경영은 크게 늘었습니다."); assert.equal((stored.blocks as any[])[0].text, stored.text);
+    const next = copy(stored); (next.blocks as any[])[0].text += " 후속 저장입니다."; next.text = (next.blocks as any[])[0].text;
+    await applyCollaborativeEdit(op(resourceKey, stored, next), isolated);
+    assert.equal((await getResource(resourceKey, isolated)).doc!.text, "기업 경영은 크게 늘었습니다. 후속 저장입니다.");
+  }
+  for (const choice of ["local", "remote"] as const) {
+    const id = `mixed-engine-${choice}`, resourceKey = `meta:${id}`, text = "기업 운영은 소폭 늘었습니다.";
+    const source = { ...meta(id, "Synthetic mixed format conflict"), text };
+    await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
+    const initial = await getResource(resourceKey, isolated);
+    const transport = { read: (key: string) => getResource(key, isolated), send: async (request: EditRequest) => {
+      try { return await applyCollaborativeEdit(request, isolated); }
+      catch (error) { if (error instanceof CollaborationConflict) throw new RemoteConflict(error.current, error.conflicts); throw error; }
+    } };
+    const engine = new CollaborationEngine(crypto.randomUUID(), "Synthetic mixed editor", transport, { all: async () => [], put: async () => {}, remove: async () => {} }, () => {}, 100000);
+    engine.seed(initial);
+    const ownText = "기업 경영은 크게 늘었습니다.";
+    engine.edit(resourceKey, { ...source, text: ownText, blocks: [{ type: "text", text: ownText }] });
+    await applyCollaborativeEdit(op(resourceKey, source, { ...source, text: "기업 운영은 조금 늘었습니다." }), isolated);
+    await engine.flushAll();
+    const parts = engine.drafts.get(resourceKey)!.conflicts!.flatMap(conflictDetails); assert.equal(parts.length, 1);
+    engine.resolve(resourceKey, { [parts[0].id]: choice }); await engine.flushAll();
+    assert.equal(engine.drafts.size, 0);
+    const stored = (await getResource(resourceKey, isolated)).doc!;
+    assert.equal(stored.text, `기업 경영은 ${choice === "local" ? "크게" : "조금"} 늘었습니다.`);
+    assert.equal((stored.blocks as any[])[0].text, stored.text);
+  }
+  for (const scenario of ["independent-old-request", "table-old-request", "manual"] as const) {
     const id = `legacy-blocks-${scenario}`, resourceKey = `meta:${id}`;
-    const source = { ...meta(id, "Synthetic first block conversion"), text: scenario === "manual" ? "잔액은 20억입니다." : "기업 운영의 자율성이 확대됐습니다." };
-    const convert = (text: string) => ({ ...source, text, blocks: [{ type: "text", text }] });
-    const own = convert(scenario === "manual" ? "잔액은 25억입니다." : "기업 경영의 자율성이 확대됐습니다.");
+    const source = { ...meta(id, "Synthetic first block conversion"), text: scenario === "manual" ? "잔액은 20억입니다." : "기업 운영의 자율성이 확대됐습니다.", tables: scenario === "table-old-request" ? [{ widths: [1], cells: [["A"]] }] : [] };
+    const convert = (text: string, tables = source.tables) => ({ ...source, text, tables, blocks: [{ type: "text", text }, ...tables.map(table => ({ type: "table", table }))] });
+    const own = convert(scenario === "manual" ? "잔액은 25억입니다." : scenario === "table-old-request" ? source.text : "기업 경영의 자율성이 확대됐습니다.", scenario === "table-old-request" ? [{ widths: [1], cells: [["B"]] }] : source.tables);
     const other = convert(scenario === "manual" ? "잔액은 30억입니다." : "기업 운영의 자율성이 제한적으로 확대됐습니다.");
     await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
     await applyCollaborativeEdit(op(resourceKey, source, other), isolated);
     const latest = await getResource(resourceKey, isolated);
     const request = op(resourceKey, source, own);
     if (scenario === "independent-old-request") request.changes = [{ path: ["text"], before: source.text, after: own.text }, { path: ["blocks"], before: null, after: own.blocks }];
+    if (scenario === "table-old-request") request.changes = [{ path: ["tables"], before: source.tables, after: own.tables }, { path: ["blocks"], before: null, after: own.blocks }];
     const parts = merge(latest.doc, request.changes).conflicts.flatMap(conflictDetails);
     assert.equal(parts.length, scenario === "manual" ? 1 : 0);
     if (scenario === "manual") {
@@ -156,8 +194,9 @@ try {
       await applyCollaborativeEdit(op(resourceKey, latest.doc, result.doc), isolated);
     } else await applyCollaborativeEdit(request, isolated);
     const stored = (await getResource(resourceKey, isolated)).doc!;
-    assert.equal(stored.text, scenario === "manual" ? "잔액은 28억입니다." : "기업 경영의 자율성이 제한적으로 확대됐습니다.");
+    assert.equal(stored.text, scenario === "manual" ? "잔액은 28억입니다." : scenario === "table-old-request" ? "기업 운영의 자율성이 제한적으로 확대됐습니다." : "기업 경영의 자율성이 제한적으로 확대됐습니다.");
     assert.equal((stored.blocks as any[])[0].text, stored.text);
+    if (scenario === "table-old-request") assert.deepEqual(stored.tables, [{ widths: [1], cells: [["B"]] }]);
   }
   for (const scenario of ["independent", "choice", "manual"] as const) {
     const id = `real-scene-${scenario}`, resourceKey = `meta:${id}`, marker = sceneMarker("12345678-1234-1234-1234-123456789abc");

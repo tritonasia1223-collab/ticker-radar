@@ -171,6 +171,34 @@ describe("three-way passage merge", () => {
 });
 
 describe("rich field merge", () => {
+  it("projects legacy text edits into multiple blocks without moving interleaved media", () => {
+    const first = "기업 운영은 소폭 늘었습니다.", second = "잔액은 20억입니다.";
+    const table = { widths: [1], cells: [["보존"]] };
+    const current = { text: first + "\n" + second.replace("20억", "25억"), blocks: [{ type: "text", text: first }, { type: "table", table }, { type: "text", text: second.replace("20억", "25억") }] };
+    const result = merge(current, [{ path: ["text"], before: first + "\n" + second, after: first.replace("운영", "경영") + "\n" + second }]);
+    expect(result.conflicts).toEqual([]);
+    expect(result.doc!.text).toBe(first.replace("운영", "경영") + "\n" + second.replace("20억", "25억"));
+    expect((result.doc!.blocks as any[])[1]).toEqual({ type: "table", table });
+    expect((result.doc!.blocks as any[])[0].text).toBe(first.replace("운영", "경영"));
+    const ambiguous = merge(current, [{ path: ["text"], before: current.text, after: "본문 전체 교체" }]);
+    expect(ambiguous.conflicts).toHaveLength(1);
+    expect(ambiguous.doc).toEqual(current);
+    const layout = ambiguous.conflicts[0].details![0];
+    expect(layout.localRequiresManual).toBe(true);
+    expect(merge(current, [{ path: ["text"], before: current.text, after: "본문 전체 교체" }], { [layout.id]: "remote" }).doc).toEqual(current);
+    const manual = first.replace("운영", "경영") + "\n" + second.replace("20억", "25억");
+    const checked = merge(current, [{ path: ["text"], before: current.text, after: "본문 전체 교체" }], { [layout.id]: { text: manual } });
+    expect(checked.conflicts).toEqual([]); expect(checked.doc!.text).toBe(manual);
+  });
+  it("projects older table array updates into blocks while preserving interleaved paragraphs", () => {
+    const a = { widths: [1], cells: [["A"]] }, b = { widths: [1], cells: [["B"]] };
+    const remoteA = { widths: [1], cells: [["A edited"]] }, ownB = { widths: [1], cells: [["B edited"]] };
+    const current = { text: "사이 문단", tables: [remoteA, b], blocks: [{ type: "table", table: remoteA }, { type: "text", text: "사이 문단" }, { type: "table", table: b }] };
+    const result = merge(current, [{ path: ["tables"], before: [a, b], after: [a, ownB] }]);
+    expect(result.conflicts).toEqual([]);
+    expect(result.doc!.tables).toEqual([remoteA, ownB]);
+    expect((result.doc!.blocks as any[]).map(block => block.type === "table" ? block.table : block.text)).toEqual([remoteA, "사이 문단", ownB]);
+  });
   it("compares first legacy block conversions against the original body and regenerates mirrors", () => {
     for (const blocks of [null, []]) {
       const base = { id: "legacy-test", title: "기존 카드", text: "기업 운영의 자율성이 확대됐습니다.", tables: [], images: [], blocks };
@@ -197,6 +225,20 @@ describe("rich field merge", () => {
     const resolved = merge(remote, changes, { [parts[0].id]: { text: "잔액은 28억입니다." } });
     expect(resolved.conflicts).toEqual([]); expect(resolved.doc!.text).toBe("잔액은 28억입니다.");
     expect((resolved.doc!.blocks as any[])[0].text).toBe(resolved.doc!.text);
+  });
+  it("uses unchanged legacy fields from the old client's own blocks instead of the newest rival mirrors", () => {
+    const table = { widths: [1], cells: [["A"]] };
+    const base = { id: "legacy-table", text: "기업 운영입니다.", tables: [table], images: [], blocks: null };
+    const changed = { widths: [1], cells: [["B"]] };
+    const own = { ...base, tables: [changed], blocks: [{ type: "text", text: base.text }, { type: "table", table: changed }] };
+    const remote = { ...base, text: "기업 경영입니다.", blocks: [{ type: "text", text: "기업 경영입니다." }, { type: "table", table }] };
+    for (const before of [null, []]) {
+      const immutable = [{ path: ["tables"], before: base.tables, after: own.tables }, { path: ["blocks"], before, after: own.blocks }];
+      const result = merge(remote, immutable);
+      expect(result.conflicts).toEqual([]); expect(result.doc!.text).toBe(remote.text);
+      expect(result.doc!.tables).toEqual([changed]);
+      expect((result.doc!.blocks as any[])[0].text).toBe(remote.text);
+    }
   });
   it("aligns new blank-heading columns by their existing contents", () => {
     const base = { widths: [1, 1], cells: [["", ""], ["A", "B"]] };

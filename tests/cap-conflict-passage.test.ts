@@ -1,10 +1,16 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, expect, it, vi } from "vitest";
-import { ConflictPassage } from "../client/src/components/CapConflictWizard";
+import { ConflictPassage, CapConflictWizard } from "../client/src/components/CapConflictWizard";
 import { mergeText } from "../shared/cap-text-merge";
 vi.stubGlobal("React", React);
 afterAll(() => vi.unstubAllGlobals());
+it("requires manual placement rather than offering an unmappable local text choice", () => {
+  const item = { id: "boundary", label: "문단 경계", location: ["text"], before: "첫 문단\n둘째 문단", local: "합친 문단", remote: "첫 문단\n둘째 문단", localRequiresManual: true, passage: { before: { text: "첫 문단\n둘째 문단", ranges: [] }, local: { text: "합친 문단", ranges: [] }, remote: { text: "첫 문단\n둘째 문단", ranges: [] } } };
+  const html = renderToStaticMarkup(React.createElement(CapConflictWizard, { items: [item], title: "카드", onResolve: () => {} }));
+  expect(html).toContain("문단 경계를 유지해 아래에서 직접 작성해 주세요.");
+  expect(html.match(/aria-pressed=/g)).toHaveLength(1);
+});
 
 it("shows original font colours and names despite the yellow conflict highlight", () => {
   const parts = mergeText("[[c-r|내용입니다]]", "[[c-b|내용입니다]]", "[[c-g|내용입니다]]", ["text"]).conflicts[0].passage!;

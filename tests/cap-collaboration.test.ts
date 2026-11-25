@@ -81,6 +81,37 @@ function harness(initial: Document = doc()) {
 }
 afterEach(() => vi.useRealTimers());
 describe("passage choices through the durable engine", () => {
+  it("uses the same normalized inputs when displaying and resolving a plain/block conflict", async () => {
+    for (const choice of ["local", "remote", "manual"] as const) {
+      const base = { id: "legacy", text: "기업 운영은 소폭 늘었습니다.", tables: [], images: [], blocks: null };
+      const text = "기업 경영은 크게 늘었습니다.";
+      const own = { ...base, text, blocks: [{ type: "text", text }] };
+      const h = harness(base); h.engine.edit("flow:f", own);
+      h.remote([change(["text"], base.text, "기업 운영은 조금 늘었습니다.")]);
+      await h.engine.flushAll();
+      const parts = h.engine.drafts.get("flow:f")!.conflicts!.flatMap(conflictDetails);
+      expect(parts).toHaveLength(1);
+      h.engine.resolve("flow:f", { [parts[0].id]: choice === "manual" ? { text: "기업 경영은 적당히 늘었습니다." } : choice });
+      await h.engine.flushAll();
+      const expected = `기업 경영은 ${choice === "local" ? "크게" : choice === "remote" ? "조금" : "적당히"} 늘었습니다.`;
+      expect(h.current().doc!.text).toBe(expected);
+      expect((h.current().doc!.blocks as any[])[0].text).toBe(expected);
+      expect(h.engine.drafts.size).toBe(0);
+    }
+  });
+  it("projects an older plain-text save into the authoritative block before the next block save", async () => {
+    const base = { id: "legacy", text: "기업 운영은 소폭 늘었습니다.", tables: [], images: [], blocks: null };
+    const h = harness(base), modernText = "기업 운영은 크게 늘었습니다.";
+    h.remote(diff(base, { ...base, text: modernText, blocks: [{ type: "text", text: modernText }] }));
+    h.engine.edit("flow:f", { ...base, text: "기업 경영은 소폭 늘었습니다." });
+    await h.engine.flushAll();
+    const saved = h.current().doc!, expected = "기업 경영은 크게 늘었습니다.";
+    expect(saved.text).toBe(expected); expect((saved.blocks as any[])[0].text).toBe(expected);
+    const next = copy(saved); (next.blocks as any[])[0].text += " 다음 문장입니다."; next.text = (next.blocks as any[])[0].text;
+    h.engine.edit("flow:f", next); await h.engine.flushAll();
+    expect(h.current().doc!.text).toBe(expected + " 다음 문장입니다.");
+    expect((h.current().doc!.blocks as any[])[0].text).toBe(h.current().doc!.text);
+  });
   it("keeps an older manual draft when a newer comparison changes the passage identifier", () => {
     const part = { id: '["text"]@0:4', location: ["text"], before: "원문", local: "내 수정", remote: "다른 수정" };
     const olderId = '["text"]@markup';

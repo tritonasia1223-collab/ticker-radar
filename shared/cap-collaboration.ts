@@ -1,6 +1,6 @@
 // Browser and server share comparison rules. Transport paths remain stable field operations;
 // prose and rich fields are compared inside the field without replacing unrelated edits.
-import { blockMirrors, mergeValue, syncBlockMirrors, withDerivedBlocks, type Resolution, type ValueConflict } from "./cap-text-merge.js";
+import { blockMirrors, mergeValue, projectBlockMirror, syncBlockMirrors, withDerivedBlocks, type Resolution, type ValueConflict } from "./cap-text-merge.js";
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Document = { [key: string]: Json } | null;
 export interface Change { path: string[]; before: Json; after: Json }
@@ -94,6 +94,12 @@ export function merge(current: Document, changes: Change[], choices: Record<stri
     // Already-open clients may still send blocks.before=null plus the old flat
     // mirrors. Recover that legacy baseline before discarding duplicate fields.
     const baseline: Record<string, Json> = { ...copy(current), blocks: blockChange.before };
+    if (!Array.isArray(blockChange.before) || !blockChange.before.length) {
+      const localMirrors = blockMirrors({ blocks: blockChange.after });
+      // Omitted flat-field operations mean that field was unchanged in the old
+      // client. Its baseline comes from its own blocks, not a rival's new text.
+      for (const key of ["text", "tables", "images", "charts"]) if (localMirrors && key in baseline) baseline[key] = localMirrors[key];
+    }
     for (const change of changes) if (change.path.length === 1 && ["text", "tables", "images", "charts"].includes(change.path[0])) baseline[change.path[0]] = change.before;
     const derived = withDerivedBlocks(baseline) as Record<string, Json>;
     changes = changes.map(c => c === blockChange ? { ...c, before: derived.blocks } : c);
@@ -111,6 +117,23 @@ export function merge(current: Document, changes: Change[], choices: Record<stri
   let doc = copy(current);
   const conflicts: Conflict[] = [];
   for (const change of changes) {
+    if (!blockChange && current && Array.isArray(current.blocks) && current.blocks.length && change.path.length === 1 && ["text", "tables", "images", "charts"].includes(change.path[0])) {
+      const key = change.path[0], remote = blockMirrors(current)![key];
+      const result = mergeValue(change.before, change.after, remote, change.path, choices);
+      if (result.conflicts.length) { conflicts.push({ ...copy(change), remote, details: result.conflicts }); continue; }
+      let projected = projectBlockMirror(doc, key, result.value);
+      if (!projected) {
+        const id = `${JSON.stringify(change.path)}@block-boundary`, choice = choices[id];
+        if (choice === "remote") continue;
+        if (choice === "local" && key !== "text") projected = projectBlockMirror(doc, key, result.value, true);
+        if (choice && typeof choice === "object" && key === "text") projected = projectBlockMirror(doc, key, choice.text);
+        if (!projected) {
+          const full = (text: Json) => ({ text: String(text), ranges: [[0, String(text).length]] as [number, number][] });
+          conflicts.push({ ...copy(change), remote, details: [{ id, location: [...change.path, key === "text" ? "문단 경계를 유지해 직접 작성" : "블록 위치 확인"], before: change.before, local: result.value, remote, ...(key === "text" ? { localRequiresManual: true, passage: { before: full(change.before), local: full(result.value), remote: full(remote) } } : {}) }] }); continue;
+        }
+      }
+      doc = projected as Document; continue;
+    }
     const remote = read(current, change.path);
     // A nested write must never resurrect a concurrently deleted node/card, even if a field was null.
     const parentMissing = change.path.length > 0 && (!current || (change.path.length > 2 && read(current, change.path.slice(0, -1)) === null));
