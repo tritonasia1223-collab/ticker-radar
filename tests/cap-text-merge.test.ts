@@ -171,6 +171,67 @@ describe("three-way passage merge", () => {
 });
 
 describe("rich field merge", () => {
+  it("deduplicates equal row/column additions and preserves both editors' existing cells", () => {
+    const base = { title: "상황표", widths: [1, 3], cells: [["연도", "내용"], ["1970", "기존 A"], ["1971", "기존 B"]] };
+    for (const axis of ["row", "column", "both"]) {
+      const own = structuredClone(base), other = structuredClone(base);
+      for (const side of [own, other]) {
+        if (axis !== "row") { side.widths.push(3); side.cells.forEach(row => row.push("")); }
+        if (axis !== "column") side.cells.push(Array(side.widths.length).fill(""));
+      }
+      own.cells[1][1] = "내 독립 수정 A"; other.cells[2][1] = "상대 독립 수정 B";
+      for (const [a, b] of [[own, other], [other, own]]) {
+        const result = mergeValue(base, a, b, ["table"]);
+        expect(result.conflicts).toEqual([]);
+        const table = result.value as typeof base;
+        expect(table.cells[1][1]).toBe("내 독립 수정 A"); expect(table.cells[2][1]).toBe("상대 독립 수정 B");
+        expect(table.cells.length).toBe(axis === "column" ? 3 : 4); expect(table.widths.length).toBe(axis === "row" ? 2 : 3);
+      }
+    }
+  });
+  it("uses full original row contents when blank labels cannot locate a shared row addition", () => {
+    const base = { widths: [1, 3], cells: [["", "내용"], ["", "기존 A"], ["", "기존 B"]] };
+    const own = structuredClone(base), other = structuredClone(base);
+    own.cells.push(["", ""]); other.cells.push(["", ""]);
+    own.cells[1][1] = "내 독립 수정 A"; other.cells[2][1] = "상대 독립 수정 B";
+    const result = mergeValue(base, own, other, ["table"]);
+    expect(result.conflicts).toEqual([]);
+    expect((result.value as typeof base).cells).toEqual([["", "내용"], ["", "내 독립 수정 A"], ["", "상대 독립 수정 B"], ["", ""]]);
+  });
+  it("compares only differing cells of a shared named addition", () => {
+    const base = { title: "상황표", widths: [1, 3], cells: [["연도", "내용"], ["1970", "기존 A"], ["1971", "기존 B"]] };
+    const own = structuredClone(base), other = structuredClone(base);
+    for (const side of [own, other]) { side.widths.push(3); side.cells.forEach((row, i) => row.push(i === 0 ? "소련" : "")); }
+    own.cells[1][1] = "내 기존 셀"; other.cells[2][1] = "상대 기존 셀";
+    own.cells[1][2] = "내 새 내용"; other.cells[1][2] = "상대 새 내용";
+    const parts = mergeValue(base, own, other, ["table"]).conflicts;
+    expect(parts).toHaveLength(1); expect(parts[0].location).toEqual(["table", "cells", "1", "added-r2"]);
+    for (const choice of ["local", "remote"] as const) {
+      const result = mergeValue(base, own, other, ["table"], { [parts[0].id]: choice });
+      expect(result.conflicts).toEqual([]);
+      const table = result.value as typeof base;
+      expect(table.cells[1][1]).toBe("내 기존 셀"); expect(table.cells[2][1]).toBe("상대 기존 셀");
+      expect(table.cells[1][2]).toBe(choice === "local" ? "내 새 내용" : "상대 새 내용");
+    }
+  });
+  it("asks only about a differing unnamed new axis while retaining existing-cell changes", () => {
+    const base = { widths: [1, 3], cells: [["연도", "내용"], ["1970", "기존 A"], ["1971", "기존 B"]] };
+    const own = structuredClone(base), other = structuredClone(base);
+    for (const side of [own, other]) { side.widths.push(3); side.cells.forEach(row => row.push("")); }
+    own.cells[1][1] = "내 기존 셀"; other.cells[2][1] = "상대 기존 셀";
+    own.cells[1][2] = "내 새 열"; other.cells[2][2] = "다른 새 열";
+    const parts = mergeValue(base, own, other, ["table"]).conflicts;
+    expect(parts).toHaveLength(1); expect(parts[0].location).toEqual(["table", "addedColumns", "2"]);
+    for (const choice of ["local", "remote"] as const) {
+      const table = mergeValue(base, own, other, ["table"], { [parts[0].id]: choice }).value as typeof base;
+      expect(table.cells[1][1]).toBe("내 기존 셀"); expect(table.cells[2][1]).toBe("상대 기존 셀");
+      expect(table.cells.map(row => row[2])).toEqual((choice === "local" ? own : other).cells.map(row => row[2]));
+      const withRow = structuredClone(own); withRow.cells.push(["1972", "새 행", "독립 교차 셀"]);
+      const plan = mergeValue(base, withRow, other, ["table"]);
+      const kept = mergeValue(base, withRow, other, ["table"], { [plan.conflicts[0].id]: choice }).value as typeof base;
+      expect(kept.cells.at(-1)).toEqual(["1972", "새 행", "독립 교차 셀"]);
+    }
+  });
   it("projects legacy text edits into multiple blocks without moving interleaved media", () => {
     const first = "기업 운영은 소폭 늘었습니다.", second = "잔액은 20억입니다.";
     const table = { widths: [1], cells: [["보존"]] };

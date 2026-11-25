@@ -53,6 +53,16 @@ function Preview() {
     }
     const saved = await refresh(); if (!conflict) await engine.receive(saved);
   };
+  const sharedAxisScenario = async () => {
+    const latest = await refresh(), table = { title: "동일 행·열 추가", widths: [1, 3], cells: [["연도", "내용"], ["1970", "기존 A"], ["1971", "기존 B"]] };
+    const source = { ...latest.doc, text: "", tables: [table], images: [], blocks: [{ type: "table", table }] };
+    const send = (before: Resource["doc"], after: Resource["doc"]) => collabApi("edit", { id: crypto.randomUUID(), session: crypto.randomUUID(), editor: "합성 동시 추가 검증", resource: base.key, schemaVersion: 2, changes: diff(before, after) });
+    await send(latest.doc, source); const start = await refresh(); await engine.receive(start);
+    const own = structuredClone(source), other = structuredClone(source);
+    for (const side of [own, other]) { const table = side.blocks[0].table; table.widths.push(3); table.cells.forEach(row => row.push("")); table.cells.push(Array(table.widths.length).fill("")); side.tables = [table]; }
+    own.blocks[0].table.cells[1][1] = "내 독립 수정 A"; other.blocks[0].table.cells[2][1] = "상대 독립 수정 B";
+    await send(source, other); engine.edit(base.key, own); await engine.flushAll(); await refresh();
+  };
   return <main className="space-y-6" style={{ background: "#f8f7f3", minHeight: "100vh", maxWidth: 960, margin: "0 auto", padding: "32px 24px" }}>
     <header><p className="text-xs text-stone-500">자본주의 경제사 · 협업 저장 미리보기 · 운영 연결 없음</p><h1 className="mt-2 text-2xl font-semibold">겹친 표현만 한 곳씩 확인</h1></header>
     <CapCollaboration resourcePrefix="meta:conflict-preview" />
@@ -73,6 +83,7 @@ function Preview() {
       <button onClick={() => void run(firstBlockScenario)}>최초 블록 전환 검증</button>
       <button onClick={() => void run(() => mixedScenario(true))}>평문·블록 충돌 검증</button>
       <button onClick={() => void run(() => mixedScenario(false))}>이전 평문 요청 검증</button>
+      <button onClick={() => void run(sharedAxisScenario)}>동일 행·열 추가 검증</button>
     </div></details>
     {message && <p role="alert">{message}</p>}
     <section className="rounded-xl border bg-white p-5"><div className="mb-3 flex justify-between"><h2 className="font-semibold">저장된 내용</h2><button className="text-xs underline" onClick={() => void run(refresh)}>저장 결과 다시 읽기</button></div><p className="text-sm leading-7" data-testid="saved-content"><CapRichText text={String(saved.doc?.text ?? "")} /></p><pre data-testid="saved-tables">{JSON.stringify(saved.doc?.tables, null, 2)}</pre></section>

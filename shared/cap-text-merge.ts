@@ -281,7 +281,7 @@ function mergeTextTokens(base: string, local: string, remote: string, location: 
 const compatible = (a: Json, b: Json) => obj(a) && obj(b) ? (a.type ? a.type === b.type : true) : typeof a === typeof b && !Array.isArray(a) && !Array.isArray(b);
 // Monotonic alignment: exact items anchor nearby edited items. Ambiguous insert/delete alignment
 // or moving an unchanged item is deliberately left as a structural conflict.
-function align(base: Json[], side: Json[]): { indices: (number | null)[]; added: number[][] } | null {
+function align(base: Json[], side: Json[], substitution?: (a: Json, b: Json) => number): { indices: (number | null)[]; added: number[][] } | null {
   if (base.length === side.length) {
     // A repeated/empty label cannot establish that a row moved. Only a unique
     // anchor changing position is evidence of reordering at unchanged dimensions.
@@ -294,7 +294,7 @@ function align(base: Json[], side: Json[]): { indices: (number | null)[]; added:
   for (let i = base.length; i >= 0; i--) for (let j = side.length; j >= 0; j--) {
     if (i === base.length) { cost[i][j] = (side.length - j) * 3; continue; }
     if (j === side.length) { cost[i][j] = (base.length - i) * 3; continue; }
-    const options = [cost[i + 1][j] + 3, cost[i][j + 1] + 3, (eq(base[i], side[j]) ? 0 : compatible(base[i], side[j]) ? 2 : 100_000) + cost[i + 1][j + 1]];
+    const options = [cost[i + 1][j] + 3, cost[i][j + 1] + 3, (eq(base[i], side[j]) ? 0 : substitution ? substitution(base[i], side[j]) : compatible(base[i], side[j]) ? 2 : 100_000) + cost[i + 1][j + 1]];
     cost[i][j] = Math.min(...options);
     ways[i][j] = Math.min(2, options.reduce((n, c, k) => n + (c === cost[i][j] ? k === 0 ? ways[i + 1][j] : k === 1 ? ways[i][j + 1] : ways[i + 1][j + 1] : 0), 0));
   }
@@ -329,12 +329,24 @@ function isTable(value: Json): value is Record<string, Json> & { cells: string[]
 }
 type Table = Record<string, Json> & { cells: string[][]; widths: number[] };
 function mergeTable(base: Table, local: Table, remote: Table, location: string[], choices: Record<string, Resolution>): ValueMerge {
+  const payloadPenalty = (a: Json, b: Json) => {
+    if (!obj(a) || !obj(b) || !Array.isArray(a.cells) || !Array.isArray(b.cells)) return 100_000;
+    const empty = (cells: Json[]) => cells.every(cell => cell === null || (typeof cell === "string" && !cell.trim()));
+    return empty(a.cells) !== empty(b.cells) ? 4 : 2;
+  };
   const columnValues = (table: Table) => table.widths.map((_, c) => ({ cells: table.cells.map(row => row[c]) }));
   // Blank/repeated headings alone cannot locate a new column. Unchanged whole
   // columns can still provide unique anchors without guessing their position.
-  const columns = (side: Table) => align(base.cells[0] ?? [], side.cells[0] ?? []) ?? align(columnValues(base), columnValues(side));
+  const columns = (side: Table) => align(base.cells[0] ?? [], side.cells[0] ?? []) ?? align(columnValues(base), columnValues(side), payloadPenalty);
   const cols = [columns(local), columns(remote)];
-  const rows = [align(base.cells.map((r: string[]) => r[0]), local.cells.map((r: string[]) => r[0])), align(base.cells.map((r: string[]) => r[0]), remote.cells.map((r: string[]) => r[0]))];
+  const rowAlignment = (side: Table, columns: ReturnType<typeof align>) => {
+    const byLabel = align(base.cells.map(row => row[0]), side.cells.map(row => row[0]));
+    if (byLabel || !columns) return byLabel;
+    // As with blank headings, the other original cells can identify a row.
+    // Ignore independently added columns when comparing these row signatures.
+    return align(base.cells.map(row => ({ cells: columns.indices.map((mapped, c) => mapped === null ? null : row[c]) })), side.cells.map(row => ({ cells: columns.indices.map(mapped => mapped === null ? null : row[mapped]) })), payloadPenalty);
+  };
+  const rows = [rowAlignment(local, cols[0]), rowAlignment(remote, cols[1])];
   if ([...cols, ...rows].some(a => !a)) return atomic(base, local, remote, location, choices);
   const ids = (alignment: NonNullable<ReturnType<typeof align>>, side: "l" | "r") => {
     const result: string[] = [];
@@ -342,12 +354,31 @@ function mergeTable(base: Table, local: Table, remote: Table, location: string[]
     return result;
   };
   const union = (as: string[], bs: string[]) => { const result = [...bs]; for (let i = 0; i < as.length; i++) if (!result.includes(as[i])) { const next = as.slice(i + 1).find(id => result.includes(id)); result.splice(next ? result.indexOf(next) : result.length, 0, as[i]); } return result; };
-  let cs = union(ids(cols[0]!, "l"), ids(cols[1]!, "r")), rs = union(ids(rows[0]!, "l"), ids(rows[1]!, "r"));
-  // Simultaneously adding the same heading/row would create ambiguous duplicate columns. Ask first.
-  if (cs.filter(id => id[0] !== "b").some(id => cs.some(other => other[0] !== id[0] && other[0] !== "b" && (id[0] === "l" ? local : remote).cells[0]?.[+id.slice(1)] === (other[0] === "l" ? local : remote).cells[0]?.[+other.slice(1)]))
-    || rs.filter(id => id[0] !== "b").some(id => rs.some(other => other[0] !== id[0] && other[0] !== "b" && (id[0] === "l" ? local : remote).cells[+id.slice(1)]?.[0] === (other[0] === "l" ? local : remote).cells[+other.slice(1)]?.[0]))) return atomic(base, local, remote, location, choices);
-  const index = (id: string, alignment: NonNullable<ReturnType<typeof align>>, side: string) => id[0] === "b" ? alignment.indices[+id.slice(1)] : id[0] === side ? +id.slice(1) : null;
+  type AddedPair = { l: number; r: number; ambiguous: boolean; prefer?: "l" | "r" };
+  const sharedAdditions = (axes: typeof cols, row: boolean) => {
+    const pairs = new Map<string, AddedPair>(), aliases = new Map<string, string>(), used = new Set<number>();
+    const label = (table: Table, at: number) => row ? table.cells[at]?.[0] : table.cells[0]?.[at];
+    const contents = (table: Table, at: number) => row ? table.cells[at] : table.cells.map(cells => cells[at]);
+    for (let gap = 0; gap < axes[0]!.added.length; gap++) for (const li of axes[0]!.added[gap]) {
+      const candidates = axes[1]!.added[gap].filter(ri => !used.has(ri) && label(local, li) === label(remote, ri));
+      const ri = candidates.find(ri => eq(contents(local, li), contents(remote, ri))) ?? candidates[0];
+      if (ri === undefined) continue;
+      used.add(ri); aliases.set(`l${li}`, `r${ri}`); pairs.set(`r${ri}`, { l: li, r: ri, ambiguous: !label(local, li) && !eq(contents(local, li), contents(remote, ri)) });
+    }
+    return { pairs, ids: union(ids(axes[0]!, "l").map(id => aliases.get(id) ?? id), ids(axes[1]!, "r")) };
+  };
+  const addedCols = sharedAdditions(cols, false), addedRows = sharedAdditions(rows, true);
+  let cs = addedCols.ids, rs = addedRows.ids;
+  const index = (id: string, alignment: NonNullable<ReturnType<typeof align>>, side: "l" | "r", pairs: Map<string, AddedPair>) => pairs.has(id) ? pairs.get(id)![side] : id[0] === "b" ? alignment.indices[+id.slice(1)] : id[0] === side ? +id.slice(1) : null;
   const value: Record<string, Json> = {}, conflicts: ValueConflict[] = [];
+  // Different unnamed additions have no semantic identity. Ask about that new
+  // axis alone, retaining all edits in the original rows and columns.
+  for (const [pairs, row] of [[addedRows.pairs, true], [addedCols.pairs, false]] as const) for (const [id, pair] of pairs) if (pair.ambiguous) {
+    const a = row ? local.cells[pair.l] : local.cells.map(cells => cells[pair.l]);
+    const b = row ? remote.cells[pair.r] : remote.cells.map(cells => cells[pair.r]);
+    const result = atomic([], a, b, [...location, row ? "addedRows" : "addedColumns", id.slice(1)], choices);
+    conflicts.push(...result.conflicts); pair.prefer = eq(result.value, a) ? "l" : "r";
+  }
   // A deletion only competes with edits in that row/column. Never let choosing
   // it replace unrelated surviving rows or cells with a whole-table snapshot.
   const keepAxis = (id: string, axis: "row" | "column") => {
@@ -377,13 +408,30 @@ function mergeTable(base: Table, local: Table, remote: Table, location: string[]
     const result = mergeValue(base[k] ?? null, local[k] ?? null, remote[k] ?? null, [...location, k], choices); value[k] = result.value; conflicts.push(...result.conflicts);
   }
   value.widths = cs.map(c => {
-    const l = index(c, cols[0]!, "l"), r = index(c, cols[1]!, "r");
+    const l = index(c, cols[0]!, "l", addedCols.pairs), r = index(c, cols[1]!, "r", addedCols.pairs);
+    if (addedCols.pairs.has(c)) {
+      const prefer = addedCols.pairs.get(c)!.prefer;
+      if (prefer) return prefer === "l" ? local.widths[l!] : remote.widths[r!];
+      const result = mergeValue(null, local.widths[l!], remote.widths[r!], [...location, "widths", `added-${c}`], choices); conflicts.push(...result.conflicts); return result.value;
+    }
     if (c[0] !== "b") return (c[0] === "l" ? local.widths[l!] : remote.widths[r!]) as number;
     const width = base.widths[+c.slice(1)];
     const result = mergeValue(width, l === null ? width : local.widths[l], r === null ? width : remote.widths[r], [...location, "widths", c.slice(1)], choices); conflicts.push(...result.conflicts); return result.value;
   });
   value.cells = rs.map(row => cs.map(col => {
-    const lr = index(row, rows[0]!, "l"), rr = index(row, rows[1]!, "r"), lc = index(col, cols[0]!, "l"), rc = index(col, cols[1]!, "r");
+    const lr = index(row, rows[0]!, "l", addedRows.pairs), rr = index(row, rows[1]!, "r", addedRows.pairs), lc = index(col, cols[0]!, "l", addedCols.pairs), rc = index(col, cols[1]!, "r", addedCols.pairs);
+    const rowPreference = addedRows.pairs.get(row)?.prefer, colPreference = addedCols.pairs.get(col)?.prefer;
+    if ((rowPreference || colPreference) && !(rowPreference && colPreference && rowPreference !== colPreference)) {
+      const prefer = rowPreference ?? colPreference;
+      if (prefer === "l" && lr !== null && lc !== null) return local.cells[lr][lc];
+      if (prefer === "r" && rr !== null && rc !== null) return remote.cells[rr][rc];
+      // A newly added row/column on only one side was absent from the chosen
+      // axis snapshot; its intersection is an independent addition, not empty.
+      return lr !== null && lc !== null ? local.cells[lr][lc] : rr !== null && rc !== null ? remote.cells[rr][rc] : "";
+    }
+    if ((addedRows.pairs.has(row) || addedCols.pairs.has(col)) && lr !== null && rr !== null && lc !== null && rc !== null) {
+      const result = mergeValue("", local.cells[lr][lc], remote.cells[rr][rc], [...location, "cells", row[0] === "b" ? row.slice(1) : `added-${row}`, col[0] === "b" ? col.slice(1) : `added-${col}`], choices); conflicts.push(...result.conflicts); return result.value;
+    }
     if (row[0] !== "b" || col[0] !== "b") return (lr !== null && lc !== null ? local.cells[lr][lc] : rr !== null && rc !== null ? remote.cells[rr][rc] : "") as string;
     const before = base.cells[+row.slice(1)][+col.slice(1)];
     const result = mergeValue(before, lr === null || lc === null ? before : local.cells[lr][lc], rr === null || rc === null ? before : remote.cells[rr][rc], [...location, "cells", row.slice(1), col.slice(1)], choices);

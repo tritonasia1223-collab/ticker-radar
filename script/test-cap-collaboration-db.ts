@@ -138,6 +138,26 @@ try {
   await applyCollaborativeEdit(op(repeatedKey, repeatedBase, repeatedMine), isolated);
   assert.deepEqual(((await getResource(repeatedKey, isolated)).doc!.blocks as any[])[0].table.cells, [["항목", "내용"], ["미국", "A"], ["", "수정 B"]]);
   console.log("Testing overlapping rich wrappers preserve unrelated edits");
+  for (const axis of ["row", "column", "both", "blank-label-row"]) {
+    const id = `same-axis-${axis}`, resourceKey = `meta:${id}`;
+    const table = { title: "Synthetic concurrent additions", widths: [1, 3], cells: [["연도", "내용"], ["1970", "기존 A"], ["1971", "기존 B"]] };
+    if (axis === "blank-label-row") table.cells.forEach(row => row[0] = "");
+    const source = { ...meta(id, "Synthetic shared additions"), tables: [table], blocks: [{ type: "table", table }] };
+    const own = copy(source), other = copy(source);
+    for (const side of [own, other]) {
+      const table = side.blocks[0].table;
+      if (axis !== "row" && axis !== "blank-label-row") { table.widths.push(3); table.cells.forEach(row => row.push("")); }
+      if (axis !== "column") table.cells.push(Array(table.widths.length).fill(""));
+    }
+    own.blocks[0].table.cells[1][1] = "내 독립 수정 A"; other.blocks[0].table.cells[2][1] = "상대 독립 수정 B";
+    own.tables = [own.blocks[0].table]; other.tables = [other.blocks[0].table];
+    await applyCollaborativeEdit(op(resourceKey, null, source), isolated);
+    await Promise.all([applyCollaborativeEdit(op(resourceKey, source, own), isolated), applyCollaborativeEdit(op(resourceKey, source, other), isolated)]);
+    const saved = (await getResource(resourceKey, isolated)).doc!, cells = (saved.blocks as any[])[0].table.cells;
+    assert.equal(cells[1][1], "내 독립 수정 A"); assert.equal(cells[2][1], "상대 독립 수정 B");
+    assert.equal(cells.length, axis === "column" ? 3 : 4); assert.equal(cells[0].length, axis === "row" || axis === "blank-label-row" ? 2 : 3);
+    assert.deepEqual(saved.tables, [(saved.blocks as any[])[0].table]);
+  }
   {
     const id = "old-plain-after-blocks", resourceKey = `meta:${id}`, text = "기업 운영은 소폭 늘었습니다.";
     const source = { ...meta(id, "Synthetic old plaintext"), text };
