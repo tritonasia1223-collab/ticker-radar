@@ -96,7 +96,7 @@ function TimelineEntry({ event, editable, patch, labels, remove, changeDate, glo
   event: TimelineEvent; editable: boolean; global?: boolean; patch: (body: string) => void; labels: (next: string[]) => void; remove: () => void; changeDate: (date: NonNullable<ReturnType<typeof parseTimelineDate>>) => void;
 }) {
   const view = descriptionView(event);
-  const tags = event.labels ?? [];
+  const tags = (event.labels ?? []).filter(tag => event.lane !== "soviet" || !["소련", "러시아"].includes(tag));
   const band = bandText(event);
   const editorText = global ? band.details : view.text;
   const { mobile, tapped, setTapped } = usePeriodInteraction();
