@@ -34,6 +34,10 @@ export function eventMonth(event: Pick<TimelineEvent, "month" | "date">): number
   const month = match ? Number(match[1]) : 0;
   return month >= 1 && month <= 12 ? month : null;
 }
+/** Keep explicitly dated entries chronological inside a shared month, independent of DB key order. */
+function eventDay(event: TimelineEvent): number {
+  return Number(event.date.trim().match(/^\d{4}\.\d{1,2}\.(\d{1,2})(?:$|[~–—-])/)?.[1] ?? 0);
+}
 export function rangeLabel(event: TimelineEvent): string {
   if (!event.endYear) return "";
   return `${event.year}${eventMonth(event) ? `.${eventMonth(event)}` : ""}–${event.endYear}${event.endMonth ? `.${event.endMonth}` : ""}`;
@@ -57,6 +61,7 @@ export function timelineRows(events: TimelineEvent[]) {
   }
   const sorted = [...rows.values()].sort((a, b) => a.year - b.year || (a.endOnly ? 13 : a.month ?? 0) - (b.endOnly ? 13 : b.month ?? 0));
   for (const current of sorted) {
+    current.events.sort((a, b) => eventDay(a) - eventDay(b));
     current.ongoing = events.filter(e => validEnd(e) && !current.events.includes(e)
       && (current.month !== null || (current.year > e.year && current.year < e.endYear!) || (current.year === e.endYear && e.endMonth == null))
       && current.year * 12 + (current.month ?? 12) > e.year * 12 + (eventMonth(e) ?? 1)
@@ -125,6 +130,7 @@ export function documentTimeline(events: TimelineEvent[]) {
     slices.get(key)!.events.push(event);
   }
   items.push(...slices.values());
+  for (const item of items) if (item.kind === "slice") item.events.sort((a, b) => eventDay(a) - eventDay(b));
   items.sort((a, b) => a.order - b.order);
   const years: { year: number; items: Item[]; count: number }[] = [];
   for (const item of items) {

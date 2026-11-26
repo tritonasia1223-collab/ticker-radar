@@ -36,6 +36,13 @@ describe("Soviet and emerging-market lanes through 1992", () => {
     expect(y1991.items.some(slice => slice.month === 8 && slice.events.some(e => e.id.endsWith("coup")))).toBe(true);
     const period = EXPANSION_EVENTS.find(e => e.id.endsWith("1991-union"))!;
     expect(periodEnd(period)).toMatchObject({ year: 1991, month: 8 });
+    // API resource keys put "coup-fails" first; the display must still put 8/19 before 8/21.
+    const reversed = EXPANSION_EVENTS.filter(e => e.id.endsWith("1991-coup") || e.id.endsWith("1991-coup-fails")).reverse();
+    const august = documentTimeline(reversed)[0].items[0];
+    expect(august.events.map(e => e.date)).toEqual(["1991.8.19", "1991.8.21"]);
+    const december = EXPANSION_EVENTS.filter(e => e.id.endsWith("1991-dissolution") || e.id.endsWith("1991-cis")).reverse();
+    const decemberDates = documentTimeline(december)[0].items[0].events.map(e => e.date);
+    expect(decemberDates).toEqual(["1991.12", "1991.12.8"]);
   });
 
   it("round-trips the Soviet lane through the unchanged legacy DB schema", () => {
