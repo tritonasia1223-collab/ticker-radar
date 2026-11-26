@@ -18,7 +18,7 @@ import { periodEnd, periodDateLabel } from "@/lib/international-timeline-period"
 import { useEditMode } from "@/components/EditModeProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import { REGIONS, type Region, type TimelineEvent, type TimelineLane } from "@/data/international-timeline";
-import { COUNTRY_LANES, eventLanes, sharedEventGroups } from "@/lib/international-timeline-lanes";
+import { COUNTRY_LANES, DEFAULT_TIMELINE_LANES, eventLanes, sharedEventGroups } from "@/lib/international-timeline-lanes";
 import { mergeInsightTimeline } from "@/lib/international-timeline-insights";
 import { mergeClassifiedTimeline, CLASSIFIED_BACKUP, CLASSIFIED_REVISION } from "@/lib/international-timeline-classified";
 import { mergeSupplementTimeline, SUPPLEMENT_BACKUP, SUPPLEMENT_REVISION } from "@/lib/international-timeline-supplement";
@@ -31,10 +31,15 @@ import { plainText } from "@/lib/capitalism-richtext";
 import usSourceText from "@/data/international-timeline-us-source.txt?raw";
 import sourceText from "@/data/international-timeline-mark-revision.txt?raw";
 import "./InternationalTimeline.css";
+import { EXPANSION_EVENTS, EXPANSION_REVISION } from "@/data/international-timeline-expansion";
 
 const STORAGE = "fiscus-international-timeline-v1";
-function defaultDraft() { return mergeDateAuditTimeline(mergeSupplementTimeline(mergeClassifiedTimeline(mergeInsightTimeline(readTimelineDraft(null))))); }
+function defaultDraft() {
+  const draft = mergeDateAuditTimeline(mergeSupplementTimeline(mergeClassifiedTimeline(mergeInsightTimeline(readTimelineDraft(null)))));
+  return { ...draft, events: [...draft.events, ...EXPANSION_EVENTS], imports: [...(draft.imports ?? []), EXPANSION_REVISION] };
+}
 function countryColor(country: string, region: Region = "europe") {
+  if (/소련|러시아/.test(country)) return "soviet";
   if (/서독|독일/.test(country)) return "de";
   if (country === "영국") return "uk";
   if (country === "프랑스") return "fr";
@@ -44,6 +49,7 @@ const ink = (color: string) => ({ "--it-event": `var(--it-${color})` }) as CSSPr
 function readDraft(): { draft: TimelineDraft; error: string } {
   try {
     const raw = localStorage.getItem(STORAGE);
+    if (!raw) return { draft: defaultDraft(), error: "" };
     const draft = readTimelineDraft(raw);
     // Back up the exact saved text before applying the user's priority import.
     // If the backup cannot be written, the catch locks saving and keeps the original intact.
@@ -63,7 +69,7 @@ function EventMenu({ event, labels, remove, changeDate, patch }: { event: Timeli
   const menuRef = useRef<HTMLDivElement>(null);
   const selected = event.labels ?? [];
   const band = bandText(event);
-  const choices = event.region === "europe" ? ["독일", "영국", "프랑스"] : [REGIONS.find(r => r.id === event.region)!.name];
+  const choices = event.lane === "soviet" ? ["소련", "러시아"] : event.region === "europe" ? ["독일", "영국", "프랑스"] : [REGIONS.find(r => r.id === event.region)!.name];
   return <Popover open={open} onOpenChange={next => { if (next) { setDateText(event.date || `${event.year}${event.month ? `.${event.month}` : ""}`); setDateError(""); } setOpen(next); }}>
     <PopoverTrigger asChild><button className="it-event-menu" aria-label={`${event.id} 사건 메뉴`} title="날짜 · 라벨 · 삭제"><MoreHorizontal size={16} /></button></PopoverTrigger>
     <PopoverContent ref={menuRef} data-theme={theme} align="end" className="it-editor-portal w-64 p-3" onOpenAutoFocus={e => { if (event.scope === "global") { e.preventDefault(); requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>("[data-richeditor]")?.focus()); } }}>
@@ -152,7 +158,7 @@ export default function InternationalTimeline() {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [headerHeight, setHeaderHeight] = useState(64);
 
-  const [regions, setRegions] = useState<TimelineLane[]>(["us", "de", "fr", "uk", "jp"]);
+  const [regions, setRegions] = useState<TimelineLane[]>([...DEFAULT_TIMELINE_LANES]);
   const gridBefore = useRef<ReturnType<typeof captureGrid> | null>(null);
   const gridMotion = useRef<ReturnType<typeof springGrid> | null>(null);
   const scrollMotion = useRef<ReturnType<typeof springScroll> | null>(null);

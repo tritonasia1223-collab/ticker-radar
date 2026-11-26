@@ -13,7 +13,7 @@ function validEvent(e: TimelineEvent) {
     && (e.endY == null || periodEnd(e) !== null) && (e.endM == null || e.endY != null && periodEnd(e) !== null)
     && (e.groupId == null || typeof e.groupId === "string") && (e.endYear == null || validEnd(e))
     && REGIONS.some(r => r.id === e.region) && [e.date, e.country, e.title, e.body].every(v => typeof v === "string")
-    && (e.lane === undefined || ["us", "de", "fr", "uk", "jp", "eu", "emerging", "oil"].includes(e.lane))
+    && (e.lane === undefined || ["us", "de", "fr", "uk", "jp", "eu", "soviet", "emerging", "oil"].includes(e.lane))
     && (e.labels === undefined || Array.isArray(e.labels) && e.labels.every(v => typeof v === "string"));
 }
 function validEvents(value: unknown): value is TimelineEvent[] {

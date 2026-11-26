@@ -4,6 +4,7 @@
   --it-line: #e3e5e2; --it-rule: #d4d7d3; --it-shock: #b3382e; --it-turn: #1f6f8b;
   --it-us: #3a6ea5; --it-de: #3f7d4e; --it-uk: #9c3d54; --it-fr: #6b5ca5;
   --it-eu: #2e7f8a; --it-jp: #b5722a; --it-emerging: #8164a0; --it-oil: #8a6d1f;
+  --it-soviet: #95645b;
   --it-font: "Source Serif 4", Georgia, "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
   container: international / inline-size;
   height: 100%; min-height: 0; overflow: auto; background: var(--it-bg); color: var(--it-ink);
@@ -15,6 +16,7 @@
   --it-shock: #e06a5e; --it-turn: #5aa8bf; --it-us: #6f9fd0; --it-de: #6fae7e;
   --it-uk: #cf7389; --it-fr: #9d8fd0; --it-eu: #5fadb8; --it-jp: #d59a52;
   --it-emerging: #b49bd0; --it-oil: #c0a24e; color-scheme: dark;
+  --it-soviet: #c7978e;
 }
 .international-document button, .international-document input { font-family: inherit; }
 .international-document button { cursor: pointer; }

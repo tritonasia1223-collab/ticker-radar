@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "CHANGE-20261126-international-expanded-lanes",
+  "title": "1992년까지 소련·러시아 및 신흥국 레인과 인사이트 요약 추가",
+  "baseRef": "b49b510",
+  "requirement": "기존 국제 연표에 참고 인사이트의 소련·신흥국 내용을 1992년까지만 추가한다. 기존 사건과 사용자 편집을 보존한다.",
+  "acceptanceCriteria": [
+    "기존 5개국에 소련·러시아, 신흥국을 기본 표시하고 토글 가능",
+    "인사이트에서 근거가 있는 월만 지정하고 연간 요약은 기존 연간 블록 사용",
+    "기존 DB 사건과 삭제 기록은 변경하지 않고 사건별 비교 저장으로 추가",
+    "소련 사건도 구버전 저장 스키마와 호환되고 라벨을 지워도 레인이 유지됨",
+    "연표 초기 읽기·새 사건 저장·기간 표시·검색 및 대사건 띠 유지"
+  ],
+  "requiredChecks": ["npm.cmd run check", "npm.cmd test", "npm.cmd run build", "실제 DB 비교 추가 및 재조회", "로컬 및 운영 브라우저 확인"],
+  "requiresEvaluationDatabase": true
+}

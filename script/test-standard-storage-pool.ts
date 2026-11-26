@@ -38,8 +38,15 @@ try {
   const active=(await getResource(key,isolated)).doc;
   await applyCollaborativeEdit(op(active,{...active,deletedAt:"2026-11-20"}),isolated);
   await assert.rejects(()=>applyCollaborativeEdit(op(active,{...active,body:"late"}),isolated),CollaborationConflict);
+  const sovietKey="intl:soviet-pool-fixture";
+  const soviet={...event,position:{region:"emerging",country:"소련",lane:"emerging",scope:"regional"},extra:{laneHint:"soviet"}};
+  await applyCollaborativeEdit({...op(null,soviet),resource:sovietKey},isolated);
+  const persistedSoviet=await getResource(sovietKey,isolated);
+  assert.equal((persistedSoviet.doc!.extra as any).laneHint,"soviet");
+  await applyCollaborativeEdit({...op(persistedSoviet.doc,{...persistedSoviet.doc,labels:[],body:"Soviet saved"}),resource:sovietKey},isolated);
+  assert.equal((await getResource(sovietKey,isolated)).doc!.body,"Soviet saved");
   const state=await isolated.transaction(tx=>syncState({session:crypto.randomUUID(),editor:"Pool test",resource:key,scopes:["international"]},tx as any)) as any;
-  assert.equal(state.international.length,1);assert.deepEqual(state.flows,[]);
+  assert.equal(state.international.length,2);assert.deepEqual(state.flows,[]);
   console.log("PASS: transaction pool init races, concurrent field merge, same-field/deletion conflict, duplicate and lost-response retry, scoped sync; public data unchanged.");
 } finally {
   if(created) await client.unsafe(`DROP SCHEMA "${schema}" CASCADE`);

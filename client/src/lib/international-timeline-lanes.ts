@@ -6,9 +6,11 @@ export const COUNTRY_LANES: { id: TimelineLane; name: string; region: Region; co
   { id: "fr", name: "프랑스", region: "europe", color: "fr" },
   { id: "uk", name: "영국", region: "europe", color: "uk" },
   { id: "jp", name: "일본", region: "japan", color: "jp" },
+  { id: "soviet", name: "소련·러시아", region: "emerging", color: "soviet" },
   { id: "emerging", name: "신흥국", region: "emerging", color: "emerging" },
   { id: "oil", name: "산유국", region: "oil", color: "oil" },
 ];
+export const DEFAULT_TIMELINE_LANES: TimelineLane[] = ["us", "de", "fr", "uk", "jp", "soviet", "emerging"];
 /** Country labels are optional annotations; removing one must not move its event. */
 export function eventLanes(event: TimelineEvent): TimelineLane[] {
   if (event.lane) return event.lane === "eu" ? ["de", "fr", "uk"] : [event.lane];

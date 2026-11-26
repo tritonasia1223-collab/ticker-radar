@@ -4,15 +4,18 @@ import { copy, diff, type Document, type Resource } from "../../../shared/cap-co
 import { internationalDocumentSchema } from "../../../shared/international-storage";
 
 export function eventDocument(event: TimelineEvent, deletedAt: string | null = null): Document {
-  const { id, title, body, type, labels, year, month, date, endY, endM, endYear, endMonth, region, country, lane, scope, ...extra } = event;
+  const { id, title, body, type, labels, year, month, date, endY, endM, endYear, endMonth, region, country, lane, scope, laneHint, ...extra } = event as TimelineEvent & { laneHint?: unknown };
   return copy({ title, body, type: type ?? "event", labels: labels ?? [],
     timing: { year, month: month ?? null, date, endY: endY !== undefined ? endY : endYear ?? null, endM: endY !== undefined ? endM ?? null : endMonth ?? null, endYear: endYear ?? null, endMonth: endMonth ?? null },
-    position: { region, country, lane: lane ?? null, scope: scope ?? "regional" }, extra, deletedAt });
+    // The coarse legacy region/lane stays readable by already-open clients.
+    // The stable lane identity travels in forward-compatible metadata.
+    position: { region, country, lane: lane === "soviet" ? "emerging" : lane ?? null, scope: scope ?? "regional" },
+    extra: lane === "soviet" ? { ...extra, laneHint: "soviet" } : extra, deletedAt });
 }
 export function documentEvent(resource: Resource) {
   const doc = internationalDocumentSchema.parse(resource.doc), p = doc.position;
   const event = { ...doc.extra, id: resource.key.slice(5), title: doc.title, body: doc.body, type: doc.type, labels: doc.labels,
-    ...doc.timing, region: p.region, country: p.country, ...(p.lane ? { lane: p.lane } : {}), scope: p.scope } as TimelineEvent;
+    ...doc.timing, region: p.region, country: p.country, ...(p.lane ? { lane: doc.extra.laneHint === "soviet" ? "soviet" : p.lane } : {}), scope: p.scope } as TimelineEvent;
   return { event, deletedAt: doc.deletedAt };
 }
 export function draftResources(draft: TimelineDraft): Resource[] {
