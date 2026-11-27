@@ -33,6 +33,7 @@ const World = lazy(() => import("@/pages/World"));
 // const Clo = lazy(() => import("@/pages/Clo"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+const Companion = lazy(() => import("@/components/companion/Companion"));
 
 function PageFallback() {
   return (
@@ -92,6 +93,7 @@ function App() {
             <Router hook={useHashLocation}>
               <Layout>
                 <BoundedRouter />
+                <ErrorBoundary><Suspense fallback={null}><Companion /></Suspense></ErrorBoundary>
               </Layout>
             </Router>
           </TooltipProvider>

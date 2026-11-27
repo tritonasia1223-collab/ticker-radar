@@ -1,7 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Radar, Users, Landmark, UserSearch, Star, Moon, Sun, History, Layers, Building2, Blocks, Presentation, Pencil, Globe } from "lucide-react";
+import { Radar, Users, Landmark, UserSearch, Star, History, Layers, Building2, Blocks, Presentation, Pencil, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/components/ThemeProvider";
 import { useEditMode } from "@/components/EditModeProvider";
 import GlobalTooltip from "@/components/GlobalTooltip";
 
@@ -49,7 +48,6 @@ function Logo() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { theme, toggle } = useTheme();
   const { present, toggle: toggleMode } = useEditMode();
 
   // 발표 모드: 네비 숨김 + 본문 확대(zoom) + 나가는 플로팅 버튼(네비가 없으니 여기서 나감).
@@ -108,10 +106,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             title="발표 모드 — 네비를 숨기고 본문을 크게 (읽기 전용)"
           >
             <Presentation className="h-4 w-4 mr-2" /> 발표 모드
-          </Button>
-          <Button variant="outline" onClick={toggle} className="w-full" data-testid="button-theme">
-            {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-            {theme === "dark" ? "라이트" : "다크"}
           </Button>
         </div>
       </aside>

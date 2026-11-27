@@ -1,17 +1,16 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
 
 type Theme = "light" | "dark";
-const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "light", toggle: () => {} });
+const ThemeCtx = createContext<{ theme: Theme }>({ theme: "light" });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // 기본 라이트 모드(토글로 다크 전환 가능).
-  const [theme, setTheme] = useState<Theme>("light");
+  // FISCUS는 라이트 전용. 기존 차트 소비자와의 호환용 컨텍스트만 유지한다.
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") root.classList.add("dark");
-    else root.classList.remove("dark");
-  }, [theme]);
-  return <ThemeCtx.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>{children}</ThemeCtx.Provider>;
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+  }, []);
+  return <ThemeCtx.Provider value={{ theme: "light" }}>{children}</ThemeCtx.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeCtx);
